@@ -4,6 +4,21 @@ import UIKit
 // MARK: - Design System: Color Tokens
 
 enum DSColor {
+    // ── 书悦「暖书卷」品牌 ──
+    /// 朱砂红品牌主色（#B94A2E / dark #E07A52）——与墨悦青绿系彻底区隔，
+    /// 强调书卷印章气质。与 AccentColor asset 保持一致。
+    static let appAccent = Color(red: 0.725, green: 0.290, blue: 0.180)
+    /// 暗色模式下的朱砂红（亮一档，保证深色背景可读）。
+    static let appAccentDark = Color(red: 0.878, green: 0.478, blue: 0.322)
+    /// 朱砂红浅染（选中态、浅底，约 8% tint 叠暖米纸面）。
+    static let appAccentSoft = Color(red: 0.949, green: 0.898, blue: 0.862)
+    /// 暖纸米页面背景（light，#F7F3EC）。
+    static let paperBackgroundLight = Color(red: 0.969, green: 0.953, blue: 0.925)
+    /// 深墨背景（dark，#171512）。
+    static let inkBackgroundDark = Color(red: 0.090, green: 0.082, blue: 0.071)
+    /// 书卷线框色（朱砂偏棕的浅线框）。
+    static let appAccentOutline = Color(red: 0.725, green: 0.290, blue: 0.180).opacity(0.35)
+
     // ── Brand ──
     /// Primary accent (buttons, links, selected state)
     static let accent = Color.accentColor
@@ -53,15 +68,17 @@ enum DSColor {
 
     // ── Background ──
     // When an app appearance theme is active these retint the whole app; with
-    // no theme (classic) they resolve to the exact system colors as before.
+    // no theme (classic) they resolve to the 书悦「暖书卷」paper palette instead of
+    // the raw system surfaces, so the default first screen is warm paper (light)
+    // and deep ink (dark) — unmistakably not 墨悦's system blue/white.
     /// Page background
-    static var background: Color { themed(\.appPageBackground, fallback: .systemBackground) }
+    static var background: Color { themed(\.appPageBackground, fallback: brandPaperFallback) }
     /// Group / card background
     static var surface: Color { themed(\.appCardBackground, fallback: .secondarySystemGroupedBackground) }
     /// Tertiary background (nested groups)
     static var surfaceTertiary: Color { themed(\.appSecondaryBackground, fallback: .tertiarySystemBackground) }
     /// Grouped content background
-    static var groupedBackground: Color { themed(\.appPageBackground, fallback: .systemGroupedBackground) }
+    static var groupedBackground: Color { themed(\.appPageBackground, fallback: brandPaperFallback) }
     /// Neutral gray fill for controls that must not inherit an appearance-theme tint.
     static let neutralControlFill = Color(uiColor: .systemGray5)
     /// Pressed-state fill layered inside `neutralControlFill` controls (pre-iOS 26 fallback).
@@ -115,6 +132,16 @@ enum DSColor {
             else { return fallback.resolvedColor(with: traits) }
             return theme[keyPath: keyPath]
         })
+    }
+
+    /// The 书悦 brand paper for the no-theme (默認) state: warm paper in light,
+    /// deep ink in dark. Dynamic so it tracks the appearance at draw time.
+    private static var brandPaperFallback: UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.090, green: 0.082, blue: 0.071, alpha: 1) // #171512 深墨
+                : UIColor(red: 0.969, green: 0.953, blue: 0.925, alpha: 1) // #F7F3EC 暖纸米
+        }
     }
 
     // ── Functional ──
@@ -195,8 +222,13 @@ enum DSFont {
     static var title2: Font { GlobalAppTypography.font(.title2) }
     /// Title (28pt)
     static var title: Font { GlobalAppTypography.font(.title) }
-    /// Large title (34pt)
-    static var largeTitle: Font { GlobalAppTypography.font(.largeTitle) }
+    /// Large title (34pt) — set in the system serif (New York) so every large page
+    /// title wears the bookish voice of 书悦「暖书卷」, not 墨悦's plain sans title.
+    /// A user-chosen interface font still draws as itself (design only applies to
+    /// the system face).
+    static var largeTitle: Font {
+        GlobalAppTypography.font(.largeTitle, systemDesign: .serif)
+    }
     /// A section title the way Apple Books heads its sections: Title 2 in bold, set in
     /// the system serif (New York). A chosen interface font draws it like any other style.
     static var serifSectionTitle: Font {
@@ -591,6 +623,8 @@ enum DSRadius {
     static let xl: CGFloat = 16
     /// Extra-extra-large radius (large preview tiles, prominent panel buttons)
     static let xxl: CGFloat = 20
+    /// 书悦大圆角（卡片、横幅、品牌模块）——比墨悦原有卡片更柔和、更有纸质感。
+    static let xxxl: CGFloat = 28
     /// A cover in the 搜索 page's lists: nearly square, as Apple Books' search draws them.
     static let searchListCover: CGFloat = 2
     /// The grey tag after a title (有聲書).

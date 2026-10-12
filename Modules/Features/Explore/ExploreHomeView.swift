@@ -112,7 +112,7 @@ struct ExploreHomeView: View {
             .scrollDismissesKeyboard(.immediately)
             .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
             .pageBackgroundToolbar(for: .explore)
-            .rootTabTitle(localized("发现"), onScroll: .minimizesBar)
+            .rootTabTitle(localized("發現"), onScroll: .minimizesBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsSettings = true } label: {

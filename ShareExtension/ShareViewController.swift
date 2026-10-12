@@ -98,7 +98,7 @@ final class ShareViewController: UIViewController {
             }
             let encoded = try JSONEncoder().encode(LinkPayload(remoteURLString: url.absoluteString))
             append(encoded, toKey: Self.payloadQueueKey, in: defaults)
-            finish(success: true, message: localized("連結已儲存，下次開啟墨悅時匯入。"))
+            finish(success: true, message: localized("連結已儲存，下次開啟書悅時匯入。"))
         } catch {
             finish(success: false, message: error.localizedDescription)
         }
@@ -204,7 +204,7 @@ final class ShareViewController: UIViewController {
         )
         let encoded = try JSONEncoder().encode(payload)
         append(encoded, toKey: Self.payloadQueueKey, in: defaults)
-        finish(success: true, message: localized("檔案已儲存，下次開啟墨悅時匯入。"))
+        finish(success: true, message: localized("檔案已儲存，下次開啟書悅時匯入。"))
     }
 
     /// Never let a shared name escape the payload directory; fall back to the

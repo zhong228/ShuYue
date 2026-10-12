@@ -3542,9 +3542,11 @@
 
 "TXTEncodingUnsupported" = "Unable to reliably detect the TXT encoding. Save the file as UTF-8 and import it again.";
 "墨悅數據處理與隱私說明" = "ShuYue data handling and privacy";
+"書悅數據處理與隱私說明" = "ShuYue data handling and privacy";
 "使用規則、書源與第三方內容責任" = "Usage rules, book sources and third-party content responsibility";
 "使用書源與第三方來源前，請先閱讀相關條款。" = "Please read the relevant terms before using book sources and third-party sources.";
 "墨悅" = "ShuYue";
+"書悅" = "ShuYue";
 
 "伺服器回應錯誤（%d）" = "Server responded with status %d";
 "此頁面沒有找到可直接導入的書源 JSON，請在瀏覽器中打開後複製 .json 直鏈再導入（%d）" = "No importable book source JSON was found on this page (status %d). Open it in a browser and copy the direct .json link instead.";

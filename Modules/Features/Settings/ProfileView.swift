@@ -61,7 +61,7 @@ struct SettingsView: View {
             List {
                 // ── Brand Header ──
                 Section {
-                    MoYueBrandHeaderCard(appVersion: appVersion)
+                    ShuYueBrandHeaderCard(appVersion: appVersion)
                         .rootTabTitleScrollAnchor()
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
@@ -149,7 +149,7 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .rootTabTitle(localized("設定"), onScroll: .minimizesBar)
+            .rootTabTitle(localized("設置"), onScroll: .minimizesBar)
             // Back from 外觀主題: its 淺色／深色 preview ends here.
             .onAppear { gs.endAppearanceSlotPreview() }
             .navigationDestination(isPresented: pushedSourceListBinding) {
@@ -248,7 +248,7 @@ struct SettingsView: View {
 /// 书悦's brand card, first row of 設定: the app icon, name, a one-line promise and
 /// the build. A visual identity 閱讀 never had — the page can no longer be mistaken
 /// for the upstream app's settings from its first row.
-private struct MoYueBrandHeaderCard: View {
+private struct ShuYueBrandHeaderCard: View {
     let appVersion: String
 
     var body: some View {
@@ -262,7 +262,7 @@ private struct MoYueBrandHeaderCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                Text(localized("墨悅"))
+                Text(localized("書悅"))
                     .font(DSFont.title3.weight(.bold))
                     .foregroundStyle(DSColor.textPrimary)
                 Text(localized("自由開源 · 純淨的書源閱讀器"))
@@ -300,7 +300,7 @@ private struct AboutSupportView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
 
-                    Text(localized("墨悅"))
+                    Text(localized("書悅"))
                         .font(DSFont.title3.weight(.semibold))
                         .foregroundStyle(DSColor.textPrimary)
 
@@ -394,7 +394,7 @@ private struct AboutSupportView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(localized("隱私權政策"))
                                 .foregroundColor(DSColor.textPrimary)
-                            Text(localized("墨悅數據處理與隱私說明"))
+                            Text(localized("書悅數據處理與隱私說明"))
                                 .font(DSFont.caption)
                                 .foregroundColor(DSColor.textSecondary)
                                 .lineLimit(2)

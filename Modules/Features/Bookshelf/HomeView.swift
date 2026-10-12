@@ -440,7 +440,7 @@ struct HomeView: View {
             }
             .themedAppSurface(for: .bookshelf)
             .animation(DSAnimation.standard, value: store.books.isEmpty)
-            .rootTabTitle(localized("書坊"), onScroll: .fadesTitle)
+            .rootTabTitle(localized("書架"), onScroll: .fadesTitle)
             .toolbar { shelfToolbar(addsBooks: true) }
             // In edit mode, hide the app tab bar so the contextual .bottomBar (delete / group / share)
             // takes its place — the system selection pattern used by Photos / Files.

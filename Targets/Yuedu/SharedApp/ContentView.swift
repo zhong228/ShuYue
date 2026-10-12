@@ -118,9 +118,11 @@ struct ContentView: View {
         .onChange(of: isTabBarAtBottom, initial: true) { _, atBottom in
             rootTabBar.setHidesOverCoveredRoot(atBottom)
         }
-        // Classic (默認) = the app's original look: no tint override at all.
-        .tint(appearanceTheme?.accentColor)
-        .accentColor(appearanceTheme?.accentColor)
+        // Classic (默認) wears 书悦's own 朱砂红 accent instead of system blue, so the
+        // very first screen is unmistakably distinct from 墨悦; a picked appearance
+        // theme still overrides both tint and accent with its own palette.
+        .tint(appearanceTheme?.accentColor ?? DSColor.appAccent)
+        .accentColor(appearanceTheme?.accentColor ?? DSColor.appAccent)
         .preferredColorScheme(preferredAppearanceColorScheme)
         // While 單獨設定深色主題 is on, the appearance on screen picks whose theme is worn.
         // Not in the background, where the light／dark is the app-switcher snapshots';
@@ -440,8 +442,8 @@ struct ContentView: View {
 /// Retints scrollable Form/List surfaces to the active app theme by hiding the
 /// system background and painting the themed page color behind — plus, when the
 /// user configured a page background (Pro), the per-scope gradient/image layer.
-/// The default palette resolves to the system grouped background, so default users
-/// keep the same appearance while the view structure stays stable across updates.
+/// With no theme the backdrop is the 书悦 brand paper (light warm, dark ink), so
+/// the default surfaces already read as 书悦「暖书卷」rather than system gray.
 private struct ThemedSurfaceBackground: ViewModifier {
     let scope: AppearancePageBackgroundScope
     let isProActive: Bool

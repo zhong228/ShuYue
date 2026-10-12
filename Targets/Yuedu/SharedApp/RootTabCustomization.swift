@@ -5,30 +5,31 @@ import UIKit
 enum RootTabItem: String, CaseIterable, Codable, Hashable, Identifiable {
     case bookshelf
     case explore
+    case search
     case rss
     case settings
-    case search
 
     var id: String { rawValue }
 
+    /// Keys are authored in traditional Chinese like every other key in this app,
+    /// and each `.lproj` translates them; zh-Hans shows 书架/发现/搜索/订阅/设置.
     var titleKey: String {
         switch self {
-        case .bookshelf: return "书坊"
-        case .explore: return "发现"
-        case .rss: return "订阅"
-        case .settings: return "设定"
+        case .bookshelf: return "書架"
+        case .explore: return "發現"
         case .search: return "搜索"
+        case .rss: return "訂閱"
+        case .settings: return "設置"
         }
     }
 
     var defaultSystemImage: String {
         switch self {
-        case .bookshelf: return "book.fill"
-        case .explore: return "safari.fill"
+        case .bookshelf: return "books.vertical.fill"
+        case .explore: return "square.grid.2x2.fill"
+        case .search: return "magnifyingglass"
         case .rss: return "newspaper.fill"
         case .settings: return "gearshape.2.fill"
-        // No filled variant exists for the glass; this is the intended icon.
-        case .search: return "magnifyingglass"
         }
     }
 
