@@ -553,7 +553,6 @@
 "已複製語音源 JSON" = "Voice source JSON copied";
 "已載入" = "Loaded";
 "個語音源" = "voice sources";
-"載入中…" = "Loading…";
 "載入語音源 JSON" = "Load Voice Source JSON";
 "從檔案匯入語音源 JSON" = "Import Voice Source JSON from File";
 "支援 Legado（閱讀）語音源 JSON。選中語音源後會寫入下方 URL 模板。" = "Supports Legado voice source JSON. Selecting a source writes it to the URL template below.";
@@ -638,7 +637,6 @@
 "請求過於頻繁（429），請稍後再試。" = "Too many requests (429). Please try again later.";
 "伺服器錯誤（HTTP %d），來源暫時無法存取。" = "Server error (HTTP %d). The feed is temporarily unavailable.";
 "章節進度" = "Chapter Progress";
-"上一章" = "Prev";
 "下一章" = "Next";
 "章節開始" = "Chapter Start";
 "章節結尾" = "Chapter End";
@@ -945,7 +943,6 @@
 "帳號模式" = "Account Mode";
 "登入" = "Sign In";
 "註冊" = "Sign Up";
-"電子郵件" = "Email";
 "請輸入密碼" = "Enter your password";
 "密碼至少需要 6 個字元" = "Password must be at least 6 characters";
 "Google 登入缺少身份憑證" = "Google sign-in is missing an identity token";
@@ -958,7 +955,6 @@
 "已同步" = "Synced";
 "同步失敗" = "Sync Failed";
 "輸入你的郵箱" = "Enter your email";
-"登入後可跨設備同步書籍與進度" = "Sign in to sync books and progress across devices";
 "刪除帳號將登出此裝置，並永久刪除已同步的書庫、書源、替換規則、RSS 與頭像資料。此操作無法復原。" = "Deleting your account signs out this device and permanently removes synced library, source, replacement rule, RSS, and avatar data. This cannot be undone.";
 "刪除帳號會移除您的登入資訊並清除已上傳的同步資料，且無法復原。儲存在本機的內容檔不會被刪除。" = "Deleting your account removes your sign-in information and clears synced data. This cannot be undone. Local content files are not deleted.";
 "還沒有帳號？立即註冊" = "No account yet? Sign up";
@@ -985,8 +981,6 @@
 "收合" = "Collapse";
 "未知書源" = "Unknown Source";
 "頁面顯示" = "Page Display";
-"單頁" = "Single";
-"雙頁" = "Double";
 "下載完成" = "Download Complete";
 "下載失敗" = "Download Failed";
 "未下載" = "Not Downloaded";
@@ -1538,7 +1532,6 @@
 // Book source five-stage validation (Legado CheckSourceService model)
 "書源驗證" = "Source Validation";
 "準備驗證" = "Ready to Validate";
-"搜索書籍" = "Search Books";
 "用測試關鍵字搜索並解析結果" = "Searches with the test keyword and parses results";
 "發現分類" = "Discover Category";
 "解析發現頁第一個分類的書單" = "Parses the first discover category's book list";
@@ -1546,7 +1539,6 @@
 "解析第一本書的章節目錄（前兩章）" = "Parses the first book's chapter list (first two chapters)";
 "正文內容" = "Chapter Content";
 "獲取第一章正文內容" = "Fetches the first chapter's body text";
-"書籍詳情" = "Book Detail";
 "獲取並解析書籍詳情" = "Fetch and parse book details";
 "詳情已含目錄地址" = "TOC URL already present";
 "開始驗證" = "Start Validation";
@@ -1575,7 +1567,6 @@
 "校驗超時" = "Check Timed Out";
 "js失效" = "JS Failed";
 "網站失效" = "Site Unavailable";
-"詳情為空" = "Detail is empty";
 "書單為空" = "Book list is empty";
 "檢查搜索" = "Check Search";
 "檢查發現" = "Check Discovery";
@@ -1668,17 +1659,12 @@
 
 /* Paragraph review (段評) source-JS actions */
 "找不到這則段評所屬的書源，可能已被刪除。" = "The book source for this comment could not be found — it may have been deleted.";
-"申請已送出" = "Request submitted";
-"已申請過 TestFlight" = "TestFlight already requested";
-"申請已記錄" = "Request recorded";
 "此郵箱已在 TestFlight" = "This email is already in TestFlight";
 "此郵箱已經在 TestFlight；如果尚未看到測試版，請確認 Apple 帳號與 TestFlight App。" = "This email is already in TestFlight. If you cannot see the build, check the Apple Account and the TestFlight app.";
 "TestFlight 名額已使用" = "TestFlight slot already used";
 "這個 Pro 帳號已經申請過一個郵箱，不能再邀請第二個。" = "This Pro account has already requested one email and cannot invite a second one.";
 "需要永久會員" = "Lifetime membership required";
 "TestFlight 名額只開放給永久會員。月會員可以在「閱讀Pro」升級為永久會員後申請。" = "TestFlight seats are open to lifetime members only. Monthly members can apply after upgrading to lifetime in ShuYue Pro.";
-"每個 Pro 帳號只能申請一次；如果尚未收到邀請，請聯絡管理員。" = "Each Pro account can request TestFlight access only once. If you have not received an invite, contact the administrator.";
-"申請已記錄，但邀請尚未完成，請聯絡管理員。" = "The request was recorded, but the invite has not completed. Contact the administrator.";
 "「%@」沒有回應這則段評，可能需要先在書源設定填寫 Token。" = "\"%@\" did not respond to this comment. You may need to enter a token in its book-source settings first.";
 
 /* Now-playing mini player accessibility */
@@ -1813,7 +1799,6 @@
 "快取操作失敗" = "Cache operation failed";
 "尚未設定伺服器" = "Server not configured";
 "已設定，尚未同步" = "Configured, not synced yet";
-"已設定" = "Configured";
 "你已經是 閱讀Pro" = "You already have ShuYue Pro";
 "所有 Pro 功能都已啟用" = "Every Pro feature is unlocked";
 "目前方案" = "Current plan";
@@ -1840,17 +1825,12 @@
 "粘貼源" = "Paste Source";
 "複製源" = "Copy Source";
 "尚未保存，是否繼續編輯？" = "Unsaved changes. Keep editing?";
-"文字" = "Text";
-"音頻" = "Audio";
-"文件" = "File";
-"段評" = "Comments";
 "點兩下編輯規則" = "Double-tap to edit rule";
 "源註釋" = "Source Comment";
 "登入 UI" = "Login UI";
 "封面解密" = "Cover Decode";
 "書籍 URL 正則" = "Book URL Pattern";
 "請求頭" = "HTTP Headers";
-"變量說明" = "Variable Comment";
 "並發率" = "Concurrent Rate";
 "jsLib" = "jsLib";
 "校驗關鍵字" = "Check Keyword";
@@ -3629,3 +3609,14 @@
 "導入本地" = "Import Local";
 "從書源獲取" = "Get from Source";
 "瀏覽書城" = "Browse Bookstore";
+
+"精选" = "Featured";
+"新书" = "New Books";
+"今日推荐" = "Today's Picks";
+"书城设置" = "Bookstore Settings";
+"新建频道" = "New Channel";
+"重命名频道" = "Rename Channel";
+"切换书源来源" = "Switch Book Source";
+"请先选择来源" = "Please Select a Source First";
+"前往管理" = "Manage Sources";
+"暂未配置书源" = "No Book Source Configured";

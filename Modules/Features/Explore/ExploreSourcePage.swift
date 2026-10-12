@@ -5,7 +5,7 @@ import SwiftUI
 
 /// One explore source's whole discover page, opened from 探索's list: every category the
 /// source lists with the source's own filters above them — as Apple Books lays out a
-/// store, or as Legado lists them (探索設定 › 書源頁佈局). The gear opens 發現頁設定, which
+/// store, or as Legado lists them (书城设置 › 書源頁佈局). The gear opens 發現頁設定, which
 /// picks the categories the page shows; the avatar opens the source's login page — where
 /// Legado sources keep their settings.
 struct ExploreSourcePage: View {

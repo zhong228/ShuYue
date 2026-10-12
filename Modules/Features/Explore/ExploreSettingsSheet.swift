@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 探索設定, behind 探索's gear: how 探索 lays out its entries, how a source's page lays
+/// 书城设置, behind 探索's gear: how 探索 lays out its entries, how a source's page lays
 /// out its categories, and how the charts and shelves fill and load.
 struct ExploreSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -37,7 +37,7 @@ struct ExploreSettingsSheet: View {
                 coverSection
             }
             .animation(reduceMotion ? nil : DSAnimation.standard, value: sourcePageLayout)
-            .navigationTitle(localized("探索設定"))
+            .navigationTitle(localized("书城设置"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .explore)
             .toolbar {
