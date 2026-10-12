@@ -609,7 +609,7 @@ private struct RSSArticleRow: View {
                         } else if phase.error != nil {
                             Color.clear
                         } else {
-                            Color.gray.opacity(0.1)
+                            DSColor.neutralControlFill
                         }
                     }
                     .frame(width: 60, height: 60)

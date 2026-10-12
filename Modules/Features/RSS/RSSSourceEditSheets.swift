@@ -540,7 +540,7 @@ struct RSSFolderSourcesView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .disabled(selectedSourceIDs.isEmpty)
-                .tint(.red)
+                .tint(DSColor.destructive)
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -583,7 +583,7 @@ struct RSSFolderSourcesView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.red, in: Capsule())
+                                .background(DSColor.destructive, in: Capsule())
                         }
                     }
                 }
