@@ -197,7 +197,7 @@ struct BookSourceRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: source.enabled ? "power" : "poweroff")
                             .font(DSFont.fixed(size: 12))
-                        Text(source.enabled ? localized("啟") : localized("停"))
+                        Text(source.enabled ? localized("启用") : localized("停用"))
                             .font(DSFont.fixed(size: 11, weight: .semibold))
                     }
                     .foregroundColor(source.enabled ? rowAccent : DSColor.textTertiary)
@@ -230,6 +230,8 @@ struct BookSourceRow: View {
         .opacity(source.enabled ? 1 : 0.55)
         .padding(.horizontal, DSSpacing.md)
         .padding(.vertical, DSSpacing.xs)
+        // Long-press opens the same operation panel as the trailing ellipsis menu.
+        .contextMenu { rowMenuContent }
     }
 
     // MARK: Avatar block
@@ -275,96 +277,7 @@ struct BookSourceRow: View {
 
     private var menu: some View {
         Menu {
-            Button {
-                actions.showInfo(source)
-            } label: {
-                Label(localized("查看詳情"), systemImage: "info.circle")
-            }
-            Button {
-                actions.test(source)
-            } label: {
-                Label(localized("測試書源"), systemImage: "antenna.radiowaves.left.and.right")
-            }
-            Divider()
-            Button {
-                actions.edit(source)
-            } label: {
-                Label(localized("編輯"), systemImage: "square.and.pencil")
-            }
-            Button {
-                actions.copyJSON(source)
-            } label: {
-                Label(localized("複製 JSON"), systemImage: "doc.on.doc")
-            }
-            BookSourceExportShareLink(
-                label: localized("匯出"),
-                filenameLabel: source.bookSourceName,
-                sources: { [source] in [source] },
-                onHandoff: actions.export
-            )
-            if !source.loginUrl.isEmpty {
-                Button {
-                    actions.login(source)
-                } label: {
-                    Label(localized("Cookie 驗證登入"), systemImage: "person.badge.key")
-                }
-            }
-            Button {
-                actions.editVariables(source)
-            } label: {
-                Label(localized("設置源變量"), systemImage: "slider.horizontal.3")
-            }
-            Divider()
-            Button {
-                actions.pickGroup(source)
-            } label: {
-                Label(localized("移動到分組"), systemImage: "folder")
-            }
-            Button {
-                actions.moveToNewGroup(source)
-            } label: {
-                Label(localized("移動到新分組"), systemImage: "folder.badge.plus")
-            }
-            if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Button {
-                    actions.applyGroupName(defaultGroupName, [source.id])
-                } label: {
-                    Label(localized("移出分組"), systemImage: "folder.badge.minus")
-                }
-            }
-            Divider()
-            if pin == .top {
-                Button {
-                    actions.unpin(source, localized("已取消置頂"))
-                } label: {
-                    Label(localized("取消置頂"), systemImage: "pin.slash")
-                }
-            } else {
-                Button {
-                    actions.pinToTop(source)
-                } label: {
-                    Label(localized("置頂"), systemImage: "pin")
-                }
-            }
-            if pin == .bottom {
-                Button {
-                    actions.unpin(source, localized("已取消置底"))
-                } label: {
-                    Label(localized("取消置底"), systemImage: "pin.slash.fill")
-                }
-            } else {
-                Button {
-                    actions.pinToBottom(source)
-                } label: {
-                    Label(localized("置底"), systemImage: "pin.fill")
-                }
-            }
-            Divider()
-            Button(role: .destructive) {
-                actions.delete(source)
-            } label: {
-                Label(localized("刪除"), systemImage: "trash")
-            }
+            rowMenuContent
         } label: {
             Image(systemName: "ellipsis.circle.fill")
                 .font(DSFont.fixed(size: 20))
@@ -374,6 +287,102 @@ struct BookSourceRow: View {
                 .accessibilityHidden(true)
         }
         .accessibilityLabel(localized("更多操作"))
+    }
+
+    /// Shared operation panel: the row's trailing menu and its long-press context menu show
+    /// the same actions (source detail, health check, group moves, export, delete).
+    @ViewBuilder
+    private var rowMenuContent: some View {
+        Button {
+            actions.showInfo(source)
+        } label: {
+            Label(localized("查看詳情"), systemImage: "info.circle")
+        }
+        Button {
+            actions.test(source)
+        } label: {
+            Label(localized("測試書源"), systemImage: "antenna.radiowaves.left.and.right")
+        }
+        Divider()
+        Button {
+            actions.edit(source)
+        } label: {
+            Label(localized("編輯"), systemImage: "square.and.pencil")
+        }
+        Button {
+            actions.copyJSON(source)
+        } label: {
+            Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+        }
+        BookSourceExportShareLink(
+            label: localized("匯出"),
+            filenameLabel: source.bookSourceName,
+            sources: { [source] in [source] },
+            onHandoff: actions.export
+        )
+        if !source.loginUrl.isEmpty {
+            Button {
+                actions.login(source)
+            } label: {
+                Label(localized("Cookie 驗證登入"), systemImage: "person.badge.key")
+            }
+        }
+        Button {
+            actions.editVariables(source)
+        } label: {
+            Label(localized("設置源變量"), systemImage: "slider.horizontal.3")
+        }
+        Divider()
+        Button {
+            actions.pickGroup(source)
+        } label: {
+            Label(localized("移動到分組"), systemImage: "folder")
+        }
+        Button {
+            actions.moveToNewGroup(source)
+        } label: {
+            Label(localized("移動到新分組"), systemImage: "folder.badge.plus")
+        }
+        if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Button {
+                actions.applyGroupName(defaultGroupName, [source.id])
+            } label: {
+                Label(localized("移出分組"), systemImage: "folder.badge.minus")
+            }
+        }
+        Divider()
+        if pin == .top {
+            Button {
+                actions.unpin(source, localized("已取消置頂"))
+            } label: {
+                Label(localized("取消置頂"), systemImage: "pin.slash")
+            }
+        } else {
+            Button {
+                actions.pinToTop(source)
+            } label: {
+                Label(localized("置頂"), systemImage: "pin")
+            }
+        }
+        if pin == .bottom {
+            Button {
+                actions.unpin(source, localized("已取消置底"))
+            } label: {
+                Label(localized("取消置底"), systemImage: "pin.slash.fill")
+            }
+        } else {
+            Button {
+                actions.pinToBottom(source)
+            } label: {
+                Label(localized("置底"), systemImage: "pin.fill")
+            }
+        }
+        Divider()
+        Button(role: .destructive) {
+            actions.delete(source)
+        } label: {
+            Label(localized("刪除"), systemImage: "trash")
+        }
     }
 
     // MARK: Accessibility

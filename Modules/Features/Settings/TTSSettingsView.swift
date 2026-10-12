@@ -60,13 +60,13 @@ struct TTSSettingsView: View {
                 }
             }
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
-            .navigationTitle(localized("語音朗讀設定"))
+            .navigationTitle(localized("听书引擎"))
             .toolbarTitleDisplayMode(.inline)
             .pageBackgroundToolbar(for: .settings)
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: localized("搜索語音源")
+                prompt: localized("搜索语音源")
             )
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -90,12 +90,12 @@ struct TTSSettingsView: View {
                         actions: [
                             DismissalSequencedAction(
                                 route: .local,
-                                title: localized("本地導入"),
+                                title: localized("文件导入"),
                                 systemImage: "doc.badge.plus"
                             ),
                             DismissalSequencedAction(
                                 route: .network,
-                                title: localized("網路導入"),
+                                title: localized("网络导入"),
                                 systemImage: "network"
                             ),
                         ],
@@ -125,7 +125,7 @@ struct TTSSettingsView: View {
                 )
             }
             .alert(
-                localized("語音源設定"),
+                localized("听书源管理"),
                 isPresented: Binding(
                     get: { sourceImportMessage != nil },
                     set: { isPresented in
@@ -180,12 +180,12 @@ struct TTSSettingsView: View {
                 Button {
                     showSourceFileImporter = true
                 } label: {
-                    Label(localized("本地導入"), systemImage: "doc.badge.plus")
+                    Label(localized("文件导入"), systemImage: "doc.badge.plus")
                 }
                 Button {
                     showNetworkImport = true
                 } label: {
-                    Label(localized("網路導入"), systemImage: "network")
+                    Label(localized("网络导入"), systemImage: "network")
                 }
             } label: {
                 Image(systemName: "plus")
@@ -211,7 +211,7 @@ struct TTSSettingsView: View {
     private var sourceList: some View {
         List {
             Section {
-                Picker(localized("預合成並行數"), selection: $gs.ttsPreSynthesisConcurrency) {
+                Picker(localized("预合成并行数"), selection: $gs.ttsPreSynthesisConcurrency) {
                     ForEach(GlobalSettings.ttsPreSynthesisConcurrencyRange, id: \.self) { count in
                         Text(count, format: .number).tag(count)
                     }
@@ -219,7 +219,7 @@ struct TTSSettingsView: View {
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("tts_pre_synthesis_concurrency")
             } header: {
-                Text(localized("語音預合成"))
+                Text(localized("预合成引擎"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
                 Text(localized("同時合成語音的請求數。適用於網路語音，下次開始朗讀時生效。"))
@@ -233,7 +233,7 @@ struct TTSSettingsView: View {
                     .frame(minHeight: DSLayout.minimumTapTarget)
                 edgeVoiceRows
             } header: {
-                Text(localized("內建語音"))
+                Text(localized("内置音色"))
                     .accessibilityIdentifier("tts_builtin_section")
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
@@ -256,7 +256,7 @@ struct TTSSettingsView: View {
                     }
                 }
             } header: {
-                Text(localized("已匯入語音源"))
+                Text(localized("听书源管理"))
                     .accessibilityIdentifier("tts_imported_section")
                     .foregroundStyle(DSColor.textSecondary)
             }
@@ -511,7 +511,7 @@ struct TTSSettingsView: View {
 
                 Spacer()
             }
-            .navigationTitle(localized("網路導入"))
+            .navigationTitle(localized("网络导入"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -561,7 +561,7 @@ struct TTSSettingsView: View {
     private var edgeVoiceRows: some View {
         Group {
             builtInVoiceRow(
-                title: localized("微軟線上語音"),
+                title: localized("微软在线音色"),
                 isSelected: gs.usesEdgeTTS,
                 identifier: "tts_edge",
                 select: {
@@ -640,7 +640,7 @@ struct TTSSettingsView: View {
 
     private var systemVoiceSourceRow: some View {
         builtInVoiceRow(
-            title: localized("系統離線語音"),
+            title: localized("系统离线音色"),
             isSelected: isSystemVoiceSelected,
             identifier: "tts_system",
             select: {
@@ -658,7 +658,7 @@ struct TTSSettingsView: View {
         } label: {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    Text(localized("系統語音音色"))
+                    Text(localized("系统音色库"))
                         .foregroundStyle(DSColor.textPrimary)
                     Text(selectedSystemVoiceSummary)
                         .font(DSFont.subheadline)
@@ -666,7 +666,7 @@ struct TTSSettingsView: View {
                 }
             } else {
                 HStack {
-                    Text(localized("系統語音音色"))
+                    Text(localized("系统音色库"))
                         .foregroundStyle(DSColor.textPrimary)
                     Spacer()
                     Text(selectedSystemVoiceSummary)

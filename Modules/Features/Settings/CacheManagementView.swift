@@ -140,7 +140,7 @@ struct CacheManagementView: View {
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
-            .navigationTitle(localized("快取管理"))
+            .navigationTitle(localized("存储清理"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

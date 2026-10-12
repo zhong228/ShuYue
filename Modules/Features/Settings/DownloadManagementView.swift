@@ -43,7 +43,7 @@ struct DownloadManagementView: View {
                 downloadedBooksSection
             }
             .softScrollEdges()
-            .navigationTitle(localized("下載管理"))
+            .navigationTitle(localized("离线缓存"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
