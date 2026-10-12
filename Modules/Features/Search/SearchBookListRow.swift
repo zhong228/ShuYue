@@ -100,7 +100,7 @@ struct SearchBookListRow<Cover: View>: View {
             SearchListCover { cover }
             VStack(alignment: .leading, spacing: 0) {
                 titleText
-                    .font(DSFont.footnote.weight(.semibold))
+                    .font(DSFont.fixed(size: 15, weight: .semibold, design: .serif))
                     .foregroundStyle(DSColor.textPrimary)
                     .lineLimit(titleLineLimit)
                 if !content.author.isEmpty {

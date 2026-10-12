@@ -154,10 +154,9 @@ enum DSColor {
     /// Decorative only — it carries no state, so it may go unnoticed against a
     /// dark backdrop without costing the user anything.
     static let coverHeroShadow = Color.black.opacity(0.3)
-    /// Shadow under a cover in the 搜索 page's lists: the short, soft shadow Apple Books'
-    /// search draws under each cover, measured off its screenshots. Decorative, like
-    /// `coverHeroShadow`.
-    static let searchListCoverShadow = Color.black.opacity(0.35)
+    /// Shadow under a cover in the 搜索 page's lists: 书悦朱砂暖影，替代 Apple Books
+    /// 黑影——所有搜索封面都带上一抹暖色书卷光。Decorative, like `coverHeroShadow`.
+    static let searchListCoverShadow = appAccent.opacity(0.24)
     /// Selected highlight
     static let highlight = Color.accentColor.opacity(0.15)
 
@@ -625,8 +624,8 @@ enum DSRadius {
     static let xxl: CGFloat = 20
     /// 书悦大圆角（卡片、横幅、品牌模块）——比墨悦原有卡片更柔和、更有纸质感。
     static let xxxl: CGFloat = 28
-    /// A cover in the 搜索 page's lists: nearly square, as Apple Books' search draws them.
-    static let searchListCover: CGFloat = 2
+    /// A cover in the 搜索 page's lists: 书悦圆角（8pt），摆脱 Apple Books 近方形 2pt。
+    static let searchListCover: CGFloat = 8
     /// The grey tag after a title (有聲書).
     static let titleTag: CGFloat = 3
 }

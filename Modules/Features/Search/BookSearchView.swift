@@ -414,7 +414,7 @@ struct BookSearchView: View {
         } label: {
             Label(localized("載入更多"), systemImage: "arrow.down.circle")
                 .font(DSFont.subheadline)
-                .foregroundStyle(DSColor.accent)
+                .foregroundStyle(DSColor.appAccent)
                 .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
         }
     }

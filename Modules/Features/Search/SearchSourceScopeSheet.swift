@@ -20,7 +20,7 @@ struct SearchSourceScopeCapsule: View {
         .controlSize(.small)
         .frame(minHeight: DSLayout.minimumTapTarget, alignment: .leading)
         .contentShape(Rectangle())
-        .tint(DSColor.accent)
+        .tint(DSColor.appAccent)
         .accessibilityLabel(localized("搜索範圍"))
         .accessibilityValue(title)
     }

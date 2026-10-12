@@ -162,8 +162,20 @@ struct UnavailableLabel: View {
             Text(title)
                 .foregroundStyle(DSColor.textPrimary)
         } icon: {
+            // 书悦空态图标：朱砂浅染圆角方块里的品牌描边图标，替代 ContentUnavailableView
+            // 的纯线性图标——全 App 的空态统一成"书卷印章"气质。
             Image(systemName: systemImage)
-                .foregroundStyle(DSColor.textSecondary)
+                .font(DSFont.fixed(size: 20, weight: .semibold))
+                .foregroundStyle(DSColor.appAccent)
+                .frame(width: 52, height: 52)
+                .background(
+                    DSColor.appAccentSoft,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(DSColor.appAccentOutline, lineWidth: 1)
+                }
         }
     }
 }
