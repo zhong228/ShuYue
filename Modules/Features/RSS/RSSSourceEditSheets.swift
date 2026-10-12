@@ -200,7 +200,7 @@ struct RSSOrganizeSheet: View {
 
                 if folders.isEmpty && rootSources.isEmpty {
                     Section {
-                        Text(localized("还没有订阅源"))
+                        Text(localized("沒有訂閱源"))
                             .foregroundStyle(DSColor.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 60)
@@ -271,7 +271,7 @@ struct RSSOrganizeSheet: View {
             .listStyle(.insetGrouped)
             .softScrollEdges()
             .environment(\.editMode, $editMode)
-            .navigationTitle(localized("管理订阅源"))
+            .navigationTitle(localized("管理訂閱源"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {

@@ -166,6 +166,7 @@
 "搜索 URL" = "Search URL";
 "搜索/缓存/下载/校验等网络请求并发数，建议16个" = "Concurrent requests for search/cache/download/validation. Recommended: 16 (downloads cap at 8)";
 "搜索中…" = "Searching…";
+"正在檢索「%@」" = "Searching for “%@”…";
 "暫停搜索" = "Pause search";
 "繼續搜索" = "Resume search";
 "點擊繼續搜索剩餘書源" = "Tap to resume the remaining sources";
@@ -574,6 +575,7 @@
 "Legado 語音源段落文字" = "Legado voice source paragraph text";
 "收起" = "Collapse";
 "展開" = "Expand";
+"展開全部" = "Expand All";
 "歡迎回來" = "Welcome back";
 "新用戶註冊將在驗證後自動創建帳號" = "New accounts will be created automatically after verification.";
 "電子郵件或帳號" = "Email or Account";
@@ -843,6 +845,7 @@
 "尚無瀏覽記錄" = "No browsing history";
 "瀏覽過的網頁會出現在這裡" = "Pages you visit will appear here";
 "清除" = "Clear";
+"清除搜索" = "Clear Search";
 "小說" = "Fiction";
 "聽書" = "Audiobook";
 "漫畫" = "Comic";
@@ -3536,28 +3539,10 @@
 "自由開源 · 純淨的書源閱讀器" = "Free & open source · pure book-source reader";
 "版本 %@" = "Version %@";
 "篇未讀" = "unread";
-"删除" = "Delete";
-"移动位置" = "Move";
 "刪除订阅源" = "Delete Feed";
-"確定要刪除「%@」订阅源嗎？" = "Delete “%@” feed?";
-"個订阅源" = "feeds";
-"已匯入 %d 個订阅源" = "Imported %d feeds";
-"常用订阅源倉庫" = "Popular Feed Repositories";
 "源倉庫（官方純淨）" = "Feed Repository (Official)";
-"订阅源網址無效" = "Invalid feed URL";
 "订阅源管理" = "Feed Management";
-"订阅源" = "Feed";
 
-"全部订阅源" = "All Feeds";
-"未读订阅" = "Unread Feeds";
-"已读订阅" = "Read Feeds";
-"收藏订阅" = "Favorite Feeds";
-"刷新所有订阅" = "Refresh All Feeds";
-"一键全部已读" = "Mark All as Read";
-"订阅筛选" = "Filter Feeds";
-"管理订阅源" = "Manage Feeds";
-"还没有订阅源" = "No Feeds Yet";
-"没有符合条件的订阅源" = "No Matching Feeds";
 "檢測" = "Check";
 "失效" = "Invalid";
 "確定要刪除 %d 個訂閱源嗎？" = "Delete %d feed(s)?";
@@ -3605,7 +3590,6 @@
 "自定义页面" = "Custom Page";
 "请选择上方书源" = "Please Select a Source Above";
 "應用診斷與問題回報" = "App Diagnostics & Feedback";
-"点击右上角菜单可以导入 Legado JSON 订阅源" = "Tap the menu in the top right to import a Legado JSON source";
 "導入本地" = "Import Local";
 "從書源獲取" = "Get from Source";
 "瀏覽書城" = "Browse Bookstore";
@@ -3620,3 +3604,14 @@
 "请先选择来源" = "Please Select a Source First";
 "前往管理" = "Manage Sources";
 "暂未配置书源" = "No Book Source Configured";
+"全部訂閱源" = "All Sources";
+"未讀訂閱源" = "Unread Sources";
+"已讀訂閱源" = "Read Sources";
+"收藏訂閱源" = "Favorite Sources";
+"管理訂閱源" = "Manage Sources";
+"訂閱源網址無效" = "Invalid source URL";
+"常用訂閱源倉庫" = "Popular Source Repositories";
+"沒有符合條件的訂閱源" = "No sources match the filter";
+"訂閱源" = "Sources";
+"移動位置" = "Move";
+"點擊右上角「更多」即可匯入 Legado JSON 訂閱源" = "Tap the More menu in the top-right corner to import Legado JSON sources";
