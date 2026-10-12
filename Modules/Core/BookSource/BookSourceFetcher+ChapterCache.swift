@@ -1,0 +1,100 @@
+import Foundation
+
+// MARK: - Chapter Cache Delegation (ChapterCacheRepository)
+
+extension BookSourceFetcher {
+
+    nonisolated func loadNormalizedChapterHTMLSync(
+        bookId: UUID,
+        chapterIndex: Int,
+        expectedSourceURL: String? = nil,
+        expectedTOCTitle: String? = nil
+    ) -> String? {
+        Self.chapterCacheRepository.loadNormalizedChapterHTMLSync(
+            bookId: bookId,
+            chapterIndex: chapterIndex,
+            expectedSourceURL: expectedSourceURL,
+            expectedTOCTitle: expectedTOCTitle
+        )
+    }
+
+    nonisolated func isChapterCached(
+        bookId: UUID,
+        chapterIndex: Int,
+        expectedSourceURL: String? = nil,
+        expectedTOCTitle: String? = nil
+    ) -> Bool {
+        Self.chapterCacheRepository.isChapterCached(
+            bookId: bookId,
+            chapterIndex: chapterIndex,
+            expectedSourceURL: expectedSourceURL,
+            expectedTOCTitle: expectedTOCTitle
+        )
+    }
+
+    nonisolated func clearChapterCache(bookId: UUID, chapterIndex: Int) {
+        Self.chapterCacheRepository.clearChapterCache(bookId: bookId, chapterIndex: chapterIndex)
+    }
+
+    /// Clear all chapter caches for a book (called when switching sources)
+    nonisolated func clearAllChapterCache(bookId: UUID) {
+        Self.chapterCacheRepository.clearAllChapterCache(bookId: bookId)
+    }
+
+    @discardableResult
+    nonisolated func saveToCache(
+        content: String,
+        bookId: UUID,
+        chapterIndex: Int,
+        sourceURL: String? = nil,
+        tocTitle: String? = nil,
+        extractedTitle: String? = nil,
+        rawHTML: String? = nil,
+        storeNormalizedHTML: Bool = true
+    ) throws -> String {
+        try Self.chapterCacheRepository.saveToCache(
+            content: content,
+            bookId: bookId,
+            chapterIndex: chapterIndex,
+            sourceURL: sourceURL,
+            tocTitle: tocTitle,
+            extractedTitle: extractedTitle,
+            rawHTML: rawHTML,
+            storeNormalizedHTML: storeNormalizedHTML
+        )
+    }
+
+    @discardableResult
+    nonisolated func saveChapterPackageToCache(
+        _ package: ChapterPackage,
+        rawHTML: String?,
+        normalizedHTML: String?
+    ) throws -> String {
+        try Self.chapterCacheRepository.saveChapterPackageToCache(
+            package,
+            rawHTML: rawHTML,
+            normalizedHTML: normalizedHTML
+        )
+    }
+
+    nonisolated func loadCachedChapterMetadataSync(bookId: UUID, chapterIndex: Int) -> CachedChapterMetadata? {
+        Self.chapterCacheRepository.loadCachedChapterMetadataSync(
+            bookId: bookId,
+            chapterIndex: chapterIndex
+        )
+    }
+
+    nonisolated func loadChapterPackageSync(
+        bookId: UUID,
+        chapterIndex: Int,
+        expectedSourceURL: String? = nil,
+        expectedTOCTitle: String? = nil
+    ) -> ChapterPackage? {
+        Self.chapterCacheRepository.loadChapterPackageSync(
+            bookId: bookId,
+            chapterIndex: chapterIndex,
+            expectedSourceURL: expectedSourceURL,
+            expectedTOCTitle: expectedTOCTitle
+        )
+    }
+}

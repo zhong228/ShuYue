@@ -1,0 +1,54 @@
+import YueduCoreText
+import Foundation
+import UIKit
+
+/// What the browser-layout engine needs from a book. Implemented by an EPUB
+/// adapter (Core layer); the engine never touches Readium or UI types.
+///
+/// MainActor-isolated because every implementation already is — the EPUB adapter
+/// drives a `PublicationSession`, and `BrowserLayoutPageEngine`, its only caller,
+/// is MainActor too. Declaring it here keeps the conformances from crossing an
+/// isolation boundary (a Swift 6 error) without moving any work off the main
+/// actor that wasn't already there.
+@MainActor
+protocol BrowserLayoutResourceProviding: AnyObject {
+    var chapterCount: Int { get }
+    func chapterTitle(at index: Int) -> String
+    func chapterSourceHref(at index: Int) -> String?
+    func chapterHTML(at index: Int) async throws -> String
+    func resolveMediaAttachment(forChapter index: Int, media: EPUBMediaAttachment) -> EPUBMediaAttachment
+    /// CSS ready for the browser engine: @imports inlined, @font-face stripped,
+    /// url() rewritten to absolute publication URLs.
+    func cssFrontendInput(forChapter index: Int, html: String) async -> CSSFrontendInput
+    /// Registers cascade-matched faces only after Browser admission and before
+    /// taking the immutable resolver snapshot used by layout.
+    func prepareFonts(requests: Set<BrowserFontRequest>) async
+    /// Pre-fetches every image the chapter's DOM references — `<img src>` and
+    /// the SVG-wrapped cover idiom — so the box tree can measure them through a
+    /// synchronous loader. These are the only images layout NEEDS: a CSS
+    /// background is paint-only and is fetched afterwards via `loadImage`, keyed
+    /// by the source the computed style tree actually resolved.
+    ///
+    /// `renderWidth` is the content width the chapter lays out at; `data:` and
+    /// remote sources go through `OnlineImageLoader`, which needs it to
+    /// rasterize and downsample.
+    func prefetchImages(forChapter index: Int, html: String, renderWidth: CGFloat) async -> [String: UIImage]
+
+    /// Resolves ONE image source to bytes. Same routing as `prefetchImages`
+    /// (publication resource / `data:` / remote), so a source fetched here and a
+    /// source fetched there can never disagree.
+    func loadImage(forChapter index: Int, source: String, renderWidth: CGFloat) async -> UIImage?
+    /// Resolves CSS font families (including registered @font-face families)
+    /// to a concrete UIFont; nil falls back to UIFont(name:).
+    func fontResolver() -> (([String], Int, Bool, CGFloat) -> UIFont?)?
+    /// The language the publication declares. CJK typography follows the text's own
+    /// script and falls back to this only when the text shows none.
+    var declaredLanguage: String? { get }
+}
+
+extension BrowserLayoutResourceProviding {
+    var declaredLanguage: String? { nil }
+    func resolveMediaAttachment(forChapter index: Int, media: EPUBMediaAttachment) -> EPUBMediaAttachment { media }
+    /// Providers without embedded fonts have no asynchronous resources to prepare.
+    func prepareFonts(requests: Set<BrowserFontRequest>) async {}
+}

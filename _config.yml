@@ -1,0 +1,6 @@
+title: MoYue Engineering
+description: Engineering notes from MoYue, a native iOS reader built with SwiftUI and CoreText.
+url: "https://zhong228.github.io"
+baseurl: "/MoYue"
+permalink: /:year/:month/:day/:title/
+markdown: kramdown

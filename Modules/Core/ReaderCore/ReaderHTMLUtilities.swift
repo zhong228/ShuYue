@@ -1,0 +1,2258 @@
+import Foundation
+import SwiftSoup
+
+enum ReaderHTMLUtilities {
+    /// Strips markup from a source fragment and returns plain display text.
+    ///
+    /// By default all whitespace (including newlines) is collapsed to single
+    /// spaces — correct for titles, where a single line is wanted and the result
+    /// is reused as a matching/dedup key. Pass `preservingLineBreaks: true` for
+    /// multi-line fields such as book intros/summaries, so the "\n" separators the
+    /// source emits (and `<br>`/`</p>` boundaries) survive as paragraph breaks
+    /// instead of flattening into one run-on block.
+    static func displayText(fromHTMLFragment text: String, preservingLineBreaks: Bool = false) -> String {
+        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !result.isEmpty else { return "" }
+
+        // Markup and entity handling is skipped for text that carries neither.
+        //
+        // Every step in this section is a no-op on plain text, but not a free one:
+        // `Entities.unescape` walks the string in SwiftSoup, and each
+        // `replacingOccurrences(options: .regularExpression)` bridges to NSString and
+        // compiles a fresh NSRegularExpression. Chapter titles reach here already
+        // sanitized (`BookStore.addOnlineBook` / `addWebBrowsedBook` clean them on
+        // write), and `ReadingBook.latestChapterDisplayTitle` re-cleans one on every
+        // bookshelf row body — which is what a library publish behind the open reader
+        // paid for, per row. `&` and `<` are the only characters any step below can
+        // act on, so one scan for each decides whether that step can do anything.
+        if result.utf8.contains(UInt8(ascii: "&")) {
+            // Book-source summaries frequently contain named/numeric HTML entities
+            // beyond the small common set below (for example `&lrm;`). Decode them
+            // before stripping markup so encoded tags are normalized as well.
+            if let decoded = try? Entities.unescape(result) {
+                result = decoded
+            }
+
+            result = result.replacingOccurrences(
+                of: #"(?i)&lt;\s*br\s*/?\s*&gt;"#,
+                with: "\n",
+                options: .regularExpression
+            )
+        }
+
+        // Re-checked rather than reusing the test above: unescaping turns `&lt;` into
+        // a real `<`, so a fragment that arrived fully encoded only grows tags here.
+        if result.utf8.contains(UInt8(ascii: "<")) {
+            result = result.replacingOccurrences(
+                of: #"(?i)<\s*br\s*/?\s*>"#,
+                with: "\n",
+                options: .regularExpression
+            )
+            result = result.replacingOccurrences(
+                of: #"(?i)</(?:p|div|li|h[1-6]|section|article|blockquote|dt|dd|tr)>"#,
+                with: "\n",
+                options: .regularExpression
+            )
+            result = result.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)
+        }
+
+        let entities: [(String, String)] = [
+            ("&nbsp;", " "),
+            ("&#160;", " "),
+            ("&ensp;", " "),
+            ("&emsp;", " "),
+            ("&thinsp;", ""),
+            ("&lt;", "<"),
+            ("&gt;", ">"),
+            ("&amp;", "&"),
+            ("&quot;", "\""),
+            ("&#34;", "\""),
+            ("&apos;", "'"),
+            ("&#39;", "'"),
+        ]
+        // Every entry above starts with `&`; without one, all twelve passes are
+        // twelve full scans that cannot match.
+        if result.utf8.contains(UInt8(ascii: "&")) {
+            for (entity, replacement) in entities {
+                result = result.replacingOccurrences(of: entity, with: replacement, options: .caseInsensitive)
+            }
+        }
+
+        // Directional formatting controls are invisible layout hints, not book
+        // description content. Keep joiners used by emoji/scripts, removing only
+        // the bidi controls commonly emitted as HTML entities by source rules.
+        let bidiControls: Set<UInt32> = [
+            0x061C, 0x200E, 0x200F,
+            0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+            0x2066, 0x2067, 0x2068, 0x2069,
+            0xFEFF,
+        ]
+        // Testing first keeps the common case at one scan instead of a scan plus a
+        // whole new string; the filter allocates unconditionally even when it drops
+        // nothing.
+        if result.unicodeScalars.contains(where: { bidiControls.contains($0.value) }) {
+            result = String(result.unicodeScalars.filter { !bidiControls.contains($0.value) })
+        }
+
+        if preservingLineBreaks {
+            // Keep newlines as line breaks; only collapse horizontal whitespace and
+            // trim spaces hugging each break, so intros retain paragraph structure.
+            return result
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+                .replacingOccurrences(of: "\u{000B}", with: " ")
+                .replacingOccurrences(of: "\u{000C}", with: " ")
+                .replacingOccurrences(of: #"[ \t]+"#, with: " ", options: .regularExpression)
+                .replacingOccurrences(of: #"[ \t]*\n[ \t]*"#, with: "\n", options: .regularExpression)
+                .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return result
+            .replacingOccurrences(of: #"[ \t\f\v\r\n]+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func paragraphs(fromPlainText text: String) -> [String] {
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: "\u{000B}", with: " ")
+            .replacingOccurrences(of: #"[ \t\f]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalized.isEmpty else { return [] }
+
+        let explicitParagraphs = normalized
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard explicitParagraphs.count <= 1,
+              let onlyParagraph = explicitParagraphs.first,
+              onlyParagraph.count >= 420 else {
+            return explicitParagraphs
+        }
+
+        return sentenceChunks(from: onlyParagraph)
+    }
+
+    /// Wraps newline-separated segments in `<p>` when the HTML has no block-level structure.
+    ///
+    /// Online sources frequently deliver chapter bodies as plain-text paragraphs joined by "\n"
+    /// or by `<br>`, with only *inline* markup mixed in (links, 段評 bubble `<img>`s). Handed
+    /// straight to SwiftSoup, those breaks collapse to whitespace (or to a soft break inside one
+    /// block) and the whole chapter renders as a single run-on paragraph. This restores paragraph
+    /// breaks generically (not per-source): content that already carries its own block structure
+    /// (`<p>`/`<div>`/…) is returned unchanged, except for literal source newlines inside a `<p>`,
+    /// which are promoted to separate paragraphs.
+    static func wrapNewlineParagraphsIfNeeded(_ html: String) -> String {
+        let paragraphNormalized = splitNewlineSeparatedParagraphContents(in: html)
+        guard !containsBlockLevelTag(paragraphNormalized) else { return paragraphNormalized }
+        let segments = paragraphNormalized
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard segments.count > 1 else { return paragraphNormalized }
+        return segments.map { "<p>\($0)</p>" }.joined(separator: "\n")
+    }
+
+    /// Source rules sometimes wrap an entire chapter in one `<p>` while retaining the original
+    /// paragraphs as CR/LF text. HTML parsers correctly collapse those characters as whitespace,
+    /// so turn them into real paragraph boundaries before parsing. Existing paragraph attributes
+    /// are retained on every resulting paragraph.
+    private static func splitNewlineSeparatedParagraphContents(in html: String) -> String {
+        guard html.containsMarker("\n") || html.containsMarker("\r") else { return html }
+
+        var result = ""
+        var cursor = html.startIndex
+        var didSplit = false
+
+        while let openingPrefix = html.rangeOfMarker("<p", ignoringCase: true, from: cursor) {
+            let afterP = openingPrefix.upperBound
+            guard afterP == html.endIndex || html[afterP] == ">" || html[afterP].isWhitespace else {
+                result += html[cursor..<afterP]
+                cursor = afterP
+                continue
+            }
+            guard let openingEnd = html[afterP...].firstIndex(of: ">"),
+                  let closingRange = html.rangeOfMarker(
+                    "</p>", ignoringCase: true, from: html.index(after: openingEnd)
+                  )
+            else {
+                break
+            }
+
+            let innerStart = html.index(after: openingEnd)
+            let inner = String(html[innerStart..<closingRange.lowerBound])
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
+            let segments = inner
+                .components(separatedBy: "\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            result += html[cursor..<openingPrefix.lowerBound]
+            if segments.count > 1 {
+                let openingTag = String(html[openingPrefix.lowerBound...openingEnd])
+                result += segments
+                    .map { "\(openingTag)\($0)</p>" }
+                    .joined(separator: "\n")
+                didSplit = true
+            } else {
+                result += html[openingPrefix.lowerBound..<closingRange.upperBound]
+            }
+            cursor = closingRange.upperBound
+        }
+
+        guard didSplit else { return html }
+        result += html[cursor..<html.endIndex]
+        return result
+    }
+
+    /// Rewrites `<br>`-separated prose into real paragraphs, scoped to the block that contains it.
+    ///
+    /// Sources hand the reader a chapter body whose paragraph separator is `<br>`
+    /// (`段落一<br>段落二<br>…`). SwiftSoup keeps `<br>` as an inline break, so such a chapter reaches
+    /// CoreText as a single paragraph: only its very first line receives `text-indent`, and every
+    /// following paragraph sits flush against the margin with no paragraph spacing.
+    ///
+    /// Legado never hits this: `HtmlFormatter.format` rewrites `</?(?:div|p|br|hr|h\d|article|dd|dl)>`
+    /// to "\n" and `ContentProcessor.getContent` then prefixes every non-empty line with
+    /// `ReadBookConfig.paragraphIndent`, so its indent depends only on line breaks, never on markup.
+    ///
+    /// The scope rule is what makes this narrower than legado, and it is structural rather than
+    /// statistical: `<br>` is promoted when it sits directly inside a **container** block
+    /// (`<div>`, `<body>`, `<article>`, …), and left alone inside a **paragraph** block
+    /// (`<p>`, `<h1>`–`<h6>`, `<li>`, `<dd>`, …). A container makes no claim about paragraphs, so a
+    /// `<br>` in it is the source's paragraph separator; a `<p>` already declares "this is one
+    /// paragraph", so a `<br>` in it is a genuine soft break (verse, address lines) and stays one.
+    ///
+    /// Real shapes this covers, all captured live on 2026-08-23:
+    /// `<div id="nr1">…<br><br>…</div>` (笔迷读), `<h2>章节名</h2>…<br>…` (新笔趣阁 wap),
+    /// `<p>站点公告</p><div>…<br>…</div>` (笔趣阁 biquluo), and bare `段落一<br>段落二` (书旗) where the
+    /// container is `<body>` itself. Earlier this was gated on the *whole fragment* carrying no
+    /// block tag, so any one of those stray elements silently cancelled promotion for the chapter.
+    @discardableResult
+    static func promoteBreakSeparatedParagraphs(in body: Element) -> Int {
+        var promoted = 0
+        for container in [body] + ((try? body.select("div, article, section, main, center, blockquote, td")
+            .array()) ?? []) {
+            promoted += promoteBreakSeparatedParagraphs(inContainer: container)
+        }
+        return promoted
+    }
+
+    /// Blocks that declare "I am one paragraph" — a `<br>` inside them is a soft break.
+    private static let paragraphBlockTags: Set<String> = [
+        "p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "dd", "dt", "figcaption", "caption", "th"
+    ]
+
+    /// Blocks that only group content — they say nothing about paragraphs.
+    private static let containerBlockTags: Set<String> = [
+        "body", "div", "article", "section", "main", "center", "blockquote", "td", "html"
+    ]
+
+    private static func isBlockElement(_ element: Element) -> Bool {
+        let tag = element.tagName().lowercased()
+        return paragraphBlockTags.contains(tag)
+            || containerBlockTags.contains(tag)
+            || ["ul", "ol", "dl", "table", "thead", "tbody", "tfoot", "tr", "figure", "pre", "hr"]
+                .contains(tag)
+    }
+
+    private static func promoteBreakSeparatedParagraphs(inContainer container: Element) -> Int {
+        let children = container.getChildNodes()
+        guard children.contains(where: { ($0 as? Element)?.tagName().lowercased() == "br" }) else {
+            return 0
+        }
+
+        // Group the container's direct children into paragraph runs. A `<br>` closes the current
+        // run; a nested block element (a heading, the source's notice `<p>`, a `<ul>`) is passed
+        // through untouched and also closes the run around it.
+        var groups: [[Node]] = [[]]
+        var passthrough: [Int: Node] = [:]
+        for node in children {
+            if let element = node as? Element {
+                let tag = element.tagName().lowercased()
+                if tag == "br" {
+                    groups.append([])
+                    continue
+                }
+                if isBlockElement(element) {
+                    groups.append([])
+                    passthrough[groups.count - 1] = element
+                    groups.append([])
+                    continue
+                }
+            }
+            groups[groups.count - 1].append(node)
+        }
+
+        // A source that separates paragraphs with `<br>` also uses literal "\n" for the same job in
+        // the same chapter (SwiftSoup keeps those in the text node; only rendering would collapse
+        // them). Once this container is known to be `<br>`-separated, both are the same separator.
+        var paragraphs: [[Node]] = []
+        var order: [(isPassthrough: Bool, index: Int)] = []
+        for (groupIndex, group) in groups.enumerated() {
+            if let block = passthrough[groupIndex] {
+                order.append((true, paragraphs.count))
+                paragraphs.append([block])
+                continue
+            }
+            var current: [Node] = []
+            func flush() {
+                guard current.contains(where: { hasVisibleContent($0) }) else {
+                    current.removeAll()
+                    return
+                }
+                order.append((false, paragraphs.count))
+                paragraphs.append(current)
+                current.removeAll()
+            }
+            for node in group {
+                guard let textNode = node as? TextNode else {
+                    current.append(node)
+                    continue
+                }
+                let pieces = textNode.getWholeText().components(separatedBy: "\n")
+                for (pieceIndex, piece) in pieces.enumerated() {
+                    if pieceIndex > 0 { flush() }
+                    let trimmed = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { continue }
+                    current.append(TextNode(trimmed, ""))
+                }
+            }
+            flush()
+        }
+
+        // Only rebuild when promotion actually produces more than one prose paragraph — a lone
+        // trailing `<br>` must not restructure the chapter.
+        let proseCount = order.filter { !$0.isPassthrough }.count
+        guard proseCount > 1 else { return 0 }
+
+        do {
+            // Detach back-to-front before re-appending: SwiftSoup's `appendChild` reparents through
+            // `parentNode.removeChild(child)`, which indexes `childNodes` by the child's cached
+            // `siblingIndex`. Clearing the container first (`empty()`) leaves those indices dangling
+            // and the reparent traps on an out-of-range `Array.remove(at:)`. Reverse order keeps
+            // every remaining sibling index valid while the list drains.
+            for node in children.reversed() { try node.remove() }
+            for entry in order {
+                let nodes = paragraphs[entry.index]
+                if entry.isPassthrough {
+                    for node in nodes { try container.appendChild(node) }
+                    continue
+                }
+                let paragraph = Element(try Tag.valueOf("p"), "")
+                for node in nodes { try paragraph.appendChild(node) }
+                try container.appendChild(paragraph)
+            }
+        } catch {
+            AppLogger.parse("⟐ brPromotion failed", context: ["error": String(describing: error)])
+            return 0
+        }
+        return proseCount
+    }
+
+    private static func hasVisibleContent(_ node: Node) -> Bool {
+        if let textNode = node as? TextNode {
+            return !textNode.getWholeText().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if let element = node as? Element {
+            let tag = element.tagName().lowercased()
+            if ["img", "image", "svg", "video", "audio", "iframe"].contains(tag) { return true }
+            let text = ((try? element.text()) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return !text.isEmpty || !element.children().isEmpty()
+        }
+        return false
+    }
+
+    /// Tags that give a fragment paragraph structure of its own. `<br>` is deliberately absent —
+    /// whether it separates paragraphs depends on the block it sits in, which is decided on the
+    /// parsed tree by `promoteBreakSeparatedParagraphs(in:)`.
+    private static func containsBlockContainerTag(_ html: String) -> Bool {
+        let containerTags = [
+            "<p", "<div", "<li", "<ul", "<ol", "<h1", "<h2", "<h3", "<h4", "<h5", "<h6",
+            "<blockquote", "<section", "<article", "<table", "<figure", "<pre", "<dl", "<dd", "<dt",
+            // A raw inline <svg> document may contain internal newlines — never split it into <p>.
+            "<svg"
+        ]
+        return containerTags.contains { html.containsMarker($0, ignoringCase: true) }
+    }
+
+    private static func containsBlockLevelTag(_ html: String) -> Bool {
+        html.containsMarker("<br", ignoringCase: true) || containsBlockContainerTag(html)
+    }
+
+    static func bodyParagraphs(fromPlainText text: String, excludingLeadingTitle title: String) -> [String] {
+        let titleKey = normalizedTitleKey(title)
+        guard !titleKey.isEmpty else { return paragraphs(fromPlainText: text) }
+
+        return paragraphs(fromPlainText: text).enumerated().compactMap { index, paragraph in
+            guard index < 6,
+                  normalizedTitleKey(paragraph) == titleKey
+            else {
+                return paragraph
+            }
+            return nil
+        }
+    }
+
+    static func isLikelyCollapsedChapterText(_ text: String) -> Bool {
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized.count >= 220 else { return false }
+
+        let lines = normalized
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard lines.count <= 1 else { return false }
+
+        let sentenceBreaks = normalized.reduce(into: 0) { count, character in
+            if "。！？!?".contains(character) {
+                count += 1
+            }
+        }
+        return sentenceBreaks >= 6
+    }
+
+    // MARK: - Paragraph review (段評) markers
+
+    /// A tappable paragraph-review target, used to present the source's review web page.
+    ///
+    /// Most sources encode the review page as a URL we can derive up front. Some instead ship a
+    /// jsLib call that builds the URL itself at tap time (同人小说网's `createSvg(bid,cid,pid,…)`
+    /// signs it with the user's shared token) — those arrive with an empty `url` and a `sourceJS`
+    /// expression for `LegadoReviewActionRunner` to run against `sourceURL`'s session.
+    struct ReviewTarget: Identifiable, Hashable {
+        struct SourceBrowserPage: Hashable {
+            let baseURL: String
+            let html: String
+            let injectedJavaScript: String
+            let configurationJSON: String
+            let sourceURL: String
+            let actionContext: LegadoSourceActionContext?
+        }
+
+        let url: String
+        let title: String
+        let sourceJS: String
+        let sourceURL: String
+        let actionContext: LegadoSourceActionContext?
+        let sourceBrowserPage: SourceBrowserPage?
+        /// Ephemeral: credentials are resolved on tap, never serialized into chapter markers.
+        let browserRequest: URLRequest?
+
+        init(
+            url: String,
+            title: String,
+            sourceJS: String = "",
+            sourceURL: String = "",
+            actionContext: LegadoSourceActionContext? = nil,
+            sourceBrowserPage: SourceBrowserPage? = nil,
+            browserRequest: URLRequest? = nil
+        ) {
+            self.url = url
+            self.title = title
+            self.sourceJS = sourceJS
+            self.sourceURL = sourceURL
+            self.actionContext = actionContext
+            self.sourceBrowserPage = sourceBrowserPage
+            self.browserRequest = browserRequest
+        }
+
+        /// True when the source runtime must prepare the page, including authentication for a known URL.
+        var requiresSourceJS: Bool { !sourceJS.isEmpty }
+
+        var id: String {
+            if let sourceBrowserPage {
+                return "\(sourceBrowserPage.sourceURL)#page#\(sourceBrowserPage.baseURL)"
+            }
+            return url.isEmpty ? "\(sourceURL)#\(sourceJS)" : url
+        }
+    }
+
+    /// Immutable v2 snapshot used when an image click action is evaluated later.
+    /// It restores the same Legado `result`/`src`, `book`, `chapter`, and rule variables
+    /// that existed while the chapter was normalized, instead of trusting whichever
+    /// chapter last happened to use the source's shared JS session.
+    struct LegadoSourceActionContext: Codable, Hashable {
+        static let currentVersion = 2
+
+        struct BookSnapshot: Codable, Hashable {
+            let durChapterIndex: Int
+            let durChapterTitle: String
+            let order: Int
+            let type: Int
+            let imageStyle: String
+            let name: String
+            let author: String
+            let coverURL: String
+            let bookURL: String
+            let tocURL: String
+            let abstract: String
+        }
+
+        struct ChapterSnapshot: Codable, Hashable {
+            let index: Int
+            let title: String
+            let order: Int
+            let url: String
+            let isVip: Bool
+        }
+
+        let version: Int
+        let sourceURL: String
+        let script: String
+        let result: String
+        let baseURL: String
+        let runtimeVariables: [String: String]
+        let book: BookSnapshot
+        let chapter: ChapterSnapshot
+
+        func replacingScript(_ script: String) -> LegadoSourceActionContext {
+            LegadoSourceActionContext(
+                version: version,
+                sourceURL: sourceURL,
+                script: script,
+                result: result,
+                baseURL: baseURL,
+                runtimeVariables: runtimeVariables,
+                book: book,
+                chapter: chapter
+            )
+        }
+    }
+
+    /// Minimal source context needed to recover Legado image click-configs into tappable review links.
+    struct LegadoReviewContext: Hashable {
+        let sourceName: String
+        let sourceURL: String
+        let sourceVariableJSON: String?
+        let runtimeVariables: [String: String]?
+        let chapter: LegadoSourceActionContext.ChapterSnapshot?
+
+        init(
+            sourceName: String,
+            sourceURL: String,
+            sourceVariableJSON: String? = nil,
+            runtimeVariables: [String: String]? = nil,
+            chapter: LegadoSourceActionContext.ChapterSnapshot? = nil
+        ) {
+            self.sourceName = sourceName
+            self.sourceURL = sourceURL
+            self.sourceVariableJSON = sourceVariableJSON
+            self.runtimeVariables = runtimeVariables
+            self.chapter = chapter
+        }
+
+        func withRuntimeVariables(_ runtimeVariables: [String: String]?) -> LegadoReviewContext {
+            LegadoReviewContext(
+                sourceName: sourceName,
+                sourceURL: sourceURL,
+                sourceVariableJSON: sourceVariableJSON,
+                runtimeVariables: runtimeVariables ?? self.runtimeVariables,
+                chapter: chapter
+            )
+        }
+
+        func withChapter(_ ref: OnlineChapterRef) -> LegadoReviewContext {
+            LegadoReviewContext(
+                sourceName: sourceName,
+                sourceURL: sourceURL,
+                sourceVariableJSON: sourceVariableJSON,
+                runtimeVariables: runtimeVariables,
+                chapter: .init(
+                    index: ref.index,
+                    title: ref.title,
+                    order: ref.index,
+                    url: ref.url,
+                    isVip: ref.isVip
+                )
+            )
+        }
+
+        fileprivate func actionContext(script: String, result: String) -> LegadoSourceActionContext {
+            let variables = Self.safeActionVariables(runtimeVariables ?? [:])
+            return LegadoSourceActionContext(
+                version: LegadoSourceActionContext.currentVersion,
+                sourceURL: sourceURL,
+                script: script,
+                result: result,
+                baseURL: chapter?.url ?? variables["book.bookUrl"] ?? sourceURL,
+                runtimeVariables: variables,
+                book: .init(
+                    durChapterIndex: Int(variables["book.durChapterIndex"] ?? "") ?? chapter?.index ?? 0,
+                    durChapterTitle: variables["book.durChapterTitle"] ?? chapter?.title ?? "",
+                    order: Int(variables["book.order"] ?? "") ?? chapter?.order ?? 0,
+                    type: Int(variables["book.type"] ?? "") ?? 0,
+                    imageStyle: variables["book.imageStyle"] ?? "",
+                    name: variables["book.name"] ?? "",
+                    author: variables["book.author"] ?? "",
+                    coverURL: variables["book.coverUrl"] ?? "",
+                    bookURL: variables["book.bookUrl"] ?? "",
+                    tocURL: variables["book.tocUrl"] ?? "",
+                    abstract: variables["book.abstract"] ?? ""
+                ),
+                chapter: chapter ?? .init(index: 0, title: "", order: 0, url: "", isVip: false)
+            )
+        }
+
+        /// Review hrefs are persisted in normalized chapter HTML. Never freeze credentials
+        /// into that artifact: login data is read live from `source` when the action runs.
+        private static func safeActionVariables(_ variables: [String: String]) -> [String: String] {
+            let sensitive = ["token", "secret", "password", "passwd", "authorization", "cookie", "session", "apikey", "api_key", "密钥", "密碼", "密码"]
+            var result: [String: String] = [:]
+            var byteCount = 0
+            for key in variables.keys.sorted() {
+                let lower = key.lowercased()
+                guard !sensitive.contains(where: lower.contains),
+                      let value = variables[key],
+                      value.utf8.count <= 16_384,
+                      byteCount + key.utf8.count + value.utf8.count <= 65_536 else { continue }
+                result[key] = value
+                byteCount += key.utf8.count + value.utf8.count
+                if result.count == 128 { break }
+            }
+            return result
+        }
+    }
+
+    /// Decoded payload of a `ydreview://` review anchor: comment count + review URL + title.
+    /// `sourceJS`/`sourceURL` are set instead of `url` for bubbles whose review page is produced
+    /// by the source's own JS — see `ReviewTarget`.
+    struct ReviewMarker: Equatable {
+        let count: String
+        let url: String
+        let title: String
+        let sourceJS: String
+        let sourceURL: String
+        let actionContext: LegadoSourceActionContext?
+
+        init(
+            count: String,
+            url: String,
+            title: String,
+            sourceJS: String = "",
+            sourceURL: String = "",
+            actionContext: LegadoSourceActionContext? = nil
+        ) {
+            self.count = count
+            self.url = url
+            self.title = title
+            self.sourceJS = sourceJS
+            self.sourceURL = sourceURL
+            self.actionContext = actionContext
+        }
+    }
+
+    /// Structural counts used to trace paragraph-review duplication across the online pipeline.
+    /// Targets deliberately exclude the review count and timestamp: two bubbles pointing at the
+    /// same `(bookId, chapterId, paragraphId)` are semantically the same marker even when their
+    /// source-generated SVG/action payloads differ.
+    struct ReviewMarkupDiagnostics: Equatable {
+        let markerCount: Int
+        let rawReviewImageCount: Int
+        let reviewAnchorCount: Int
+        let commentTagCount: Int
+        let duplicateInstanceCount: Int
+        let duplicateTargets: [String]
+        let targetSequence: [String]
+    }
+
+    /// Custom URL scheme used internally to carry a paragraph-review action through the
+    /// existing link/attachment pipeline. Never reaches a real network request.
+    static let reviewURLScheme = "ydreview"
+
+    /// Produces a content-free diagnostic fingerprint for paragraph-review markup.
+    ///
+    /// The source output uses raw Legado image click configs, while later stages carry encoded
+    /// `ydreview://` anchors. Reading both representations lets a single log schema identify the
+    /// exact stage where a duplicate semantic target first appears without logging prose, tokens,
+    /// SVG payloads, or full review URLs.
+    /// Whether a chapter shows paragraph-review bubbles — what 閱讀設定 › 段評氣泡 styles,
+    /// and so whether that entry is shown. Four forms, the four the renderer draws:
+    /// a review link, a `<comment>` marker, a raw `showCmt(` call, and a bubble SVG with
+    /// no link at all.
+    ///
+    /// The reader asks this of the chapter package's content, which is the source's own
+    /// output: `<comment>` markers become review links only in the normalized HTML, so
+    /// the raw marker has to be recognized here too. Missing it hid the entry for every
+    /// iOS-runtime `<comment>` source (起点 qimo: 11 bubbles on 第2章, entry absent).
+    ///
+    /// The bubble SVG used to be missing as well: the entry was gated on review *links*,
+    /// while the renderer draws any SVG `CommentBubbleSVGRecognizer` accepts as a bubble —
+    /// so a source whose tap handler was not one this app runs showed bubbles on every
+    /// page and no way to restyle them.
+    static func containsParagraphReviewLinks(in content: String) -> Bool {
+        content.containsMarker("showcmt(", ignoringCase: true)
+            || content.containsMarker("\(reviewURLScheme)://", ignoringCase: true)
+            || containsCommentMarker(in: content)
+    }
+
+    /// Whether `html` carries a `<comment>` marker `rewriteReviewComments` turns into a bubble.
+    private static func containsCommentMarker(in html: String) -> Bool {
+        guard html.containsMarker("<comment", ignoringCase: true) else { return false }
+        let ns = html as NSString
+        var found = false
+        commentTagRegex.enumerateMatches(in: html, range: NSRange(location: 0, length: ns.length)) { match, _, stop in
+            guard let match, commentMarker(inTag: ns.substring(with: match.range)) != nil else { return }
+            found = true
+            stop.pointee = true
+        }
+        return found
+    }
+
+    // The markup scanners below run several times per chapter over documents that a 段評 source
+    // makes hundreds of KB; compiling them per call was a measurable share of that.
+    private static let imageTagRegex = try! NSRegularExpression(pattern: #"<img\b[^>]*>"#, options: [.caseInsensitive])
+    private static let commentTagRegex = try! NSRegularExpression(pattern: #"<comment\b[^>]*>"#, options: [.caseInsensitive])
+    private static let reviewHrefRegex = try! NSRegularExpression(
+        pattern: #"href\s*=\s*["'](ydreview://[^"']+)["']"#, options: [.caseInsensitive]
+    )
+    /// A Legado `,{json}` click-config suffix ending at an attribute boundary.
+    private static let clickConfigSuffixRegex = try! NSRegularExpression(
+        pattern: #",\{(?:[^{}]|\{[^{}]*\})*\}(?=["'>\s])"#
+    )
+    private static let useHTMLTagRegex = try! NSRegularExpression(pattern: #"</?usehtml\b[^>]*>"#, options: [.caseInsensitive])
+    private static let base64PayloadRegex = try! NSRegularExpression(pattern: #";base64,([A-Za-z0-9+/=]{64,})"#)
+
+    static func reviewMarkupDiagnostics(in html: String) -> ReviewMarkupDiagnostics {
+        var targetSequence: [String] = []
+        var rawReviewImageCount = 0
+        var reviewAnchorCount = 0
+
+        if html.containsMarker("<img", ignoringCase: true) {
+            let ns = html as NSString
+            for match in imageTagRegex.matches(
+                in: html,
+                range: NSRange(location: 0, length: ns.length)
+            ) {
+                let tag = ns.substring(with: match.range)
+                guard let config = legadoClickConfigMatch(in: tag) else { continue }
+                let suffix = (tag as NSString).substring(with: config.range)
+                guard let action = legadoClickAction(fromConfigSuffix: suffix) else { continue }
+                rawReviewImageCount += 1
+                if let key = reviewDiagnosticTargetKey(fromAction: action) {
+                    targetSequence.append(key)
+                }
+            }
+        }
+
+        if html.containsMarker("\(reviewURLScheme)://", ignoringCase: true) {
+            let ns = html as NSString
+            for match in reviewHrefRegex.matches(
+                in: html,
+                range: NSRange(location: 0, length: ns.length)
+            ) where match.numberOfRanges >= 2 {
+                let href = ns.substring(with: match.range(at: 1))
+                guard let marker = decodeReviewHref(href, includingActionContext: false) else { continue }
+                reviewAnchorCount += 1
+                if let key = reviewDiagnosticTargetKey(from: marker) {
+                    targetSequence.append(key)
+                }
+            }
+        }
+
+        let commentTagCount: Int
+        if html.containsMarker("<comment", ignoringCase: true) {
+            let ns = html as NSString
+            commentTagCount = commentTagRegex.numberOfMatches(
+                in: html,
+                range: NSRange(location: 0, length: ns.length)
+            )
+        } else {
+            commentTagCount = 0
+        }
+
+        let counts = targetSequence.reduce(into: [String: Int]()) { result, key in
+            result[key, default: 0] += 1
+        }
+        let duplicateTargets = counts
+            .filter { $0.value > 1 }
+            .map { "\($0.key)×\($0.value)" }
+            .sorted()
+        let duplicateInstanceCount = counts.values.reduce(0) {
+            $0 + max(0, $1 - 1)
+        }
+
+        return ReviewMarkupDiagnostics(
+            markerCount: rawReviewImageCount + reviewAnchorCount + commentTagCount,
+            rawReviewImageCount: rawReviewImageCount,
+            reviewAnchorCount: reviewAnchorCount,
+            commentTagCount: commentTagCount,
+            duplicateInstanceCount: duplicateInstanceCount,
+            duplicateTargets: Array(duplicateTargets.prefix(16)),
+            targetSequence: Array(targetSequence.prefix(32))
+        )
+    }
+
+    /// Emits one stable `reviewFlow` event per pipeline boundary. The target source is logged even
+    /// when the marker count is zero, because disappearance is itself the evidence we need.
+    static func logReviewMarkupDiagnostics(
+        stage: String,
+        html: String,
+        sourceName: String = "",
+        context: [String: Any] = [:],
+        category: (String, [String: Any]) -> Void = { message, context in
+            AppLogger.parse(message, context: context)
+        }
+    ) {
+        let diagnostics = reviewMarkupDiagnostics(in: html)
+        let isTargetSource = sourceName.contains("同人小说网") || sourceName.contains("同人小說網")
+        guard isTargetSource || diagnostics.markerCount > 0 else { return }
+
+        var logContext = context
+        logContext["stage"] = stage
+        logContext["source"] = sourceName
+        logContext["markers"] = diagnostics.markerCount
+        logContext["rawImages"] = diagnostics.rawReviewImageCount
+        logContext["anchors"] = diagnostics.reviewAnchorCount
+        logContext["comments"] = diagnostics.commentTagCount
+        logContext["duplicateInstances"] = diagnostics.duplicateInstanceCount
+        logContext["duplicateTargets"] = diagnostics.duplicateTargets.isEmpty
+            ? "-"
+            : diagnostics.duplicateTargets.joined(separator: ",")
+        logContext["targetSequence"] = diagnostics.targetSequence.isEmpty
+            ? "-"
+            : diagnostics.targetSequence.joined(separator: ",")
+        category("⟐ reviewFlow", logContext)
+    }
+
+    /// Rewrites Legado iOS paragraph-review markers into plain anchors the renderer can carry.
+    ///
+    /// The `paraForiOS` jsLib emits, per paragraph:
+    ///   `<comment count="12" onPress="java.showReadingBrowser('<absolute-url>','番茄段评')">`
+    /// Relying on an obscure `<comment>` tag (and non-allowlisted `count`/`onPress` attributes)
+    /// surviving SwiftSoup round-trips is fragile, so we convert each marker into:
+    ///   `<a href="ydreview://r?d=<base64url(JSON{c,u,t})>" class="yd-review">12</a>`
+    /// Anchors and their `href` are always preserved and `href` is in the builder allowlist.
+    /// Idempotent: a string with no `<comment …>` markers is returned unchanged.
+    static func rewriteReviewComments(_ html: String, reviewContext: LegadoReviewContext? = nil) -> String {
+        guard html.containsMarker("<comment", ignoringCase: true) else { return html }
+
+        let ns = html as NSString
+        let matches = commentTagRegex.matches(in: html, range: NSRange(location: 0, length: ns.length))
+        guard !matches.isEmpty else { return html }
+
+        var result = ""
+        var cursor = 0
+        var converted = 0
+        var failed = 0
+        var firstFailedTag = ""
+        for match in matches {
+            let range = match.range
+            result += ns.substring(with: NSRange(location: cursor, length: range.location - cursor))
+            let tag = ns.substring(with: range)
+            if let anchor = anchorMarkup(forCommentTag: tag, context: reviewContext) {
+                converted += 1
+                result += anchor
+            } else {
+                failed += 1
+                if firstFailedTag.isEmpty {
+                    firstFailedTag = tag
+                }
+                result += tag
+            }
+            cursor = range.location + range.length
+        }
+        result += ns.substring(from: cursor)
+        AppLogger.parse("⟐ reviewRewrite comment", context: [
+            "tags": matches.count,
+            "converted": converted,
+            "failed": failed,
+            "outYdreview": result.countMarkers("ydreview://"),
+            "failedTag": String(Self.redactedReviewLogSnippet(firstFailedTag).prefix(180))
+        ])
+        return result
+    }
+
+    /// Cleans Legado-specific markup from online chapter HTML *before* it is handed to
+    /// SwiftSoup, so the parser doesn't choke on it.
+    ///
+    /// Legado book sources embed clickable images (illustrations, comment bubbles) as
+    /// `<img src="data:image/svg+xml;base64,<B64>,{"type":"img","style":"full"}">`. The
+    /// trailing `,{json}` is a Legado convention — a click-config object appended to the URL.
+    /// Its inner double-quotes prematurely close the `src` attribute, so an HTML parser
+    /// swallows everything up to the next quote as attribute garbage and surfaces the
+    /// following tags (`<usehtml>`, `<small>`, body text) as *literal text*. Stripping the
+    /// suffix restores a clean data URI and un-breaks parsing of the rest of the chapter.
+    ///
+    /// Also unwraps `<usehtml>` markers (Legado's "render the inner content as HTML" hint),
+    /// which would otherwise survive as unknown elements.
+    static func sanitizeOnlineChapterMarkup(
+        _ html: String,
+        reviewContext: LegadoReviewContext? = nil
+    ) -> String {
+        var result = rewriteLegadoImageClickConfigs(html, reviewContext: reviewContext)
+
+        // Strip `,{…}` click-config suffixes that sit at the very end of an attribute value
+        // (immediately followed by a closing quote / tag-end / whitespace). Anchoring on the
+        // trailing delimiter keeps prose like "foo,{bar} baz" inside body text untouched.
+        if result.containsMarker(",{") {
+            let ns = result as NSString
+            result = clickConfigSuffixRegex.stringByReplacingMatches(
+                in: result,
+                range: NSRange(location: 0, length: ns.length),
+                withTemplate: ""
+            )
+        }
+
+        // Unwrap <usehtml>…</usehtml> markers, keeping the inner HTML.
+        if result.containsMarker("usehtml", ignoringCase: true) {
+            let ns = result as NSString
+            result = useHTMLTagRegex.stringByReplacingMatches(
+                in: result,
+                range: NSRange(location: 0, length: ns.length),
+                withTemplate: ""
+            )
+        }
+
+        return rewriteReviewComments(result, reviewContext: reviewContext)
+    }
+
+    /// Replaces long base64 `data:` URI payloads with short placeholder tokens so heavy
+    /// whole-document processing runs on a few KB of structure instead of hundreds of KB.
+    ///
+    /// A 段評-heavy 起点 chapter is ~275KB of inline base64 SVG (96 bubbles); `SwiftSoup.parse`
+    /// degrades badly on inputs that size and effectively hangs (`⟐ swiftSoup start` with no
+    /// `done`). The payloads are opaque to structural parsing, so we lift them out, parse the
+    /// slimmed HTML, then restore. Pair with `restoreDataURIPayloads` AFTER parsing.
+    ///
+    /// Tokens use `_` (never a base64 char) plus a counter and trailing `__`, so they can't appear
+    /// inside any remaining base64, can't prefix-collide with each other, are plain ASCII (SwiftSoup
+    /// never escapes them), and won't occur in book prose.
+    static func extractDataURIPayloads(_ html: String) -> (slimmed: String, restore: [(token: String, payload: String)]) {
+        guard html.containsMarker(";base64,") else { return (html, []) }
+
+        let ns = html as NSString
+        let matches = base64PayloadRegex.matches(in: html, range: NSRange(location: 0, length: ns.length))
+        guard !matches.isEmpty else { return (html, []) }
+
+        var restore: [(token: String, payload: String)] = []
+        var result = ""
+        var cursor = 0
+        for (i, match) in matches.enumerated() {
+            let payloadRange = match.range(at: 1)
+            result += ns.substring(with: NSRange(location: cursor, length: payloadRange.location - cursor))
+            let token = "__YD_B64_\(i)__"
+            restore.append((token: token, payload: ns.substring(with: payloadRange)))
+            result += token
+            cursor = payloadRange.location + payloadRange.length
+        }
+        result += ns.substring(from: cursor)
+        return (result, restore)
+    }
+
+    /// Restores payloads lifted by `extractDataURIPayloads`.
+    ///
+    /// One pass over the text: a token is `__YD_B64_<n>__`, so the scan looks for the prefix,
+    /// reads the number, and copies that payload in. Replacing token by token instead re-walked
+    /// the whole document once per bubble — 120 passes over 450KB on a 光遇 chapter, ~140ms,
+    /// and the same again inside the DOM variant below.
+    static func restoreDataURIPayloads(_ html: String, restore: [(token: String, payload: String)]) -> String {
+        guard !restore.isEmpty else { return html }
+        return restoringDataURITokens(in: html, payloads: payloadsByToken(restore))
+    }
+
+    private static let dataURITokenPrefix = "__YD_B64_"
+
+    private static func payloadsByToken(_ restore: [(token: String, payload: String)]) -> [String: String] {
+        Dictionary(restore.map { ($0.token, $0.payload) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// `text` with every `__YD_B64_<n>__` token that `payloads` knows replaced by its payload.
+    /// Unknown tokens are left as they are.
+    private static func restoringDataURITokens(in text: String, payloads: [String: String]) -> String {
+        guard var tokenRange = text.rangeOfMarker(dataURITokenPrefix) else { return text }
+        var result = ""
+        result.reserveCapacity(text.utf8.count + payloads.values.reduce(0) { $0 + $1.utf8.count })
+        var cursor = text.startIndex
+        repeat {
+            // The token ends at the first "__" after its prefix; the number in between is ASCII digits.
+            var end = tokenRange.upperBound
+            while end < text.endIndex, text[end].isASCII, text[end].isNumber {
+                end = text.index(after: end)
+            }
+            let closing = text.index(end, offsetBy: 2, limitedBy: text.endIndex) ?? text.endIndex
+            if end > tokenRange.upperBound, text[end..<closing] == "__",
+               let payload = payloads[String(text[tokenRange.lowerBound..<closing])] {
+                result += text[cursor..<tokenRange.lowerBound]
+                result += payload
+                cursor = closing
+            } else {
+                result += text[cursor..<tokenRange.upperBound]
+                cursor = tokenRange.upperBound
+            }
+            guard let next = text.rangeOfMarker(dataURITokenPrefix, from: cursor) else { break }
+            tokenRange = next
+        } while true
+        result += text[cursor..<text.endIndex]
+        return result
+    }
+
+    /// Character count of `content` with long base64 data-URI payloads excluded — its "prose"
+    /// length. 段評-heavy chapters carry 100s of KB of legitimate inline base64 SVG bubbles (a 起点
+    /// 大热章节 is 260KB+, almost all bubbles); that bulk must NOT count toward heuristics that flag
+    /// over-long content as a multi-chapter merge, or the chapter gets endlessly re-fetched.
+    static func lengthExcludingBase64Payloads(_ content: String) -> Int {
+        let ns = content as NSString
+        guard content.containsMarker(";base64,") else { return ns.length }
+        let matches = base64PayloadRegex.matches(in: content, range: NSRange(location: 0, length: ns.length))
+        let payloadChars = matches.reduce(0) { $0 + $1.range(at: 1).length }
+        return ns.length - payloadChars
+    }
+
+    /// Restores `extractDataURIPayloads` tokens directly inside a parsed SwiftSoup `Document` — used
+    /// when the slimmed HTML was parsed (so SwiftSoup didn't choke on the base64) but downstream
+    /// consumers read the DOM, not a re-serialized string. Only `src`/`href` attributes carrying a
+    /// token are touched, and a quick map keys the lookup by token.
+    static func restoreDataURIPayloads(in document: Document, restore: [(token: String, payload: String)]) {
+        guard !restore.isEmpty else { return }
+        let payloads = payloadsByToken(restore)
+        let elements = (try? document.select("[src], [href]").array()) ?? []
+        for element in elements {
+            for attr in ["src", "href", "xlink:href"] {
+                guard let value = try? element.attr(attr),
+                      value.containsMarker(dataURITokenPrefix) else { continue }
+                _ = try? element.attr(attr, restoringDataURITokens(in: value, payloads: payloads))
+            }
+        }
+    }
+
+    /// Keep the owning source even when a fork emits a ready-made browser URL.
+    /// Authentication must be read on tap, not embedded in persisted chapter HTML.
+    private static func sourceBrowserTarget(
+        url: String, title: String, context: LegadoReviewContext?
+    ) -> ReviewTarget {
+        guard let context, !context.sourceURL.isEmpty,
+              let arguments = try? JSONSerialization.data(withJSONObject: [url, title]),
+              let json = String(data: arguments, encoding: .utf8) else {
+            return ReviewTarget(url: url, title: title)
+        }
+        let script = "java.startBrowser.apply(java,\(json))"
+        return ReviewTarget(
+            url: url, title: title, sourceJS: script, sourceURL: context.sourceURL,
+            actionContext: context.actionContext(script: script, result: "")
+        )
+    }
+
+    /// A `<comment>` marker's count and the page its handler opens, or nil when the tag is
+    /// not one the reader can turn into a bubble.
+    private static func commentMarker(inTag tag: String) -> (count: String, url: String, title: String)? {
+        guard let count = firstCapture(in: tag, pattern: #"count\s*=\s*"([^"]*)""#),
+              let args = showReadingBrowserArgs(in: tag)
+        else { return nil }
+        let url = unescapeHTMLEntities(args.url)
+        guard !url.isEmpty else { return nil }
+        return (count, url, unescapeHTMLEntities(args.title))
+    }
+
+    private static func anchorMarkup(forCommentTag tag: String, context: LegadoReviewContext?) -> String? {
+        guard let (count, url, title) = commentMarker(inTag: tag) else { return nil }
+        let target = sourceBrowserTarget(url: url, title: title, context: context)
+        guard let href = reviewHref(
+            count: count, url: target.url, title: target.title,
+            sourceJS: target.sourceJS, sourceURL: target.sourceURL,
+            actionContext: target.actionContext
+        ) else { return nil }
+        return "<a href=\"\(href)\" class=\"yd-review\">\(escapeHTML(count))</a>"
+    }
+
+    /// Decodes a `ydreview://` href back into its comment count, review URL, and title.
+    /// - Parameter includingActionContext: the action context is the bulk of the payload and
+    ///   the only part that needs `JSONDecoder`; the diagnostics that fingerprint every anchor
+    ///   of a chapter several times over read only the target, so they pass `false`.
+    static func decodeReviewHref(_ href: String, includingActionContext: Bool = true) -> ReviewMarker? {
+        guard href.hasPrefix("\(reviewURLScheme)://") else { return nil }
+        guard let dRange = href.range(of: "d=") else { return nil }
+        let encoded = String(href[dRange.upperBound...])
+        guard let data = base64URLDecode(encoded),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: String]
+        else { return nil }
+        let url = obj["u"] ?? ""
+        let sourceJS = obj["j"] ?? ""
+        let actionContext: LegadoSourceActionContext? = !includingActionContext ? nil : obj["x"].flatMap { encoded in
+            guard let contextData = base64URLDecode(encoded) else { return nil }
+            return try? JSONDecoder().decode(LegadoSourceActionContext.self, from: contextData)
+        }
+        // A marker is meaningful with either a ready URL or a source-JS action to run.
+        guard !url.isEmpty || !sourceJS.isEmpty else { return nil }
+        return ReviewMarker(
+            count: obj["c"] ?? "",
+            url: url,
+            title: obj["t"] ?? "",
+            sourceJS: sourceJS,
+            sourceURL: obj["s"] ?? "",
+            actionContext: actionContext
+        )
+    }
+
+    /// Convenience wrapper producing a `ReviewTarget` for sheet presentation.
+    static func reviewTarget(fromHref href: String) -> ReviewTarget? {
+        guard let marker = decodeReviewHref(href) else { return nil }
+        return ReviewTarget(
+            url: marker.url,
+            title: marker.title,
+            sourceJS: marker.sourceJS,
+            sourceURL: marker.sourceURL,
+            actionContext: marker.actionContext
+        )
+    }
+
+    /// Title-level Qidian reviews use the sentinel paragraph ID `-1`. Recognizing the decoded
+    /// target lets the chapter normalizer move only that leading bubble into the `<h1>` while
+    /// leaving ordinary paragraph and chapter-card images in the body.
+    static func isTitleReviewHref(_ href: String) -> Bool {
+        guard let marker = decodeReviewHref(href) else { return false }
+        if reviewDiagnosticTargetKey(fromAction: marker.sourceJS)?.hasSuffix("/-1") == true {
+            return true
+        }
+        guard let components = URLComponents(string: marker.url) else { return false }
+        return components.queryItems?.contains {
+            $0.name.caseInsensitiveCompare("paragraphId") == .orderedSame && $0.value == "-1"
+        } == true
+    }
+
+    /// One source paragraph paired with its optional paragraph-review anchor.
+    /// `reviewHref` is the internal `ydreview://` href (decode it for count/title).
+    struct ReviewParagraph: Equatable {
+        let text: String
+        let reviewHref: String?
+    }
+
+    /// Parses paragraph-review HTML into an ordered list of `(text, reviewHref)` pairs so the
+    /// chapter can render through the normal text layout (indent / spacing / centered title)
+    /// instead of re-rendering arbitrary source HTML. Each leaf block (`<div rs-native>` / `<p>`)
+    /// becomes one paragraph; the `ydreview://` anchor inside it carries that paragraph's badge.
+    ///
+    /// Returns an empty array when the HTML has no parseable block structure, letting callers
+    /// fall back to plain-text paragraphs.
+    static func reviewParagraphs(
+        fromHTML html: String,
+        excludingLeadingTitle title: String
+    ) -> [ReviewParagraph] {
+        let rewritten = rewriteReviewComments(html)
+        guard let document = try? SwiftSoup.parse(rewritten),
+              let body = document.body() else { return [] }
+
+        let container: Element = ((try? body.select("article#reader-content").array())?.first) ?? body
+        let blocks = leafParagraphBlocks(in: container)
+        guard !blocks.isEmpty else { return [] }
+
+        let titleKey = normalizedTitleKey(title)
+        var result: [ReviewParagraph] = []
+        for block in blocks {
+            // Read the review anchor before stripping it out of the text.
+            let reviewHref = firstReviewHref(in: block)
+            let text = paragraphText(strippingReviewAnchorsFrom: block)
+            if text.isEmpty, reviewHref == nil { continue }
+            // Drop a leading heading that merely repeats the chapter title (handled separately).
+            if !titleKey.isEmpty, result.count < 6, reviewHref == nil,
+               normalizedTitleKey(text) == titleKey {
+                continue
+            }
+            result.append(ReviewParagraph(text: text, reviewHref: reviewHref))
+        }
+        return result
+    }
+
+    /// Block elements that contain no nested block descendant — i.e. the innermost paragraphs.
+    private static func leafParagraphBlocks(in container: Element) -> [Element] {
+        let blockSelector = "p, div, li, blockquote, h1, h2, h3, h4, h5, h6"
+        let candidates = (try? container.select(blockSelector).array()) ?? []
+        return candidates.filter { element in
+            // SwiftSoup's `select` includes the element itself, so a leaf is a block whose
+            // matches are only itself (no other block descendant).
+            let nested = (try? element.select(blockSelector).array()) ?? []
+            return !nested.contains { $0 !== element }
+        }
+    }
+
+    private static func firstReviewHref(in element: Element) -> String? {
+        let anchors = (try? element.select("a[href]").array()) ?? []
+        for anchor in anchors {
+            let href = (try? anchor.attr("href")) ?? ""
+            if href.hasPrefix("\(reviewURLScheme)://"), decodeReviewHref(href) != nil {
+                return href
+            }
+        }
+        return nil
+    }
+
+    /// Plain text of a block with its `ydreview://` badge anchors removed (so the count digits
+    /// don't leak into the paragraph text). Mutates `element`; callers pass a throwaway parse tree.
+    private static func paragraphText(strippingReviewAnchorsFrom element: Element) -> String {
+        let anchors = (try? element.select("a[href]").array()) ?? []
+        for anchor in anchors {
+            let href = (try? anchor.attr("href")) ?? ""
+            if href.hasPrefix("\(reviewURLScheme)://") {
+                try? anchor.remove()
+            }
+        }
+        return displayText(fromHTMLFragment: (try? element.html()) ?? "")
+    }
+
+    // Legado forks use several equivalent browser entry points for paragraph
+    // reviews. 书山 v5.33 emits `startBrowser` on iOS and `startBrowserDp`
+    // under its QingRead branch; older sources use `showReadingBrowser` or
+    // `showCmt`. They all carry the same (url, optional title) payload.
+    private static let browserEntryArgsRegex = try! NSRegularExpression(
+        pattern: #"(?:showReadingBrowser|showCmt|startBrowser(?:Dp)?)\(\s*'([^']*)'(?:\s*,\s*'([^']*)')?\s*\)"#,
+        options: [.caseInsensitive]
+    )
+
+    private static func showReadingBrowserArgs(in tag: String) -> (url: String, title: String)? {
+        let regex = browserEntryArgsRegex
+        let ns = tag as NSString
+        guard let m = regex.firstMatch(in: tag, range: NSRange(location: 0, length: ns.length)),
+              m.numberOfRanges >= 2
+        else { return nil }
+        let title = (m.numberOfRanges >= 3 && m.range(at: 2).location != NSNotFound)
+            ? ns.substring(with: m.range(at: 2))
+            : ""
+        return (ns.substring(with: m.range(at: 1)), title)
+    }
+
+    private static func rewriteLegadoImageClickConfigs(
+        _ html: String,
+        reviewContext: LegadoReviewContext?
+    ) -> String {
+        guard html.containsMarker("<img", ignoringCase: true),
+              html.containsMarker(",{")
+                || html.containsMarker("onclick", ignoringCase: true)
+                || html.containsMarker("onpress", ignoringCase: true)
+        else { return html }
+
+        let ns = html as NSString
+        let matches = imageTagRegex.matches(in: html, range: NSRange(location: 0, length: ns.length))
+        guard !matches.isEmpty else { return html }
+
+        var result = ""
+        var cursor = 0
+        var reviewImages = 0
+        var cleanedOnly = 0
+        for match in matches {
+            let range = match.range
+            result += ns.substring(with: NSRange(location: cursor, length: range.location - cursor))
+            let tag = ns.substring(with: range)
+            let rewritten = rewriteLegadoImageTag(tag, reviewContext: reviewContext)
+            if rewritten.containsMarker("yd-review-image", ignoringCase: true) {
+                reviewImages += 1
+            } else if rewritten != tag {
+                cleanedOnly += 1
+            }
+            result += rewritten
+            cursor = range.location + range.length
+        }
+        result += ns.substring(from: cursor)
+        if reviewImages > 0 || cleanedOnly > 0 {
+            AppLogger.parse("⟐ reviewRewrite image", context: [
+                "source": reviewContext?.sourceName ?? "",
+                "imgTags": matches.count,
+                "reviewImages": reviewImages,
+                "cleanedOnly": cleanedOnly,
+                "outYdreview": result.countMarkers("ydreview://")
+            ])
+        }
+        return result
+    }
+
+    private static func rewriteLegadoImageTag(
+        _ tag: String,
+        reviewContext: LegadoReviewContext?
+    ) -> String {
+        guard let configMatch = legadoClickConfigMatch(in: tag) else {
+            return rewriteImageHandlerTag(tag, reviewContext: reviewContext)
+        }
+        let ns = tag as NSString
+        let suffix = ns.substring(with: configMatch.range)
+        var cleanedTag = tag
+        if let range = Range(configMatch.range, in: cleanedTag) {
+            cleanedTag.removeSubrange(range)
+        }
+
+        let authoredClickStyle = legadoClickStyle(fromConfigSuffix: suffix)
+        let clickStyle = authoredClickStyle?.lowercased()
+        let imageSource = firstCapture(
+            in: tag,
+            pattern: #"\bsrc\s*=\s*[\"']([^\"']*)[\"']"#
+        ).map(unescapeHTMLEntities) ?? ""
+
+        // Honor the click-config `style:"text"` directive: render the bubble inline at text size
+        // (a small icon at the line end) instead of the SVG's intrinsic 180×144. We carry it as a
+        // marker attribute the renderer reads — the suffix itself must be stripped so SwiftSoup's
+        // `src` parsing doesn't choke on its inner quotes.
+        if clickStyle == "text" {
+            cleanedTag = markImageAsTextSized(cleanedTag, isWide: authoredClickStyle == "TEXT")
+        }
+
+        // Same reason, different payload: a Legado `headers` option belongs to the image's own
+        // request (a CDN wanting its own Referer), and deleting the suffix threw it away. Move it
+        // onto the src as a fragment instead — see `OnlineImageRequestOptions`.
+        cleanedTag = carryingImageRequestHeaders(
+            cleanedTag,
+            headers: OnlineImageRequestOptions.headers(fromOptionSuffix: suffix)
+        )
+
+        let isQidianFullReview = clickStyle == "full" && isQidianSource(reviewContext)
+
+        // 起点中文的神评是 a bare `<svg><text>…</text></svg>` with `style:"FULL"`. It has no
+        // intrinsic coordinate system, so WebKit falls back to a 240×120 image and the text
+        // overflows its line box. Normalize only this source's malformed god-review payload;
+        // other sources' FULL SVGs must keep their authored dimensions and layout.
+        if isQidianFullReview {
+            cleanedTag = normalizeQidianGodReviewImage(cleanedTag)
+        }
+
+        guard let action = legadoClickAction(fromConfigSuffix: suffix),
+              let target = reviewTarget(
+                forLegadoAction: action,
+                context: reviewContext,
+                sourceResult: imageSource,
+                // The original app uses `click`, while compatible Android forks also emit the
+                // image tap handler as `js`. Only a single function call is executable here:
+                // arbitrary URL-transform snippets remain render-only and never reach the
+                // source runtime on tap.
+                allowsSourceJSFallback: legadoAllowsSourceActionFallback(
+                    configSuffix: suffix,
+                    action: action
+                )
+              ),
+              let href = reviewHref(
+                count: "",
+                url: target.url,
+                title: target.title,
+                sourceJS: target.sourceJS,
+                sourceURL: target.sourceURL,
+                actionContext: target.actionContext
+            )
+        else { return cleanedTag }
+
+        // Keep FULL as inline HTML through newline normalization. Injecting a `<div>` here made
+        // newline-based Legado chapters look as if they already had authored block structure, so
+        // `wrapNewlineParagraphsIfNeeded` skipped every prose `<p>` as soon as a chapter contained
+        // a hot-review, author, or chapter-discussion card. The AST converter consumes this exact
+        // marker later and emits a render block, preserving Sigma/MD3's standalone-card behavior
+        // without changing how the source's prose structure is detected.
+        let reviewStyle = clickStyle == "full" ? " data-yd-review-style=\"full\"" : ""
+        return "<a href=\"\(href)\" class=\"yd-review-image\"\(reviewStyle)>\(cleanedTag)</a>"
+    }
+
+    /// The iOS-runtime form of the same tap contract: the handler sits on the image itself —
+    /// `<img src="data:…svg" onClick="java.startBrowser('<url>','起点段评')"/>` — exactly as it
+    /// sits on a `<comment>` marker, instead of in a Legado `,{"click":…}` suffix. 起点 qimo's
+    /// `qidianggetCommentsIOS` builds its 熱評 and 本章讨论 cards this way; with no rewrite the
+    /// card rendered as a bare picture and a tap opened the image preview.
+    ///
+    /// The markup carries no `style`. Those cards are what the Android branch of the same
+    /// source marks `FULL`, so anything that is not a bubble becomes a block: left inline, a
+    /// 熱評 card shares its paragraph's last line box and the line holding that paragraph's
+    /// bubble is justified across the column.
+    private static func rewriteImageHandlerTag(
+        _ tag: String,
+        reviewContext: LegadoReviewContext?
+    ) -> String {
+        guard let handler = firstCapture(
+            in: tag,
+            pattern: #"\bon(?:click|press)\s*=\s*"([^"]*)""#
+        ) ?? firstCapture(
+            in: tag,
+            pattern: #"\bon(?:click|press)\s*=\s*'([^']*)'"#
+        ) else { return tag }
+        let action = unescapeHTMLEntities(handler).trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageSource = firstCapture(
+            in: tag,
+            pattern: #"\bsrc\s*=\s*[\"']([^\"']*)[\"']"#
+        ).map(unescapeHTMLEntities) ?? ""
+
+        let target: ReviewTarget?
+        if let args = showReadingBrowserArgs(in: action) {
+            let url = unescapeHTMLEntities(args.url)
+            target = url.isEmpty
+                ? nil
+                : sourceBrowserTarget(url: url, title: unescapeHTMLEntities(args.title), context: reviewContext)
+        } else {
+            target = reviewTarget(
+                forLegadoAction: action,
+                context: reviewContext,
+                sourceResult: imageSource,
+                allowsSourceJSFallback: isSourceFunctionCall(action)
+            )
+        }
+        guard let target,
+              let href = reviewHref(
+                count: "",
+                url: target.url,
+                title: target.title,
+                sourceJS: target.sourceJS,
+                sourceURL: target.sourceURL,
+                actionContext: target.actionContext
+              )
+        else { return tag }
+
+        let isBubble = CommentBubbleSVGRecognizer.recognize(src: imageSource, svgContent: nil) != nil
+        let reviewStyle = isBubble ? "" : " data-yd-review-style=\"full\""
+        return "<a href=\"\(href)\" class=\"yd-review-image\"\(reviewStyle)>\(tag)</a>"
+    }
+
+    private static func isQidianSource(_ context: LegadoReviewContext?) -> Bool {
+        guard let context else { return false }
+        return context.sourceName.contains("起点")
+            || context.sourceName.contains("起點")
+            || context.sourceURL.localizedCaseInsensitiveContains("qidian")
+    }
+
+    private static func normalizeQidianGodReviewImage(_ tag: String) -> String {
+        guard let srcRegex = try? NSRegularExpression(
+            pattern: #"\bsrc\s*=\s*[\"']([^\"']*)[\"']"#,
+            options: .caseInsensitive
+        ) else { return tag }
+        let tagNSString = tag as NSString
+        guard let srcMatch = srcRegex.firstMatch(
+            in: tag,
+            range: NSRange(location: 0, length: tagNSString.length)
+        ),
+        let srcRange = Range(srcMatch.range(at: 1), in: tag) else { return tag }
+
+        let src = String(tag[srcRange])
+        let prefix = "data:image/svg+xml;base64,"
+        guard src.lowercased().hasPrefix(prefix) else { return tag }
+        let payload = String(src.dropFirst(prefix.count))
+        guard let data = Data(base64Encoded: payload, options: .ignoreUnknownCharacters),
+              let svg = String(data: data, encoding: .utf8),
+              let svgTagRange = svg.range(of: #"<svg\b[^>]*>"#, options: .regularExpression),
+              let textRegex = try? NSRegularExpression(
+                  pattern: #"<text\b[^>]*>(.*?)</text>"#,
+                  options: [.caseInsensitive, .dotMatchesLineSeparators]
+              ) else { return tag }
+
+        let rootTag = String(svg[svgTagRange])
+        let rootAttributes = rootTag.lowercased()
+        guard !rootAttributes.contains("width=")
+                && !rootAttributes.contains("height=")
+                && !rootAttributes.contains("viewbox=") else { return tag }
+
+        let svgNSString = svg as NSString
+        let textMatches = textRegex.matches(
+            in: svg,
+            range: NSRange(location: 0, length: svgNSString.length)
+        )
+        guard textMatches.count == 1,
+              let textRange = Range(textMatches[0].range(at: 1), in: svg) else { return tag }
+
+        let text = String(svg[textRange])
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return tag }
+
+        var body = svg
+        body.removeSubrange(svgTagRange)
+        body = body.replacingOccurrences(of: "</svg>", with: "", options: [.caseInsensitive])
+        body = body.replacingOccurrences(of: #"<text\b[^>]*>.*?</text>"#, with: "", options: [.regularExpression, .caseInsensitive])
+        guard body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return tag }
+
+        let maxCharsPerLine = 28
+        let characters = Array(text)
+        var lines: [String] = []
+        for start in stride(from: 0, to: characters.count, by: maxCharsPerLine) {
+            lines.append(String(characters[start..<min(start + maxCharsPerLine, characters.count)]))
+        }
+
+        let width = 720
+        let lineHeight = 32
+        let height = lines.count * lineHeight + 24
+        let textNodes = lines.enumerated().map { index, line in
+            let y = 18 + (index + 1) * lineHeight
+            return "<text x=\"12\" y=\"\(y)\" font-size=\"24\" fill=\"#666\">\(xmlEscaped(line))</text>"
+        }.joined()
+        let normalizedSVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\(width)\" height=\"\(height)\" viewBox=\"0 0 \(width) \(height)\">\(textNodes)</svg>"
+        let normalizedSource = prefix + Data(normalizedSVG.utf8).base64EncodedString()
+
+        var normalizedTag = tag
+        normalizedTag.replaceSubrange(srcRange, with: normalizedSource)
+        return normalizedTag
+    }
+
+    private static func xmlEscaped(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    /// Extracts the `style` field from a Legado `,{json}` click-config suffix (e.g. "text" / "FULL").
+    private static func legadoClickStyle(fromConfigSuffix suffix: String) -> String? {
+        guard let object = legadoClickConfigObject(fromConfigSuffix: suffix),
+              let value = object["style"] as? String
+        else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Parses a Legado `,{json}` click-config suffix into a dictionary, tolerating the
+    /// single-quoted keys/values some sources emit. 起點/企點 段評 bubbles use strict JSON
+    /// (`{"js":"showCmt('u' )","style":"text"}`), but the 本章说 config wraps `endclick`'s
+    /// double-quoted `js` value in single-quoted siblings
+    /// (`{'style':'FULL','type':'qd',"js":"showCmt('u','本章说' )"}`), which is invalid strict
+    /// JSON — so the tap was silently dropped. GSON (Legado on Android) accepts the lenient
+    /// form; we try strict JSON first, then normalize single-quoted tokens and retry.
+    static func legadoClickConfigObject(fromConfigSuffix suffix: String) -> [String: Any]? {
+        var json = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        if json.hasPrefix(",") { json.removeFirst() }
+        json = json.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let data = json.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            return object
+        }
+        guard let data = normalizeSingleQuotedJSON(json).data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return object
+    }
+
+    /// Rewrites a JS-object-literal-ish string into strict JSON by converting single quotes that
+    /// *delimit* a token into double quotes. Quotes inside an already double-quoted string are left
+    /// untouched (so `showCmt('u','本章说' )` survives intact), and a stray double quote inside a
+    /// converted single-quoted token is escaped.
+    private static func normalizeSingleQuotedJSON(_ input: String) -> String {
+        var out = ""
+        out.reserveCapacity(input.count + 8)
+        var inDouble = false
+        var inSingle = false
+        var prevBackslash = false
+        for ch in input {
+            if inDouble {
+                out.append(ch)
+                if ch == "\"" && !prevBackslash { inDouble = false }
+                prevBackslash = (ch == "\\" && !prevBackslash)
+            } else if inSingle {
+                if ch == "'" && !prevBackslash {
+                    inSingle = false
+                    out.append("\"")
+                    prevBackslash = false
+                } else if ch == "\"" {
+                    out.append("\\\"")
+                    prevBackslash = false
+                } else {
+                    out.append(ch)
+                    prevBackslash = (ch == "\\" && !prevBackslash)
+                }
+            } else if ch == "\"" {
+                inDouble = true
+                out.append(ch)
+                prevBackslash = false
+            } else if ch == "'" {
+                inSingle = true
+                out.append("\"")
+                prevBackslash = false
+            } else {
+                out.append(ch)
+                prevBackslash = false
+            }
+        }
+        return out
+    }
+
+    /// Inserts a `data-yd-imgstyle` marker as the first attribute of an `<img>` tag so the
+    /// renderer sizes it as a character of the surrounding text: `TEXT` for legado's wide
+    /// form, `text` otherwise. Idempotent.
+    private static func markImageAsTextSized(_ tag: String, isWide: Bool) -> String {
+        guard tag.range(of: "data-yd-imgstyle", options: .caseInsensitive) == nil,
+              let r = tag.range(of: "<img", options: .caseInsensitive)
+        else { return tag }
+        var result = tag
+        result.replaceSubrange(r, with: "<img data-yd-imgstyle=\"\(isWide ? "TEXT" : "text")\"")
+        return result
+    }
+
+    /// Rewrites the tag's `src` so it carries the image's own request headers. No-op when the
+    /// option block declared none, which is every image but a handful across the source packs.
+    private static func carryingImageRequestHeaders(
+        _ tag: String,
+        headers: [String: String]
+    ) -> String {
+        guard !headers.isEmpty,
+              let regex = try? NSRegularExpression(
+                pattern: #"(\bsrc\s*=\s*["'])([^"']*)(["'])"#,
+                options: .caseInsensitive
+              )
+        else { return tag }
+        let ns = tag as NSString
+        guard let match = regex.firstMatch(
+            in: tag,
+            range: NSRange(location: 0, length: ns.length)
+        ), match.numberOfRanges >= 4 else { return tag }
+
+        // Deliberately operating on the RAW attribute text: the fragment we append is base64url,
+        // so it needs no escaping and appending it leaves whatever entity escaping the source
+        // wrote (`&amp;` in a query string) exactly as it was.
+        let source = ns.substring(with: match.range(at: 2))
+        let encoded = OnlineImageRequestOptions.encoding(src: source, headers: headers)
+        guard encoded != source else { return tag }
+        return ns.replacingCharacters(in: match.range(at: 2), with: encoded)
+    }
+
+    private static func legadoClickConfigMatch(in text: String) -> NSTextCheckingResult? {
+        let ns = text as NSString
+        return clickConfigSuffixRegex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length))
+    }
+
+    private static func legadoClickAction(fromConfigSuffix suffix: String) -> String? {
+        guard let object = legadoClickConfigObject(fromConfigSuffix: suffix) else { return nil }
+        // Legado-E / MD3-compatible sources use `click` or `action`; older source
+        // helpers targeting the original/"light reading" runtime use `js` for the
+        // same image tap contract. The caller applies a strict function-call gate
+        // before any value is handed back to the source runtime.
+        for key in ["click", "action", "js"] {
+            if let value = object[key] as? String {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
+    }
+
+    private static func legadoAllowsSourceActionFallback(
+        configSuffix suffix: String,
+        action: String
+    ) -> Bool {
+        guard isSourceFunctionCall(action),
+              let object = legadoClickConfigObject(fromConfigSuffix: suffix)
+        else { return false }
+        if ["click", "action"].contains(where: {
+            ((object[$0] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == action
+        }) {
+            return true
+        }
+        // `js` is normally UrlOption's render transform. Fork-authored paragraph
+        // review images also put these established tap calls there; keep that
+        // bounded set without treating arbitrary image transforms as taps.
+        return [
+            "showCmt", "androidshowCmt", "showChapterComments",
+            "androidshowChapterComments", "createSvg",
+        ].contains { legadoFunctionArgs(named: $0, in: action) != nil }
+    }
+
+    private static func reviewTarget(
+        forLegadoAction action: String,
+        context: LegadoReviewContext?,
+        sourceResult: String = "",
+        allowsSourceJSFallback: Bool = false
+    ) -> ReviewTarget? {
+        let trimmed = action.trimmingCharacters(in: .whitespacesAndNewlines)
+        var sourceActionTitle: String?
+        if let args = legadoFunctionArgs(named: "showCmt", in: trimmed)
+            ?? legadoFunctionArgs(named: "androidshowCmt", in: trimmed) {
+            // Aggregated sources can emit `showCmt(url, source, ...)`: arg[0] is already the
+            // comment-page URL. Handle URL-shaped args before the numeric Qidian signature.
+            if let url = absoluteReviewURL(from: args.first) {
+                let sources = args.count >= 2 ? cleanLegadoArgument(args[1]) : ""
+                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "段評" : "\(sources)段評", context: context)
+            }
+            if args.count >= 2 {
+                let authoredTitle = cleanLegadoArgument(args[1])
+                if !authoredTitle.isEmpty, !isIntegerLegadoArgument(authoredTitle) {
+                    sourceActionTitle = authoredTitle
+                }
+            }
+        }
+
+        if let args = legadoFunctionArgs(named: "showChapterComments", in: trimmed)
+            ?? legadoFunctionArgs(named: "androidshowChapterComments", in: trimmed) {
+            if let url = absoluteReviewURL(from: args.first) {
+                let sources = args.count >= 2 ? cleanLegadoArgument(args[1]) : ""
+                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "本章討論" : "\(sources)本章討論", context: context)
+            }
+            sourceActionTitle = "本章討論"
+        }
+
+        // Legado never special-cases the click action: it evaluates the click-config JS in the
+        // source's own runtime and lets the source decide what to open (`java.showBrowser`). The
+        // named handlers above only exist because those URLs can be derived statically, which is
+        // cheaper. Everything else is still a real, tappable review — 同人小说网's 段評 bubbles are
+        // `createSvg(bid,cid,pid,count,nano)`, a jsLib call that signs its own URL with the user's
+        // shared token, so nothing here could reconstruct it. Returning nil dropped all 67 bubbles
+        // per chapter: not tappable, and — because the 氣泡設定 entry is gated on the chapter
+        // carrying review links — the bubble settings screen never appeared either.
+        if allowsSourceJSFallback,
+           let context,
+           !trimmed.isEmpty,
+           trimmed.count <= 16_384 {
+            let actionContext = context.actionContext(script: trimmed, result: sourceResult)
+            return ReviewTarget(
+                url: "",
+                title: sourceActionTitle
+                    ?? (trimmed.localizedCaseInsensitiveContains("chapter") ? "本章討論" : "段評"),
+                sourceJS: trimmed,
+                sourceURL: context.sourceURL,
+                actionContext: actionContext
+            )
+        }
+
+        return nil
+    }
+
+    private static func usesShushanCommentRuntime(_ context: LegadoReviewContext?) -> Bool {
+        guard let name = context?.sourceName else { return false }
+        return name.contains("书山") || name.contains("書山")
+    }
+
+    /// Whether an action is a bare source-function call (`name(args…)`) we can hand back to the
+    /// source's runtime. Keeps arbitrary click-config junk — URLs, statements, empty strings —
+    /// from being sent to `eval`-adjacent evaluation.
+    private static func isSourceFunctionCall(_ action: String) -> Bool {
+        guard action.count <= 512, !action.contains("\n"), action.hasSuffix(")") else { return false }
+        return action.range(
+            of: #"^[A-Za-z_$][A-Za-z0-9_$.]*\s*\(.*\)$"#,
+            options: .regularExpression
+        ) != nil
+    }
+
+    private enum QidianReviewKind {
+        case paragraph
+        case chapter
+    }
+
+    private static func qidianReviewTarget(
+        kind: QidianReviewKind,
+        bookId: String,
+        chapterId: String,
+        paragraphId: String?,
+        context: LegadoReviewContext?
+    ) -> ReviewTarget? {
+        let cleanBookId = cleanLegadoArgument(bookId)
+        let cleanChapterId = cleanLegadoArgument(chapterId)
+        let cleanParagraphId = paragraphId.map(cleanLegadoArgument)
+        guard !cleanBookId.isEmpty, !cleanChapterId.isEmpty else { return nil }
+
+        if usesShaziQidianEndpoint(context) {
+            let path = kind == .paragraph ? "/comments" : "/chapterComments"
+            let url = buildURL(
+                base: "https://sb.shazi.tk",
+                path: path,
+                queryItems: [
+                    URLQueryItem(name: "bookId", value: cleanBookId),
+                    URLQueryItem(name: "chapterId", value: cleanChapterId)
+                ] + (kind == .paragraph ? [
+                    URLQueryItem(name: "paragraphId", value: cleanParagraphId ?? "")
+                ] : [])
+            )
+            logQidianReviewTarget(
+                endpoint: "shazi",
+                kind: kind,
+                context: context,
+                url: url,
+                appendedToken: false
+            )
+            return ReviewTarget(
+                url: url,
+                title: kind == .paragraph ? "起點段評" : "本章討論"
+            )
+        }
+
+        // For proxy Qidian servers (shenmoxs.top, qd.doubi.tk, etc.),
+        // use their own /comments endpoint instead of the dead api-x.shrtxs.cn.
+        if let sourceURL = context?.sourceURL,
+           !sourceURL.isEmpty,
+           !sourceURL.contains("m.qidian.com"),
+           !isQidianSource(context) {
+            let path = kind == .paragraph ? "/comments" : "/chapterComments"
+            var items = [
+                URLQueryItem(name: "bookId", value: cleanBookId),
+                URLQueryItem(name: "chapterId", value: cleanChapterId)
+            ]
+            if kind == .paragraph {
+                items.append(URLQueryItem(name: "paragraphId", value: cleanParagraphId ?? ""))
+            }
+            let url = buildURL(base: sourceURL, path: path, queryItems: items)
+            logQidianReviewTarget(
+                endpoint: "sourceURL",
+                kind: kind,
+                context: context,
+                url: url,
+                appendedToken: false
+            )
+            return ReviewTarget(
+                url: url,
+                title: kind == .paragraph ? "起點段評" : "本章討論"
+            )
+        }
+
+        var items = [
+            URLQueryItem(name: "bookId", value: cleanBookId),
+            URLQueryItem(name: "chapterId", value: cleanChapterId)
+        ]
+        if kind == .paragraph {
+            items.append(URLQueryItem(name: "paragraphId", value: cleanParagraphId ?? ""))
+        }
+        let token = sourceVariableValue("token", context: context)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let token, !token.isEmpty {
+            items.append(URLQueryItem(name: "token", value: token))
+        }
+        let url = buildURL(base: "https://api-x.shrtxs.cn/qidth", path: "/", queryItems: items)
+        logQidianReviewTarget(
+            endpoint: "api-x",
+            kind: kind,
+            context: context,
+            url: url,
+            appendedToken: token?.isEmpty == false
+        )
+        return ReviewTarget(
+            url: url,
+            title: kind == .paragraph ? "起點段評" : "本章討論"
+        )
+    }
+
+    private static func logQidianReviewTarget(
+        endpoint: String,
+        kind: QidianReviewKind,
+        context: LegadoReviewContext?,
+        url: String,
+        appendedToken: Bool
+    ) {
+        let summary = sourceVariableLogSummary(context: context)
+        AppLogger.parse("⟐ qidianReviewTarget", context: [
+            "endpoint": endpoint,
+            "kind": kind == .paragraph ? "paragraph" : "chapter",
+            "source": context?.sourceName ?? "",
+            "sourceURL": String((context?.sourceURL ?? "").prefix(120)),
+            "appendedToken": appendedToken,
+            "hasTokenInURL": url.range(of: "token=", options: .caseInsensitive) != nil,
+            "url": redactedReviewLogSnippet(url),
+            "sourceVariableJSONLen": summary.sourceVariableJSONLen,
+            "sourceVariableKeys": summary.sourceVariableKeys.joined(separator: ","),
+            "sourceVariableTokenLen": summary.sourceVariableTokenLen,
+            "runtimeKeys": summary.runtimeKeys.joined(separator: ","),
+            "runtimeTokenLen": summary.runtimeTokenLen,
+            "sourceVariableHead": summary.sourceVariableHead
+        ])
+    }
+
+    private static func sourceVariableLogSummary(
+        context: LegadoReviewContext?
+    ) -> (
+        sourceVariableJSONLen: Int,
+        sourceVariableKeys: [String],
+        sourceVariableTokenLen: Int,
+        runtimeKeys: [String],
+        runtimeTokenLen: Int,
+        sourceVariableHead: String
+    ) {
+        let sourceVariableJSON = context?.sourceVariableJSON ?? ""
+        let runtimeVariables = context?.runtimeVariables ?? [:]
+        var keys: [String] = []
+        var tokenLen = 0
+        if let data = sourceVariableJSON.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            keys = object.keys.sorted()
+            if let token = object["token"] {
+                tokenLen = "\(token)".count
+            }
+        }
+        return (
+            sourceVariableJSONLen: sourceVariableJSON.count,
+            sourceVariableKeys: keys,
+            sourceVariableTokenLen: tokenLen,
+            runtimeKeys: runtimeVariables.keys.sorted(),
+            runtimeTokenLen: runtimeVariables["token"]?.count ?? 0,
+            sourceVariableHead: String(redactedReviewLogSnippet(sourceVariableJSON).prefix(180))
+        )
+    }
+
+    private static func usesShaziQidianEndpoint(_ context: LegadoReviewContext?) -> Bool {
+        guard let context else { return false }
+        return context.sourceName.contains("企點")
+            || context.sourceName.contains("企点")
+            || context.sourceURL.contains("m.qidian.com")
+    }
+
+    private static func legadoFunctionArgs(named name: String, in action: String) -> [String]? {
+        guard let regex = RuleEngine.cachedRegex(
+            pattern: #"\b\#(name)\s*\(([\s\S]*)\)\s*;?\s*$"#,
+            options: [.caseInsensitive]
+        ) else { return nil }
+        let ns = action as NSString
+        guard let match = regex.firstMatch(in: action, range: NSRange(location: 0, length: ns.length)),
+              match.numberOfRanges >= 2
+        else { return nil }
+        let argsText = ns.substring(with: match.range(at: 1))
+        return splitLegadoArguments(argsText)
+    }
+
+    private static func splitLegadoArguments(_ text: String) -> [String] {
+        var args: [String] = []
+        var current = ""
+        var quote: Character?
+        var isEscaped = false
+
+        for ch in text {
+            if isEscaped {
+                current.append(ch)
+                isEscaped = false
+                continue
+            }
+            if ch == "\\" {
+                current.append(ch)
+                isEscaped = true
+                continue
+            }
+            if let activeQuote = quote {
+                current.append(ch)
+                if ch == activeQuote { quote = nil }
+                continue
+            }
+            if ch == "'" || ch == "\"" {
+                quote = ch
+                current.append(ch)
+                continue
+            }
+            if ch == "," {
+                args.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
+                current = ""
+                continue
+            }
+            current.append(ch)
+        }
+
+        let tail = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty { args.append(tail) }
+        return args
+    }
+
+    private static func cleanLegadoArgument(_ value: String) -> String {
+        var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count >= 2,
+           let first = trimmed.first,
+           let last = trimmed.last,
+           (first == "'" && last == "'") || (first == "\"" && last == "\"") {
+            trimmed.removeFirst()
+            trimmed.removeLast()
+        }
+        return trimmed
+    }
+
+    private static func absoluteReviewURL(from value: String?) -> String? {
+        guard let value else { return nil }
+        var url = cleanLegadoArgument(value)
+        if !(url.hasPrefix("http://") || url.hasPrefix("https://")),
+           let decoded = url.removingPercentEncoding,
+           decoded.hasPrefix("http://") || decoded.hasPrefix("https://") {
+            url = decoded
+        }
+        return (url.hasPrefix("http://") || url.hasPrefix("https://")) ? url : nil
+    }
+
+    /// A 企點 `showCmt` destination, resolved the way the source's own jsLib resolves it:
+    /// `const sb = 'https://sb.shazi.tk'; if (!url.includes('http')) url = sb + url`.
+    /// An integer argument is 起點's numeric `showCmt(bookId, chapterId, paragraphId, …)`
+    /// signature — derived by `qidianReviewTarget`, never concatenated onto a host — and an
+    /// absolute URL has already been taken by `absoluteReviewURL` before this is reached.
+    private static func shaziReviewURL(
+        from value: String?,
+        context: LegadoReviewContext?
+    ) -> String? {
+        guard let value else { return nil }
+        let path = cleanLegadoArgument(value)
+        guard !path.isEmpty,
+              !isIntegerLegadoArgument(path),
+              usesShaziQidianEndpoint(context)
+        else { return nil }
+        return "https://sb.shazi.tk" + (path.hasPrefix("/") ? path : "/" + path)
+    }
+
+    private static func isIntegerLegadoArgument(_ value: String) -> Bool {
+        let cleaned = cleanLegadoArgument(value)
+        guard !cleaned.isEmpty else { return false }
+        let digits = cleaned.first == "-" || cleaned.first == "+"
+            ? cleaned.dropFirst()
+            : cleaned[...]
+        return !digits.isEmpty && digits.allSatisfy(\.isNumber)
+    }
+
+    private static func sourceVariableValue(
+        _ key: String,
+        context: LegadoReviewContext?
+    ) -> String? {
+        guard let json = context?.sourceVariableJSON,
+              let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let value = object[key]
+        else { return nil }
+        if let string = value as? String { return string }
+        return "\(value)"
+    }
+
+    private static func buildURL(base: String, path: String, queryItems: [URLQueryItem]) -> String {
+        let cleanBase = base.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard var components = URLComponents(string: cleanBase + path) else {
+            let query = queryItems
+                .map { "\($0.name)=\($0.value ?? "")" }
+                .joined(separator: "&")
+            return cleanBase + path + (query.isEmpty ? "" : "?\(query)")
+        }
+        components.queryItems = queryItems.filter { ($0.value ?? "").isEmpty == false }
+        return components.string ?? cleanBase + path
+    }
+
+    private static func reviewHref(
+        count: String,
+        url: String,
+        title: String,
+        sourceJS: String = "",
+        sourceURL: String = "",
+        actionContext: LegadoSourceActionContext? = nil
+    ) -> String? {
+        guard !url.isEmpty || !sourceJS.isEmpty else { return nil }
+        var payload: [String: String] = ["c": count, "u": url, "t": title]
+        if !sourceJS.isEmpty {
+            payload["j"] = sourceJS
+            payload["s"] = sourceURL
+            if let actionContext,
+               let contextData = try? JSONEncoder().encode(actionContext) {
+                payload["x"] = base64URLEncode(contextData)
+            }
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let encoded = base64URLEncode(data)
+        else { return nil }
+        return "\(reviewURLScheme)://r?d=\(encoded)"
+    }
+
+    private static func reviewDiagnosticTargetKey(from marker: ReviewMarker) -> String? {
+        if let key = reviewDiagnosticTargetKey(fromAction: marker.sourceJS) {
+            return key
+        }
+        guard let components = URLComponents(string: marker.url) else { return nil }
+        let query = (components.queryItems ?? []).reduce(into: [String: String]()) { result, item in
+            guard let value = item.value, !value.isEmpty else { return }
+            result[item.name.lowercased()] = value
+        }
+        let bookID = query["bookid"] ?? query["book_id"] ?? query["bid"]
+        let chapterID = query["chapterid"] ?? query["chapter_id"] ?? query["cid"]
+        let paragraphID = query["paragraphid"] ?? query["paragraph_id"] ?? query["pid"]
+        guard let bookID, let chapterID, let paragraphID else { return nil }
+        return "\(bookID)/\(chapterID)/\(paragraphID)"
+    }
+
+    private static func reviewDiagnosticTargetKey(fromAction action: String) -> String? {
+        for name in ["showCmt", "androidshowCmt", "createSvg"] {
+            guard let args = legadoFunctionArgs(named: name, in: action),
+                  args.count >= 3,
+                  isIntegerLegadoArgument(args[0]),
+                  isIntegerLegadoArgument(args[1]),
+                  isIntegerLegadoArgument(args[2])
+            else { continue }
+            return [
+                cleanLegadoArgument(args[0]),
+                cleanLegadoArgument(args[1]),
+                cleanLegadoArgument(args[2]),
+            ].joined(separator: "/")
+        }
+        return nil
+    }
+
+    private static func firstCapture(in text: String, pattern: String) -> String? {
+        guard let regex = RuleEngine.cachedRegex(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+        let ns = text as NSString
+        guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              m.numberOfRanges >= 2
+        else { return nil }
+        return ns.substring(with: m.range(at: 1))
+    }
+
+    private static func unescapeHTMLEntities(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&amp;", with: "&", options: .caseInsensitive)
+            .replacingOccurrences(of: "&lt;", with: "<", options: .caseInsensitive)
+            .replacingOccurrences(of: "&gt;", with: ">", options: .caseInsensitive)
+            .replacingOccurrences(of: "&quot;", with: "\"", options: .caseInsensitive)
+            .replacingOccurrences(of: "&#39;", with: "'", options: .caseInsensitive)
+            .replacingOccurrences(of: "&apos;", with: "'", options: .caseInsensitive)
+    }
+
+    private static func redactedReviewLogSnippet(_ text: String) -> String {
+        text
+            .replacingOccurrences(
+                of: #"(?i)(token=)[^'&"\s)]+"#,
+                with: "$1<redacted>",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                of: #"(?i)("token"\s*:\s*")[^"]+""#,
+                with: "$1<redacted>\"",
+                options: .regularExpression
+            )
+    }
+
+    private static func base64URLEncode(_ data: Data) -> String? {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    private static func base64URLDecode(_ string: String) -> Data? {
+        var s = string
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = s.count % 4
+        if remainder > 0 {
+            s += String(repeating: "=", count: 4 - remainder)
+        }
+        return Data(base64Encoded: s)
+    }
+
+    static func normalizedChapterHTML(
+        title: String,
+        paragraphs: [String],
+        language: String = "zh-Hant",
+        titleReviewHTML: String? = nil
+    ) -> String {
+        let trimmedTitle = displayText(fromHTMLFragment: title)
+        let escapedTitle = escapeHTML(trimmedTitle.isEmpty ? "Untitled" : trimmedTitle)
+        let heading =
+            trimmedTitle.isEmpty && titleReviewHTML == nil
+            ? ""
+            : "<h1>\(escapeHTML(trimmedTitle))\(titleReviewHTML ?? "")</h1>\n"
+        let body = paragraphs.enumerated()
+            .map { _, paragraph in
+                "<p>\(escapeHTML(paragraph))</p>"
+            }
+            .joined(separator: "\n")
+
+        return """
+        <!DOCTYPE html>
+        <html lang="\(language)">
+        <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>\(escapedTitle)</title>
+        </head>
+        <body>
+        <article id="reader-content">
+        \(heading)\(body)
+        </article>
+        </body>
+        </html>
+        """
+    }
+
+    static func escapeHTML(_ text: String) -> String {
+        var result = text
+        result = result.replacingOccurrences(of: "&", with: "&amp;")
+        result = result.replacingOccurrences(of: "<", with: "&lt;")
+        result = result.replacingOccurrences(of: ">", with: "&gt;")
+        result = result.replacingOccurrences(of: "\"", with: "&quot;")
+        return result
+    }
+
+    private static func normalizedTitleKey(_ text: String) -> String {
+        displayText(fromHTMLFragment: text)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+            .lowercased()
+    }
+
+    private static func sentenceChunks(from text: String) -> [String] {
+        var chunks: [String] = []
+        var current = ""
+        let strongBreaks = Set("。！？!?；;")
+        let weakBreaks = Set("，,、")
+
+        func flush() {
+            let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                chunks.append(trimmed)
+            }
+            current = ""
+        }
+
+        for character in text {
+            current.append(character)
+            if strongBreaks.contains(character), current.count >= 180 {
+                flush()
+            } else if weakBreaks.contains(character), current.count >= 260 {
+                flush()
+            } else if current.count >= 360 {
+                flush()
+            }
+        }
+
+        flush()
+        return chunks.isEmpty ? [text] : chunks
+    }
+
+    // MARK: - Duplicate Chapter Title
+
+    /// Legado `ContentProcessor.getContent` 去除重复标题.
+    ///
+    /// Sources routinely repeat the chapter title as the first line of the content, so a reader
+    /// that renders its own title heading shows it twice. Legado strips one leading occurrence
+    /// with `^(\s|\p{P}|<bookName>)*<title> *\n?`; this is the same rule minus the book-name
+    /// branch (the book name is not plumbed down to the chapter-render layer — add it here if a
+    /// source turns up that prefixes the title with `書名` rather than punctuation, which the
+    /// `\p{P}` branch already covers).
+    ///
+    /// Only the *leading* occurrence goes: a title that legitimately recurs mid-chapter stays.
+    static func stripLeadingDuplicateTitle(_ text: String, title: String) -> String {
+        guard let regex = duplicateTitlePrefixRegex(for: title) else { return text }
+        let ns = text as NSString
+        guard let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              match.range.location == 0,
+              match.range.length > 0,
+              match.range.length < ns.length   // never swallow the whole chapter
+        else { return text }
+        return ns.substring(from: match.range.length)
+    }
+
+    /// True when `candidate` is the chapter title and nothing else — used to drop the source's own
+    /// `<h1>第1章 …</h1>` from an HTML chapter body, where a prefix regex cannot reach it.
+    /// Whitespace is collapsed and surrounding punctuation ignored (`《第1章》` counts as a match),
+    /// but the text must be the *whole* title: a paragraph merely starting with it is left alone.
+    static func isDuplicateChapterTitle(_ candidate: String, title: String) -> Bool {
+        let normalizedTitle = titleComparisonKey(title)
+        guard !normalizedTitle.isEmpty else { return false }
+        return titleComparisonKey(candidate) == normalizedTitle
+    }
+
+    private static func titleComparisonKey(_ text: String) -> String {
+        text
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined()
+            .trimmingCharacters(in: .punctuationCharacters)
+    }
+
+    /// `^(\s|\p{P})*<title> *\n?`, with the title's own whitespace runs relaxed to `\s*` so
+    /// "第1章  天资" still matches a content copy spelled "第1章 天资" (Legado does the same via
+    /// `escapeRegex().replace(spaceRegex, "\\s*")`).
+    ///
+    /// One addition over Legado: trailing punctuation is consumed too, but only when the line ends
+    /// right after it — otherwise `《第1章 …》` would leave a stray `》` behind (Legado's leading
+    /// `\p{P}*` eats the opening bracket and nothing eats the closing one). The lookahead keeps
+    /// prose safe: in `第1章 …，她愣住了。` the `，` is followed by text, so only the title goes.
+    private static func duplicateTitlePrefixRegex(for title: String) -> NSRegularExpression? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let relaxedTitle = trimmed
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { NSRegularExpression.escapedPattern(for: String($0)) }
+            .joined(separator: "\\s*")
+        guard !relaxedTitle.isEmpty else { return nil }
+        let pattern = "^(?:\\s|\\p{P})*"
+            + relaxedTitle
+            + "(?:[ \\t]*\\p{P}+[ \\t]*(?=\\n|$))?[ \\t]*\\n?"
+        return try? NSRegularExpression(pattern: pattern)
+    }
+}

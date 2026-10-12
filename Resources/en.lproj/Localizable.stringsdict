@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- English counts need a singular; the other languages read the same for any number. -->
+	<key>%d 源</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@sources@</string>
+		<key>sources</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d source</string>
+			<key>other</key>
+			<string>%d sources</string>
+		</dict>
+	</dict>
+	<key>%d 本</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@books@</string>
+		<key>books</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d book</string>
+			<key>other</key>
+			<string>%d books</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

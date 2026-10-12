@@ -1,0 +1,83 @@
+# 书悦 ShuYue
+
+<p align="center">
+  <img src="Resources/Assets.xcassets/AppIcon.appiconset/AppIcon_1024_white_no_alpha.png" width="112" alt="书悦">
+</p>
+
+<p align="center">
+  静谧的开源 iOS 阅读器 —— EPUB3、漫画、有声书、RSS 与开放目录，全程以 CoreText 原生渲染。
+</p>
+
+<p align="center">
+  <a href="README.zh-Hans.md">简体中文</a> ·
+  <a href="README.zh-Hant.md">繁體中文</a> ·
+  <a href="README.md">English</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/iOS-18.0%2B-000000?logo=apple&logoColor=white" alt="iOS 18.0+">
+  <img src="https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white" alt="Swift 6.0">
+  <img src="https://img.shields.io/badge/许可证-MPL--2.0-blue" alt="MPL 2.0 许可证">
+</p>
+
+书悦（ShuYue）是一个专注高品质本地与开放阅读体验的开源 iOS 阅读应用。一个 App 涵盖 EPUB3、漫画、有声书、RSS 与开放目录 —— 全程以 CoreText 原生渲染，无 WebView。
+
+## 功能
+
+| | |
+|:--|:--|
+| **格式** | EPUB3 · TXT · CBZ 漫画 · 有声书 · PDF *(开发中)* |
+| **内容** | 本地书库 · WebDAV · OPDS · RSS · 内容源 |
+| **阅读** | 直排竖排 · 主题 · 标注 · 书签 |
+| **更多** | 阅读统计 · iCloud 同步 |
+
+## 为什么用 CoreText，而非 WebView
+
+多数阅读器把内容包进 WebView。书悦每一页都以 CoreText 渲染 —— 换来精准的分页、真正的中日韩竖排、逐帧对齐的语音朗读同步，以及原生文本选择，且保持原生性能。
+
+## 架构
+
+```
+UI (SwiftUI)
+  ↓
+Reader (CoreText)
+  ↓
+Parser (EPUB / TXT / CBZ / RSS / Audio)
+  ↓
+Storage (Local-first)
+  ↓
+Sync (WebDAV / iCloud / OPDS)
+```
+
+## 构建
+
+**环境要求：** Xcode 16+ · iOS 18.0+ · Swift 6.0
+
+```bash
+git clone https://github.com/zhong228/ShuYue.git
+cd ShuYue
+open *.xcodeproj
+```
+
+然后选择模拟器（或真机）运行。自行构建的版本需要自己的签名配置与 Bundle Identifier；公开重新分发的分支版本必须使用不同的 App 名称、图标与品牌素材，且不得暗示获得官方背书。
+
+## 文档
+
+### 使用指南
+
+- **书源（Legado 格式）指南：** [简体中文总览](docs/book-source/quickstart.zh-Hans.md) · [规则语法速查](docs/book-source/rule-syntax.zh-Hans.md) · [与 Legado 的差异](docs/book-source/legado-differences.zh-Hans.md) · [常见症状对照表](docs/book-source/troubleshooting.zh-Hans.md) — 导入、五阶段验证、规则调试器、语法速查、与 Legado 的差异、症状→解法对照。
+- **电量 SVG 模板：** [简体中文](docs/reader-overlay/BatterySVG.zh-Hans.md) · [繁體中文](docs/reader-overlay/BatterySVG.zh-Hant.md) · [English](docs/reader-overlay/BatterySVG.en.md) — 模板格式、动态标记、支持的 SVG 子集与导入故障排查。
+
+### 开发者参考
+
+- [CoreText 文档](docs/coretext/README.md) — 阅读器架构、渲染流程、交互与竖排。
+- [EPUB 兼容性检查清单](docs/epub-compatibility-checklist.md) — 实现与回归测试检查项。
+- [项目架构](Technotes/Architecture.md) — 模块、数据流与技术边界。
+
+## 贡献
+
+欢迎贡献 —— 约定与 PR 流程请见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 许可证
+
+源代码采用 [Mozilla Public License 2.0](LICENSE)。书悦 ShuYue 名称、App 图标、Logo、截图及其他品牌素材不包含在 MPL 许可内，详见 [TRADEMARKS.md](TRADEMARKS.md)。许可证变更前发布的版本仍适用其发布时的许可证，详见 [LICENSING.md](LICENSING.md)。

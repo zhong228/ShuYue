@@ -1,0 +1,1031 @@
+import SwiftUI
+import UIKit
+import JavaScriptCore
+
+// MARK: - BookSourceFormLoginView
+// Handles book sources whose `loginUi` JSON defines form fields (text/password/select/button).
+// After the user fills in credentials and taps "Confirm", the loginUrl JS is executed
+// with those credentials stored via LoginManager — mirroring Legado's SourceLoginDialog.
+// Fields are laid out as a wrapping 12-column grid (LoginFormGrid) so each row's `style`
+// decides its width, like Legado's login dialog.
+
+struct BookSourceFormLoginView: View {
+    let source: BookSource
+    let onDismiss: () -> Void
+
+    @MainActor private static weak var currentToastAlert: UIAlertController?
+
+    private let gs = GlobalSettings.shared
+    @State private var fields: [LoginField] = []
+    @State private var fieldLabels: [String: String] = [:]
+    @State private var values: [String: String] = [:]
+    // Dynamic loginUi is evaluated asynchronously. Start in the same loading state
+    // as Legado so the first render never presents an empty form as if it were ready.
+    @State private var isLoading = true
+    @State private var showFanqieLogin = false
+    @State private var showLog = false
+    @State private var canRetryLoginUi = false
+    /// What a menu button's run reported when the source itself said nothing.
+    /// Alert only, never the inline error Section: that Section sits below the whole
+    /// form, which on a long source menu is far off-screen — the button still read
+    /// as dead even once it had something to say.
+    @State private var menuAlert: MenuActionAlert? = nil
+
+    struct MenuActionAlert: Identifiable {
+        let id = UUID()
+        let title: String
+        let detail: String
+        var dismissesView = false
+    }
+
+    var body: some View {
+        NavigationStack {
+            // Source-authored controls own their surfaces, so the page artwork stays
+            // continuous between full-, half- and third-width actions.
+            ScrollView {
+                VStack(spacing: DSSpacing.md) {
+                    if isLoading {
+                        ProgressView()
+                    }
+                    LoginFormGrid(
+                        fields: fields,
+                        values: $values,
+                        labels: fieldLabels,
+                        onValueChange: { field, _ in
+                            if field.type == .select {
+                                persistCurrentFormValues()
+                            }
+                        },
+                        onAction: handleButton
+                    )
+
+                    if Self.supportsFanqieLogin(source: source) {
+                        Button {
+                            showFanqieLogin = true
+                        } label: {
+                            Label(localized("番茄登入"), systemImage: "network")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(LoginPressButtonStyle())
+                    }
+                }
+                .frame(maxWidth: DSLayout.readableFormWidth)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, DSSpacing.lg)
+                .padding(.vertical, DSSpacing.md)
+            }
+            .softScrollEdges()
+            .scrollDismissesKeyboard(.interactively)
+            .disabled(isLoading)
+            .navigationTitle(loginTitle)
+            .toolbarTitleDisplayMode(.inline)
+            .themedAppSurface(for: .settings)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(localized("取消"))
+                }
+                if !fields.contains(where: { $0.type == .button }) {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if isLoading {
+                            ProgressView()
+                        } else {
+                            Button {
+                                doLogin()
+                            } label: {
+                                Image(systemName: "checkmark")
+                            }
+                            .accessibilityLabel(localized("完成"))
+                        }
+                    }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            persistCurrentFormValues()
+                            onDismiss()
+                        } label: {
+                            Image(systemName: "checkmark")
+                        }
+                        .accessibilityLabel(localized("完成"))
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            showLoginHeader()
+                        } label: {
+                            Label(localized("查看登录头"), systemImage: "key.horizontal")
+                        }
+                        Button {
+                            deleteLoginHeader()
+                        } label: {
+                            Label(localized("删除登录头"), systemImage: "trash")
+                        }
+                        Divider()
+                        Button {
+                            showLog = true
+                        } label: {
+                            Label(localized("日志"), systemImage: "doc.text")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                    .accessibilityLabel(localized("更多"))
+                }
+            }
+        }
+        .onAppear { loadUI() }
+        .sheet(isPresented: $showLog) {
+            BookSourceDebugView()
+        }
+        .alert(
+            menuAlert?.title ?? "",
+            isPresented: Binding(
+                get: { menuAlert != nil },
+                set: { if !$0 { menuAlert = nil } }
+            ),
+            presenting: menuAlert
+        ) { _ in
+            if canRetryLoginUi {
+                Button(localized("重試")) {
+                    menuAlert = nil
+                    canRetryLoginUi = false
+                    loadUI()
+                }
+            }
+            Button(localized("好"), role: .cancel) {
+                let dismissesView = menuAlert?.dismissesView == true
+                menuAlert = nil
+                canRetryLoginUi = false
+                if dismissesView { onDismiss() }
+            }
+        } message: { alert in
+            Text(alert.detail)
+        }
+        .sheet(isPresented: fanqiePresentationBinding(fullScreen: false)) {
+            fanqieLoginBrowser
+        }
+        .fullScreenCover(isPresented: fanqiePresentationBinding(fullScreen: true)) {
+            fanqieLoginBrowser
+        }
+    }
+
+    private func fanqiePresentationBinding(fullScreen: Bool) -> Binding<Bool> {
+        Binding(
+            get: { showFanqieLogin && (UIDevice.current.userInterfaceIdiom == .pad) == fullScreen },
+            set: { showFanqieLogin = $0 }
+        )
+    }
+
+    private var fanqieLoginBrowser: some View {
+        JsBridgeBrowserView(urlString: "https://fanqienovel.com", title: localized("番茄登入")) { _ in
+            showFanqieLogin = false
+        }
+    }
+
+    /// Legado's `login_source` title format: 「登入：源名稱」.
+    private var loginTitle: String {
+        let name = source.bookSourceName.isEmpty ? localized("書源登入") : source.bookSourceName
+        return String(format: localized("登入：%@"), name)
+    }
+
+    // MARK: - 更多 menu (Legado menu_show_login_header / menu_del_login_header / menu_log)
+
+    private func showLoginHeader() {
+        let header = LoginManager.shared.getLoginHeader(sourceUrl: source.bookSourceUrl)
+        menuAlert = MenuActionAlert(
+            title: localized("登录头"),
+            detail: header?.isEmpty != false
+                ? localized("未設置登录头")
+                : header ?? localized("未設置登录头")
+        )
+    }
+
+    private func deleteLoginHeader() {
+        LoginManager.shared.removeLoginHeader(sourceUrl: source.bookSourceUrl)
+        menuAlert = MenuActionAlert(
+            title: localized("完成"),
+            detail: localized("已刪除登录头")
+        )
+    }
+
+    // MARK: - Setup
+
+    private func loadUI() {
+        isLoading = true
+        canRetryLoginUi = false
+        let rawUi = source.loginUi.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Some sources (e.g. 起点) define `loginUi` as JS (`@js:` / `<js>…</js>`) that
+        // builds the form by calling a jsLib helper like `Menu()`. Evaluate it first,
+        // then parse the JSON it returns. Plain JSON-array loginUi takes the fast path.
+        if rawUi.hasPrefix("@js:") || rawUi.hasPrefix("<js>") {
+            let src = source
+            Task.detached(priority: .userInitiated) {
+                let evaluation = await SourceScriptThread.run { Self.evaluateJsLoginUiResult(source: src) }
+                let parsed = LoginManager.shared.parseLoginUiResult(evaluation.json)
+                let stored = LoginManager.shared.getLoginInfo(sourceUrl: src.bookSourceUrl)
+                await MainActor.run {
+                    self.fields = parsed ?? []
+                    self.fieldLabels = evaluation.labels
+                    self.values = Self.initialValues(for: parsed ?? [], stored: stored)
+                    self.isLoading = false
+                    guard parsed == nil else { return }
+                    self.canRetryLoginUi = true
+                    self.menuAlert = MenuActionAlert(
+                        title: localized("書源腳本錯誤"),
+                        detail: evaluation.error ?? localized("載入失敗，點按重試")
+                    )
+                }
+            }
+            return
+        }
+
+        fields = LoginManager.shared.parseLoginUi(source.loginUi)
+        fieldLabels = fields.literalViewNames
+        values = Self.initialValues(
+            for: fields,
+            stored: LoginManager.shared.getLoginInfo(sourceUrl: source.bookSourceUrl)
+        )
+        isLoading = false
+        refreshDynamicLabels(for: fields)
+    }
+
+    /// Resolve dynamic `viewName` expressions off the main thread. Fields show their
+    /// `name` until the JS answers, mirroring Legado's async `evalUiJs(viewName)`.
+    private func refreshDynamicLabels(for fields: [LoginField]) {
+        guard fields.hasDynamicViewNames else { return }
+        let src = source
+        let credentials = currentFormValues()
+        Task.detached(priority: .utility) {
+            let labels = await SourceScriptThread.run {
+                Self.resolveDynamicLoginLabels(fields: fields, source: src, credentials: credentials)
+            }
+            guard !labels.isEmpty else { return }
+            await MainActor.run { self.fieldLabels.merge(labels) { _, new in new } }
+        }
+    }
+
+    struct LoginUIEvaluationResult: Sendable {
+        let json: String
+        let error: String?
+        /// Resolved `viewName` labels keyed by field name, when the menu carries any.
+        var labels: [String: String] = [:]
+    }
+
+    /// Evaluate a JS-based `loginUi` (with jsLib + source runtime wired) and return
+    /// the JSON form definition produced by its completion value or result assignment.
+    nonisolated static func evaluateJsLoginUi(source: BookSource) -> String {
+        evaluateJsLoginUiResult(source: source).json
+    }
+
+    /// Legado, Sigma, and the MD3 implementation evaluate loginUrl JS before loginUi JS
+    /// in the same engine. Dynamic menus commonly call helpers declared by loginUrl, so
+    /// evaluating loginUi in isolation produces a blank form after the JS error is swallowed.
+    nonisolated static func evaluateJsLoginUiResult(
+        source: BookSource
+    ) -> LoginUIEvaluationResult {
+        let engine = makeLoginEngine(source: source)
+
+        let raw = source.loginUi.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawLogin = source.loginUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let loginJS = LoginManager.shared.extractLoginJs(rawLogin) ?? ""
+        let jsBody = LoginManager.shared.extractLoginJs(raw) ?? raw
+        let storedLoginInfo = LoginManager.shared.getLoginInfo(sourceUrl: source.bookSourceUrl) ?? [:]
+        // Run loginUrl and loginUi in one JS context, mirroring Legado's evalUiJs.
+        // `book` and `chapter` are null for a standalone login sheet, as in Legado.
+        // Do not append `result` here. Legado returns the loginUi script's completion
+        // value; 神魔小說 ends with `JSON.stringify(rows)` while `result` still contains
+        // previously stored credentials. Returning `result` would replace the menu JSON
+        // with that credentials object and make the form parser report a load failure.
+        let wrapped = """
+        \(loginJS)
+        \(jsBody)
+        """
+        let out = engine.evaluate(
+            wrapped,
+            result: storedLoginInfo,
+            bindings: sourceLoginBindings(source)
+        ) ?? ""
+        let error = engine.lastError
+
+        // Dynamic viewNames are evaluated in the same engine — loginUrl and the menu JS
+        // have already run here, so expressions can call their helpers with the menu's
+        // own state still in scope. Legado does this per row through `evalUiJs`.
+        let parsed = LoginManager.shared.parseLoginUiResult(out)
+        var labels = parsed?.literalViewNames ?? [:]
+        if let parsed {
+            labels.merge(
+                evaluateDynamicLabels(
+                    parsed.filter(\.hasDynamicViewName),
+                    engine: engine,
+                    credentials: storedLoginInfo,
+                    source: source
+                )
+            ) { _, new in new }
+        }
+
+        AppLogger.parse("⟐ menuEval", context: [
+            "resultLen": out.count,
+            "head": String(out.prefix(120)),
+            "hasLoginJs": !loginJS.isEmpty,
+            "jsError": error ?? "none",
+        ])
+        return LoginUIEvaluationResult(json: out, error: error, labels: labels)
+    }
+
+    /// The one login engine: a `JSCoreEngine` wired to the source's runtime (jsLib,
+    /// java.* handlers, localStorage-equivalent store) with toasts presented as alerts.
+    nonisolated static func makeLoginEngine(source: BookSource) -> JSCoreEngine {
+        let engine = JSCoreEngine()
+        engine.bookSource = source
+        configureLegadoRuntime(engine, source: source)
+        engine.toastHandler = { msg in
+            Task { @MainActor in BookSourceFormLoginView.presentToastAlert(message: msg) }
+        }
+        return engine
+    }
+
+    nonisolated static func sourceLoginBindings(_ source: BookSource) -> [String: Any] {
+        [
+            "baseUrl": source.bookSourceUrl,
+            "book": NSNull(),
+            "chapter": NSNull(),
+        ]
+    }
+
+    /// Evaluate `viewName` expressions for a static (non-`@js:`) `loginUi` by loading
+    /// the source's loginUrl JS into a fresh engine, matching Legado's `evalUiJs`.
+    nonisolated static func resolveDynamicLoginLabels(
+        fields: [LoginField],
+        source: BookSource,
+        credentials: [String: String]
+    ) -> [String: String] {
+        let dynamicFields = fields.filter(\.hasDynamicViewName)
+        guard !dynamicFields.isEmpty else { return [:] }
+        let engine = makeLoginEngine(source: source)
+        let rawLogin = source.loginUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let loginJS = LoginManager.shared.extractLoginJs(rawLogin),
+           !loginJS.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = engine.evaluate(
+                loginJS, result: credentials, bindings: sourceLoginBindings(source)
+            )
+        }
+        return evaluateDynamicLabels(
+            dynamicFields, engine: engine, credentials: credentials, source: source
+        )
+    }
+
+    /// A failed or empty `viewName` result falls back to the field name. (Legado prints
+    /// literal "err"/"null" there; those are neither localizable nor actionable, and the
+    /// JS error is already visible through `AppLogger` and the source log.)
+    nonisolated static func evaluateDynamicLabels(
+        _ fields: [LoginField],
+        engine: JSCoreEngine,
+        credentials: [String: String],
+        source: BookSource
+    ) -> [String: String] {
+        var labels: [String: String] = [:]
+        for field in fields {
+            guard let expression = field.viewName, !expression.isEmpty else { continue }
+            let value = engine.evaluate(
+                expression, result: credentials, bindings: sourceLoginBindings(source)
+            )
+            if let value, !value.isEmpty, value != "undefined", value != "null" {
+                labels[field.name] = value
+            } else {
+                labels[field.name] = field.name
+            }
+        }
+        return labels
+    }
+
+    private func selectedValue(for field: LoginField) -> String {
+        if let value = values[field.name], !value.isEmpty {
+            return value
+        }
+        if let defaultValue = field.defaultValue, !defaultValue.isEmpty {
+            return defaultValue
+        }
+        return field.options.first ?? ""
+    }
+
+    private static func initialValues(
+        for fields: [LoginField],
+        stored: [String: String]?
+    ) -> [String: String] {
+        var result = stored ?? [:]
+        // `.select` only: a `.toggle`'s declared default must stay out of the stored
+        // values (see `LoginToggleChars.isOn`) — seeding it flips 段评开关 off.
+        for field in fields where field.type == .select {
+            if let current = result[field.name], !current.isEmpty {
+                continue
+            }
+            if let defaultValue = field.defaultValue, !defaultValue.isEmpty {
+                result[field.name] = defaultValue
+            } else if let first = field.options.first {
+                result[field.name] = first
+            }
+        }
+        return result
+    }
+
+    static func supportsFanqieLogin(source: BookSource) -> Bool {
+        [
+            source.loginUi,
+            source.loginUrl,
+            source.jsLib,
+            source.ruleToc.chapterUrl,
+            source.ruleContent.content,
+        ].contains { $0.contains("fanqienovel.com") || $0.contains("getFqToken") }
+    }
+
+    /// Returns text-like fields that must be filled before running loginUrl.
+    /// Selects with declared options already have a usable selection; toggles
+    /// and action buttons are not credentials and therefore are optional.
+    static func missingRequiredFieldNames(
+        fields: [LoginField],
+        values: [String: String]
+    ) -> [String] {
+        fields.compactMap { field in
+            let requiresValue: Bool
+            switch field.type {
+            case .text, .password:
+                requiresValue = true
+            case .select:
+                requiresValue = field.options.isEmpty
+            case .toggle, .button:
+                requiresValue = false
+            }
+            guard requiresValue,
+                  Self.resolvedValue(for: field, values: values)
+                    .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+            else { return nil }
+            return field.name
+        }
+    }
+
+    /// What the form is effectively holding for a field: the user's edit, else the
+    /// source-declared default the grid displays. Toggles stay out of this — their
+    /// default is display-only so a save never flips them (see `initialValues`).
+    static func resolvedValue(for field: LoginField, values: [String: String]) -> String {
+        if let current = values[field.name], !current.isEmpty {
+            return current
+        }
+        switch field.type {
+        case .text, .password, .select:
+            return field.defaultValue ?? ""
+        case .toggle, .button:
+            return ""
+        }
+    }
+
+    // MARK: - Login Action
+
+    private func doLogin() {
+        guard !isLoading else { return }
+        menuAlert = nil
+        canRetryLoginUi = false
+
+        // Validate: collect non-button field values
+        let credentials = currentFormValues()
+
+        let missingFields = Self.missingRequiredFieldNames(fields: fields, values: credentials)
+        guard missingFields.isEmpty else {
+            menuAlert = MenuActionAlert(
+                title: localized("操作失敗"),
+                detail: localized("請填入登入資訊")
+            )
+            return
+        }
+
+        if credentials.isEmpty {
+            // No credentials needed — just execute loginUrl JS directly
+            runLoginJS(credentials: [:])
+            return
+        }
+
+        // Store credentials then run login JS
+        LoginManager.shared.storeLoginInfo(
+            sourceUrl: source.bookSourceUrl, info: credentials
+        )
+        runLoginJS(credentials: credentials)
+    }
+
+    private func handleButton(field: LoginField) {
+        AppLogger.parse("⟐ menuButton", context: ["name": field.name, "action": field.action ?? "nil"])
+        guard let action = field.action, !action.isEmpty else { return }
+        // If it's a URL, open in browser; if JS, run it
+        if action.hasPrefix("http://") || action.hasPrefix("https://") {
+            if let url = URL(string: action) {
+                UIApplication.shared.open(url)
+            }
+        } else {
+            // JS button action
+            let currentCredentials = currentFormValues()
+            if !currentCredentials.isEmpty {
+                LoginManager.shared.storeLoginInfo(
+                    sourceUrl: source.bookSourceUrl,
+                    info: currentCredentials
+                )
+            }
+            runButtonJS(action: action, credentials: currentCredentials)
+        }
+    }
+
+    private func currentFormValues() -> [String: String] {
+        fields
+            .filter { $0.type != .button }
+            .reduce(into: [String: String]()) { dict, field in
+                switch field.type {
+                case .select:
+                    dict[field.name] = selectedValue(for: field)
+                case .text, .password:
+                    // The grid displays the declared default until the user edits the
+                    // field, so that displayed value is what login must send.
+                    dict[field.name] = Self.resolvedValue(for: field, values: values)
+                case .toggle:
+                    // A toggle reports only what the user actually flipped — resolving
+                    // its default here would write it back on the next save.
+                    dict[field.name] = values[field.name] ?? ""
+                case .button:
+                    break
+                }
+            }
+    }
+
+    private func persistCurrentFormValues() {
+        let current = currentFormValues()
+        guard !current.isEmpty else { return }
+        LoginManager.shared.storeLoginInfo(sourceUrl: source.bookSourceUrl, info: current)
+    }
+
+    // MARK: - JS Execution
+
+    private func runLoginJS(credentials: [String: String]) {
+        let rawLogin = source.loginUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawLogin.isEmpty else {
+            menuAlert = MenuActionAlert(
+                title: localized("操作失敗"), detail: localized("書源未設定 loginUrl"))
+            return
+        }
+
+        isLoading = true
+        Task.detached(priority: .userInitiated) {
+            // The login script runs on `SourceScriptThread`: a page it opens with
+            // `java.startBrowserAwait` can stay up for minutes.
+            let lastError: String? = await SourceScriptThread.run {
+                let engine = JSCoreEngine()
+                engine.bookSource = source
+                Self.configureLegadoRuntime(engine, source: source)
+
+                // java.startBrowser / java.startBrowserAwait open through
+                // `SourceBrowserPresenter`, the same as from any other script.
+
+                // Wire java.toast / java.longToast — shows a UIAlertController auto-dismiss
+                engine.toastHandler = { msg in
+                    Task { @MainActor in
+                        BookSourceFormLoginView.presentToastAlert(message: msg)
+                    }
+                }
+                let bindings: [String: Any] = [
+                    "result": credentials,
+                    "baseUrl": source.bookSourceUrl
+                ]
+
+                // Extract JS body from loginUrl (strip @js: / <js>…</js>)
+                let js = LoginManager.shared.extractLoginJs(rawLogin) ?? rawLogin
+                let wrappedJS = """
+                \(js)
+                if (typeof login === 'function') {
+                    login.apply(this);
+                }
+                """
+
+                let result = engine.evaluate(wrappedJS, bindings: bindings)
+
+                // If JS returned a header JSON, persist it
+                if let resultStr = result,
+                   !resultStr.isEmpty,
+                   let data = resultStr.data(using: .utf8),
+                   let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+                    LoginManager.shared.storeLoginHeaders(
+                        sourceUrl: source.bookSourceUrl, headers: dict
+                    )
+                } else {
+                    // Try reading putLoginHeader result from LoginManager (JS may have called java.put)
+                    let _ = LoginManager.shared.getLoginHeader(sourceUrl: source.bookSourceUrl)
+                }
+                return engine.lastError
+            }
+
+            await MainActor.run {
+                isLoading = false
+                if let err = lastError, !err.isEmpty {
+                    menuAlert = MenuActionAlert(title: localized("操作失敗"), detail: err)
+                } else {
+                    menuAlert = MenuActionAlert(
+                        title: localized("登入成功"),
+                        detail: localized("登入成功"),
+                        dismissesView: true
+                    )
+                }
+            }
+        }
+    }
+
+    private func runButtonJS(action: String, credentials: [String: String]) {
+        let rawLogin = source.loginUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let loginJS = LoginManager.shared.extractLoginJs(rawLogin) ?? ""
+        let combined = "\(loginJS)\n\(action)"
+        // Captured before leaving the main actor so a label refresh after the action can
+        // run on the same engine; the source decides the display text, we only resolve it.
+        let dynamicLabelFields = fields.filter(\.hasDynamicViewName)
+
+        // The menu action runs on `SourceScriptThread`: a page it opens with
+        // `java.startBrowserAwait` can stay up for minutes.
+        Task.detached(priority: .userInitiated) {
+            await SourceScriptThread.run {
+                let engine = Self.makeLoginEngine(source: source)
+                let spoke = MenuActionSpokeFlag()
+
+                engine.browserPresentHandler = { request, completion in
+                    spoke.fired = true
+                    Task { @MainActor in
+                        SourceBrowserPresenter.present(request, completion: completion)
+                    }
+                }
+                engine.toastHandler = { msg in
+                    spoke.fired = true
+                    Task { @MainActor in
+                        BookSourceFormLoginView.presentToastAlert(message: msg)
+                    }
+                }
+                // `changeMenu(tag)` does `source.put("menuTag", tag); java.reLoginView()`. Re-evaluate
+                // the menu JS (which now reads the new menuTag) and refresh the displayed buttons so
+                // multi-page source menus (起点's 评论设置 → 段评开关) can actually navigate.
+                engine.reLoginViewHandler = {
+                    AppLogger.parse("⟐ reLoginView FIRED", context: [:])
+                    let evaluation = Self.evaluateJsLoginUiResult(source: source)
+                    // Keep the current menu if a source's refresh script fails; replacing it
+                    // with an empty array would hide the only actionable controls.
+                    guard let parsed = LoginManager.shared.parseLoginUiResult(evaluation.json) else {
+                        AppLogger.parse("⟐ reLoginView failed", context: [
+                            "error": evaluation.error ?? "invalid loginUi JSON"
+                        ])
+                        return
+                    }
+                    AppLogger.parse("⟐ reLoginView", context: [
+                        "newFields": parsed.count,
+                        "names": parsed.prefix(8).map { $0.name }.joined(separator: "|")
+                    ])
+                    Task { @MainActor in
+                        self.fields = parsed
+                        self.fieldLabels = evaluation.labels
+                        self.values = Self.initialValues(
+                            for: parsed,
+                            stored: LoginManager.shared.getLoginInfo(sourceUrl: source.bookSourceUrl) ?? self.values
+                        )
+                    }
+                }
+
+                let bindings: [String: Any] = [
+                    "result": credentials,
+                    "baseUrl": source.bookSourceUrl
+                ]
+                SourceAPIErrorLog.shared.clear(for: source.bookSourceUrl)
+                if source.bookSourceName.contains("书山聚合") {
+                    let before = engine.evaluate("java.get('yunpara')") ?? "<nil>"
+                    NSLog(
+                        "❖SHUSHAN TRACE❖ stage=menu.before action=%@ yunpara=%@ jsError=%@",
+                        action,
+                        before.isEmpty ? "<empty>" : before,
+                        engine.lastError ?? "none"
+                    )
+                }
+                _ = engine.evaluate(combined, bindings: bindings)
+                if source.bookSourceName.contains("书山聚合") {
+                    let actionError = engine.lastError
+                    let after = engine.evaluate("java.get('yunpara')") ?? "<nil>"
+                    NSLog(
+                        "❖SHUSHAN TRACE❖ stage=menu.after action=%@ yunpara=%@ actionError=%@",
+                        action,
+                        after.isEmpty ? "<empty>" : after,
+                        actionError ?? "none"
+                    )
+                }
+
+                // Legado refreshes the menu's labels after an action (`upUiData`); a source's
+                // dynamic viewNames (e.g. 起点's 段评 state) can change because of it. Resolve
+                // them in the engine that just ran the action, so its state is still in scope.
+                if !dynamicLabelFields.isEmpty {
+                    let labels = Self.evaluateDynamicLabels(
+                        dynamicLabelFields,
+                        engine: engine,
+                        credentials: credentials,
+                        source: source
+                    )
+                    if !labels.isEmpty {
+                        Task { @MainActor in
+                            self.fieldLabels.merge(labels) { _, new in new }
+                        }
+                    }
+                }
+
+                // A menu action that finishes without saying anything is the failure mode
+                // this reports: 同人小说网's `registerByInvite()` returns early when its API
+                // answers `{"error":…}` (wrong/used 邀请码, rejected device id), so
+                // 「邀请码注册Token」 looked like a dead button. Only speak when the source
+                // itself stayed silent — its own toast is the better message when it has one.
+                guard !spoke.fired else { return }
+                let report: MenuActionAlert?
+                if let jsError = engine.lastError {
+                    report = MenuActionAlert(title: localized("書源腳本錯誤"), detail: jsError)
+                } else if let failure = SourceAPIErrorLog.shared.last(for: source.bookSourceUrl) {
+                    report = MenuActionAlert(
+                        title: localized("書源伺服器回應失敗"), detail: failure.displayText)
+                } else {
+                    report = nil
+                }
+                guard let report else { return }
+                AppLogger.parse("⟐ menuButton silent", context: [
+                    "title": report.title, "detail": report.detail
+                ])
+                Task { @MainActor in self.menuAlert = report }
+            }
+        }
+    }
+
+    /// Whether a menu action produced any user-visible response of its own.
+    /// A reference box: the JS runs on the engine's own thread and sets this
+    /// through escaping handlers, then `runButtonJS` reads it once JS has finished.
+    private final class MenuActionSpokeFlag: @unchecked Sendable {
+        var fired = false
+    }
+
+    nonisolated private static func configureLegadoRuntime(_ engine: JSCoreEngine, source: BookSource) {
+        let sourceUrl = source.bookSourceUrl
+        let runtimeStore = BookSourceRuntimeStateStore.shared
+        let ruleData = BookSourceRuleData(source: source)
+
+        // Settings actions and chapter parsing use separate JS engines. Persist
+        // Legado `java.put/get` state (书山's `yunpara`) at source scope.
+        engine.getData = { key in
+            runtimeStore.sourceValue(for: sourceUrl, key: key)
+        }
+        engine.putData = { key, value in
+            runtimeStore.setSourceValue(value, for: sourceUrl, key: key)
+        }
+        engine.sourceBridge.getVariableHandler = {
+            runtimeStore.sourceVariableJSON(for: sourceUrl) ?? ""
+        }
+        engine.sourceBridge.setVariableHandler = { jsonString in
+            runtimeStore.setSourceVariableJSON(jsonString, for: sourceUrl)
+        }
+        engine.sourceBridge.getKeyValueHandler = { key in
+            runtimeStore.sourceValue(for: sourceUrl, key: key)
+        }
+        engine.sourceBridge.putKeyValueHandler = { key, value in
+            runtimeStore.setSourceValue(value, for: sourceUrl, key: key)
+        }
+        engine.sourceBridge.getLoginInfoHandler = {
+            LoginManager.shared.getLoginInfo(sourceUrl: sourceUrl).flatMap { info in
+                guard let data = try? JSONSerialization.data(withJSONObject: info) else { return nil }
+                return String(data: data, encoding: .utf8)
+            }
+        }
+        engine.sourceBridge.getLoginInfoMapHandler = {
+            LoginManager.shared.getLoginInfo(sourceUrl: sourceUrl) ?? [:]
+        }
+        engine.sourceBridge.putLoginInfoHandler = { info in
+            guard let data = info.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return }
+            LoginManager.shared.storeLoginInfo(sourceUrl: sourceUrl, info: dict)
+        }
+        engine.sourceBridge.removeLoginInfoHandler = {
+            LoginManager.shared.clearLogin(sourceUrl: sourceUrl)
+        }
+        // Legado semantics: the payload is stored verbatim and only becomes request
+        // headers if it is a JSON object. 书山聚合's `login()` stores a bare api_key
+        // and reads it straight back via `source.getLoginHeader()` to build `?key=`
+        // URLs — synthesising a header name for it clobbers the constant token the
+        // source's own `header` rule sends.
+        engine.sourceBridge.putLoginHeaderHandler = { header in
+            LoginManager.shared.storeLoginHeader(sourceUrl: sourceUrl, raw: header)
+        }
+        engine.sourceBridge.getLoginHeaderHandler = {
+            LoginManager.shared.getLoginHeader(sourceUrl: sourceUrl)
+        }
+        engine.sourceBridge.removeLoginHeaderHandler = {
+            LoginManager.shared.clearLogin(sourceUrl: sourceUrl)
+        }
+        engine.sourceBridge.getHeaderMapHandler = {
+            // This sheet's own engine resolves the (possibly `@js:`) header rule —
+            // don't reach for a second engine via `source.parsedHeaders`.
+            var headers = engine.resolvedSourceHeaders()
+            if let loginHeaders = LoginManager.shared.getLoginHeaderMap(sourceUrl: sourceUrl) {
+                headers.merge(loginHeaders) { _, new in new }
+            }
+            return headers
+        }
+        engine.sourceBridge.evalJSHandler = { js in
+            engine.evaluate(js) ?? ""
+        }
+        engine.analyzeUrlHandler = { urlStr in
+            let analyzeUrl = AnalyzeUrl(
+                ruleUrl: urlStr,
+                sourceHeader: source.header,
+                baseUrl: source.bookSourceUrl,
+                source: ruleData,
+                jsEvaluator: { js, bindings in engine.evaluate(js, bindings: bindings) }
+            )
+            if analyzeUrl.isDataUri {
+                guard let decoded = analyzeUrl.decodeDataUri() else { return "" }
+                if analyzeUrl.type?.isEmpty == false {
+                    return decoded.data.map { String(format: "%02x", $0) }.joined()
+                }
+                return String(data: decoded.data, encoding: .utf8) ?? ""
+            }
+            guard var request = analyzeUrl.toURLRequest() else { return "" }
+            for (key, value) in engine.resolvedSourceHeaders()
+            where request.value(forHTTPHeaderField: key) == nil {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+            LoginManager.shared.applyLoginHeaders(to: &request, sourceUrl: sourceUrl)
+            if request.value(forHTTPHeaderField: "Cookie") == nil,
+               let reqUrl = request.url?.absoluteString {
+                let jar = CookieStore.shared.get(url: reqUrl)
+                if !jar.isEmpty {
+                    request.setValue(jar, forHTTPHeaderField: "Cookie")
+                }
+            }
+            let semaphore = DispatchSemaphore(value: 0)
+            var body = ""
+            var statusCode: Int?
+            MediaSession.shared.dataTask(with: request) { data, response, _ in
+                statusCode = (response as? HTTPURLResponse)?.statusCode
+                if let data {
+                    body = String(data: data, encoding: .utf8) ?? ""
+                }
+                semaphore.signal()
+            }.resume()
+            let timedOut = semaphore.wait(timeout: .now() + 30) == .timedOut
+            // Menu actions are the one place a source's API failure has no other way
+            // to reach the user: the rule JS returns early on a bad reply, so the
+            // button just looks dead. `runButtonJS` reports whatever lands here.
+            SourceAPIErrorLog.shared.record(
+                sourceUrl: sourceUrl, requestUrl: request.url?.absoluteString,
+                statusCode: statusCode, body: body, timedOut: timedOut
+            )
+            return body
+        }
+        engine.upLoginDataHandler = { mapValue in
+            // `java.upLoginData(map)` from a settings menu (起点/光遇 段评颜色·气泡模版). Merge the
+            // map's key/values into the source's stored login data so `source.getLoginInfoMap()`
+            // (and the jsLib's `getConfigValue`/`Map()`) read them back.
+            let raw = mapValue.toDictionary() ?? [:]
+            var updates: [String: String] = [:]
+            for (key, value) in raw {
+                guard let name = key as? String else { continue }
+                updates[name] = (value as? String) ?? String(describing: value)
+            }
+            guard !updates.isEmpty else { return }
+            var info = LoginManager.shared.getLoginInfo(sourceUrl: sourceUrl) ?? [:]
+            info.merge(updates) { _, new in new }
+            LoginManager.shared.storeLoginInfo(sourceUrl: sourceUrl, info: info)
+        }
+        if !source.jsLib.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = engine.evaluate(source.jsLib, bindings: ["baseUrl": source.bookSourceUrl])
+        }
+    }
+
+    // MARK: - UIKit Helpers
+
+    /// Returns the topmost presented UIViewController for presenting modal sheets from background tasks.
+    @MainActor
+    static func topViewController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return nil }
+        var top = root
+        while let p = top.presentedViewController { top = p }
+        return top
+    }
+
+    @MainActor
+    static func presentToastAlert(message: String) {
+        let showNewAlert = {
+            guard let presenter = topViewControllerForToast() else { return }
+            showToastAlert(message: message, from: presenter)
+        }
+
+        if let currentToastAlert, currentToastAlert.presentingViewController != nil {
+            currentToastAlert.dismiss(animated: false) {
+                Task { @MainActor in
+                    self.currentToastAlert = nil
+                    showNewAlert()
+                }
+            }
+        } else {
+            currentToastAlert = nil
+            showNewAlert()
+        }
+    }
+
+    /// Takes down the toast alert, if one is up, before `completion` runs — so a sheet a
+    /// script asks for right after toasting has a presenter that is not already busy.
+    @MainActor
+    static func dismissToastAlert(then completion: @escaping @MainActor () -> Void) {
+        guard let currentToastAlert, currentToastAlert.presentingViewController != nil else {
+            completion()
+            return
+        }
+        currentToastAlert.dismiss(animated: true) {
+            Task { @MainActor in
+                self.currentToastAlert = nil
+                completion()
+            }
+        }
+    }
+
+    @MainActor
+    private static func showToastAlert(message: String, from presenter: UIViewController) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        currentToastAlert = alert
+        presenter.present(alert, animated: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            if alert.presentingViewController != nil {
+                alert.dismiss(animated: true)
+            }
+            if currentToastAlert === alert {
+                currentToastAlert = nil
+            }
+        }
+    }
+
+    @MainActor
+    private static func topViewControllerForToast() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return nil }
+        var top = root
+        while let presented = top.presentedViewController {
+            if presented is UIAlertController {
+                break
+            }
+            top = presented
+        }
+        return top
+    }
+}
+
+// MARK: - Preview
+
+#Preview("登入表單") {
+    var source = BookSource()
+    source.bookSourceName = "範例書源"
+    source.bookSourceUrl = "https://example.com"
+    source.loginUrl = "function login() { return true; }"
+    // 輸入框整行、按鈕預設半行；cols 1/2/4 展示混合欄寬（登入＋註冊半行、
+    // 遊客體驗整行、條款/隱私/客服/版本四欄）。
+    source.loginUi = """
+    [
+        {"name": "帳號", "type": "text", "chars": ["手機號或 Email"]},
+        {"name": "密碼", "type": "password"},
+        {"name": "登入", "type": "button", "action": "login()"},
+        {"name": "註冊帳號", "type": "button", "action": "register()"},
+        {"name": "遊客體驗", "type": "button", "action": "guest()", "style": {"cols": 1}},
+        {"name": "條款", "type": "button", "action": "terms()", "style": {"cols": 4}},
+        {"name": "隱私", "type": "button", "action": "privacy()", "style": {"cols": 4}},
+        {"name": "客服", "type": "button", "action": "support()", "style": {"cols": 4}},
+        {"name": "版本", "type": "button", "action": "about()", "style": {"cols": 4}}
+    ]
+    """
+    return BookSourceFormLoginView(source: source, onDismiss: {})
+}
+
+#Preview("書源選單") {
+    var source = BookSource()
+    source.bookSourceName = "範例書源・設定選單"
+    source.bookSourceUrl = "https://example.com"
+    source.loginUrl = "function noop() {}"
+    // 書源動態選單常見的組合：開關、下拉與動作按鈕；viewName 是引號字面值時
+    // 直接顯示、不求值。layout_wrapBefore 讓「登出」強制換行。
+    source.loginUi = """
+    [
+        {"name": "段評開關", "viewName": "'段評開關'", "type": "toggle",
+         "action": "noop()", "chars": ["🔳", "✅"], "default": "🔳"},
+        {"name": "字體", "viewName": "'字體'", "type": "select",
+         "chars": ["預設", "圓角", "襯線"], "default": "預設"},
+        {"name": "重新整理", "viewName": "'重新整理'", "type": "button", "action": "noop()"},
+        {"name": "登出", "viewName": "'登出'", "type": "button", "action": "noop()",
+         "style": {"layout_wrapBefore": true}}
+    ]
+    """
+    return BookSourceFormLoginView(source: source, onDismiss: {})
+}

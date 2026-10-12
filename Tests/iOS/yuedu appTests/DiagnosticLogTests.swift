@@ -1,0 +1,507 @@
+import Foundation
+import Testing
+import UniformTypeIdentifiers
+import os.log
+@testable import yuedu_app
+
+@Suite("DiagnosticLog")
+struct DiagnosticLogTests {
+
+    /// Each test gets its own directory: the shared instance writes to the real
+    /// device log, which a test must neither read nor destroy.
+    private func makeLog(verbose: Bool = true) -> (DiagnosticLog, URL) {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("diagnostic-log-tests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return (DiagnosticLog(directory: dir, verboseOverride: verbose), dir)
+    }
+
+    @Test("records survive a flush and come back newest first")
+    func recordsRoundTrip() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .info, category: .reader, message: "first")
+        log.record(severity: .error, category: .network, message: "second")
+
+        let entries = log.snapshot()
+        #expect(entries.count == 2)
+        #expect(entries.first?.message == "second")
+        #expect(entries.last?.message == "first")
+        #expect(entries.first?.category == .network)
+    }
+
+    @Test("detail is preserved")
+    func detailRoundTrips() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .anomaly, category: .reader, message: "m", detail: "line1\nline2")
+        #expect(log.snapshot().first?.detail == "line1\nline2")
+    }
+
+    // MARK: - Verbose gate
+
+    @Test("trace lines are dropped when verbose is off, everything else is kept")
+    func verboseGateDropsOnlyTrace() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "chatter")
+        log.record(severity: .info, category: .reader, message: "milestone")
+        log.record(severity: .anomaly, category: .reader, message: "problem")
+
+        let messages = log.snapshot().map(\.message)
+        #expect(!messages.contains("chatter"))
+        #expect(messages.contains("milestone"))
+        #expect(messages.contains("problem"))
+    }
+
+    // MARK: - Flight recorder
+    //
+    // The reader's whole diagnostic narration is `.trace`, so with verbose off a user
+    // who hit 翻頁卡在載入中 exported a log holding the anomaly and nothing that
+    // explained it. Dropped trace is now held and released attached to whatever went
+    // wrong — which is what makes the export answerable without asking anyone to turn
+    // a setting on first.
+
+    @Test("trace dropped by the verbose gate is held rather than discarded")
+    func droppedTraceIsHeld() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "preload begin spine=42")
+        log.record(severity: .trace, category: .reader, message: "preload superseded spine=42")
+
+        #expect(log.flightRecorderCount == 2)
+        // Still absent from disk: holding is not the same as writing.
+        #expect(log.snapshot().isEmpty)
+    }
+
+    @Test("an anomaly carries the run-up that was never written down")
+    func anomalyCarriesFlightRecorder() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "preload begin spine=42")
+        log.record(severity: .trace, category: .reader, message: "preload superseded spine=42")
+        log.record(severity: .anomaly, category: .reader, message: "stuck", detail: "chapter=42")
+
+        let detail = try! #require(log.snapshot().first?.detail)
+        // The caller's own detail stays first — it is the finding; the ring is context.
+        #expect(detail.hasPrefix("chapter=42"))
+        #expect(detail.contains("preload begin spine=42"))
+        #expect(detail.contains("preload superseded spine=42"))
+        // Oldest first, so the detail reads forwards into the anomaly.
+        #expect(
+            detail.range(of: "preload begin")!.lowerBound
+                < detail.range(of: "preload superseded")!.lowerBound
+        )
+    }
+
+    @Test("an anomaly with no detail of its own still carries the run-up")
+    func anomalyWithoutDetailStillCarriesFlightRecorder() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .tts, message: "chapter wait begin")
+        log.record(severity: .anomaly, category: .tts, message: "narration stopped")
+
+        let detail = try! #require(log.snapshot().first?.detail)
+        #expect(detail.contains("chapter wait begin"))
+    }
+
+    @Test("the run-up is released once, not repeated on every following anomaly")
+    func flightRecorderDrainsOnAttach() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "narration")
+        log.record(severity: .anomaly, category: .reader, message: "first")
+        log.record(severity: .anomaly, category: .reader, message: "second")
+
+        #expect(log.flightRecorderCount == 0)
+        let entries = log.snapshot()
+        let second = try! #require(entries.first { $0.message == "second" })
+        let first = try! #require(entries.first { $0.message == "first" })
+        #expect(first.detail?.contains("narration") == true)
+        // Someone stuck on one chapter produces a run of anomalies; repeating the same
+        // narration under each would bury the log this exists to make readable.
+        #expect(second.detail == nil)
+    }
+
+    @Test("the ring is bounded and keeps the newest lines")
+    func flightRecorderIsBounded() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for index in 0..<500 {
+            log.record(severity: .trace, category: .reader, message: "line \(index)")
+        }
+        #expect(log.flightRecorderCount == 300)
+
+        log.record(severity: .anomaly, category: .reader, message: "boom")
+        let detail = try! #require(log.snapshot().first?.detail)
+        #expect(!detail.contains("line 0 "))
+        #expect(detail.contains("line 499"))
+    }
+
+    @Test("nothing is held while verbose is on, because nothing is being dropped")
+    func verboseOnKeepsRingEmpty() {
+        let (log, dir) = makeLog(verbose: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "narration")
+        // Already on disk in sequence; duplicating it into a detail block would only
+        // make the export longer.
+        #expect(log.flightRecorderCount == 0)
+        log.record(severity: .anomaly, category: .reader, message: "boom")
+        #expect(log.snapshot().first { $0.message == "boom" }?.detail == nil)
+    }
+
+    @Test("clearing the log clears what was being held for it")
+    func clearDropsFlightRecorder() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "narration")
+        log.clear()
+        #expect(log.flightRecorderCount == 0)
+    }
+
+    @Test("turning verbose on starts keeping trace lines")
+    func verboseCanBeTurnedOn() {
+        let (log, dir) = makeLog(verbose: false)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .trace, category: .reader, message: "before")
+        log.isVerboseEnabled = true
+        log.record(severity: .trace, category: .reader, message: "after")
+
+        let messages = log.snapshot().map(\.message)
+        #expect(!messages.contains("before"))
+        #expect(messages.contains("after"))
+    }
+
+    // MARK: - Reportable counting
+
+    @Test("anomalies and faults are counted, quieter levels are not")
+    func reportableCounting() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .error, category: .reader, message: "e")
+        log.record(severity: .anomaly, category: .reader, message: "a")
+        log.record(severity: .fault, category: .crash, message: "f")
+
+        #expect(log.reportableCountThisSession == 2)
+    }
+
+    // MARK: - Bounds
+
+    @Test("the file rotates and the log stays bounded")
+    func rotationKeepsTheLogBounded() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Each entry carries ~1 KB of detail, so this pushes well past the 2 MB
+        // rotation threshold and into the second generation.
+        let padding = String(repeating: "x", count: 1024)
+        for index in 0..<3000 {
+            log.record(severity: .info, category: .reader, message: "entry \(index)", detail: padding)
+        }
+        log.flush(wait: true)
+
+        let bytes = log.diskUsageBytes()
+        #expect(bytes > 0)
+        // Two generations of 2 MB each, plus the batch that tipped the last rotation.
+        #expect(bytes < 6 * 1024 * 1024)
+
+        // The most recent entries are the ones that survived.
+        let entries = log.snapshot()
+        #expect(entries.first?.message == "entry 2999")
+    }
+
+    @Test("snapshot is capped so a huge file cannot stall the screen")
+    func snapshotIsCapped() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for index in 0..<7000 {
+            log.record(severity: .info, category: .reader, message: "entry \(index)")
+        }
+        #expect(log.snapshot().count <= 6000)
+    }
+
+    @Test("clear empties the log")
+    func clearEmptiesTheLog() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.record(severity: .info, category: .reader, message: "x")
+        log.flush(wait: true)
+        log.clear()
+
+        #expect(log.snapshot().isEmpty)
+        #expect(log.reportableCountThisSession == 0)
+    }
+
+    // MARK: - Sessions
+
+    /// A session only counts as clean once the app reaches the background. Marking on
+    /// `willTerminate` instead would label almost every ordinary launch a crash,
+    /// because iOS rarely calls it.
+    @Test("a session is unclean until it reaches the background")
+    func sessionCleanlinessFollowsBackgrounding() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.beginSession()
+        #expect(log.currentSession.endedCleanly == false)
+
+        log.noteEnteredBackground()
+        #expect(log.currentSession.endedCleanly == true)
+
+        log.noteBecameActive()
+        #expect(log.currentSession.endedCleanly == false)
+    }
+
+    @Test("the current session is never listed as a previous unclean one")
+    func currentSessionIsExcluded() {
+        let (log, dir) = makeLog()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        log.beginSession()
+        log.flush(wait: true)
+        #expect(log.uncleanPreviousSessions().isEmpty)
+    }
+}
+
+@Suite("AppLogger severity classification")
+struct DiagnosticSeverityClassifierTests {
+
+    @Test("timing and *Trace / *Debug tags are narration, not errors")
+    func traceFamiliesAreDetected() {
+        #expect(AppLogger.resolvedSeverity(message: "⏱ toc.parse 12ms", default: .notice) == .trace)
+        #expect(AppLogger.resolvedSeverity(message: "[FlipTrace] pageForward", default: .notice) == .trace)
+        #expect(AppLogger.resolvedSeverity(message: "[ProgressTrace][ScrollVC] commit", default: .notice) == .trace)
+        // Matching on the suffix keeps the next one somebody adds classified without a
+        // code change — these three were all missed by an explicit list.
+        #expect(AppLogger.resolvedSeverity(message: "[StartupTrace][Engine] byteScan", default: .notice) == .trace)
+        #expect(AppLogger.resolvedSeverity(message: "[CurlTrace] didFinish", default: .notice) == .trace)
+        #expect(AppLogger.resolvedSeverity(message: "[StateDebug] applyRefreshAction", default: .notice) == .trace)
+        // 2656 of the 6000 entries in a real exported log — 44% of the budget spent on
+        // annotation geometry, crowding out the anomalies the export exists to carry.
+        #expect(AppLogger.resolvedSeverity(message: "[ANNOT-DIAG] SELECTION range={1, 2}", default: .notice) == .trace)
+    }
+
+    /// The one signal here that is not a naming convention: the caller handed us an
+    /// `Error`, which is them saying something failed.
+    @Test("an attached Error outranks the subsystem default")
+    func attachedErrorEscalates() {
+        #expect(AppLogger.resolvedSeverity(message: "could not fetch", default: .notice, carriesError: true) == .error)
+        #expect(AppLogger.resolvedSeverity(message: "keychain unreadable", default: .fault, carriesError: true) == .fault)
+    }
+
+    /// A subsystem line with nothing attached is not an error just because it went
+    /// through `AppLogger.render`. Before this, ~300 call sites read as errors and the
+    /// severity filter meant nothing.
+    @Test("a bare subsystem line is not an error")
+    func bareSubsystemLineIsNotAnError() {
+        #expect(AppLogger.resolvedSeverity(message: "[CoreTextEngine] laid out 12 pages", default: .notice) == .notice)
+        #expect(AppLogger.resolvedSeverity(message: "scrollEngine created", default: .notice) == .notice)
+    }
+
+    @Test("structured probes are notices")
+    func probeMarkerIsNotice() {
+        #expect(AppLogger.resolvedSeverity(message: "⟐ scrollEngine created #2", default: .notice) == .notice)
+        // A probe marker never downgrades something already more severe.
+        #expect(AppLogger.resolvedSeverity(message: "⟐ something bad", default: .error) == .error)
+    }
+
+    @Test("functions that name a severity keep it")
+    func severityNamingFunctionsKeepTheirLevel() {
+        #expect(AppLogger.resolvedSeverity(message: "book opened", default: .info) == .info)
+        #expect(AppLogger.resolvedSeverity(message: "generic failure", default: .error) == .error)
+        #expect(AppLogger.resolvedSeverity(message: "tampering detected", default: .fault) == .fault)
+    }
+
+    /// The reader's decisive lines used to be `[FlipTrace]`, which the suffix rule
+    /// classifies as narration — so the one export that could have explained
+    /// 翻頁卡在載入中 carried the symptom and none of the diagnosis. They now pass an
+    /// explicit level, and they also no longer *look* like narration, so dropping the
+    /// explicit level later cannot silently put them back in the discarded bucket.
+    @Test("the reader's decisive lines can never be classified as narration")
+    func decisiveReaderLinesAreNotNarration() {
+        let decisive = [
+            "⟐ placeholder unresolved spine=42 outcome=contentUnavailable generation=7 pending=[]",
+            "⟐ placeholder unresolved position=(ch42,off0) outcome=cancelled generation=7 pending=[]",
+            "⟐ preload retry superseded spine=42 oldGeneration=7 generation=8",
+            "⟐ preload contentUnavailable spine=42 builderIndex=42 generation=7",
+            "⟐ preload buildFailed spine=42 generation=7",
+            "⟐ preload builtEmptyDocument spine=42 generation=7",
+            "⟐ notifyChapterDataChanged left no layout ch=42 outcome=cancelled hasCallback=true",
+            "⟐ stackWrite deferred chapterReady gesture=true transitions=0",
+            "⟐ stackWrite dropped [chapterReady] inFavourOf=externalTarget",
+            "⟐ layoutGeneration 7 → 8 cause=refreshTransaction discardingPreloads",
+            "⟐ [TTS][Reader] chapter wait failed chapter=42 reason=timeout",
+        ]
+        for message in decisive {
+            #expect(
+                AppLogger.resolvedSeverity(message: message, default: .notice) != .trace,
+                "\(message) would be dropped with verbose off"
+            )
+        }
+    }
+
+    // MARK: - Filtered export
+    //
+    // The screen's filters drive the list only; the main 匯出 button always sends the
+    // whole session. 匯出目前篩選 sends a slice, and a slice must never silence the
+    // report banner — acknowledgement is a single high-water sequence, so a subset's
+    // highest sequence would also mark every lower-numbered anomaly reported,
+    // including ones the filter excluded that never left the device.
+
+    private func makeBundle(
+        entries: [DiagnosticEntry],
+        acknowledges: Bool
+    ) -> DiagnosticReportBundle {
+        DiagnosticReportBundle(
+            filename: "t.txt",
+            entries: entries,
+            session: DiagnosticSession.current(),
+            uncleanSessions: [],
+            acknowledgesReport: acknowledges
+        )
+    }
+
+    private func entry(_ sequence: UInt64, _ severity: DiagnosticSeverity) -> DiagnosticEntry {
+        DiagnosticEntry(sequence: sequence, severity: severity, category: .reader, message: "m\(sequence)")
+    }
+
+    @Test("a filtered export does not mark anything as reported")
+    func filteredExportDoesNotAcknowledge() {
+        // Far above anything a test run produces, so the assertion is about this
+        // bundle and not about whatever else the shared log has seen.
+        let high = entry(9_000_000, .anomaly)
+        _ = makeBundle(entries: [high], acknowledges: false).render()
+
+        #expect(DiagnosticLog.shared.isUnreported(high))
+    }
+
+    @Test("a filtered export says so in the file")
+    func filteredExportIsLabelled() {
+        let rendered = makeBundle(entries: [entry(1, .anomaly)], acknowledges: false).render()
+        // Whoever receives it must not read a slice as the whole session; missing
+        // lines are the usual reason a report cannot be diagnosed.
+        #expect(rendered.contains("FILTERED SUBSET"))
+    }
+
+    @Test("a full export is the default and is not labelled a subset")
+    func fullExportIsTheDefault() {
+        let bundle = DiagnosticReportBundle(
+            filename: "t.txt",
+            entries: [entry(2, .anomaly)],
+            session: DiagnosticSession.current(),
+            uncleanSessions: []
+        )
+        #expect(bundle.acknowledgesReport)
+        #expect(!bundle.render().contains("FILTERED SUBSET"))
+    }
+
+    @Test("leading whitespace does not hide a marker")
+    func leadingWhitespaceIsTolerated() {
+        #expect(AppLogger.resolvedSeverity(message: "  [FlipTrace] x", default: .notice) == .trace)
+    }
+
+    @Test("TTS lines are filed under their own category wherever they are logged from")
+    func ttsPrefixOverridesCategory() {
+        #expect(AppLogger.resolvedCategory(message: "[TTS][Provider] rejected", declared: .reader) == .tts)
+        #expect(AppLogger.resolvedCategory(message: "⟐ something else", declared: .reader) == .reader)
+    }
+}
+
+@Suite("DiagnosticRedactor")
+struct DiagnosticRedactorTests {
+
+    /// The load-bearing rule. `SourceAPIErrorLog` documents why: these book-source
+    /// APIs carry the user's token in the query string.
+    @Test("URL query strings are stripped")
+    func queryStringsAreStripped() {
+        let redacted = DiagnosticRedactor.redact("GET https://api.example.com/book?token=abc123&uid=9")
+        #expect(!redacted.contains("abc123"))
+        #expect(redacted.contains("https://api.example.com/book"))
+    }
+
+    @Test("credential-shaped key/value pairs are masked")
+    func credentialPairsAreMasked() {
+        let cases = [
+            "Cookie: session=deadbeef",
+            "authorization=Basic Zm9vOmJhcg==",
+            "\"access_token\": \"ya29.longvalue\"",
+            "password=hunter2",
+            "api_key = k-9f8e7d",
+        ]
+        for line in cases {
+            let redacted = DiagnosticRedactor.redact(line)
+            #expect(redacted.contains("<redacted>"), "not redacted: \(line) -> \(redacted)")
+        }
+    }
+
+    @Test("quoted JSON cookie values are masked in exported source context")
+    func quotedJSONCookiesAreMasked() {
+        let raw = #"context={"source":{"cookie":"session=deadbeef; user=42","name":"Example"}}"#
+
+        let redacted = DiagnosticRedactor.redact(raw)
+
+        #expect(!redacted.contains("deadbeef"))
+        #expect(!redacted.contains("user=42"))
+        #expect(redacted.contains(#""cookie":"<redacted>""#))
+        #expect(redacted.contains(#""name":"Example""#))
+    }
+
+    @Test("bearer tokens are masked")
+    func bearerTokensAreMasked() {
+        let redacted = DiagnosticRedactor.redact("Authorization header sent as Bearer eyJhbGciOi.J9")
+        #expect(!redacted.contains("eyJhbGciOi.J9"))
+    }
+
+    /// Redaction must not eat the content of the report. A hostname and a chapter
+    /// index are usually the whole point of the log line.
+    @Test("ordinary diagnostic text is left alone")
+    func ordinaryTextSurvives() {
+        let line = "[FlipTrace] pageForward from=(ch3,off100) to=(ch3,off200) host=www.example.com"
+        #expect(DiagnosticRedactor.redact(line) == line)
+    }
+}
+
+@Suite("Diagnostic export file type")
+struct DiagnosticExportFileTypeTests {
+
+    @Test("log payloads export one concrete non-text file type")
+    func payloadsUseConcreteFileType() {
+        #expect(DiagnosticReportBundle.exportedContentType == .yueduLogFile)
+        #expect(BookSourceDebugExportFile.exportedContentType == .yueduLogFile)
+        #expect(UTType.yueduLogFile.conforms(to: .data))
+        #expect(!UTType.yueduLogFile.conforms(to: .text))
+    }
+
+    @Test("the app registers the log type as a txt file")
+    func appDeclaresLogFileType() throws {
+        let declarations = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "UTExportedTypeDeclarations")
+                as? [[String: Any]]
+        )
+        let declaration = try #require(
+            declarations.first {
+                $0["UTTypeIdentifier"] as? String == UTType.yueduLogFile.identifier
+            }
+        )
+        let conformances = try #require(declaration["UTTypeConformsTo"] as? [String])
+        let tags = try #require(declaration["UTTypeTagSpecification"] as? [String: Any])
+        let extensions = try #require(tags["public.filename-extension"] as? [String])
+
+        #expect(conformances == [UTType.data.identifier])
+        #expect(extensions == ["txt"])
+    }
+}

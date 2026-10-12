@@ -1,0 +1,691 @@
+import YueduCoreText
+import AVFoundation
+import Foundation
+import UIKit
+
+// MARK: - System TTS Engine (offline, on-device AVSpeechSynthesizer)
+
+/// Offline fallback engine driven by `AVSpeechSynthesizer`. Used when no HTTP TTS source is
+/// configured, or when the user explicitly selects the system voice. Mirrors the segment /
+/// skip / seek semantics of `HTTPTTSEngine` so `TTSCoordinator` can drive either engine through
+/// `TTSPlayable` without special-casing.
+final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
+
+    static func shouldRecoverFromCancelledUtterance(
+        isPlaying: Bool,
+        isPaused: Bool,
+        hasActiveUtterance: Bool,
+        afterMediaServicesReset: Bool
+    ) -> Bool {
+        hasActiveUtterance && isPlaying && !isPaused && afterMediaServicesReset
+    }
+
+    var isPlaying: Bool = false
+    var onPageFinished: (() -> TTSNextUnitOutcome)?
+    var onStop: (() -> Void)?
+    var onError: ((Error) -> Void)?
+    /// The on-device synthesizer has no per-segment fetch that can fail on its own, so this
+    /// never fires here; it exists to satisfy `TTSPlayable`.
+    var onSegmentSkipped: ((Error) -> Void)?
+    var onPlaybackStarted: ((TimeInterval) -> Void)?
+    var onSegmentChanged: ((TTSActiveSegment) -> Void)?
+    /// Speaker → voice, scoped to the open book by the reader. Empty = single voice.
+    var roleVoices: [String: String] = [:]
+    var roleAliases: [String: String] = [:]
+
+    /// Set while the host prepares the next chapter. `AVSpeechSynthesizer` emits nothing
+    /// between utterances, so the keep-alive silence carries the audio session through the
+    /// gap — otherwise iOS suspends the app mid-wait when the screen is locked.
+    private(set) var isWaitingForNextUnit = false
+    private let silence = TTSSilenceKeepAlive()
+    /// Next chapter that arrived while the listener had playback paused. Held rather than
+    /// spoken, so content becoming ready never overrides an explicit pause; `resume` plays it.
+    private var pendingUnit: TTSNarrationUnit?
+
+    private let synthesizer = AVSpeechSynthesizer()
+    private var segments: [TTSSpeakableSegment] = []
+    private var currentIndex = 0
+    private var isPaused = false
+    private var lastRate: Float = 0.5
+    private var playbackToken = UUID()
+    private var activeUtterance: AVSpeechUtterance?
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    /// `didCancel` does not include an error. Only a preceding media-services-reset notification
+    /// authorizes recovery; an unqualified cancellation is treated as a system voice failure so
+    /// iOS 17's broken voice provider cannot trigger an endless retry loop.
+    private var shouldRecoverCancellation = false
+    /// UTF-16 offset (into the current chunk) of the last word the synthesizer reported it was
+    /// about to speak. Used so a resume that lost the paused state — the OS commonly ends a
+    /// paused utterance when backgrounded — can re-speak only the remainder of the sentence
+    /// instead of replaying the whole ~5s chunk from its start.
+    private var spokenUTF16Offset = 0
+    /// Offset (into the current chunk) at which the active utterance's text begins: 0 for a
+    /// full chunk, `spokenUTF16Offset` for a partial resume. Lets the delegate map the
+    /// utterance-relative range it reports back onto the full chunk.
+    private var utteranceBaseOffset = 0
+    private var utteranceSpeechText: TTSPronunciationSpeechText?
+
+    // Read by paragraph: system voices speak long utterances smoothly, so set the cap
+    // high enough that a normal paragraph stays a single gap-free chunk. The cap only
+    // kicks in to bound a pathologically long paragraph.
+    private let targetChunkLength = 2000
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    // MARK: - TTSPlayable
+
+    func configureAudioSessionOwnership(_ enabled: Bool) {
+        // The coordinator owns the shared AVAudioSession; AVSpeechSynthesizer reuses it
+        // (usesApplicationAudioSession defaults to true), so there is nothing to configure.
+        ttsLog("[TTS][SystemEngine] configureAudioSessionOwnership ignored enabled=\(enabled)")
+    }
+
+    func speak(
+        text: String,
+        title: String,
+        rate: Float,
+        pronunciationHints: [TTSPronunciationHint]
+    ) {
+        ttsLog("[TTS][SystemEngine] speak requested textCount=\(text.count) title=\(title) rate=\(rate)")
+        resetPlaybackState()
+        segments = TTSPronunciationProjector.segments(
+            text,
+            targetLength: targetChunkLength,
+            hints: pronunciationHints,
+            multiRole: TTSRoleVoiceCast.containsSpeakableVoice(in: roleVoices, family: .system),
+            aliases: roleAliases
+        )
+        guard !segments.isEmpty else {
+            ttsLog("[TTS][SystemEngine] speak aborted no chunks")
+            AppLogger.error(
+                "[TTS] 系統語音沒有可朗讀的文字",
+                context: ["textCount": text.count, "title": title],
+                level: .warning
+            )
+            return
+        }
+
+        playbackToken = UUID()
+        lastRate = rate
+        currentIndex = 0
+        isPaused = false
+        isPlaying = true
+        beginBackgroundTask()
+
+        ttsLog("[TTS][SystemEngine] chunked count=\(segments.count) firstCount=\(segments.first?.text.count ?? 0)")
+        speakChunk(at: 0, token: playbackToken)
+    }
+
+    func pause() {
+        ttsLog("[TTS][SystemEngine] pause requested isPlaying=\(isPlaying) index=\(currentIndex) waiting=\(isWaitingForNextUnit)")
+        guard isPlaying else { return }
+        synthesizer.pauseSpeaking(at: .word)
+        silence.stop()
+        isPaused = true
+        isPlaying = false
+        endBackgroundTask()
+    }
+
+    func resume() {
+        ttsLog("[TTS][SystemEngine] resume requested isPlaying=\(isPlaying) isPaused=\(isPaused) index=\(currentIndex) waiting=\(isWaitingForNextUnit)")
+        guard !isPlaying, isPaused else { return }
+        beginBackgroundTask()
+        isPaused = false
+        isPlaying = true
+        // Paused while waiting on the next chapter. If it arrived during the pause, play it
+        // now; otherwise go back to waiting rather than re-speaking the finished chapter.
+        if isWaitingForNextUnit {
+            if let unit = pendingUnit {
+                pendingUnit = nil
+                isWaitingForNextUnit = false
+                silence.stop()
+                ttsLog("[TTS][SystemEngine] resume plays chapter held during pause")
+                speak(text: unit.text, title: "", rate: lastRate, pronunciationHints: unit.pronunciationHints)
+                return
+            }
+            silence.start()
+            ttsLog("[TTS][SystemEngine] resume back into waiting state")
+            return
+        }
+        if synthesizer.isPaused {
+            let success = synthesizer.continueSpeaking()
+            ttsLog("[TTS][SystemEngine] resume continue success=\(success)")
+        } else {
+            resumeCurrentChunkFromSpokenOffset(token: playbackToken)
+        }
+    }
+
+    /// Re-issues the current utterance after a media-services reset. If AVSpeechSynthesizer
+    /// has already emitted `didCancel`, that delegate path owns recovery; otherwise only
+    /// rebuild when it no longer reports an active utterance, avoiding two overlapping speaks.
+    func recoverAfterAudioSessionReset() {
+        guard isPlaying else { return }
+        if isWaitingForNextUnit {
+            silence.restart()
+            return
+        }
+        guard !isPaused else { return }
+        shouldRecoverCancellation = true
+        guard !synthesizer.isSpeaking else {
+            ttsLog("[TTS][SystemEngine] media-services reset; synthesizer still speaking")
+            return
+        }
+
+        shouldRecoverCancellation = false
+        if activeUtterance != nil {
+            synthesizer.stopSpeaking(at: .immediate)
+            activeUtterance = nil
+        }
+        ttsLog("[TTS][SystemEngine] recovering after media-services reset index=\(currentIndex) offset=\(spokenUTF16Offset)")
+        AppLogger.info(
+            "[TTS] 音訊服務重置後重新朗讀",
+            context: ["index": currentIndex, "offset": spokenUTF16Offset],
+            level: .notice
+        )
+        resumeCurrentChunkFromSpokenOffset(token: playbackToken)
+    }
+
+    func stop() {
+        ttsLog("[TTS][SystemEngine] stop requested")
+        playbackToken = UUID()
+        resetPlaybackState()
+        onStop?()
+    }
+
+    func updateRate(_ rate: Float) {
+        guard lastRate != rate else { return }
+        lastRate = rate
+        guard isPlaying else {
+            // A paused utterance keeps the rate it was created with, so drop it; resume then
+            // rebuilds from the spoken offset (which survives `stopSynthesizer`) at the new rate.
+            if isPaused { stopSynthesizer() }
+            return
+        }
+        ttsLog("[TTS][SystemEngine] updateRate live rate=\(rate) index=\(currentIndex)")
+        // Re-speak the unspoken tail of the current chunk so the new rate is audible now.
+        stopSynthesizer()
+        resumeCurrentChunkFromSpokenOffset(token: playbackToken)
+    }
+
+    func skipForward() {
+        ttsLog("[TTS][SystemEngine] skipForward requested index=\(currentIndex) count=\(segments.count)")
+        guard !segments.isEmpty else { return }
+        let nextIndex = currentIndex + 1
+        guard nextIndex < segments.count else {
+            handlePageChunksFinished(token: playbackToken)
+            return
+        }
+        jumpToChunk(at: nextIndex)
+    }
+
+    func skipBackward() {
+        ttsLog("[TTS][SystemEngine] skipBackward requested index=\(currentIndex) count=\(segments.count)")
+        guard !segments.isEmpty else { return }
+        jumpToChunk(at: max(currentIndex - 1, 0))
+    }
+
+    func seekToSegment(_ index: Int) {
+        guard !segments.isEmpty else { return }
+        let targetIndex = max(0, min(index, segments.count - 1))
+        ttsLog("[TTS][SystemEngine] seekToSegment requested index=\(targetIndex) current=\(currentIndex) isPlaying=\(isPlaying) isPaused=\(isPaused)")
+
+        if isPlaying {
+            jumpToChunk(at: targetIndex)
+            return
+        }
+
+        stopSynthesizer()
+        currentIndex = targetIndex
+        isPaused = true
+        spokenUTF16Offset = 0
+        utteranceBaseOffset = 0
+        publishSegmentChanged(index: targetIndex)
+    }
+
+    // MARK: - Playback
+
+    private func speakChunk(at index: Int, token: UUID) {
+        guard token == playbackToken else {
+            ttsLog("[TTS][SystemEngine] speakChunk ignored stale token index=\(index)")
+            return
+        }
+        guard !isPaused else {
+            ttsLog("[TTS][SystemEngine] speakChunk paused index=\(index)")
+            return
+        }
+        guard index < segments.count else {
+            handlePageChunksFinished(token: token)
+            return
+        }
+
+        currentIndex = index
+        publishSegmentChanged(index: index)
+        // Fresh chunk: nothing spoken yet, and its utterance starts at the chunk's beginning.
+        spokenUTF16Offset = 0
+        utteranceBaseOffset = 0
+
+        let hints = segments[index].pronunciationHints
+        utteranceSpeechText = TTSPronunciationSpeechText(text: segments[index].text, hints: hints)
+        let utterance = Self.makeUtterance(
+            text: segments[index].text,
+            rate: lastRate,
+            pronunciationHints: hints
+        )
+        guard let voice = Self.preferredVoice(
+            for: segments[index].text,
+            speaker: segments[index].speaker,
+            roleVoices: roleVoices
+        ) else {
+            failPlayback(TTSPlaybackError.systemVoiceUnavailable)
+            return
+        }
+        utterance.voice = voice
+        activeUtterance = utterance
+        isPlaying = true
+
+        onPlaybackStarted?(estimatedDuration(for: segments[index].text))
+        let voiceIdentifier = utterance.voice?.identifier ?? "system-default"
+        ttsLog("[TTS][SystemEngine] speak chunk index=\(index) rate=\(utterance.rate) voice=\(voiceIdentifier)")
+        synthesizer.speak(utterance)
+    }
+
+    /// Resume path taken when the synthesizer has already dropped its paused state (so
+    /// `continueSpeaking` is a no-op). Re-speaks only the not-yet-spoken tail of the current
+    /// chunk, from `spokenUTF16Offset`, avoiding the ~5s replay of the whole sentence.
+    private func resumeCurrentChunkFromSpokenOffset(token: UUID) {
+        guard token == playbackToken else { return }
+        guard segments.indices.contains(currentIndex) else {
+            handlePageChunksFinished(token: token)
+            return
+        }
+        let full = segments[currentIndex].text as NSString
+        let offset = min(max(spokenUTF16Offset, 0), full.length)
+        // Nothing spoken yet, or the whole chunk already spoken: fall back to the normal path.
+        guard offset > 0, offset < full.length else {
+            speakChunk(at: currentIndex, token: token)
+            return
+        }
+
+        let remaining = full.substring(from: offset)
+        publishSegmentChanged(index: currentIndex)
+
+        let hints = remainingHints(forChunk: currentIndex, fromUTF16Offset: offset)
+        utteranceSpeechText = TTSPronunciationSpeechText(text: remaining, hints: hints)
+        let utterance = Self.makeUtterance(text: remaining, rate: lastRate, pronunciationHints: hints)
+        // Same speaker as the chunk being resumed — otherwise pausing mid-line and
+        // continuing would hand the rest of it back to the narrator.
+        guard let voice = Self.preferredVoice(
+            for: remaining,
+            speaker: segments[currentIndex].speaker,
+            roleVoices: roleVoices
+        ) else {
+            failPlayback(TTSPlaybackError.systemVoiceUnavailable)
+            return
+        }
+        utterance.voice = voice
+        activeUtterance = utterance
+        utteranceBaseOffset = offset
+        isPlaying = true
+
+        onPlaybackStarted?(estimatedDuration(for: remaining))
+        ttsLog("[TTS][SystemEngine] resume from offset=\(offset)/\(full.length) index=\(currentIndex)")
+        synthesizer.speak(utterance)
+    }
+
+    /// Pronunciation hints for the tail of a chunk starting at `offset`, with each hint's range
+    /// clipped to the tail and rebased so it lines up with the re-spoken substring.
+    private func remainingHints(forChunk index: Int, fromUTF16Offset offset: Int) -> [TTSPronunciationHint] {
+        guard segments.indices.contains(index) else { return [] }
+        let full = segments[index].text as NSString
+        let tail = NSRange(location: offset, length: max(0, full.length - offset))
+        return TTSPronunciationProjector.project(segments[index].pronunciationHints, into: tail)
+    }
+
+    private func jumpToChunk(at index: Int) {
+        guard segments.indices.contains(index) else { return }
+        stopSynthesizer()
+        currentIndex = index
+        isPaused = false
+        isPlaying = true
+        beginBackgroundTask()
+        speakChunk(at: index, token: playbackToken)
+    }
+
+    private func handlePlaybackEnded() {
+        let finishedIndex = currentIndex
+        ttsLog("[TTS][SystemEngine] playback ended index=\(finishedIndex)")
+        activeUtterance = nil
+        guard isPlaying, !isPaused else { return }
+        speakChunk(at: finishedIndex + 1, token: playbackToken)
+    }
+
+    private func handlePlaybackCancelled(_ utterance: AVSpeechUtterance) {
+        guard utterance === activeUtterance else { return }
+        guard Self.shouldRecoverFromCancelledUtterance(
+            isPlaying: isPlaying,
+            isPaused: isPaused,
+            hasActiveUtterance: activeUtterance != nil,
+            afterMediaServicesReset: shouldRecoverCancellation
+        ) else {
+            ttsLog("[TTS][SystemEngine] utterance cancelled without media-services reset")
+            activeUtterance = nil
+            shouldRecoverCancellation = false
+            failPlayback(TTSPlaybackError.systemVoiceUnavailable)
+            return
+        }
+
+        ttsLog("[TTS][SystemEngine] utterance cancelled index=\(currentIndex) offset=\(spokenUTF16Offset)")
+        shouldRecoverCancellation = false
+        activeUtterance = nil
+        resumeCurrentChunkFromSpokenOffset(token: playbackToken)
+    }
+
+    private func failPlayback(_ error: Error) {
+        guard isPlaying else { return }
+        ttsLog("[TTS][SystemEngine] playback failed error=\(error.localizedDescription)")
+        // Narration is ending with the user still listening and nobody asked for it. Every
+        // breadcrumb above this line is `ttsLog`, i.e. NSLog — Console on a tethered Mac and
+        // nothing in the diagnostics export, which is why a stopped offline session used to
+        // leave the log completely silent.
+        AppLogger.anomaly(
+            localized("聽書因系統語音中斷而停止"),
+            category: .tts,
+            detail: """
+            index=\(currentIndex)/\(segments.count)
+            spokenOffset=\(spokenUTF16Offset)
+            error=\(String(describing: error))
+            """
+        )
+        shouldRecoverCancellation = false
+        resetPlaybackState()
+        onError?(error)
+        onStop?()
+    }
+
+    private func handlePageChunksFinished(token: UUID) {
+        guard token == playbackToken else { return }
+        ttsLog("[TTS][SystemEngine] page chunks finished count=\(segments.count)")
+
+        switch onPageFinished?() ?? .finished {
+        case let .ready(next) where !next.text.isEmpty:
+            speak(
+                text: next.text,
+                title: "",
+                rate: lastRate,
+                pronunciationHints: next.pronunciationHints
+            )
+        case .waiting:
+            enterWaitingForNextUnit()
+        case .ready:
+            // The `where !next.text.isEmpty` case above took every usable unit, so reaching
+            // here means the host said "ready" and handed over nothing. Indistinguishable from
+            // finishing the book on screen; not indistinguishable in the log.
+            AppLogger.anomaly(
+                localized("聽書停止：下一段沒有可朗讀的內容"),
+                category: .tts,
+                detail: "finishedChunks=\(segments.count)"
+            )
+            resetPlaybackState()
+            onStop?()
+        case .finished:
+            AppLogger.info("[TTS] 朗讀到結尾", context: ["chunks": segments.count], level: .notice)
+            resetPlaybackState()
+            onStop?()
+        }
+    }
+
+    /// Hold the session open while the host fetches + lays out the next chapter. The
+    /// background task and the audio session stay claimed, and looped silence keeps real
+    /// output flowing so a locked device doesn't suspend us mid-wait.
+    private func enterWaitingForNextUnit() {
+        guard !isWaitingForNextUnit else { return }
+        isWaitingForNextUnit = true
+        stopSynthesizer()
+        isPlaying = true
+        beginBackgroundTask()
+        silence.start()
+        ttsLog("[TTS][SystemEngine] waiting for next unit")
+        // Audible silence starts here. If narration never comes back, this line and the absence
+        // of a following `supplyPendingUnit` is what separates "the chapter never arrived" from
+        // "the engine died".
+        AppLogger.info(
+            "[TTS] 等待下一段內容",
+            context: ["finishedChunks": segments.count],
+            level: .notice
+        )
+    }
+
+    func supplyPendingUnit(_ unit: TTSNarrationUnit) {
+        guard isWaitingForNextUnit else {
+            ttsLog("[TTS][SystemEngine] supplyPendingUnit ignored not waiting")
+            return
+        }
+        guard !unit.text.isEmpty else {
+            ttsLog("[TTS][SystemEngine] supplyPendingUnit empty text; stopping")
+            // 「聽幾章就停」 lands here: the host answered the wait with nothing to read, which
+            // is a supply failure wearing the same clothes as the end of the book.
+            AppLogger.anomaly(
+                localized("聽書停止：下一段沒有可朗讀的內容"),
+                category: .tts,
+                detail: "waitingSince=\(currentIndex)/\(segments.count)"
+            )
+            isWaitingForNextUnit = false
+            resetPlaybackState()
+            onStop?()
+            return
+        }
+        guard !isPaused else {
+            ttsLog("[TTS][SystemEngine] supplyPendingUnit held; playback is paused")
+            pendingUnit = unit
+            return
+        }
+        ttsLog("[TTS][SystemEngine] supplyPendingUnit resuming textCount=\(unit.text.count)")
+        isWaitingForNextUnit = false
+        silence.stop()
+        // `speak` resets state and mints a fresh token, which is what we want here: the
+        // waiting period is the boundary between two chapters.
+        speak(text: unit.text, title: "", rate: lastRate, pronunciationHints: unit.pronunciationHints)
+    }
+
+    private func publishSegmentChanged(index: Int) {
+        guard segments.indices.contains(index) else { return }
+        onSegmentChanged?(TTSActiveSegment(
+            index: index,
+            total: segments.count,
+            text: segments[index].text,
+            narrationRange: segments[index].sourceRange
+        ))
+    }
+
+    private func stopSynthesizer() {
+        activeUtterance = nil
+        if synthesizer.isSpeaking || synthesizer.isPaused {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+    }
+
+    private func resetPlaybackState() {
+        stopSynthesizer()
+        shouldRecoverCancellation = false
+        silence.stop()
+        isWaitingForNextUnit = false
+        pendingUnit = nil
+        segments.removeAll()
+        currentIndex = 0
+        isPaused = false
+        isPlaying = false
+        spokenUTF16Offset = 0
+        utteranceBaseOffset = 0
+        endBackgroundTask()
+    }
+
+    // MARK: - Voice & rate
+
+    /// Selects a voice from the text's language so Chinese content is not spoken by the
+    /// device's English default voice, then lets the user's own choice for that language
+    /// win (語音朗讀設定 → 系統語音音色). With no choice stored — or one whose downloaded
+    /// voice has since been deleted — this stays exactly the old language default.
+    static func preferredVoice(for text: String) -> AVSpeechSynthesisVoice? {
+        let language = preferredLanguage(for: text)
+        if let selected = SystemTTSVoiceCatalog.selectedVoice(forLanguage: language) {
+            return selected
+        }
+        return AVSpeechSynthesisVoice(language: language)
+    }
+
+    /// The voice for one segment: the character's own if 多角色朗讀 has cast them,
+    /// otherwise the narrator's.
+    ///
+    /// A cast voice that no longer resolves — the user deleted that downloaded voice
+    /// since assigning it — falls back to the narrator rather than to silence, because
+    /// `speakChunk` treats a missing voice as a playback failure and ends the session.
+    static func preferredVoice(
+        for text: String,
+        speaker: String?,
+        roleVoices: [String: String]
+    ) -> AVSpeechSynthesisVoice? {
+        if let speaker,
+           let stored = roleVoices[speaker],
+           let identifier = TTSRoleVoice(storageValue: stored)?.systemIdentifier,
+           let voice = AVSpeechSynthesisVoice(identifier: identifier) {
+            return voice
+        }
+        return preferredVoice(for: text)
+    }
+
+    static func preferredLanguage(for text: String) -> String {
+        if text.unicodeScalars.contains(where: isHan) {
+            return preferredChineseLanguage()
+        }
+        return AVSpeechSynthesisVoice.currentLanguageCode()
+    }
+
+    /// Picks Traditional vs. Simplified Chinese from the device's language and region
+    /// preferences, while the text check above guarantees Chinese gets a Chinese voice even
+    /// when the rest of the device is configured in English.
+    private static func preferredChineseLanguage() -> String {
+        for code in Locale.preferredLanguages {
+            let lower = code.lowercased()
+            if lower.hasPrefix("zh-hant") || lower.contains("-tw") || lower.contains("-hk") || lower.contains("-mo") {
+                return "zh-TW"
+            }
+            if lower.hasPrefix("zh") {
+                return "zh-CN"
+            }
+        }
+        return "zh-CN"
+    }
+
+    private static func isHan(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x4E00...0x9FFF, 0x3400...0x4DBF, 0xF900...0xFAFF, 0x20000...0x2A6DF:
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func makeUtterance(
+        text: String,
+        rate: Float,
+        pronunciationHints: [TTSPronunciationHint]
+    ) -> AVSpeechUtterance {
+        // The language-specific voice is assigned by the playback path after this utterance is
+        // built. Keeping construction separate lets pronunciation annotations stay testable.
+        let utterance: AVSpeechUtterance
+        let speech = TTSPronunciationSpeechText(text: text, hints: pronunciationHints)
+        if speech.ipaHints.isEmpty {
+            utterance = AVSpeechUtterance(string: speech.text)
+        } else {
+            let attributed = NSMutableAttributedString(string: speech.text)
+            let key = NSAttributedString.Key(rawValue: AVSpeechSynthesisIPANotationAttribute)
+            let bounds = NSRange(location: 0, length: attributed.length)
+            for hint in speech.ipaHints {
+                let range = NSIntersectionRange(hint.range, bounds)
+                guard range.length > 0 else { continue }
+                attributed.addAttribute(key, value: hint.ipa, range: range)
+            }
+            utterance = AVSpeechUtterance(attributedString: attributed)
+        }
+        utterance.rate = utteranceRate(forUIRate: rate)
+        return utterance
+    }
+
+    /// Maps the UI rate (0.5 is "normal") onto an `AVSpeechUtterance` rate centered on the
+    /// system default, then clamps to the supported range.
+    static func utteranceRate(forUIRate uiRate: Float) -> Float {
+        let scaled = AVSpeechUtteranceDefaultSpeechRate * (uiRate / 0.5)
+        return max(AVSpeechUtteranceMinimumSpeechRate, min(scaled, AVSpeechUtteranceMaximumSpeechRate))
+    }
+
+    /// Highest UI rate this engine can actually deliver. `AVSpeechUtterance.rate` is hard
+    /// capped at `AVSpeechUtteranceMaximumSpeechRate` (2× the default), so the slider's
+    /// upper half is a no-op here — unlike the HTTP engine, which reaches 5× either through
+    /// the source's `speakSpeed` or through `TTSChunkAudioPlayer`'s time-pitch unit.
+    /// Surfacing this rather than saturating silently: see `TTSPanelView`'s rate note.
+    /// Deletable only if AVFoundation ever lifts the utterance rate ceiling.
+    static var maxSupportedUIRate: Float {
+        0.5 * (AVSpeechUtteranceMaximumSpeechRate / AVSpeechUtteranceDefaultSpeechRate)
+    }
+
+    private func estimatedDuration(for text: String) -> TimeInterval {
+        let characterCount = max(text.count, 1)
+        let baseCharactersPerSecond = 5.5 * max(Double(lastRate) / 0.5, 0.5)
+        return max(Double(characterCount) / baseCharactersPerSecond, 0.5)
+    }
+
+    // MARK: - Background task
+
+    private func beginBackgroundTask() {
+        guard backgroundTask == .invalid else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "System TTS Playback") { [weak self] in
+            ttsLog("[TTS][SystemEngine] background task expired")
+            AppLogger.error("[TTS] 背景執行時間用完", level: .warning)
+            self?.endBackgroundTask()
+        }
+        ttsLog("[TTS][SystemEngine] background task started id=\(backgroundTask.rawValue)")
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        ttsLog("[TTS][SystemEngine] background task ended id=\(backgroundTask.rawValue)")
+        backgroundTask = .invalid
+    }
+
+    deinit {
+        playbackToken = UUID()
+        resetPlaybackState()
+    }
+}
+
+extension SystemTTSEngine: AVSpeechSynthesizerDelegate {
+    func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString characterRange: NSRange,
+        utterance: AVSpeechUtterance
+    ) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, utterance === self.activeUtterance else { return }
+            // `characterRange` is relative to this utterance's string; add the utterance's base
+            // offset to track how far into the full chunk we've reached.
+            self.spokenUTF16Offset = self.utteranceBaseOffset + (self.utteranceSpeechText?.sourceOffset(forSpeechOffset: characterRange.location) ?? characterRange.location)
+        }
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, utterance === self.activeUtterance else { return }
+            self.handlePlaybackEnded()
+        }
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async { [weak self] in
+            self?.handlePlaybackCancelled(utterance)
+        }
+    }
+}

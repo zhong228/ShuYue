@@ -1,28 +1,63 @@
 #!/bin/bash
-# 书悦 ShuYue —— 无签名 IPA 构建脚本（本地与 CI 共用）
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-SCHEME="ShuYue"
-PROJECT="ShuYue.xcodeproj"
-VERSION="${1:-0.1.0}"
+PROJECT="Yuedu-Reader.xcodeproj"
+SCHEME="Yuedu-Reader"
+VERSION="${1:-1.0.0}"
+# Build number derived from the last segment of VERSION (e.g. "1.0.16" -> 16)
 BUILD_NUMBER="${VERSION##*.}"
 
-echo "==> Building $SCHEME (unsigned) for iOS device, version $VERSION ($BUILD_NUMBER)"
-
+echo "Building $SCHEME (unsigned) for iOS device, version $VERSION ..."
 mkdir -p build
 
-if ! command -v xcodegen >/dev/null 2>&1; then
-  echo "ERROR: xcodegen not found. Install with: brew install xcodegen"
-  exit 1
+# GoogleService-Info.plist is required by the Xcode project but is gitignored
+# (contains Firebase secrets). Generate a well-formed placeholder so the build
+# can proceed; runtime Firebase features degrade gracefully when keys are absent.
+if [ ! -f "GoogleService-Info.plist" ]; then
+  cat > GoogleService-Info.plist <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>placeholder-client-id</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.placeholder</string>
+	<key>API_KEY</key>
+	<string>placeholder-api-key</string>
+	<key>GCM_SENDER_ID</key>
+	<string>0</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.zhong228.shuyue</string>
+	<key>PROJECT_ID</key>
+	<string>shuyue-placeholder</string>
+	<key>STORAGE_BUCKET</key>
+	<string>shuyue-placeholder.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:0:ios:placeholder</string>
+</dict>
+</plist>
+PLIST
+  echo "Generated placeholder GoogleService-Info.plist (gitignored, not committed)"
 fi
 
-echo "==> Generating Xcode project from project.yml"
-xcodegen generate --spec project.yml
-
-echo "==> xcodebuild"
+# 1. Release build without code signing (device generic destination)
+# MARKETING_VERSION is injected from $VERSION so the in-app version always
+# matches the tag/release name passed to this script (root cause of
+# ShuYue 1.0.14 showing 1.0.13 in-app: the tag bumped but xcconfig did not).
 xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
@@ -32,29 +67,30 @@ xcodebuild \
   MARKETING_VERSION="$VERSION" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   CODE_SIGNING_ALLOWED=NO \
-  CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGN_IDENTITY="" \
   SWIFT_COMPILATION_MODE=incremental \
   build > build/xcodebuild.log 2>&1 || {
-    echo "xcodebuild FAILED — error lines:"
-    grep -n "error:" build/xcodebuild.log | head -60 || true
-    echo "--- last 40 lines ---"
-    tail -40 build/xcodebuild.log
+    echo "xcodebuild FAILED (error lines):"
+    grep -n "error:" build/xcodebuild.log | head -40 || true
+    echo "--- last 30 lines ---"
+    tail -30 build/xcodebuild.log
     exit 1
   }
 
+# 2. Locate built .app
 APP="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -1)"
 if [ -z "$APP" ]; then
   echo "ERROR: .app not found in build products"
   exit 1
 fi
-echo "==> App bundle: $APP"
+echo "App bundle: $APP"
 
-rm -rf build/unsigned
-rm -f build/ShuYue-*.ipa
+# 3. Assemble unsigned IPA (standard Payload layout)
+rm -rf build/unsigned build/ShuYue-*.ipa
 mkdir -p build/unsigned/Payload
 cp -R "$APP" build/unsigned/Payload/
-(cd build/unsigned && zip -qry "../ShuYue-v${VERSION}.ipa" Payload)
+cd build/unsigned
+zip -qry "../ShuYue-v${VERSION}.ipa" Payload
+cd "$PROJECT_DIR"
 
-echo "==> IPA created: $PROJECT_DIR/build/ShuYue-v${VERSION}.ipa"
+echo "IPA created: $(pwd)/build/ShuYue-v${VERSION}.ipa"
 ls -lh "build/ShuYue-v${VERSION}.ipa"

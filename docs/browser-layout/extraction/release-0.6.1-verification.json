@@ -1,0 +1,246 @@
+{
+  "verifiedAt": "2026-09-30T14:17:29.938694+00:00",
+  "release": {
+    "version": "0.6.1",
+    "revision": "d7e16bd9aa64b80c4d0bc70fa0fc069409c34ea7",
+    "tagObject": "3097f36893cdeb34b97451e5149e0f12ab4c3645",
+    "url": "https://github.com/CHANG-JUI-LIN/YueduCoreText/releases/tag/0.6.1"
+  },
+  "normalProject": "Yuedu-Reader.xcodeproj",
+  "localPackageOverride": false,
+  "generatedPin": {
+    "identity": "yueducoretext",
+    "kind": "remoteSourceControl",
+    "location": "https://github.com/CHANG-JUI-LIN/YueduCoreText",
+    "state": {
+      "revision": "d7e16bd9aa64b80c4d0bc70fa0fc069409c34ea7",
+      "version": "0.6.1"
+    }
+  },
+  "otherDependencyPinsUnchanged": 27,
+  "publishedPackageSourceHashes": {
+    "Sources/YueduCoreText/ReaderContentMetrics.swift": "aca0780af2bcf12c97bd20c1ebc6bb6ddb35f763ef1b9b7ea39aea35ae104ac0",
+    "Sources/YueduCoreText/ReaderPerfTrace.swift": "40829c839e0d5e7fbd69063ac994668db2b8b55936953c33826d9f150a30d268",
+    "Sources/YueduCoreText/TextSelectionManager.swift": "34a78afd5217039f9586627dde2669dd62e81f50e0e7a870d0ae6a1f5a9629c6",
+    "Sources/YueduCoreTextTypography/VerticalGlyphClassifier.swift": "bc2f6c571212674a63adf7b49cc372e66abae5a02e507593460f58181a347b47",
+    "Sources/YueduCoreTextTypography/ReaderHyphenation.swift": "cbba52a791a82884f6692dd6d34f4113523031b3cba6f00090f4ba86e50e56ab",
+    "Sources/YueduCoreTextTypography/VerticalLayoutConfig.swift": "13bd39a2adda59bc7fb9cbde81d5ce58efb2bf42bc5ad6243c79b5a2a5120f85",
+    "Sources/YueduCoreTextTypography/CoreTextFramesetterFactory.swift": "cd8376f647caa5ea319da17042718ac806879c1a34c48314e8a9b6a71681ba09",
+    "Sources/YueduCoreTextTypography/CJKTypographyProcessor.swift": "0b8f6723100b89d8b60b271a2c12ae2fa42b3edf1bdcf7b16e5e3e4b20185a3b",
+    "Sources/YueduCoreTextTypography/String+VerticalNormalization.swift": "abed4a1cacb0dd5c8c7b35b992452c1889d4c85e36a98811f7f48e0ecf2c10bf",
+    "Sources/YueduCoreText/HTMLCSS/HTMLResourceReferences.swift": "b645c16cbb04daa1522e29f285cfc5d25949b39ce060a1472cfa74834d52f280",
+    "Sources/YueduCoreText/HTMLCSS/CSSParser.swift": "e5cbabef7f4ff9d44e63114df3644b45630a85f7db449f86a8bc887a9d1e9c26",
+    "Sources/YueduCoreText/HTMLCSS/HTMLPresentationalHintExtractor.swift": "bc9d089ebcf996769a5717023082648a35f90037bb171abd707aa9bfb8a83307",
+    "Sources/YueduCoreText/HTMLCSS/SwiftSoupHTMLSemanticAdapter.swift": "51395065a126a425a4b8652d67165ca7c7b75632f1c5890ddc3fccc591dafb67",
+    "Sources/YueduCoreText/HTMLCSS/CSSTextIndent.swift": "5de3609374100e60f6d2be9fb8124e5fcf242af31326ae6835270ab20023f083",
+    "Sources/YueduCoreText/HTMLCSS/CSSLength.swift": "05cf6e0c214d4555e9c7e255c0d009bda01384e83606a5112a274909b8a11cc1",
+    "Sources/YueduCoreText/Layout/FontTraits.swift": "7ac7e9b922fe1d6c4c437808662f02a760703d6fb15e152a47c0d8b058803757",
+    "Sources/YueduCoreText/Layout/ReaderFontCascade.swift": "e6559983affaba96ae38562e4aa35c658ba8d0b9b9c3911fd67d0d86f0b4091d",
+    "Sources/YueduCoreText/Rendering/TextLinePaintBounds.swift": "a305f6e81ce8dc67ee7330b3d45a5f4882953e07caf3c4e7db930d69b4c81a23",
+    "Sources/YueduCoreText/Rendering/DisplayListDrawer.swift": "ea8f9922c0e6da6787b161557711df5004a6bf9b6a3c545f85665aa6fa833d42",
+    "Sources/YueduCoreText/Rendering/MediaPlaceholderRenderer.swift": "dbe3c10d2c20930ed8f82e0171da331baf2c1a5f3e281084a5ce59febd36e052",
+    "Sources/YueduCoreText/Rendering/BrowserPaintFragmentDrawing.swift": "643593aa5d303916ae44e58432be91856a1b4435964b4a4a5c644f7b11941c75",
+    "Sources/YueduCoreText/PublicAPI/BrowserViewportSnapshot.swift": "89bf523059c2d5e2a9a7d69dacaa01d3c70dd3303737ec1987301723347e9dac",
+    "Sources/YueduCoreText/PublicAPI/EPUBMediaAttachment.swift": "6163cca27fc58ca45d9698076f5582e21fcf60b8657330e3432baf859b44400f",
+    "Sources/YueduCoreText/PublicAPI/BrowserLayoutFailure.swift": "dd15903d10111be5be2346e3da6b2adfb4c4501e3434eb3e8b122fd7349b57a5",
+    "Sources/YueduCoreText/PublicAPI/BrowserPageBackground.swift": "32f91b9a4f582f3ed6134009a1c4f8a3af422708253062a7de8cd9ad059b48a5",
+    "Sources/YueduCoreText/PublicAPI/BrowserViewportSession.swift": "a986d4b84042998eb1fd639dec6daa5305bd8c0a03cb95781bf5f8dba29c22bd",
+    "Sources/YueduCoreText/PublicAPI/TTSPronunciationHint.swift": "0a1f36a5648b3533aa4aa5e8cdc4f8e727577978ab2c648a2256d3cf888c4e4a",
+    "Sources/YueduCoreText/PublicAPI/BrowserViewportLayoutOwner.swift": "842b4b36dba328d3f7102e076f76f29f189f11a2e457812bfbf04cc70ba2955c",
+    "Sources/YueduCoreText/PublicAPI/BrowserTextAttributes.swift": "ed931a5bbf16353885ab49e84633dd11004f61fa1595c70df3b32d1164b0bd0c",
+    "Sources/YueduCoreText/PublicAPI/HTMLLayoutDocument.swift": "8756a673a272f182e1c92eb6798ee5104dc98b0799fc5ab85f6fcfccebe14745",
+    "Sources/YueduCoreText/PublicAPI/ReaderWritingMode.swift": "496b9507bab4ac56bfb998cf78bd65781106c5a2d462283679137c6968c2cfcc",
+    "Sources/YueduCoreText/Engine/CSSFrontend.swift": "985dc73f3377d3e81f22d45b0b7364a6afbfc8157b47aa95ae39f7e42a19c375",
+    "Sources/YueduCoreText/Engine/PageFragmentation.swift": "c96f2f459f812edb08fe34dd77405485be27ea48cdd968aa013858699df39735",
+    "Sources/YueduCoreText/Engine/ComputedStyle.swift": "9f32c6328d9ddf32dc98ba56930fafbe8eb9730f9156f8d9f4ce581b02a5f0c7",
+    "Sources/YueduCoreText/Engine/HorizontalRubySupport.swift": "ce56fe256e7446b6d5eb4584415d38b4ace4a381f2c306df084703040dcaaa2e",
+    "Sources/YueduCoreText/Engine/LogicalFlow.swift": "cb891381557af7e768d858b49393688640ce4076cb00d88a8c7dc240f0d73eae",
+    "Sources/YueduCoreText/Engine/BrowserLayoutCapabilityScanner.swift": "cddb9d9c8f12a8e584635bf933fbd455869d4ae9f1d10f7d4abe9f52aa6f4583",
+    "Sources/YueduCoreText/Engine/ComputedStyleTreeBuilder.swift": "75ac6b9896ec804b560313e42aa8144437ff7b39936ae0700c6e8be7826a4fc4",
+    "Sources/YueduCoreText/Engine/DisplayList.swift": "8a267f7402421d9934e83adc8a722c824c266c0644b6938d44081c6db730fbd9",
+    "Sources/YueduCoreText/Engine/BrowserViewportLayoutState.swift": "e0f0847e76c2bd13f4798caec869f97d67487483f34975725dfaca425da865f2",
+    "Sources/YueduCoreText/Engine/InlineLayoutCursor.swift": "924c17908052d17bcf25e54a9a5a35d7e08f7383876fdddfa74467836b2f9936",
+    "Sources/YueduCoreText/Engine/BlockLayout.swift": "dcd80f06b3a06adce062b6ef988a5f922ee1d5dfd3bc857d2b746c1f582709e1",
+    "Sources/YueduCoreText/Engine/CoreTextLineBreaker.swift": "07f0a427960970b60dd4b1029a25616b0889b0e49c22716d0464a4c905a3b9a1",
+    "Sources/YueduCoreText/Engine/BrowserReaderTextStyling.swift": "3866819c1c096de7f8584b815ba09cfe9d5909938e633cc955c0bef8dbaac02a",
+    "Sources/YueduCoreText/Engine/BrowserLayoutDocument.swift": "9f12531fb8193bddc0b7ebf977d8aa9cf0cf0074bdf5054b758e71e3eb5db2e1",
+    "Sources/YueduCoreText/Engine/RubyInlineLayout.swift": "faf6c26962c36d5e2325a81e7a8ecc815d015fb66c3ba5bf73a7c0b967af1f6c",
+    "Sources/YueduCoreText/Engine/BrowserScrollDocument.swift": "c5111bf79f7e90daee2cbf410ffff81f4196e2ac5bce5d2a7fe6de7cc3e05620",
+    "Sources/YueduCoreText/Engine/BrowserLayoutDeviceDiagnostic.swift": "090e67cd388cbfbbceccfc7bc25426a301929922fb205642c6129d0b225b52d4",
+    "Sources/YueduCoreText/Engine/LogicalGeometry.swift": "f0f3a568b1971999fc0abd8aed45eb9f35184a443cf3ee20fcc5f19c1854e8ad",
+    "Sources/YueduCoreText/Engine/CSSFrontendModels.swift": "e8656e88f05974b53f031fbd0611de650de65d05c31f8ed25abc8dbeb917eabe",
+    "Sources/YueduCoreText/Engine/BrowserLayoutSemanticContent.swift": "7e2ff335d2d581ff9c59cab258054ed45b5f21d84f4fe9b77124eefcfac4cd57",
+    "Sources/YueduCoreText/Engine/HorizontalTextIndentSupport.swift": "b475e9eb1e2bf4a7e62b8377e582623cc6abb55f922e92d2e82dcac49c70ae45",
+    "Sources/YueduCoreText/Engine/BrowserTextGeometry.swift": "eae9e667fd3f3fc6a170b19aa2600aab7368d9d8b95c2016887360e43a647071",
+    "Sources/YueduCoreText/Engine/CurrentCSSFrontend.swift": "fcb9c212433ecb0149f3d6abeab6721df5f8d42340fbbdd51101a05e3196c903",
+    "Sources/YueduCoreText/Engine/BoxTreeBuilder.swift": "6574caea1602382bc06402afaaaa9e594077eac76f238719f2ee382f7c8bd873",
+    "Sources/YueduCoreText/Engine/BrowserLayoutSession.swift": "4ca8efe3d8f3baca83eb20babf8f156cbfc9879199b03b52024d6ade7d36b733",
+    "Sources/YueduCoreText/Engine/FloatContext.swift": "3709ce384148bc5a2dedc4649868231e6761f9a0676bad0d8ac2f62beab6672a",
+    "Sources/YueduCoreText/Engine/LayoutBoxTree.swift": "ea3669f35dd05b6c4f231144c559e65b331a3d8a7118dc54303477aafd6ad654",
+    "Sources/YueduCoreText/Engine/InlineFormattingContext.swift": "4f69f8114e4ebb19c5315b22247b38ba42779efa624deb23105a47f9e4f4af09",
+    "Sources/YueduCoreText/Engine/BrowserPaintFragment.swift": "c0a378627082bb9b1d44bdfab4547c331bc48d011dae52cc7b14bc16f16f295f",
+    "Sources/YueduCoreText/Engine/InlineLayout.swift": "e4551bb946e1ba496f1ee7040574d6ae96c67c1cf7f4960935f4d797f0541e4d",
+    "Sources/YueduCoreText/Engine/TextBreakingAttributes.swift": "15e586959fce3bcda652e80eef7391e04662d174fb6c99fe34c714b010bdfcbc",
+    "Sources/YueduCoreText/Engine/BrowserLayoutGeometry.swift": "2652d0780c1f6206f1ab952e69d29e0cc52141091b1a5a5c0af34e588ed90a03",
+    "Sources/YueduCoreText/Engine/BrowserViewportIntervalIndex.swift": "388f0af8ff0c38665e2475928153dba7fcfc62601b4da751379cea624ada5cad",
+    "Sources/YueduCoreText/Interaction/LinkInteraction.swift": "1db25d0212eab5c44b502b1a2ce5f634b9e4cd6b07b285cb6e713277f1d85329",
+    "Sources/YueduCoreText/Interaction/BrowserPageGeometry.swift": "d017db42caa4d30a48225e72f6e0b0d38f10ba36d71f35c2b5692ca7706dd077"
+  },
+  "regressions": [
+    {
+      "class": "BrowserFontDemandTests",
+      "passed": 4,
+      "log": "/tmp/yuedu-font-demand-061-project-BrowserFontDemandTests.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-BrowserFontDemandTests.xcresult"
+    },
+    {
+      "class": "EPUBAuthoredFontCascadeTests",
+      "passed": 2,
+      "log": "/tmp/yuedu-font-demand-061-project-EPUBAuthoredFontCascadeTests.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-EPUBAuthoredFontCascadeTests.xcresult"
+    },
+    {
+      "class": "BrowserLayoutPageEngineTests",
+      "passed": 17,
+      "log": "/tmp/yuedu-font-demand-061-project-BrowserLayoutPageEngineTests-v2.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-BrowserLayoutPageEngineTests-v2.xcresult"
+    },
+    {
+      "class": "BrowserLayoutFontFallbackTests",
+      "passed": 9,
+      "log": "/tmp/yuedu-font-demand-061-project-BrowserLayoutFontFallbackTests.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-BrowserLayoutFontFallbackTests.xcresult"
+    },
+    {
+      "class": "CoreTextWritingModeTests",
+      "passed": 25,
+      "log": "/tmp/yuedu-font-demand-061-project-CoreTextWritingModeTests.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-CoreTextWritingModeTests.xcresult"
+    },
+    {
+      "class": "BrowserVerticalReaderRouteTests",
+      "passed": 2,
+      "log": "/tmp/yuedu-font-demand-061-project-BrowserVerticalReaderRouteTests.log",
+      "xcresult": "/tmp/yuedu-font-demand-061-project-BrowserVerticalReaderRouteTests.xcresult"
+    }
+  ],
+  "excludedFailedAttempt": {
+    "log": "/tmp/yuedu-font-demand-061-project-BrowserLayoutPageEngineTests.log",
+    "reason": "build.db locked before test execution",
+    "executedTests": 0
+  },
+  "totalAppRegressionTests": 59,
+  "packagePublicAPITests": 2,
+  "packageReleaseMetadataTests": 9,
+  "ciSnapshot": {
+    "conclusion": "success",
+    "jobs": [
+      {
+        "completedAt": "2026-09-30T14:09:41Z",
+        "conclusion": "success",
+        "databaseId": 109922365206,
+        "name": "test",
+        "startedAt": "2026-09-30T14:00:38Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-09-30T14:00:39Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-09-30T14:00:39Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:00:41Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-09-30T14:00:39Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:00:51Z",
+            "conclusion": "success",
+            "name": "Describe toolchain and package",
+            "number": 3,
+            "startedAt": "2026-09-30T14:00:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:02:55Z",
+            "conclusion": "success",
+            "name": "Build Release for iOS devices",
+            "number": 4,
+            "startedAt": "2026-09-30T14:00:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:04:52Z",
+            "conclusion": "success",
+            "name": "Test on iOS Simulator",
+            "number": 5,
+            "startedAt": "2026-09-30T14:02:55Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:09:36Z",
+            "conclusion": "success",
+            "name": "Test standalone public API consumer",
+            "number": 6,
+            "startedAt": "2026-09-30T14:04:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "0001-01-01T00:00:00Z",
+            "conclusion": "",
+            "name": "Upload test results",
+            "number": 7,
+            "startedAt": "2026-09-30T14:09:36Z",
+            "status": "in_progress"
+          },
+          {
+            "completedAt": "2026-09-30T14:09:38Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 14,
+            "startedAt": "2026-09-30T14:09:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-09-30T14:09:39Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 15,
+            "startedAt": "2026-09-30T14:09:38Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/CHANG-JUI-LIN/YueduCoreText/actions/runs/36725839611/job/109922365206"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/CHANG-JUI-LIN/YueduCoreText/actions/runs/36725839611",
+    "verifiedLog": {
+      "path": "/tmp/yueducoretext-061-ci.log",
+      "releaseBuild": "BUILD SUCCEEDED",
+      "coreTests": 142,
+      "typographyTests": 11,
+      "standaloneConsumerTests": 8,
+      "testVerdicts": [
+        "TEST SUCCEEDED",
+        "TEST SUCCEEDED"
+      ]
+    }
+  },
+  "measurementProvenance": {
+    "workspaceMeasuredBeforePublication": true,
+    "rawObservations": 120,
+    "effectiveObservations": 100,
+    "readerCoreSourcesUnchangedSinceMeasurement": true,
+    "testWrapperChangedForPackageScheme": true,
+    "configurationAwareScannerBodyUnchanged": true,
+    "oldTwoArgumentScannerOverloadRestoredAfterMeasurement": true,
+    "summarySha256": "716a36de6b6e405cf85538faef600a78b6bfae455b97d502923fc7c873fa9c11"
+  }
+}

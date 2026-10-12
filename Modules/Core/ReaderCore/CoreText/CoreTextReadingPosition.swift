@@ -1,0 +1,136 @@
+import Foundation
+
+struct CoreTextReadingPosition: Codable, Equatable {
+    let spineIndex: Int
+    let charOffset: Int
+    /// A place inside a translation (整章翻譯): how far into the translation that hangs off
+    /// `charOffset`. Nil for the book's own text — and read as the source character once the
+    /// translation is not on screen. See `ReaderTranslationLayout`.
+    var translationOffset: Int? = nil
+
+    static func chapterStart(_ spineIndex: Int) -> Self {
+        Self(spineIndex: spineIndex, charOffset: 0)
+    }
+
+    static func chapterEnd(_ spineIndex: Int) -> Self {
+        Self(spineIndex: spineIndex, charOffset: .max)
+    }
+}
+
+enum CoreTextReadingPositionMapper {
+    static func pageIndex(
+        for position: CoreTextReadingPosition,
+        layouts: [Int: CoreTextPaginator.ChapterLayout],
+        spinePageOffsets: [Int]
+    ) -> Int? {
+        guard spinePageOffsets.indices.contains(position.spineIndex),
+              let layout = layouts[position.spineIndex] else {
+            return nil
+        }
+
+        let localPage = localPageIndex(for: position, in: layout)
+        return spinePageOffsets[position.spineIndex] + localPage
+    }
+
+    static func localPageIndex(
+        for position: CoreTextReadingPosition,
+        in layout: CoreTextPaginator.ChapterLayout
+    ) -> Int {
+        layout.pageIndex(for: clampedCharOffset(for: position, in: layout))
+    }
+
+    /// The position's offset in the laid-out text, clamped to it. The same as the
+    /// position's own offset unless 整章翻譯 spliced translations into the chapter.
+    static func clampedCharOffset(
+        for position: CoreTextReadingPosition,
+        in layout: CoreTextPaginator.ChapterLayout
+    ) -> Int {
+        layout.displayOffset(for: position)
+    }
+
+    // MARK: - Page stepping
+
+    /// The page after `position`, as a position.
+    ///
+    /// This is what the `UIPageViewController` data source walks. It deliberately
+    /// never consults `spinePageOffsets`: a global page index is only meaningful
+    /// inside the pagination that produced it, and a chapter laying out mid-turn
+    /// renumbers every page after it. Chapter boundaries come from `chapterCount`
+    /// alone, so crossing one needs no layout on the far side.
+    ///
+    /// Returns nil at the end of the book, and when the current chapter has no
+    /// layout — there is no honest answer to "what follows a page we never
+    /// measured", and UIKit reads nil as "no next page".
+    static func positionAfter(
+        _ position: CoreTextReadingPosition,
+        layouts: [Int: CoreTextPaginator.ChapterLayout],
+        chapterCount: Int
+    ) -> CoreTextReadingPosition? {
+        let spineIndex = position.spineIndex
+        guard (0..<chapterCount).contains(spineIndex),
+              let layout = layouts[spineIndex],
+              !layout.pageRanges.isEmpty
+        else { return nil }
+
+        let offset = clampedCharOffset(for: position, in: layout)
+        let localPage = layout.pageIndex(for: offset)
+        if localPage + 1 < layout.pageRanges.count {
+            return layout.readingPosition(atDisplay: Int(layout.pageRanges[localPage + 1].location))
+        }
+
+        // Partial layout: the chapter continues past what has been measured. The
+        // first unmeasured character is a real anchor — once the full pass lands it
+        // resolves to the very next page, with no index to go stale in between.
+        if layout.isPartial {
+            let coveredEnd = layout.pageRanges.last.map { Int($0.location + $0.length) } ?? 0
+            if coveredEnd < layout.attributedString.length {
+                // Only when it is genuinely ahead of where we are.
+                //
+                // Handing `coveredEnd` back to a reader already standing on it made this
+                // walker a **fixed point**: "the next page is the page you are on". A
+                // device log caught it as 26 out of 26 `after == start` — every G1 report
+                // in a four-minute window, deterministic rather than racy. The reader gets
+                // parked on `coveredEnd` in the first place because the previous call
+                // handed it out as a destination, so it is reached by ordinary reading.
+                if coveredEnd > offset {
+                    return layout.readingPosition(atDisplay: coveredEnd)
+                }
+                // Nothing honest left to say: this chapter continues, but the text after
+                // `coveredEnd` has not been measured, so no position can name it. Falling
+                // through to the next chapter would skip the unmeasured remainder — which
+                // is 翻頁跳章節, the report this walker exists to prevent. `nil` refuses the
+                // turn until the full pagination lands and `onChapterReady` re-places the
+                // stack (`Technotes/ReaderChapterSupply.md` invariant 1).
+                return nil
+            }
+        }
+
+        guard spineIndex + 1 < chapterCount else { return nil }
+        return .chapterStart(spineIndex + 1)
+    }
+
+    /// The page before `position`, as a position. Mirror of `positionAfter`;
+    /// returns nil at the start of the book.
+    static func positionBefore(
+        _ position: CoreTextReadingPosition,
+        layouts: [Int: CoreTextPaginator.ChapterLayout],
+        chapterCount: Int
+    ) -> CoreTextReadingPosition? {
+        let spineIndex = position.spineIndex
+        guard (0..<chapterCount).contains(spineIndex),
+              let layout = layouts[spineIndex],
+              !layout.pageRanges.isEmpty
+        else { return nil }
+
+        let localPage = localPageIndex(for: position, in: layout)
+        if localPage > 0 {
+            return layout.readingPosition(atDisplay: Int(layout.pageRanges[localPage - 1].location))
+        }
+
+        guard spineIndex > 0 else { return nil }
+        // `.chapterEnd` is a sentinel offset, resolved against the previous
+        // chapter's layout whenever it lands — so backward crossing needs no
+        // layout on the far side either.
+        return .chapterEnd(spineIndex - 1)
+    }
+}
