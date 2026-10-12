@@ -1,0 +1,1419 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C081706E1002E557584EDC6 /* YueduCoreTextTypography in Frameworks */ = {isa = PBXBuildFile; productRef = 3D3ACA9A6DDE978E3B91280C /* YueduCoreTextTypography */; };
+		1E90D290C84CF7DFB61183AB /* yuedu_app_Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E4E1DDA4EE35F67778097F0 /* yuedu_app_Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2EE60C00FD763A43CFCAC2A0 /* yuedu_app_ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 81F92752186D8D0E971A17B9 /* yuedu_app_ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3021769152B9F41FC1F2CBA5 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 489E6E08B47AA3AC9F140CAD /* SwiftSoup */; };
+		3B275A36815844CE9EBD5086 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E661223F57364063B509666C /* GoogleService-Info.plist */; };
+		460274852F710D7500486947 /* ReadiumAdapterLCPSQLite in Frameworks */ = {isa = PBXBuildFile; productRef = 460274842F710D7500486947 /* ReadiumAdapterLCPSQLite */; };
+		463C854D2FA4F48E008F9AD7 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 463C854C2FA4F48E008F9AD7 /* GoogleSignIn */; };
+		463C854F2FA4F493008F9AD7 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 463C854E2FA4F493008F9AD7 /* GoogleSignInSwift */; };
+		46A6AB632FCD4ED60071B397 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB622FCD4ED60071B397 /* FirebaseAnalytics */; };
+		46A6AB652FCD4ED60071B397 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB642FCD4ED60071B397 /* FirebaseAnalyticsCore */; };
+		46A6AB672FCD4ED60071B397 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB662FCD4ED60071B397 /* FirebaseAnalyticsIdentitySupport */; };
+		46A6AB692FCD4ED60071B397 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB682FCD4ED60071B397 /* FirebaseAppCheck */; };
+		46A6AB6B2FCD4ED60071B397 /* FirebaseAppDistribution-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB6A2FCD4ED60071B397 /* FirebaseAppDistribution-Beta */; };
+		46A6AB6D2FCD4ED60071B397 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB6C2FCD4ED60071B397 /* FirebaseAuth */; };
+		46A6AB6F2FCD4ED60071B397 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB6E2FCD4ED60071B397 /* FirebaseAuthCombine-Community */; };
+		46A6AB712FCD4ED60071B397 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB702FCD4ED60071B397 /* FirebaseCore */; };
+		46A6AB732FCD4ED60071B397 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB722FCD4ED60071B397 /* FirebaseCrashlytics */; };
+		46A6AB752FCD4ED60071B397 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB742FCD4ED60071B397 /* FirebaseDatabase */; };
+		46A6AB772FCD4ED60071B397 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB762FCD4ED60071B397 /* FirebaseFirestore */; };
+		46A6AB792FCD4ED60071B397 /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB782FCD4ED60071B397 /* FirebaseFirestoreCombine-Community */; };
+		46A6AB7B2FCD4ED60071B397 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB7A2FCD4ED60071B397 /* FirebaseFunctions */; };
+		46A6AB7D2FCD4ED60071B397 /* FirebaseFunctionsCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB7C2FCD4ED60071B397 /* FirebaseFunctionsCombine-Community */; };
+		46A6AB812FCD4ED60071B397 /* FirebaseInstallations in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB802FCD4ED60071B397 /* FirebaseInstallations */; };
+		46A6AB832FCD4ED60071B397 /* FirebaseMLModelDownloader in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB822FCD4ED60071B397 /* FirebaseMLModelDownloader */; };
+		46A6AB852FCD4ED60071B397 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB842FCD4ED60071B397 /* FirebaseMessaging */; };
+		46A6AB872FCD4ED60071B397 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB862FCD4ED60071B397 /* FirebasePerformance */; };
+		46A6AB892FCD4ED60071B397 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB882FCD4ED60071B397 /* FirebaseRemoteConfig */; };
+		46A6AB8B2FCD4ED60071B397 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB8A2FCD4ED60071B397 /* FirebaseStorage */; };
+		46A6AB8D2FCD4ED60071B397 /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 46A6AB8C2FCD4ED60071B397 /* FirebaseStorageCombine-Community */; };
+		54FF42D0FA99075B5C91D59B /* ReadiumZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 7F41A49C749809CDAB632913 /* ReadiumZIPFoundation */; };
+		54FF42D1FA99075B5C91D59B /* ReadiumShared in Frameworks */ = {isa = PBXBuildFile; productRef = 54FF42D2FA99075B5C91D59B /* ReadiumShared */; };
+		54FF42D3FA99075B5C91D59B /* ReadiumStreamer in Frameworks */ = {isa = PBXBuildFile; productRef = 54FF42D4FA99075B5C91D59B /* ReadiumStreamer */; };
+		59196CD4E2AC41958E276886 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E661223F57364063B509666C /* GoogleService-Info.plist */; };
+		605CA89FF5C9882A68E236F3 /* YueduCoreText in Frameworks */ = {isa = PBXBuildFile; productRef = FF544FB3AA8924E26745E485 /* YueduCoreText */; };
+		6B865095660449D830AF13C4 /* iosMath in Frameworks */ = {isa = PBXBuildFile; productRef = 3F2758F4003B483DCE6CFC1C /* iosMath */; };
+		6E860399818D270C801E7519 /* CLexbor in Frameworks */ = {isa = PBXBuildFile; productRef = EC30E8EE1B7F4DA83ADB8821 /* CLexbor */; };
+		8A11B0E32F9A1C7300A1B001 /* ReadiumFuzi in Frameworks */ = {isa = PBXBuildFile; productRef = 8A11B0E22F9A1C7300A1B001 /* ReadiumFuzi */; };
+		9345BAE6E7C14A44A078A749 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E661223F57364063B509666C /* GoogleService-Info.plist */; };
+		AAAA1111AAAA1111AAAA0001 /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = AAAA1111AAAA1111AAAA0002 /* Nuke */; };
+		BA0DC69BDD8FFF2AE7B103A0 /* YueduCoreTextTypography in Frameworks */ = {isa = PBXBuildFile; productRef = 3D3ACA9A6DDE978E3B91280C /* YueduCoreTextTypography */; };
+		D4C329B2F01E414A88BD6077 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E661223F57364063B509666C /* GoogleService-Info.plist */; };
+		D698BFBD3CA24E3C9A05AD4B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E661223F57364063B509666C /* GoogleService-Info.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		460D36672F51C5B9006E774C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 460D36512F51C5B8006E774C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 460D36582F51C5B8006E774C;
+			remoteInfo = "Yuedu-Reader";
+		};
+		460D36712F51C5B9006E774C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 460D36512F51C5B8006E774C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 460D36582F51C5B8006E774C;
+			remoteInfo = "Yuedu-Reader";
+		};
+		46C7C03A2F8F59E000182BEC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 460D36512F51C5B8006E774C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D398CD107E29DC5585FDF83;
+			remoteInfo = "Yuedu-Reader Widget";
+		};
+		46C7C03B2F8F59E000182BEC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 460D36512F51C5B8006E774C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C7BCB242F4C3B08FEE1E0216;
+			remoteInfo = "Yuedu-Reader ShareExtension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5FFE0D9ED24A85A7ACED161A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				1E90D290C84CF7DFB61183AB /* yuedu_app_Widget.appex in Embed Foundation Extensions */,
+				2EE60C00FD763A43CFCAC2A0 /* yuedu_app_ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4602AABB2F51C45CAB3FACE1 /* Yuedu-reader_version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Yuedu-reader_version.xcconfig"; sourceTree = "<group>"; };
+		460D36592F51C5B8006E774C /* YueduReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YueduReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		460D36662F51C5B9006E774C /* yuedu appTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "yuedu appTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		460D36702F51C5B9006E774C /* yuedu appUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "yuedu appUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4639A10E2FFD2ACF008040BE /* YueduPro.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = YueduPro.storekit; path = Configuration/YueduPro.storekit; sourceTree = "<group>"; };
+		4E4E1DDA4EE35F67778097F0 /* yuedu_app_Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = yuedu_app_Widget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		81F92752186D8D0E971A17B9 /* yuedu_app_ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = yuedu_app_ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E661223F57364063B509666C /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AA11BB22CC33DD44EE55FF66AA11BB22 /* Exceptions for "Widget" folder in "Yuedu-Reader Widget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 3D398CD107E29DC5585FDF83 /* Yuedu-Reader Widget */;
+		};
+		BB22CC33DD44EE55FF66AA11BB22CC33 /* Exceptions for "ShareExtension" folder in "Yuedu-Reader ShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C7BCB242F4C3B08FEE1E0216 /* Yuedu-Reader ShareExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		460D365B2F51C5B8006E774C /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		460D36692F51C5B9006E774C /* Tests/iOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests/iOS;
+			sourceTree = "<group>";
+		};
+		460D36732F51C5B9006E774C /* Tests/iOS-UI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Tests/iOS-UI";
+			sourceTree = "<group>";
+		};
+		501150730FA6492E85D96D0235061651 /* Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AA11BB22CC33DD44EE55FF66AA11BB22 /* Exceptions for "Widget" folder in "Yuedu-Reader Widget" target */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000001 /* Targets/Yuedu */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Targets/Yuedu;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000002 /* Modules */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Modules;
+			sourceTree = "<group>";
+		};
+		A1BCCA3D5B9C4DD1AFB56B678141488F /* ShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BB22CC33DD44EE55FF66AA11BB22CC33 /* Exceptions for "ShareExtension" folder in "Yuedu-Reader ShareExtension" target */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		460D36562F51C5B8006E774C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A11B0E32F9A1C7300A1B001 /* ReadiumFuzi in Frameworks */,
+				46A6AB6F2FCD4ED60071B397 /* FirebaseAuthCombine-Community in Frameworks */,
+				46A6AB872FCD4ED60071B397 /* FirebasePerformance in Frameworks */,
+				460274852F710D7500486947 /* ReadiumAdapterLCPSQLite in Frameworks */,
+				46A6AB812FCD4ED60071B397 /* FirebaseInstallations in Frameworks */,
+				46A6AB8B2FCD4ED60071B397 /* FirebaseStorage in Frameworks */,
+				46A6AB7B2FCD4ED60071B397 /* FirebaseFunctions in Frameworks */,
+				46A6AB6D2FCD4ED60071B397 /* FirebaseAuth in Frameworks */,
+				46A6AB632FCD4ED60071B397 /* FirebaseAnalytics in Frameworks */,
+				54FF42D1FA99075B5C91D59B /* ReadiumShared in Frameworks */,
+				46A6AB712FCD4ED60071B397 /* FirebaseCore in Frameworks */,
+				463C854F2FA4F493008F9AD7 /* GoogleSignInSwift in Frameworks */,
+				46A6AB892FCD4ED60071B397 /* FirebaseRemoteConfig in Frameworks */,
+				46A6AB772FCD4ED60071B397 /* FirebaseFirestore in Frameworks */,
+				46A6AB652FCD4ED60071B397 /* FirebaseAnalyticsCore in Frameworks */,
+				46A6AB6B2FCD4ED60071B397 /* FirebaseAppDistribution-Beta in Frameworks */,
+				46A6AB7D2FCD4ED60071B397 /* FirebaseFunctionsCombine-Community in Frameworks */,
+				54FF42D3FA99075B5C91D59B /* ReadiumStreamer in Frameworks */,
+				46A6AB752FCD4ED60071B397 /* FirebaseDatabase in Frameworks */,
+				46A6AB792FCD4ED60071B397 /* FirebaseFirestoreCombine-Community in Frameworks */,
+				46A6AB8D2FCD4ED60071B397 /* FirebaseStorageCombine-Community in Frameworks */,
+				54FF42D0FA99075B5C91D59B /* ReadiumZIPFoundation in Frameworks */,
+				46A6AB672FCD4ED60071B397 /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				3021769152B9F41FC1F2CBA5 /* SwiftSoup in Frameworks */,
+				AAAA1111AAAA1111AAAA0001 /* Nuke in Frameworks */,
+				46A6AB732FCD4ED60071B397 /* FirebaseCrashlytics in Frameworks */,
+				46A6AB692FCD4ED60071B397 /* FirebaseAppCheck in Frameworks */,
+				46A6AB852FCD4ED60071B397 /* FirebaseMessaging in Frameworks */,
+				463C854D2FA4F48E008F9AD7 /* GoogleSignIn in Frameworks */,
+				46A6AB832FCD4ED60071B397 /* FirebaseMLModelDownloader in Frameworks */,
+				6B865095660449D830AF13C4 /* iosMath in Frameworks */,
+				BA0DC69BDD8FFF2AE7B103A0 /* YueduCoreTextTypography in Frameworks */,
+				605CA89FF5C9882A68E236F3 /* YueduCoreText in Frameworks */,
+				6E860399818D270C801E7519 /* CLexbor in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D36632F51C5B9006E774C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C081706E1002E557584EDC6 /* YueduCoreTextTypography in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D366D2F51C5B9006E774C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A3F2826CDEDB4D2F4B5CF845 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CB9AB3CEC68FA4821DD057BF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4602AABB2F51C45CAB3FACE2 /* xcconfig */ = {
+			isa = PBXGroup;
+			children = (
+				4602AABB2F51C45CAB3FACE1 /* Yuedu-reader_version.xcconfig */,
+			);
+			path = xcconfig;
+			sourceTree = "<group>";
+		};
+		460D36502F51C5B8006E774C = {
+			isa = PBXGroup;
+			children = (
+				4639A10E2FFD2ACF008040BE /* YueduPro.storekit */,
+				E661223F57364063B509666C /* GoogleService-Info.plist */,
+				A10000000000000000000001 /* Targets/Yuedu */,
+				A10000000000000000000002 /* Modules */,
+				460D365B2F51C5B8006E774C /* Resources */,
+				460D36692F51C5B9006E774C /* Tests/iOS */,
+				460D36732F51C5B9006E774C /* Tests/iOS-UI */,
+				501150730FA6492E85D96D0235061651 /* Widget */,
+				A1BCCA3D5B9C4DD1AFB56B678141488F /* ShareExtension */,
+				4602AABB2F51C45CAB3FACE2 /* xcconfig */,
+				463C854B2FA4F48E008F9AD7 /* Frameworks */,
+				460D365A2F51C5B8006E774C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		460D365A2F51C5B8006E774C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				460D36592F51C5B8006E774C /* YueduReader.app */,
+				460D36662F51C5B9006E774C /* yuedu appTests.xctest */,
+				460D36702F51C5B9006E774C /* yuedu appUITests.xctest */,
+				4E4E1DDA4EE35F67778097F0 /* yuedu_app_Widget.appex */,
+				81F92752186D8D0E971A17B9 /* yuedu_app_ShareExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		463C854B2FA4F48E008F9AD7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3D398CD107E29DC5585FDF83 /* Yuedu-Reader Widget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D37606683213C45CAB3FA44D /* Build configuration list for PBXNativeTarget "Yuedu-Reader Widget" */;
+			buildPhases = (
+				294F7FDF7FF0212C35C6AC00 /* Sources */,
+				CB9AB3CEC68FA4821DD057BF /* Frameworks */,
+				D400A56C128411E3D1066966 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				501150730FA6492E85D96D0235061651 /* Widget */,
+			);
+			name = "Yuedu-Reader Widget";
+			productName = "Yuedu-Reader Widget";
+			productReference = 4E4E1DDA4EE35F67778097F0 /* yuedu_app_Widget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		460D36582F51C5B8006E774C /* yuedu app */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 460D367A2F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu app" */;
+			buildPhases = (
+				460D36552F51C5B8006E774C /* Sources */,
+				460D36562F51C5B8006E774C /* Frameworks */,
+				460D36572F51C5B8006E774C /* Resources */,
+				5FFE0D9ED24A85A7ACED161A /* Embed Foundation Extensions */,
+				46C7A511D5F0480000000001 /* Crashlytics Upload Symbols */,
+				46C7A512D5F0480000000002 /* Inject Git Commit SHA */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FD68367CD11DA158EFDF2A89 /* PBXTargetDependency */,
+				8127C833559D43D8BE2E634A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				460D365B2F51C5B8006E774C /* Resources */,
+				A10000000000000000000001 /* Targets/Yuedu */,
+				A10000000000000000000002 /* Modules */,
+			);
+			name = "yuedu app";
+			packageProductDependencies = (
+				8A11B0E22F9A1C7300A1B001 /* ReadiumFuzi */,
+				7F41A49C749809CDAB632913 /* ReadiumZIPFoundation */,
+				489E6E08B47AA3AC9F140CAD /* SwiftSoup */,
+				AAAA1111AAAA1111AAAA0002 /* Nuke */,
+				460274842F710D7500486947 /* ReadiumAdapterLCPSQLite */,
+				54FF42D2FA99075B5C91D59B /* ReadiumShared */,
+				54FF42D4FA99075B5C91D59B /* ReadiumStreamer */,
+				463C854C2FA4F48E008F9AD7 /* GoogleSignIn */,
+				463C854E2FA4F493008F9AD7 /* GoogleSignInSwift */,
+				46A6AB622FCD4ED60071B397 /* FirebaseAnalytics */,
+				46A6AB642FCD4ED60071B397 /* FirebaseAnalyticsCore */,
+				46A6AB662FCD4ED60071B397 /* FirebaseAnalyticsIdentitySupport */,
+				46A6AB682FCD4ED60071B397 /* FirebaseAppCheck */,
+				46A6AB6A2FCD4ED60071B397 /* FirebaseAppDistribution-Beta */,
+				46A6AB6C2FCD4ED60071B397 /* FirebaseAuth */,
+				46A6AB6E2FCD4ED60071B397 /* FirebaseAuthCombine-Community */,
+				46A6AB702FCD4ED60071B397 /* FirebaseCore */,
+				46A6AB722FCD4ED60071B397 /* FirebaseCrashlytics */,
+				46A6AB742FCD4ED60071B397 /* FirebaseDatabase */,
+				46A6AB762FCD4ED60071B397 /* FirebaseFirestore */,
+				46A6AB782FCD4ED60071B397 /* FirebaseFirestoreCombine-Community */,
+				46A6AB7A2FCD4ED60071B397 /* FirebaseFunctions */,
+				46A6AB7C2FCD4ED60071B397 /* FirebaseFunctionsCombine-Community */,
+				46A6AB802FCD4ED60071B397 /* FirebaseInstallations */,
+				46A6AB822FCD4ED60071B397 /* FirebaseMLModelDownloader */,
+				46A6AB842FCD4ED60071B397 /* FirebaseMessaging */,
+				46A6AB862FCD4ED60071B397 /* FirebasePerformance */,
+				46A6AB882FCD4ED60071B397 /* FirebaseRemoteConfig */,
+				46A6AB8A2FCD4ED60071B397 /* FirebaseStorage */,
+				46A6AB8C2FCD4ED60071B397 /* FirebaseStorageCombine-Community */,
+				3F2758F4003B483DCE6CFC1C /* iosMath */,
+				3D3ACA9A6DDE978E3B91280C /* YueduCoreTextTypography */,
+				FF544FB3AA8924E26745E485 /* YueduCoreText */,
+				EC30E8EE1B7F4DA83ADB8821 /* CLexbor */,
+			);
+			productName = "yuedu app";
+			productReference = 460D36592F51C5B8006E774C /* YueduReader.app */;
+			productType = "com.apple.product-type.application";
+		};
+		460D36652F51C5B9006E774C /* yuedu appTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 460D367D2F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu appTests" */;
+			buildPhases = (
+				460D36622F51C5B9006E774C /* Sources */,
+				460D36632F51C5B9006E774C /* Frameworks */,
+				460D36642F51C5B9006E774C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				460D36682F51C5B9006E774C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				460D36692F51C5B9006E774C /* Tests/iOS */,
+			);
+			name = "yuedu appTests";
+			productName = "yuedu appTests";
+			productReference = 460D36662F51C5B9006E774C /* yuedu appTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		460D366F2F51C5B9006E774C /* yuedu appUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 460D36802F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu appUITests" */;
+			buildPhases = (
+				460D366C2F51C5B9006E774C /* Sources */,
+				460D366D2F51C5B9006E774C /* Frameworks */,
+				460D366E2F51C5B9006E774C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				460D36722F51C5B9006E774C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				460D36732F51C5B9006E774C /* Tests/iOS-UI */,
+			);
+			name = "yuedu appUITests";
+			productName = "yuedu appUITests";
+			productReference = 460D36702F51C5B9006E774C /* yuedu appUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		C7BCB242F4C3B08FEE1E0216 /* Yuedu-Reader ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 769A042B4AB48419646F9829 /* Build configuration list for PBXNativeTarget "Yuedu-Reader ShareExtension" */;
+			buildPhases = (
+				FAFEC42AFCA7FB37C3C8EE88 /* Sources */,
+				A3F2826CDEDB4D2F4B5CF845 /* Frameworks */,
+				A7AB3F6FF378C0265BF4C90D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A1BCCA3D5B9C4DD1AFB56B678141488F /* ShareExtension */,
+			);
+			name = "Yuedu-Reader ShareExtension";
+			packageProductDependencies = (
+			);
+			productName = "Yuedu-Reader ShareExtension";
+			productReference = 81F92752186D8D0E971A17B9 /* yuedu_app_ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		460D36512F51C5B8006E774C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					460D36582F51C5B8006E774C = {
+						CreatedOnToolsVersion = 26.2;
+						SystemCapabilities = {
+							com.apple.AppleSignIn = {
+								enabled = 1;
+							};
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
+					};
+					460D36652F51C5B9006E774C = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 460D36582F51C5B8006E774C;
+					};
+					460D366F2F51C5B9006E774C = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 460D36582F51C5B8006E774C;
+					};
+				};
+			};
+			buildConfigurationList = 460D36542F51C5B8006E774C /* Build configuration list for PBXProject "Yuedu-Reader" */;
+			developmentRegion = "zh-Hant";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hant",
+				"zh-Hans",
+				ja,
+				ko,
+			);
+			mainGroup = 460D36502F51C5B8006E774C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				46935AA62F52E48600662F9D /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				46935AA72F52E49B00662F9D /* XCRemoteSwiftPackageReference "SwiftSoup" */,
+				AAAA1111AAAA1111AAAA0003 /* XCRemoteSwiftPackageReference "Nuke" */,
+				8A11B0E12F9A1C7300A1B001 /* XCRemoteSwiftPackageReference "Fuzi" */,
+				460274812F710D7500486947 /* XCRemoteSwiftPackageReference "swift-toolkit" */,
+				463C854A2FA4F38E008F9AD7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				4F766A6C466F0B91C61C6FB1 /* XCRemoteSwiftPackageReference "iosMath" */,
+				4503FB56A177080D0D9E31E4 /* XCRemoteSwiftPackageReference "YueduCoreText" */,
+				D8654E038B484E472D6D37EA /* XCLocalSwiftPackageReference "Packages/CLexbor" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 460D365A2F51C5B8006E774C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				460D36582F51C5B8006E774C /* yuedu app */,
+				460D36652F51C5B9006E774C /* yuedu appTests */,
+				460D366F2F51C5B9006E774C /* yuedu appUITests */,
+				3D398CD107E29DC5585FDF83 /* Yuedu-Reader Widget */,
+				C7BCB242F4C3B08FEE1E0216 /* Yuedu-Reader ShareExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		460D36572F51C5B8006E774C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B275A36815844CE9EBD5086 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D36642F51C5B9006E774C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4C329B2F01E414A88BD6077 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D366E2F51C5B9006E774C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59196CD4E2AC41958E276886 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7AB3F6FF378C0265BF4C90D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9345BAE6E7C14A44A078A749 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D400A56C128411E3D1066966 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D698BFBD3CA24E3C9A05AD4B /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		46C7A511D5F0480000000001 /* Crashlytics Upload Symbols */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Crashlytics Upload Symbols";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nfi\n";
+		};
+		46C7A512D5F0480000000002 /* Inject Git Commit SHA */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Inject Git Commit SHA";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" = \"Debug\" ]; then\n  GIT_SHA=$(git -C \"$SRCROOT\" rev-parse --short HEAD 2>/dev/null || echo unknown)\n  for PLIST in \"$TARGET_BUILD_DIR/$INFOPLIST_PATH\" \"$BUILT_PRODUCTS_DIR/$INFOPLIST_FOLDER_PATH/Info.plist\"; do\n    if [ -f \"$PLIST\" ]; then\n      /usr/libexec/PlistBuddy -c \"Set :GitCommitSHA $GIT_SHA\" \"$PLIST\" 2>/dev/null || true\n    fi\n  done\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		294F7FDF7FF0212C35C6AC00 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D36552F51C5B8006E774C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D36622F51C5B9006E774C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		460D366C2F51C5B9006E774C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAFEC42AFCA7FB37C3C8EE88 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		460D36682F51C5B9006E774C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 460D36582F51C5B8006E774C /* yuedu app */;
+			targetProxy = 460D36672F51C5B9006E774C /* PBXContainerItemProxy */;
+		};
+		460D36722F51C5B9006E774C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 460D36582F51C5B8006E774C /* yuedu app */;
+			targetProxy = 460D36712F51C5B9006E774C /* PBXContainerItemProxy */;
+		};
+		8127C833559D43D8BE2E634A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C7BCB242F4C3B08FEE1E0216 /* Yuedu-Reader ShareExtension */;
+			targetProxy = 46C7C03B2F8F59E000182BEC /* PBXContainerItemProxy */;
+		};
+		FD68367CD11DA158EFDF2A89 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D398CD107E29DC5585FDF83 /* Yuedu-Reader Widget */;
+			targetProxy = 46C7C03A2F8F59E000182BEC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1796357FCB75F4989CD52D5A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = "Widget/Yuedu-Reader-Widget.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				EXECUTABLE_NAME = yuedu_app_Widget;
+				INFOPLIST_FILE = Widget/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.widget;
+				PRODUCT_NAME = yuedu_app_Widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		460D36782F51C5B9006E774C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4602AABB2F51C45CAB3FACE1 /* Yuedu-reader_version.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GATEWAY_BASE_URL = "https://gateway.yuedureader.com";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		460D36792F51C5B9006E774C /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4602AABB2F51C45CAB3FACE1 /* Yuedu-reader_version.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GATEWAY_BASE_URL = "https://gateway.yuedureader.com";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		460D367B2F51C5B9006E774C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_SHORTCUTS_ENABLE_FLEXIBLE_MATCHING = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_ENTITLEMENTS = "Resources/Yuedu-Reader.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				ENABLE_APPINTENTS_DEPLOYMENT_AWARE_PROCESSING = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "书悦";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to local book libraries, receive books from Calibre, and use local speech services.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LM_FILTER_WARNINGS = YES;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue;
+				PRODUCT_MODULE_NAME = yuedu_app;
+				PRODUCT_NAME = YueduReader;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		460D367C2F51C5B9006E774C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_SHORTCUTS_ENABLE_FLEXIBLE_MATCHING = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_ENTITLEMENTS = "Resources/Yuedu-Reader.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				ENABLE_APPINTENTS_DEPLOYMENT_AWARE_PROCESSING = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "书悦";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to local book libraries, receive books from Calibre, and use local speech services.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LM_FILTER_WARNINGS = YES;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue;
+				PRODUCT_MODULE_NAME = yuedu_app;
+				PRODUCT_NAME = YueduReader;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		460D367E2F51C5B9006E774C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YueduReader.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/YueduReader";
+			};
+			name = Debug;
+		};
+		460D367F2F51C5B9006E774C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YueduReader.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/YueduReader";
+			};
+			name = Release;
+		};
+		460D36812F51C5B9006E774C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "yuedu app";
+			};
+			name = Debug;
+		};
+		460D36822F51C5B9006E774C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Resources/yuedu app-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "yuedu app";
+			};
+			name = Release;
+		};
+		61425AD8B03743B687E0D0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = "ShareExtension/Yuedu-Reader-ShareExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				EXECUTABLE_NAME = yuedu_app_ShareExtension;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.shareextension;
+				PRODUCT_NAME = yuedu_app_ShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		81595F666338BADEFD739F72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = "ShareExtension/Yuedu-Reader-ShareExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				EXECUTABLE_NAME = yuedu_app_ShareExtension;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.shareextension;
+				PRODUCT_NAME = yuedu_app_ShareExtension;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DAE3450F4AE5267B4BBFACE4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = "Widget/Yuedu-Reader-Widget.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 65DHH783G3;
+				EXECUTABLE_NAME = yuedu_app_Widget;
+				INFOPLIST_FILE = Widget/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhong228.shuyue.widget;
+				PRODUCT_NAME = yuedu_app_Widget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		460D36542F51C5B8006E774C /* Build configuration list for PBXProject "Yuedu-Reader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				460D36782F51C5B9006E774C /* Debug */,
+				460D36792F51C5B9006E774C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		460D367A2F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu app" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				460D367B2F51C5B9006E774C /* Debug */,
+				460D367C2F51C5B9006E774C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		460D367D2F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu appTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				460D367E2F51C5B9006E774C /* Debug */,
+				460D367F2F51C5B9006E774C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		460D36802F51C5B9006E774C /* Build configuration list for PBXNativeTarget "yuedu appUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				460D36812F51C5B9006E774C /* Debug */,
+				460D36822F51C5B9006E774C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		769A042B4AB48419646F9829 /* Build configuration list for PBXNativeTarget "Yuedu-Reader ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61425AD8B03743B687E0D0AF /* Release */,
+				81595F666338BADEFD739F72 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D37606683213C45CAB3FA44D /* Build configuration list for PBXNativeTarget "Yuedu-Reader Widget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1796357FCB75F4989CD52D5A /* Release */,
+				DAE3450F4AE5267B4BBFACE4 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D8654E038B484E472D6D37EA /* XCLocalSwiftPackageReference "Packages/CLexbor" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/CLexbor;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4503FB56A177080D0D9E31E4 /* XCRemoteSwiftPackageReference "YueduCoreText" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CHANG-JUI-LIN/YueduCoreText";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.7.0;
+			};
+		};
+		460274812F710D7500486947 /* XCRemoteSwiftPackageReference "swift-toolkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/readium/swift-toolkit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.8.0;
+			};
+		};
+		463C854A2FA4F38E008F9AD7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
+		46935AA62F52E48600662F9D /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/readium/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.1;
+			};
+		};
+		46935AA72F52E49B00662F9D /* XCRemoteSwiftPackageReference "SwiftSoup" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scinfu/SwiftSoup.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.3.2;
+			};
+		};
+		46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.14.0;
+			};
+		};
+		4F766A6C466F0B91C61C6FB1 /* XCRemoteSwiftPackageReference "iosMath" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kostub/iosMath.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.3.1;
+			};
+		};
+		8A11B0E12F9A1C7300A1B001 /* XCRemoteSwiftPackageReference "Fuzi" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/readium/Fuzi.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.0;
+			};
+		};
+		AAAA1111AAAA1111AAAA0003 /* XCRemoteSwiftPackageReference "Nuke" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kean/Nuke";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3D3ACA9A6DDE978E3B91280C /* YueduCoreTextTypography */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4503FB56A177080D0D9E31E4 /* XCRemoteSwiftPackageReference "YueduCoreText" */;
+			productName = YueduCoreTextTypography;
+		};
+		3F2758F4003B483DCE6CFC1C /* iosMath */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F766A6C466F0B91C61C6FB1 /* XCRemoteSwiftPackageReference "iosMath" */;
+			productName = iosMath;
+		};
+		460274842F710D7500486947 /* ReadiumAdapterLCPSQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 460274812F710D7500486947 /* XCRemoteSwiftPackageReference "swift-toolkit" */;
+			productName = ReadiumAdapterLCPSQLite;
+		};
+		463C854C2FA4F48E008F9AD7 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 463C854A2FA4F38E008F9AD7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		463C854E2FA4F493008F9AD7 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 463C854A2FA4F38E008F9AD7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		46A6AB622FCD4ED60071B397 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		46A6AB642FCD4ED60071B397 /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		46A6AB662FCD4ED60071B397 /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		46A6AB682FCD4ED60071B397 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		46A6AB6A2FCD4ED60071B397 /* FirebaseAppDistribution-Beta */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAppDistribution-Beta";
+		};
+		46A6AB6C2FCD4ED60071B397 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		46A6AB6E2FCD4ED60071B397 /* FirebaseAuthCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseAuthCombine-Community";
+		};
+		46A6AB702FCD4ED60071B397 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		46A6AB722FCD4ED60071B397 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		46A6AB742FCD4ED60071B397 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+		46A6AB762FCD4ED60071B397 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		46A6AB782FCD4ED60071B397 /* FirebaseFirestoreCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFirestoreCombine-Community";
+		};
+		46A6AB7A2FCD4ED60071B397 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		46A6AB7C2FCD4ED60071B397 /* FirebaseFunctionsCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseFunctionsCombine-Community";
+		};
+		46A6AB802FCD4ED60071B397 /* FirebaseInstallations */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseInstallations;
+		};
+		46A6AB822FCD4ED60071B397 /* FirebaseMLModelDownloader */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMLModelDownloader;
+		};
+		46A6AB842FCD4ED60071B397 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		46A6AB862FCD4ED60071B397 /* FirebasePerformance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebasePerformance;
+		};
+		46A6AB882FCD4ED60071B397 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
+		};
+		46A6AB8A2FCD4ED60071B397 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		46A6AB8C2FCD4ED60071B397 /* FirebaseStorageCombine-Community */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46A6AB5D2FCD4ED60071B397 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = "FirebaseStorageCombine-Community";
+		};
+		489E6E08B47AA3AC9F140CAD /* SwiftSoup */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46935AA72F52E49B00662F9D /* XCRemoteSwiftPackageReference "SwiftSoup" */;
+			productName = SwiftSoup;
+		};
+		54FF42D2FA99075B5C91D59B /* ReadiumShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 460274812F710D7500486947 /* XCRemoteSwiftPackageReference "swift-toolkit" */;
+			productName = ReadiumShared;
+		};
+		54FF42D4FA99075B5C91D59B /* ReadiumStreamer */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 460274812F710D7500486947 /* XCRemoteSwiftPackageReference "swift-toolkit" */;
+			productName = ReadiumStreamer;
+		};
+		7F41A49C749809CDAB632913 /* ReadiumZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46935AA62F52E48600662F9D /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ReadiumZIPFoundation;
+		};
+		8A11B0E22F9A1C7300A1B001 /* ReadiumFuzi */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8A11B0E12F9A1C7300A1B001 /* XCRemoteSwiftPackageReference "Fuzi" */;
+			productName = ReadiumFuzi;
+		};
+		AAAA1111AAAA1111AAAA0002 /* Nuke */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AAAA1111AAAA1111AAAA0003 /* XCRemoteSwiftPackageReference "Nuke" */;
+			productName = Nuke;
+		};
+		EC30E8EE1B7F4DA83ADB8821 /* CLexbor */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CLexbor;
+		};
+		FF544FB3AA8924E26745E485 /* YueduCoreText */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4503FB56A177080D0D9E31E4 /* XCRemoteSwiftPackageReference "YueduCoreText" */;
+			productName = YueduCoreText;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 460D36512F51C5B8006E774C /* Project object */;
+}

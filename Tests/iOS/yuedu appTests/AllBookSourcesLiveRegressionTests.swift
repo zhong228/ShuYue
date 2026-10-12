@@ -1,0 +1,586 @@
+import Foundation
+import Testing
+@testable import yuedu_app
+
+/// Opt-in, real-network regression over every Legado JSON in the local RULE corpus.
+/// It deliberately records every source before failing so one broken endpoint cannot
+/// hide regressions in the remaining sources.
+@Suite("All Book Sources Live Regression", .serialized)
+struct AllBookSourcesLiveRegressionTests {
+    private static let isEnabled =
+        ProcessInfo.processInfo.environment["RUN_ALL_SOURCE_LIVE_TESTS"] == "1"
+            || ProcessInfo.processInfo.environment["TEST_RUNNER_RUN_ALL_SOURCE_LIVE_TESTS"] == "1"
+
+    private static let defaultCorpusPath =
+        "/Users/zhangruilin/Desktop/Test document/RULE"
+    private static var reportPath: String {
+        ProcessInfo.processInfo.environment["ALL_SOURCE_REPORT_PATH"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_ALL_SOURCE_REPORT_PATH"]
+            ?? "/tmp/yuedu_all_sources_regression.json"
+    }
+
+    private struct Result: Codable {
+        let file: String
+        let index: Int
+        let sourceName: String
+        let sourceIdentifier: String
+        let searchQuery: String
+        let status: String
+        let stage: String
+        let detail: String
+        let searchCount: Int?
+        let discoverCategoryCount: Int?
+        let discoverBookCount: Int?
+        let chapterCount: Int?
+        let contentLength: Int?
+        let reviewMarkerCount: Int?
+        let reviewStatus: String
+        let elapsedSeconds: Double
+    }
+
+    @Test(
+        "every non-comic local source completes discover, detail, toc, chapter, and review sampling",
+        .enabled(if: isEnabled, "Set RUN_ALL_SOURCE_LIVE_TESTS=1 to run the real-network corpus"),
+        .timeLimit(.minutes(60))
+    )
+    func allSources() async throws {
+        let corpusPath = ProcessInfo.processInfo.environment["ALL_SOURCE_CORPUS_PATH"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_ALL_SOURCE_CORPUS_PATH"]
+            ?? Self.defaultCorpusPath
+        let corpusURL = URL(fileURLWithPath: corpusPath, isDirectory: true)
+        let rawFileFilter = ProcessInfo.processInfo.environment["ALL_SOURCE_FILE_FILTER"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_ALL_SOURCE_FILE_FILTER"]
+        let fileFilters = rawFileFilter?
+            .split(separator: "|")
+            .map(String.init) ?? []
+        let rawNameFilter = ProcessInfo.processInfo.environment["ALL_SOURCE_NAME_FILTER"]
+            ?? ProcessInfo.processInfo.environment["TEST_RUNNER_ALL_SOURCE_NAME_FILTER"]
+        let nameFilters = rawNameFilter?
+            .split(separator: "|")
+            .map(String.init) ?? []
+        let fileURLs = try FileManager.default.contentsOfDirectory(
+            at: corpusURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+        .filter { fileURL in
+            fileURL.pathExtension.lowercased() == "json"
+                && !Self.isExcludedComicCollection(fileURL)
+                && (fileFilters.isEmpty || fileFilters.contains {
+                    fileURL.lastPathComponent.contains($0)
+                })
+        }
+        .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+
+        var corpus: [(URL, Int, BookSource)] = []
+        for fileURL in fileURLs {
+            for (index, source) in try decodeSources(at: fileURL).enumerated() {
+                if !nameFilters.isEmpty,
+                   !nameFilters.contains(where: { source.bookSourceName.contains($0) }) {
+                    continue
+                }
+                corpus.append((fileURL, index, source))
+            }
+        }
+        #expect(!corpus.isEmpty)
+
+        let fetcher = BookSourceFetcher.shared
+        try? FileManager.default.removeItem(at: fetcher.bookInfoCacheDir())
+        try? FileManager.default.removeItem(at: fetcher.tocCacheDir())
+
+        var results: [Result] = []
+        writeReport(
+            results,
+            corpusPath: corpusPath,
+            expectedCount: corpus.count,
+            currentFile: nil,
+            currentSource: nil
+        )
+
+        for (offset, entry) in corpus.enumerated() {
+            let started = Date()
+            var source = entry.2
+            source.id = UUID()
+            source.lastUpdateTime = Int64(Date().timeIntervalSince1970 * 1_000) + Int64(offset)
+            let prefix = "ALL_SOURCE_PROGRESS [\(offset + 1)/\(corpus.count)] \(source.bookSourceName)"
+            print("\(prefix) START")
+            writeReport(
+                results,
+                corpusPath: corpusPath,
+                expectedCount: corpus.count,
+                currentFile: entry.0.lastPathComponent,
+                currentSource: source.bookSourceName
+            )
+
+            var searchCount: Int?
+            var discoverCategoryCount: Int?
+            var discoverBookCount: Int?
+            var chapterCount: Int?
+            var contentLength: Int?
+            var reviewMarkerCount: Int?
+            var reviewStatus = sourceDeclaresReviews(source) ? "not reached" : "not declared"
+            var currentStage = "discover"
+            var discoveredSearchSeed: String?
+            var resolvedSearchQuery = ""
+
+            do {
+                if source.enabledExplore,
+                   !source.exploreUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let items = await fetcher.discoverItems(in: source)
+                    discoverCategoryCount = items.count
+                    var discoveredBooks: [OnlineBook] = []
+                    var attemptErrors: [String] = []
+                    var attemptSummaries: [String] = []
+                    for item in items.filter({
+                        !(($0.url ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }).prefix(12) {
+                        do {
+                            let books = try await fetcher.discoverBooks(from: item, in: source)
+                            let title = String((item.title ?? "untitled").prefix(40))
+                            attemptSummaries.append("\(title)=\(books.count)")
+                            if discoveredBooks.isEmpty, !books.isEmpty {
+                                discoveredBooks = books
+                            }
+                        } catch {
+                            attemptErrors.append(String(error.localizedDescription.prefix(160)))
+                        }
+                    }
+                    discoverBookCount = discoveredBooks.count
+                    discoveredSearchSeed = OnlineBookValidationSelector.preferredBook(
+                        from: discoveredBooks,
+                        for: source
+                    )?.name
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if items.isEmpty {
+                        let recorded = SourceAPIErrorLog.shared.last(
+                            for: source.bookSourceUrl
+                        )?.displayText
+                        throw StageFailure(
+                            stage: "discover",
+                            detail: recorded.map { "no categories; \($0)" } ?? "no categories"
+                        )
+                    } else if discoveredBooks.isEmpty {
+                        let recorded = SourceAPIErrorLog.shared.last(
+                            for: source.bookSourceUrl
+                        )?.displayText
+                        var details = ["categories returned no books"]
+                        if !attemptSummaries.isEmpty {
+                            details.append("attempts \(attemptSummaries.joined(separator: ", "))")
+                        } else {
+                            let labels = items.compactMap { item -> String? in
+                                let title = (item.title ?? "").trimmingCharacters(
+                                    in: .whitespacesAndNewlines
+                                )
+                                return title.isEmpty ? nil : String(title.prefix(80))
+                            }
+                            if !labels.isEmpty {
+                                details.append("items \(labels.prefix(4).joined(separator: " | "))")
+                            }
+                        }
+                        if !attemptErrors.isEmpty {
+                            details.append(attemptErrors.joined(separator: " | "))
+                        }
+                        if let recorded { details.append(recorded) }
+                        let detail = details.joined(separator: "; ")
+                        throw StageFailure(stage: "discover", detail: detail)
+                    }
+                }
+
+                currentStage = "search"
+                var books: [OnlineBook] = []
+                for query in searchQueries(for: source, discoveredSeed: discoveredSearchSeed) {
+                    resolvedSearchQuery = query
+                    books = try await fetcher.search(query: query, in: source)
+                    searchCount = books.count
+                    if OnlineBookValidationSelector.preferredBook(from: books, for: source) != nil {
+                        break
+                    }
+                }
+                guard let book = OnlineBookValidationSelector.preferredBook(
+                    from: books,
+                    for: source
+                ) else {
+                    throw StageFailure(stage: "search", detail: "no usable result")
+                }
+
+                currentStage = "detail"
+                var runtimeVariables = book.runtimeVariables
+                let detail = try await fetcher.fetchBookInfoPackage(
+                    url: book.bookUrl,
+                    source: source,
+                    runtimeVariables: runtimeVariables
+                )
+                runtimeVariables = detail.runtimeVariables
+                let tocURL = detail.tocUrl.isEmpty ? book.bookUrl : detail.tocUrl
+
+                currentStage = "toc"
+                let toc = try await fetcher.fetchTOCPackage(
+                    tocUrl: tocURL,
+                    source: source,
+                    runtimeVariables: runtimeVariables,
+                    onFirstPageReady: nil,
+                    forceRefresh: true
+                )
+                chapterCount = toc.chapters.count
+                guard var chapter = toc.chapters.first(where: {
+                    $0.hasLoadableContentURL && !$0.shouldRenderAsVolumeSeparator
+                }) else {
+                    throw StageFailure(stage: "toc", detail: "no loadable chapter")
+                }
+
+                if let bookRuntime = toc.runtimeVariables ?? runtimeVariables, !bookRuntime.isEmpty {
+                    var merged = bookRuntime
+                    for (key, value) in chapter.runtimeVariables ?? [:] {
+                        merged[key] = value
+                    }
+                    chapter.runtimeVariables = merged
+                }
+
+                currentStage = "chapter"
+                let bookID = UUID()
+                defer { fetcher.clearAllChapterCache(bookId: bookID) }
+                let package = try await fetcher.fetchChapterPackage(
+                    ref: chapter,
+                    bookId: bookID,
+                    source: source,
+                    chapterReferer: tocURL
+                )
+                contentLength = package.content
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .count
+                guard (contentLength ?? 0) >= 20 else {
+                    let shortResult = package.content
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    let suffix = shortResult.isEmpty
+                        ? "empty"
+                        : "short result=\(String(shortResult.prefix(40)))"
+                    throw StageFailure(
+                        stage: "chapter",
+                        detail: "content too short (\(contentLength ?? 0)); \(suffix)"
+                    )
+                }
+
+                currentStage = "review"
+                if let normalizedHTML = fetcher.loadNormalizedChapterHTMLSync(
+                    bookId: bookID,
+                    chapterIndex: chapter.index,
+                    expectedSourceURL: chapter.url,
+                    expectedTOCTitle: chapter.title
+                ) {
+                    reviewMarkerCount = normalizedHTML
+                        .components(separatedBy: "ydreview://").count - 1
+                    reviewStatus = (reviewMarkerCount ?? 0) > 0
+                        ? "markers present"
+                        : (sourceDeclaresReviews(source)
+                            ? "no markers in sampled chapter"
+                            : "not declared")
+                } else {
+                    reviewStatus = sourceDeclaresReviews(source)
+                        ? "normalized chapter unavailable"
+                        : "not declared"
+                }
+
+                results.append(makeResult(
+                    fileURL: entry.0,
+                    index: entry.1,
+                    source: source,
+                    searchQuery: resolvedSearchQuery,
+                    status: "passed",
+                    stage: "complete",
+                    detail: "ok; review=\(reviewStatus)",
+                    searchCount: searchCount,
+                    discoverCategoryCount: discoverCategoryCount,
+                    discoverBookCount: discoverBookCount,
+                    chapterCount: chapterCount,
+                    contentLength: contentLength,
+                    reviewMarkerCount: reviewMarkerCount,
+                    reviewStatus: reviewStatus,
+                    started: started
+                ))
+                print(
+                    "\(prefix) PASS query=\(resolvedSearchQuery) search=\(searchCount ?? 0) "
+                        + "discover=\(discoverCategoryCount ?? 0)/\(discoverBookCount ?? 0) "
+                        + "toc=\(chapterCount ?? 0) content=\(contentLength ?? 0) "
+                        + "review=\(reviewStatus)/\(reviewMarkerCount ?? 0)"
+                )
+            } catch let failure as StageFailure {
+                let status = classifiedFailureStatus(
+                    source: source, stage: failure.stage, detail: failure.detail
+                )
+                results.append(makeResult(
+                    fileURL: entry.0,
+                    index: entry.1,
+                    source: source,
+                    searchQuery: resolvedSearchQuery,
+                    status: status,
+                    stage: failure.stage,
+                    detail: failure.detail,
+                    searchCount: searchCount,
+                    discoverCategoryCount: discoverCategoryCount,
+                    discoverBookCount: discoverBookCount,
+                    chapterCount: chapterCount,
+                    contentLength: contentLength,
+                    reviewMarkerCount: reviewMarkerCount,
+                    reviewStatus: reviewStatus,
+                    started: started
+                ))
+                print("\(prefix) \(status.uppercased()) stage=\(failure.stage) detail=\(failure.detail)")
+            } catch {
+                let stage = currentStage
+                let detail = String(error.localizedDescription.prefix(400))
+                let status = classifiedFailureStatus(
+                    source: source, stage: stage, detail: detail
+                )
+                results.append(makeResult(
+                    fileURL: entry.0,
+                    index: entry.1,
+                    source: source,
+                    searchQuery: resolvedSearchQuery,
+                    status: status,
+                    stage: stage,
+                    detail: detail,
+                    searchCount: searchCount,
+                    discoverCategoryCount: discoverCategoryCount,
+                    discoverBookCount: discoverBookCount,
+                    chapterCount: chapterCount,
+                    contentLength: contentLength,
+                    reviewMarkerCount: reviewMarkerCount,
+                    reviewStatus: reviewStatus,
+                    started: started
+                ))
+                print("\(prefix) \(status.uppercased()) stage=\(stage) detail=\(detail)")
+            }
+            writeReport(
+                results,
+                corpusPath: corpusPath,
+                expectedCount: corpus.count,
+                currentFile: nil,
+                currentSource: nil
+            )
+        }
+
+        let hardFailures = results.filter {
+            $0.status == "failed" || $0.status == "upstreamFailure"
+        }
+        let prerequisites = results.filter { $0.status == "missingPrerequisite" }
+        let excluded = results.filter { $0.status == "excluded" }
+        print(
+            "ALL_SOURCE_SUMMARY completed=\(results.count) "
+                + "passed=\(results.filter { $0.status == "passed" }.count) "
+                + "missingPrerequisite=\(prerequisites.count) "
+                + "excluded=\(excluded.count) hardFailed=\(hardFailures.count) "
+                + "report=\(Self.reportPath)"
+        )
+        #expect(
+            hardFailures.isEmpty,
+            Comment(rawValue:
+                "Non-comic source regressions: "
+                    + hardFailures.map {
+                        "\($0.sourceName)[\($0.stage)]: \($0.detail)"
+                    }.joined(separator: " | ")
+            )
+        )
+    }
+
+    private struct StageFailure: Error {
+        let stage: String
+        let detail: String
+    }
+
+    private func decodeSources(at fileURL: URL) throws -> [BookSource] {
+        var data = try Data(contentsOf: fileURL)
+        if data.starts(with: [0xEF, 0xBB, 0xBF]) {
+            data.removeFirst(3)
+        }
+        if let sources = try? JSONDecoder().decode([BookSource].self, from: data) {
+            return sources
+        }
+        return [try JSONDecoder().decode(BookSource.self, from: data)]
+    }
+
+    private func makeResult(
+        fileURL: URL,
+        index: Int,
+        source: BookSource,
+        searchQuery: String,
+        status: String,
+        stage: String,
+        detail: String,
+        searchCount: Int?,
+        discoverCategoryCount: Int?,
+        discoverBookCount: Int?,
+        chapterCount: Int?,
+        contentLength: Int?,
+        reviewMarkerCount: Int?,
+        reviewStatus: String,
+        started: Date
+    ) -> Result {
+        Result(
+            file: fileURL.lastPathComponent,
+            index: index,
+            sourceName: source.bookSourceName,
+            sourceIdentifier: redactedIdentifier(source.bookSourceUrl),
+            searchQuery: searchQuery,
+            status: status,
+            stage: stage,
+            detail: detail,
+            searchCount: searchCount,
+            discoverCategoryCount: discoverCategoryCount,
+            discoverBookCount: discoverBookCount,
+            chapterCount: chapterCount,
+            contentLength: contentLength,
+            reviewMarkerCount: reviewMarkerCount,
+            reviewStatus: reviewStatus,
+            elapsedSeconds: Date().timeIntervalSince(started)
+        )
+    }
+
+    private func searchQueries(for source: BookSource, discoveredSeed: String?) -> [String] {
+        let configured = source.ruleSearch.checkKeyWord
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let pinned = source.bookSourceName.contains("番茄酱")
+            ? "我在修仙界搞内卷"
+            : ""
+        var candidates = [pinned, configured, discoveredSeed ?? ""]
+        switch source.bookSourceType {
+        case 1:
+            candidates += ["诛仙", "斗罗大陆", "绝对之门"]
+        case 2:
+            candidates += ["斗破苍穹", "鬼灭之刃", "妖神记", "凤逆天下", "海贼王", "god"]
+        default:
+            candidates += ["斗罗大陆", "诛仙", "我的"]
+        }
+        var seen = Set<String>()
+        return candidates.filter { query in
+            let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { return false }
+            return true
+        }
+    }
+
+    private func redactedIdentifier(_ value: String) -> String {
+        guard var components = URLComponents(string: value), components.host != nil else {
+            return String(value.prefix(160))
+        }
+        components.query = nil
+        components.fragment = nil
+        return String((components.string ?? value).prefix(160))
+    }
+
+    private static func isExcludedComicCollection(_ fileURL: URL) -> Bool {
+        fileURL.lastPathComponent == "35个漫画源.json"
+    }
+
+    private func sourceDeclaresReviews(_ source: BookSource) -> Bool {
+        let contract = [
+            source.bookSourceGroup,
+            source.bookSourceComment,
+            source.loginUi,
+            source.jsLib,
+            source.ruleContent.content,
+        ].joined(separator: "\n").lowercased()
+        return ["段评", "段評", "章评", "章評", "comment", "review", "bubble"].contains {
+            contract.contains($0)
+        }
+    }
+
+    /// Keep environment/prerequisite failures visible in the report without
+    /// pretending they are parser regressions. Everything else remains a hard
+    /// failure, including upstream outages, so the test can never print red rows
+    /// and still finish green as the previous runner did.
+    private func classifiedFailureStatus(
+        source: BookSource, stage: String, detail: String
+    ) -> String {
+        let normalized = detail.lowercased()
+        let loginContract = (
+            source.loginUi + "\n" + source.loginUrl + "\n" + source.header + "\n"
+                + source.variableComment + "\n" + source.bookSourceComment
+        )
+            .lowercased()
+        let declaresTokenOrAccount = [
+            "token", "授权令牌", "授權令牌", "password", "账号", "帳號", "登录", "登入",
+        ].contains { loginContract.contains($0) }
+        let authenticationFailure = [
+            "http error 401", "http 401", "unauthorized", "not logged in",
+            "未登录", "未登錄", "token expired", "invalid token", "invalid jwt", "无效jwt",
+        ].contains { normalized.contains($0) }
+        if declaresTokenOrAccount && authenticationFailure {
+            return "missingPrerequisite"
+        }
+        if declaresTokenOrAccount,
+           stage == "discover",
+           normalized.contains("categories returned no books") {
+            return "missingPrerequisite"
+        }
+        if declaresTokenOrAccount,
+           stage == "search",
+           normalized.contains("no usable result") {
+            return "missingPrerequisite"
+        }
+        if declaresTokenOrAccount,
+           stage == "chapter",
+           (normalized.contains("content too short") || normalized.contains("empty content")) {
+            return "missingPrerequisite"
+        }
+
+        let declaredVariableFailure = [
+            "missing source variable", "source variable is required", "缺少源变量", "缺少源變數",
+        ].contains { normalized.contains($0) }
+        if declaredVariableFailure {
+            return "missingPrerequisite"
+        }
+
+        let verifiedUpstreamFailure = [
+            "cloudflare 52", "bad gateway", "gateway timeout", "http error 500",
+            "http error 502", "http error 503", "http error 504", "http error 522",
+            "http 403", "http error 403",
+        ].contains { normalized.contains($0) }
+        if verifiedUpstreamFailure {
+            return "upstreamFailure"
+        }
+        return "failed"
+    }
+
+    private func writeReport(
+        _ results: [Result],
+        corpusPath: String,
+        expectedCount: Int,
+        currentFile: String?,
+        currentSource: String?
+    ) {
+        struct Report: Codable {
+            let corpusPath: String
+            let expectedCount: Int
+            let completedCount: Int
+            let passedCount: Int
+            let missingPrerequisiteCount: Int
+            let excludedCount: Int
+            let upstreamFailureCount: Int
+            let failedCount: Int
+            let currentFile: String?
+            let currentSource: String?
+            let results: [Result]
+        }
+        let report = Report(
+            corpusPath: corpusPath,
+            expectedCount: expectedCount,
+            completedCount: results.count,
+            passedCount: results.filter { $0.status == "passed" }.count,
+            missingPrerequisiteCount: results.filter {
+                $0.status == "missingPrerequisite"
+            }.count,
+            excludedCount: results.filter { $0.status == "excluded" }.count,
+            upstreamFailureCount: results.filter {
+                $0.status == "upstreamFailure"
+            }.count,
+            failedCount: results.filter {
+                $0.status == "failed" || $0.status == "upstreamFailure"
+            }.count,
+            currentFile: currentFile,
+            currentSource: currentSource,
+            results: results
+        )
+        guard let data = try? JSONEncoder().encode(report) else { return }
+        try? data.write(to: URL(fileURLWithPath: Self.reportPath), options: .atomic)
+    }
+}

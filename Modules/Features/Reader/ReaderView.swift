@@ -1,0 +1,3236 @@
+import Combine
+import Foundation
+import SwiftUI
+import UIKit
+import YueduCoreText
+
+private enum ReaderSettingsDeferredPresentationRoute {
+    case fontImporter
+    /// 匯入閱讀設定 / 匯入正則高亮 — same first-level-presenter handoff as the font
+    /// importer, because those controls also live inside the settings sheet.
+    case styleImporter(ReaderStyleImportRoute)
+    /// A locked control inside settings (匯入字體 without Pro) asked for the paywall.
+    case paywall(PremiumFeature)
+}
+
+private struct ReaderFontImportPresentationError: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+// MARK: - Main Reader View
+struct ReaderView: View {
+    let bookId: UUID
+
+    init(bookId: UUID) {
+        self.bookId = bookId
+        // The book's 整章翻譯 setting is part of the first layout, so a translated book never
+        // opens on its untranslated text first.
+        _readerTranslation = State(initialValue: ReaderTranslationSettingsStore.presentation(for: bookId))
+    }
+    @EnvironmentObject var store: BookStore
+    @Environment(\.appDependencies) var dependencies
+    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.readerNavigator) var readerNavigator
+    @Environment(\.rootTabBarVisibility) var rootTabBarVisibility
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var systemColorScheme
+    /// Pixel density for rasterizing an imported battery template. Read from the
+    /// environment rather than `UIScreen.main`: everything the bars compute runs
+    /// during body evaluation, and reaching into UIKit from there is what froze
+    /// the shelf entry once already (see `effectiveReaderSafeTop`).
+    @Environment(\.displayScale) var readerDisplayScale
+    @ObservedObject var settings = GlobalSettings.shared
+    @ObservedObject var subscriptionStore = SubscriptionStore.shared
+    @StateObject var readerConfig = ReaderConfig.shared
+    /// The clock/battery readings the bars draw — read, never observed.
+    ///
+    /// `ClockBatteryModel` used to live here as a `@StateObject`. It publishes `now`
+    /// and `displayTime` on a minute-aligned timer, which invalidated the whole
+    /// reader: a device trace measured ~13 ms of `buildBody()`, the toolbars and the
+    /// bar models on E cores when the minute rolled over mid-fling — a dropped frame
+    /// at 120 Hz, for a clock nothing outside the two bars reads. `ReaderPageBarsLayer`
+    /// owns and observes the model now and pushes its readings here, so a tick
+    /// rebuilds the bars and leaves the rest of the reader alone.
+    var readerOverlayClock: ReaderOverlayClockSnapshot { pageBarsController.clock }
+
+    // MARK: - Speculative Pre-Layout for Cross-Chapter Scrolling
+    @State private var scrollVelocity: CGFloat = 0.0
+    @State private var isGhostModeActive: Bool = false
+    
+    private func updateScrollVelocity(_ newVelocity: CGFloat) {
+        scrollVelocity = newVelocity
+        if abs(scrollVelocity) > 1000 && !isGhostModeActive {
+            isGhostModeActive = true
+        } else if abs(scrollVelocity) < 500 && isGhostModeActive {
+            isGhostModeActive = false
+            speculativePreLayoutNextChapter()
+        }
+    }
+    
+    private func speculativePreLayoutNextChapter() {
+        Task { @MainActor in
+            guard currentChapterIndex + 1 < chapters.count else { return }
+            if let engine = epubRenderer.engine {
+                applyReaderEffects(
+                    readerSessionCoordinator?.send(.warmUpNext(currentGlobalPage: currentPage + 1))
+                        ?? [.warmUpNext(currentGlobalPage: currentPage + 1)],
+                    engine: engine
+                )
+            }
+        }
+    }
+
+
+    /// Set only for a slow open: the card animation already started on the
+    /// loading chrome, so the first page must not be swapped in until the
+    /// transition commits. See `holdContentForOpeningTransitionIfNeeded`.
+    @State private var isHoldingContentForOpeningTransition = false
+    @State var chapters: [BookChapter] = []
+    @State var allPages: [PageContent] = []
+    @State var currentPage = 0
+    // Phase-2 explicit page-turn intent channel (see ReaderPageTurnCommand).
+    @State var pageTurnCommand: ReaderPageTurnCommand?
+    @State var pageTurnVersion: UInt = 0
+    @State var showBars = false
+    @State var appleBooksActivePanel: AppleBooksReaderControlPanel?
+    @State var showSettings = false
+    @State private var readerSettingsDeferredPresentation =
+        DismissalSequencedPresentation<ReaderSettingsDeferredPresentationRoute>()
+    @State private var showReaderFontImporter = false
+    @State private var readerFontImportError: ReaderFontImportPresentationError?
+    @State private var readerStyleImportRoute: ReaderStyleImportRoute?
+    @State var showQuickThemePanel = false
+    /// What the quick panel asked to open. iOS drops a sheet requested while the
+    /// sheet it came from is still dismissing, so the request is recorded here and
+    /// run from the panel's real `onDismiss` — the same contract
+    /// `Technotes/iOS17MenuModalPresentation.md` sets out, and the reason 現代's
+    /// book card lost 聽書 before it was applied there.
+    @State var quickPanelDeferredRoute: ReaderQuickPanelRoute?
+    @State var showReaderSearch = false
+    @State var readerSearchSelection = ""
+    @State var readerTranslationSelection = ""
+    @State var showReaderTranslation = false
+    @State var showTOC = false
+    @State var showBookmarkList = false
+    /// The confirmation that pops up after a bookmark is added or removed.
+    @State var bookmarkToast: ReaderBookmarkToast?
+    @Environment(\.accessibilityReduceMotion) var accessibilityReduceMotion
+    /// 目前正在編輯的段落筆記；nil 表示沒有開著編輯頁。
+    @State var noteEditorRoute: ReaderNoteEditorRoute?
+    /// 待確認的筆記刪除（alert 由這個值驅動）。
+    @State var noteDeleteRoute: ReaderNoteDeleteRoute?
+    /// 在筆記編輯頁裡按了刪除／續訂：alert 與付費牆都要等編輯頁真的關掉才彈，否則 iOS 17
+    /// 會在 sheet 還在收的時候把它吃掉（Technotes/iOS17MenuModalPresentation.md 的同一類問題）。
+    @State private var noteEditorFollowUp =
+        DismissalSequencedPresentation<ReaderNoteEditorFollowUp>()
+    /// 開著的付費牆；`nil` 表示沒開。
+    @State var paywallFeature: PremiumFeature?
+    @State var showTouchZoneEditor = false
+    @State var readerOverlaySVGAssetStore: ReaderOverlaySVGAssetStore?
+    @State var readerOverlaySVGAssetStoreIsPersistent = false
+
+    // Online chapter lazy loading
+    @StateObject var readerViewModel = ReaderViewModel()
+    @State var observedChapterStates: [Int: ChapterLoadState] = [:]
+    /// Chapters already refetched once because their `.ready` state disagreed with the cache
+    /// on disk. Bounds `recoverInconsistentChapterOnce` so a genuinely broken chapter still
+    /// reaches the failure overlay instead of refetching forever.
+    @State var chapterConsistencyRecoveryAttempts: [Int: Int] = [:]
+    /// Distinct chapters that have failed since the last success or table-of-contents
+    /// revalidation. See `noteChapterFailureForStaleTOC`.
+    @State var chaptersFailedSinceTOCCheck: Set<Int> = []
+    /// One forced table-of-contents revalidation per reader session.
+    @State var didRevalidateTOCForFailures = false
+
+    /// Top safe area (points), passed to EPUB engine as minimum margin-top.
+    @State var readerSafeAreaTop: CGFloat = 59
+    /// Tracked the same way as the top, and for the same reason — the bars ask for
+    /// it while the body is being evaluated. Seeded with the common home-indicator
+    /// inset so the first layout is close before the real value arrives.
+    @State var readerSafeAreaBottom: CGFloat = 34
+    @State var readerViewportSize: CGSize = UIScreen.main.bounds.size
+    @StateObject private var volumeHandler = VolumeKeyHandler()
+
+    /// Not private: the footer pill in `ReaderView+Footer` reads its running state.
+    @StateObject var autoReader = AutoReadController()
+
+    /// Builds 頁眉／頁腳 for any page the paged engine asks about. A reference type
+    /// so the escaping closure the engine holds cannot freeze a copy of this
+    /// struct's state — see `bindPageBarsProvider`.
+    /// `@State`, not `@StateObject`: it publishes nothing, and a `@MainActor`
+    /// class cannot satisfy `ObservableObject`'s nonisolated requirements.
+    @State var pageBarsController = ReaderPageBarsController()
+    /// Bumped when the bars say something new without the pagination changing, so
+    /// pages already on screen get told.
+    @State var pageBarsRevision: UInt = 0
+    /// 自動閱讀's route into the scroll view, filled in by `CoreTextScrollHostView`.
+    @State var autoScrollHandle = ReaderAutoScrollHandle()
+    /// 自動閱讀's route to the curtain layer, filled in by the paged host.
+    @State var autoReadRevealHandle = ReaderAutoReadRevealHandle()
+    @StateObject var ttsCoordinator = TTSCoordinator()
+    @StateObject var mediaOverlayCoordinator = EPUBMediaOverlayPlaybackCoordinator()
+    /// Plays an EPUB chapter's authored background soundtrack (controls-less autoplay/loop `<audio>`).
+    @State var backgroundAudioCoordinator = EPUBBackgroundAudioCoordinator()
+    /// The active EPUB publication session, retained so the background-audio coordinator can read chapter
+    /// HTML and resolve resource URLs on chapter change.
+    @State var activePublicationSession: PublicationSession?
+
+    private func syncReaderBrightnessFromSystem() {
+        let current = Double(UIScreen.main.brightness)
+        systemBrightness = current
+        settings.readerBrightness = current
+    }
+
+    private func restoreReaderDisplayStateAfterResume() {
+        guard let engine = epubRenderer.engine, isEPUB, engine.totalPages > 0 else { return }
+        let (spineIndex, charOffset) = displayedCoreTextPosition(in: engine)
+        currentChapterIndex = spineIndex
+        moveReaderSession(
+            to: CoreTextReadingPosition(spineIndex: spineIndex, charOffset: charOffset),
+            source: .restored,
+            pageIndex: currentPage,
+            totalPages: engine.totalPages,
+            shouldPersist: false
+        )
+    }
+
+    @StateObject var epubRenderer = EPUBPageRenderer()
+
+    @State var showTTSPanel = false
+    @State var showAIAssistantPanel = false
+    @State var aiLaunch: AIReadingLaunch?
+    /// 整章翻譯 for this book, and the sheet that sets it.
+    @State var readerTranslation: ReaderTranslationPresentation
+    @State var showTranslationSheet = false
+    /// Scroll mode keeps neighbouring chapters sliced; those whose translations changed off
+    /// screen are laid out again when they become the chapter on screen.
+    @State var staleTranslatedChapters: Set<Int> = []
+    /// AI 查詞's card, and the assistant launch its 繼續問 AI asks for once the card is gone.
+    @State var wordLookup: ReaderWordLookupRoute?
+    @State var aiLaunchAfterWordLookup: AIReadingLaunch?
+    @State var aiCitationTask: Task<Void, Never>?
+    /// Whole-book text for the AI features, gathered from the source rather than the layout
+    /// cache. Filled by `gatherAIBookText()` when an AI surface opens. See `aiBookAdapter()`.
+    @State var aiPreparedSourceIdentity: ReaderAISourceIdentity?
+    @State var aiSourceAdapter: AIBookContentAdapter?
+    @State var ttsDetectedSpeakers: [String] = []
+    @State var aiGatherGeneration = UUID()
+    @State var aiGatherTask: Task<Void, Never>?
+    @State var aiCitationError: String?
+    @State var showDownloadOptions = false
+    @State var showOnlineBookDetail = false
+    @State var onlineBookDetailSnapshot: OnlineBook?
+    @State var pendingDetailChapterIndex: Int?
+    /// 現代 interface: the card hanging off the cover thumbnail in the top bar.
+    @State var showModernBookCard = false
+    /// 書卡裡按下的動作。每個動作都要開 sheet，而 sheet 在 popover 還在收的時候會被系統丟掉
+    /// （聽書就是這樣「面板縮回圓圈、但 sheet 沒出來」），所以先記在這裡，等 popover 真的關掉
+    /// 才開——跟 Technotes/iOS17MenuModalPresentation.md 是同一類邊界。
+    @State var modernBookCardPresentation =
+        DismissalSequencedPresentation<ReaderModernBookCardRoute>()
+    /// Cover art for the 現代 chrome, read from disk once instead of on every body
+    /// pass (the top bar and the book card both draw it).
+    @State var modernCoverImage: UIImage?
+    /// Whether the auto-read controls are showing over the page. Not private: the
+    /// footer pill in `ReaderView+Footer` is what opens them.
+    @State var showAutoReadPanel = false
+    @State var ttsChapterIndex: Int? = nil
+    /// Maps the narration handed to the engine back to `ttsChapterIndex`'s laid-out text,
+    /// so the playback wash can be positioned instead of searched for. Only the reader
+    /// knows how the unit was sliced out of the chapter, which is why the engine reports
+    /// narration offsets and this side finishes the conversion.
+    ///
+    /// `nil` when the narration did not come from a CoreText layout — the joined page text
+    /// and the raw chapter content have no shared coordinate space with what is on screen,
+    /// and highlighting falls back to searching there.
+    @State var ttsNarrationOffsets: TTSNarrationOffsetMap? = nil
+    /// Chapter the narration is blocked on at a chapter boundary, while the engine holds the
+    /// audio session open. Non-nil only between `beginWaitingForTTSChapter` and its resolution.
+    @State var ttsPendingChapterIndex: Int? = nil
+    /// A start waiting for the paged engine to lay its chapter out (scroll mode lays chapters
+    /// out in the scroll engine only). Non-nil only while that layout is in flight; clearing it
+    /// cancels the start.
+    @State var ttsStartLayoutRequest: UUID? = nil
+    @State var showTTSJumpPrompt = false
+    @State var ttsJumpPromptChapterIndex: Int? = nil
+    @State var ttsPlaybackAnchor: CoreTextReadingPosition?
+    @State var isAligningReaderToTTSAnchor = false
+    @State var showMediaOverlayPanel = false
+    @State var activeMediaOverlayChapterIndex: Int? = nil
+
+    @StateObject var chapterPresentation = ReaderChapterPresentationState()
+    var currentChapterIndex: Int {
+        get { chapterPresentation.currentChapter }
+        nonmutating set { chapterPresentation.setCurrentChapter(newValue) }
+    }
+
+    // Scroll mode progress tracking
+    var scrollVisibleChapter: Int {
+        get { chapterPresentation.visibleChapter }
+        nonmutating set { chapterPresentation.setVisibleChapter(newValue) }
+    }
+    @State var scrollNavigationVersion: UInt64 = 0
+    @State var scrollNavigationRequest: ReaderScrollNavigationRequest?
+    @State var pendingScrollJumpTarget: CoreTextReadingPosition?
+    @State var manuallyRefreshingChapterIndex: Int?
+    @State var pendingChapterContentReplacements: Set<Int> = []
+
+    @State var readerSessionCoordinator: ReaderSessionCoordinator?
+    @State private var readingStatistics = ReaderReadingStatistics()
+    // Metrics are consumed by the session/clock-driven bars. A progress sample
+    // must not invalidate ReaderView's navigation, sheets and UIKit bridge.
+    var readingStatsTracker: ReadingStatsSessionTracker? {
+        get { readingStatistics.tracker }
+        nonmutating set { readingStatistics.tracker = newValue }
+    }
+    @State var readerOverlayLegacyContentIndex = ReaderLegacyContentIndex.empty
+
+    @State var isRestoringPosition = true
+    @State var savedCoreTextRestoreTarget: (chapterIndex: Int, charOffset: Int)?
+    /// 換源 sheet 內的變量編輯入口 (Legado 設置書籍變量/設置源變量)。
+    @State var showBookVariableEditor = false
+    @State var showSourceVariableEditor = false
+    @State private var isApplyingCoreTextRestore = false
+    @State var isLoadingPipeline = false
+    @State var txtIndexReady = false
+    @State var showTXTIndexFailure = false
+    @State private var curlStartupStartedAt: CFAbsoluteTime?
+    @State private var hasLoggedCurlInteractiveReady = false
+    @State private var hasPerformedInitialLoad = false
+    @State var activeFixedLayoutOrientationRequest: FixedLayoutOrientation?
+
+    // Source change
+    @State var showChangeSourceSheet = false
+    @State private var replaceRuleDraft: ReplaceRule?
+    @State var reviewTarget: ReaderHTMLUtilities.ReviewTarget?
+    @State private var coreTextExternalTargetVersion: UInt = 0
+    @State var bookDocument: (any BookDocument)? = nil
+    @State var contentProvider: (any BookContentProvider)? = nil
+    @State var readerCapabilities: ReaderCapabilities = .reflowableText
+
+    /// Snapshot of the book at reader launch, so we can re-add it to the shelf
+    /// if it was deleted during the reading session.
+    @State var snapshotBook: ReadingBook?
+    @State var showAddToShelfAlert = false
+
+    // Source change state managed by ViewModel, exposed via computed properties to avoid duplicate state in the view.
+    var changeSourceOrigins: [BookOrigin] { readerViewModel.changeSourceOrigins }
+    var changeSourceLoading: Bool { readerViewModel.changeSourceLoading }
+    var changeSourceError: String? { readerViewModel.changeSourceError }
+    var changeSourceFailedKeys: Set<String> { readerViewModel.changeSourceFailedKeys }
+    var changeSourcePendingOrigin: BookOrigin? { readerViewModel.changeSourcePendingOrigin }
+
+    @State private var systemBrightness: Double = 0.5
+
+    var fontSize: CGFloat {
+        get { readerConfig.fontSize }
+        nonmutating set { readerConfig.fontSize = newValue }
+    }
+
+    var readerTheme: ReaderTheme {
+        get { readerConfig.theme }
+        nonmutating set { readerConfig.theme = newValue }
+    }
+
+    /// The imported image is the reader surface itself, not a SwiftUI decoration
+    /// behind an opaque CoreText page. The same URL is passed into render settings
+    /// so every paged canvas draws it beneath the text.
+    var activeReaderBackgroundImageURL: URL? {
+        guard let background = readerBackgroundResolution.customBackground,
+              let url = settings.readerBackgroundImageURL(for: background),
+              FileManager.default.fileExists(atPath: url.path)
+        else {
+            return nil
+        }
+        return url
+    }
+
+    /// The background on screen, for the reader's mode and its own pick.
+    var readerBackgroundResolution: ReaderBackgroundResolution {
+        settings.readerBackgroundResolution(mode: settings.readerMode, wornTheme: readerTheme)
+    }
+
+    private var activeReaderBackgroundImage: UIImage? {
+        guard let url = activeReaderBackgroundImageURL else { return nil }
+        return UIImage(contentsOfFile: url.path)
+    }
+
+    var readerScrollBackgroundColor: UIColor {
+        activeReaderBackgroundImageURL == nil ? readerTheme.uiBackgroundColor : .clear
+    }
+
+    @ViewBuilder
+    var readerSurfaceBackground: some View {
+        // Keep decorative pixels out of layout measurement. A tall image used
+        // as a ZStack child reports its aspect-sized height and pushes reader
+        // chrome beyond both viewport edges; an overlay inherits the color's
+        // already-constrained reader surface instead.
+        readerTheme.backgroundColor
+            .overlay {
+                if let image = activeReaderBackgroundImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                }
+            }
+            .clipped()
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+    }
+
+    /// The device's appearance, handed to the reader's mode as the reader opens, as the
+    /// scene comes back from the background, and whenever the appearance or what follows
+    /// it changes. The mode decides the background; this only moves the mode
+    /// (`GlobalSettings.alignReaderDarkMode`), and not in the background.
+    ///
+    /// - Parameter phase: the scene's phase, when the caller is the phase changing; the
+    ///   environment's otherwise.
+    func alignReaderModeWithDevice(in phase: ScenePhase? = nil) {
+        settings.alignReaderDarkMode(deviceIsDark: systemColorScheme == .dark, in: phase ?? scenePhase)
+    }
+
+    /// The 深色／白天 button: the reader's own dark mode, set by hand.
+    func toggleReaderDarkMode() {
+        withAnimation(DSAnimation.standard) {
+            settings.setReaderDarkMode(!settings.readerDarkMode, deviceIsDark: systemColorScheme == .dark)
+            syncActiveThemePreset()
+        }
+    }
+
+    /// Puts the background of the reader's mode on screen: the built-in one it sits on,
+    /// and over it the palette of a saved background or — under 綁定閱讀主題 › 跟隨外觀主題
+    /// — of the appearance theme. `readerBackgroundResolution` decides; this is the one
+    /// place that applies it, so the button's symbol, which reads the mode, and the page
+    /// cannot part ways (reported 2026-09-30: switched by hand the symbol stayed as it
+    /// was, and a change of appearance moved the symbol without the page).
+    func syncActiveThemePreset() {
+        let resolution = readerBackgroundResolution
+        var preset: AppearanceThemePreset?
+        if let background = resolution.customBackground {
+            preset = settings.readerBackgroundPreset(for: background)
+        } else if resolution.paintsWithAppearanceTheme {
+            preset = settings.appearanceTheme(
+                for: settings.readerMode,
+                isProActive: subscriptionStore.hasAccess(.readerThemePacks)
+            )
+        }
+
+        // Order matters: changing the theme recolors the render-settings snapshot, so
+        // the preset must already be in place before that happens.
+        let presetChanged = AppearanceThemePreset.activeReaderTheme != preset
+        if presetChanged {
+            AppearanceThemePreset.activeReaderTheme = preset
+        }
+        if readerConfig.theme != resolution.theme {
+            // The theme write flows through the unified settings observation, which
+            // classifies it as an appearance refresh on its own.
+            readerConfig.theme = resolution.theme
+            return
+        }
+        // A preset-only change moves no observed property, so nothing else would notice
+        // that the palette is different — submit the appearance refresh explicitly.
+        // (`ReaderConfig.refresh` no longer exists; every refresh goes through the one
+        // pipeline entry.)
+        guard presetChanged else { return }
+        submitReaderRefresh(intent: .appearance)
+    }
+
+    var usesReadableReaderWidth: Bool {
+        horizontalSizeClass == .regular || UIDevice.current.userInterfaceIdiom == .pad
+    }
+
+    var overlayContentMaxWidth: CGFloat {
+        usesReadableReaderWidth ? DSLayout.readableOverlayWidth : .infinity
+    }
+
+    var extraReaderHorizontalInset: CGFloat {
+        ReaderReadableWidthPolicy.extraInset(
+            pageWidth: currentReaderRenderSize.width,
+            usesReadableWidth: usesReadableReaderWidth
+        )
+    }
+
+    var effectivePageMarginH: CGFloat {
+        readerConfig.pageMarginH + extraReaderHorizontalInset
+    }
+
+    var effectiveReaderSpreadMode: ReaderSpreadMode {
+        ReaderSpreadPolicy.effectiveMode(
+            preferredMode: settings.readerSpreadMode,
+            viewportSize: readerViewportSize,
+            horizontalSizeClassIsRegular: horizontalSizeClass == .regular,
+            idiom: UIDevice.current.userInterfaceIdiom,
+            isScrollMode: effectiveScrollMode,
+            fixedLayoutSpread: usesFixedLayoutRenderer ? epubRenderer.fixedLayoutSpread : nil,
+            fixedLayoutOrientation: usesFixedLayoutRenderer ? epubRenderer.fixedLayoutOrientation : nil
+        )
+    }
+
+    var isDoublePageSpreadActive: Bool {
+        effectiveReaderSpreadMode == .doublePage
+    }
+
+    var readerPageStep: Int {
+        isDoublePageSpreadActive ? 2 : 1
+    }
+
+    func nextReaderPage(after page: Int, maxPage: Int) -> Int {
+        if isDoublePageSpreadActive,
+           let pairingProvider = epubRenderer.engine as? FixedLayoutSpreadPairingProviding,
+           let next = pairingProvider.nextFixedLayoutSpreadPage(after: page) {
+            return min(maxPage, next)
+        }
+        return min(maxPage, page + readerPageStep)
+    }
+
+    func previousReaderPage(before page: Int) -> Int {
+        if isDoublePageSpreadActive,
+           let pairingProvider = epubRenderer.engine as? FixedLayoutSpreadPairingProviding,
+           let previous = pairingProvider.previousFixedLayoutSpreadPage(before: page) {
+            return max(0, previous)
+        }
+        return max(0, page - readerPageStep)
+    }
+
+    /// A double-column spread turns as one sheet, using the same LTR/RTL outer
+    /// spine as a single page. Keep the user's selected animation in either mode.
+    var effectivePageTurnStyle: PageTurnStyle {
+        settings.pageTurnStyle
+    }
+
+    private var readerPageViewIdentity: String {
+        // Include the render size so a device rotation that keeps the same spread mode (e.g.
+        // single-page portrait↔landscape) still recreates the paged view. Otherwise the existing
+        // page views are reused with their old `layout.renderSize`, and CoreTextPageView scales the
+        // stale CTFrame to the new bounds → text renders narrow. (Double-page rotation already
+        // recreates because the spread mode toggles, which is why it never showed this bug.)
+        let size = currentReaderRenderSize
+        return "\(effectivePageTurnStyle.rawValue)-\(effectiveReaderSpreadMode.rawValue)-\(Int(size.width))x\(Int(size.height))"
+    }
+
+    var currentReaderRenderSize: CGSize {
+        readerRenderSize(forViewport: readerViewportSize)
+    }
+
+    private func readerRenderSize(forViewport viewportSize: CGSize) -> CGSize {
+        guard effectiveReaderSpreadMode == .doublePage else { return viewportSize }
+        return CGSize(
+            width: max(1, (viewportSize.width - DSLayout.readerSpreadGutter) / 2),
+            height: max(1, viewportSize.height)
+        )
+    }
+
+    var systemVerticalPadding: CGFloat {
+        ReaderLayoutMetrics.minimumVerticalPadding
+    }
+
+    /// Extra offset that CoreText paginator's grid alignment adds to the bottom
+    /// content inset. Footer overlay must shift up by this amount so the visual
+    /// gap matches `footerTextGap + footerBottomPadding`.
+    /// Grid alignment has to be computed from the *same* insets pagination uses.
+    /// It was not: this read a header-aware `topInset` overload while paged
+    /// pagination took its inset from the hand-tuned content reservation, so the
+    /// two could differ by 50pt and the footer gap drifted accordingly. Both now
+    /// come from `readerBarContentInsets`.
+    var gridAdjustment: CGFloat {
+        let insets = readerBarContentInsets
+        return ReaderLayoutMetrics.gridAdjustment(
+            viewHeight: currentReaderRenderSize.height,
+            topInset: insets.top,
+            bottomInset: insets.bottom,
+            fontSize: readerConfig.fontSize,
+            lineSpacing: readerConfig.lineSpacing
+        )
+    }
+
+    // ── Derived Properties ──
+    var book: ReadingBook? { store.readingBook(id: bookId) }
+
+    var onlineBookDetail: OnlineBook? {
+        guard let book, book.isOnline, let sourceId = book.bookSourceId else { return nil }
+        let source = BookSourceStore.shared.sources.first(where: { $0.id == sourceId })
+        return OnlineBook(
+            name: book.title,
+            author: book.author,
+            intro: "",
+            coverUrl: book.coverUrl ?? "",
+            bookUrl: book.bookInfoURL ?? book.source,
+            tocUrl: book.tocURL ?? "",
+            wordCount: "",
+            lastChapter: book.latestChapterDisplayTitle ?? "",
+            kind: "",
+            sourceId: sourceId,
+            sourceName: source?.bookSourceName ?? "",
+            runtimeVariables: book.runtimeVariables
+        )
+    }
+
+    var isEPUB: Bool {
+        book?.resolvedPipelineKind == .epub
+    }
+
+    var isTXT: Bool {
+        book?.resolvedPipelineKind == .txt
+    }
+
+    @State var isVerticalEPUB = false
+
+    var usesCoreTextEPUB: Bool {
+        epubRenderer.engine != nil
+    }
+
+    var isFixedLayoutEPUB: Bool {
+        isEPUB && epubRenderer.layoutMode == .prePaginated
+    }
+
+    var usesFixedLayoutRenderer: Bool {
+        isEPUB && isFixedLayoutEPUB
+    }
+
+    private var usesPagedRenderer: Bool { usesCoreTextEPUB }
+
+    private var renderedPageCount: Int {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB { return engine.totalPages }
+        return allPages.count
+    }
+
+    /// The single TOC entry to highlight as "current". EPUB uses spine index + in-spine
+    /// character offset because the TOC/nav list is not guaranteed to be 1:1 with the spine.
+    private var currentTOCChapterID: UUID? {
+        currentTOCChapter?.id
+    }
+
+    private var currentTOCChapter: BookChapter? {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            let position = displayedCoreTextPosition(in: engine)
+            return tocChapter(
+                forSpineIndex: position.spineIndex,
+                charOffset: position.charOffset
+            )
+        }
+
+        return chapters.first(where: { $0.index == currentChapterIndex })
+            ?? (chapters.indices.contains(currentChapterIndex) ? chapters[currentChapterIndex] : nil)
+    }
+
+    /// Paragraph-review capability is published by the loading pipeline. Keeping this
+    /// lookup in memory prevents settings-sheet construction from scanning every rendered
+    /// attributed string (or reopening the cached chapter) during `body` evaluation.
+    private var currentBookHasParagraphReviews: Bool {
+        readerViewModel.hasParagraphReviews
+    }
+
+    func tocChapter(forSpineIndex spineIndex: Int, charOffset: Int) -> BookChapter? {
+        ReaderTOCSelection.currentChapter(
+            in: chapters,
+            currentSpineIndex: spineIndex,
+            currentCharOffset: charOffset
+        ) { chapter in
+            guard let engine = epubRenderer.engine else { return 0 }
+            return tocAnchorOffset(for: chapter, engine: engine)
+        }
+    }
+
+    private func tocAnchorOffset(
+        for chapter: BookChapter,
+        engine: any PageRenderingProvider
+    ) -> Int? {
+        guard let fragment = chapter.fragment, !fragment.isEmpty else { return 0 }
+
+        if let cfi = EPUBCFIResolver.parse(fragment),
+           let session = activePublicationSession {
+            let resolver = EPUBCFIResolver(
+                spineReferences: session.opfSpineReferences,
+                manifestItemsByID: session.opfManifestItemsByID
+            )
+            let spineIndex = resolver.resolveSpineIndex(cfi, chapters: session.chapters) ?? chapter.index
+            guard let anchorOffsets = engine.chapterAnchorOffsets(forSpine: spineIndex),
+                  let text = engine.chapterText(forSpine: spineIndex) else { return nil }
+            return resolver.resolveCharOffset(
+                cfi,
+                anchorOffsets: anchorOffsets,
+                contentLength: (text as NSString).length
+            )
+        }
+
+        return engine.charOffset(forSpine: chapter.index, fragment: fragment)
+    }
+
+    func tocPosition(
+        for chapter: BookChapter,
+        engine: (any PageRenderingProvider)?
+    ) -> CoreTextReadingPosition {
+        guard usesCoreTextEPUB,
+              let engine,
+              let fragment = chapter.fragment,
+              !fragment.isEmpty
+        else {
+            return CoreTextReadingPosition(spineIndex: chapter.index, charOffset: 0)
+        }
+
+        var spineIndex = chapter.index
+        if let cfi = EPUBCFIResolver.parse(fragment),
+           let session = activePublicationSession {
+            let resolver = EPUBCFIResolver(
+                spineReferences: session.opfSpineReferences,
+                manifestItemsByID: session.opfManifestItemsByID
+            )
+            spineIndex = resolver.resolveSpineIndex(cfi, chapters: session.chapters) ?? chapter.index
+        }
+
+        let charOffset = tocAnchorOffset(for: chapter, engine: engine) ?? 0
+        return CoreTextReadingPosition(spineIndex: spineIndex, charOffset: charOffset)
+    }
+
+    private var tocPageOffsets: [UUID: Int] {
+        guard let engine = epubRenderer.engine, usesCoreTextEPUB else { return [:] }
+        var offsets: [UUID: Int] = [:]
+        for chapter in chapters {
+            // Resolve the entry's anchor to a char offset so sub-sections of one spine map to
+            // distinct pages; fall back to the spine start when the anchor isn't laid out yet.
+            let position = tocPosition(for: chapter, engine: engine)
+            offsets[chapter.id] = engine.pageIndex(
+                forSpine: position.spineIndex,
+                charOffset: position.charOffset
+            )
+        }
+        return offsets
+    }
+
+    private var localEPUBBookIdentifier: String? {
+        guard let currentBook = book, usesCoreTextEPUB else { return nil }
+        if currentBook.resolvedPipelineKind == .epub {
+            return currentBook.remoteEPUBRenderIdentifier ?? store.localEPUBURL(for: currentBook).standardizedFileURL.path
+        }
+        if currentBook.resolvedPipelineKind == .txt {
+            return currentBook.id.uuidString
+        }
+        return "coretext-\(currentBook.id.uuidString)"
+    }
+
+    func onlineChapterRef(for chapterIndex: Int) -> OnlineChapterRef? {
+        guard let refs = book?.onlineChapters, refs.indices.contains(chapterIndex) else { return nil }
+        return refs[chapterIndex]
+    }
+
+    func cachedChapterPackage(for chapterIndex: Int) -> ChapterPackage? {
+        guard let currentBook = book,
+              let ref = onlineChapterRef(for: chapterIndex)
+        else {
+            return nil
+        }
+
+        let sanitizedURL = RuleEngine.sanitizeExtractedURL(ref.url)
+        return dependencies.bookSourceFetcher.loadChapterPackageSync(
+            bookId: currentBook.id,
+            chapterIndex: chapterIndex,
+            expectedSourceURL: sanitizedURL,
+            expectedTOCTitle: ref.title
+        ) ?? (
+            sanitizedURL != ref.url
+                ? dependencies.bookSourceFetcher.loadChapterPackageSync(
+                    bookId: currentBook.id,
+                    chapterIndex: chapterIndex,
+                    expectedSourceURL: ref.url,
+                    expectedTOCTitle: ref.title
+                )
+                : nil
+        )
+    }
+
+    /// Drop queued pagination when the app leaves the foreground — except while TTS is
+    /// narrating. Backgrounding used to cancel unconditionally, which killed the layout pass
+    /// for the chapter TTS was about to need; because layout is otherwise only scheduled by
+    /// page turns (`warmUpNext`), and a locked screen turns no pages, nothing ever rebuilt it
+    /// and narration stopped dead at the chapter boundary. Listening is precisely the case
+    /// where offscreen pagination still has to run.
+    func cancelPendingRenderWorkUnlessNarrating() {
+        guard ttsCoordinator.playbackState == .stopped else {
+            ttsLog("[TTS][Reader] keeping pagination alive while narrating (phase change)")
+            return
+        }
+        epubRenderer.engine?.cancelPendingWork(cause: .appPhaseChange)
+    }
+
+    func isChapterContentAvailable(at chapterIndex: Int) -> Bool {
+        // Volume headers (作品相关 / 第N卷 …) render a divider page with no fetched content. Treat
+        // them as available, otherwise the "ready but no content" path refetches them forever.
+        if let refs = book?.onlineChapters,
+           refs.indices.contains(chapterIndex),
+           refs[chapterIndex].shouldRenderAsVolumeSeparator {
+            return true
+        }
+        guard let package = cachedChapterPackage(for: chapterIndex) else {
+            // Not cached yet is the ordinary case here; only an unusable package
+            // (below) is worth a log line.
+            return false
+        }
+        let ok = package.state == .cached && !package.content.isEmpty
+        if !ok {
+            AppLogger.cache("⟐ chapterCache unavailable", context: [
+                "index": chapterIndex,
+                "reason": "packageState",
+                "state": "\(package.state)",
+                "contentLen": package.content.count,
+            ])
+        }
+        return ok
+    }
+
+    /// Raises or hides the reader chrome. Loading surfaces route their taps here so a
+    /// chapter that never arrives is not a dead end: the toolbar is the only way to
+    /// refresh, change source, or leave, and without it the reader had to be force-quit.
+    func toggleReaderChrome() {
+        // 自動閱讀's panel is chrome too, and it goes first: one tap puts it away,
+        // the next one is what raises the reading menu.
+        guard !consumeTapForAutoReadPanel() else { return }
+        setReaderChromeVisible(!showBars)
+    }
+
+    /// The only place `showBars` is written, so the menu comes and goes on one
+    /// timing however it was asked for. The reader tree carries no implicit
+    /// animation for it: a write that bypasses this shows or hides the menu abruptly.
+    func setReaderChromeVisible(_ visible: Bool) {
+        guard showBars != visible else { return }
+        withAnimation(DSAnimation.readerChrome) { showBars = visible }
+    }
+
+    /// Starting to turn the page — a swipe, a drag, a scroll — puts the menu away, in
+    /// every reader and mode. A tap on a turning zone with the menu up does only this
+    /// (`handleTouchAction`).
+    func hideReaderChromeForPageTurn() {
+        setReaderChromeVisible(false)
+    }
+
+    var currentChapterOverlayState: ReaderChapterOverlayState {
+        guard book?.onlineChapters?.isEmpty == false else { return .hidden }
+        return ReaderChapterPresentation.overlayState(
+            isContentAvailable: readerViewModel.isChapterContentAvailable(
+                at: currentChapterIndex
+            ),
+            loadState: readerViewModel.chapterState(for: currentChapterIndex)
+        )
+    }
+
+    var telemetryPipelineKind: String {
+        book?.resolvedPipelineKind.rawValue ?? "epub"
+    }
+
+    func progressTrace(_ message: String) {
+        AppLogger.render("[ProgressTrace][ReaderView][\(bookId.uuidString)] \(message)")
+    }
+
+    var currentReaderPresentationState: ReaderPresentationState {
+        ReaderPresentationState(
+            location: readerSessionCoordinator?.state.location
+                ?? ReaderLocation(spineIndex: currentChapterIndex, charOffset: 0),
+            direction: effectiveWritingMode.isVertical ? .rtl : .ltr,
+            spreadMode: effectiveReaderSpreadMode,
+            viewportSize: readerViewportSize,
+            appearance: ReaderAppearance(
+                settings: readerRenderSettings(for: activeReaderDisplayMode),
+                theme: readerTheme
+            ),
+            pagingStyle: ReaderPagingStyle(pageTurnStyle: settings.pageTurnStyle)
+        )
+    }
+
+    /// Recomputes the reader viewport from the foreground window on a device rotation and drives the
+    /// normal relayout path. Needed because SwiftUI doesn't re-evaluate the reader's geometry on
+    /// rotation, so the `.background` GeometryReader preference never fires. The window's two
+    /// dimensions are stable; only their order changes with orientation, and `interfaceOrientation`
+    /// is already correct when this notification fires — so we order them by it (the raw
+    /// `window.bounds` may still report the pre-rotation order at this instant).
+    func applyRotatedViewportIfNeeded() {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
+        else { return }
+        let bounds = window.bounds.size
+        let longSide = max(bounds.width, bounds.height)
+        let shortSide = min(bounds.width, bounds.height)
+        guard longSide > 1 else { return }
+        let size = scene.interfaceOrientation.isLandscape
+            ? CGSize(width: longSide, height: shortSide)
+            : CGSize(width: shortSide, height: longSide)
+        guard abs(size.width - readerViewportSize.width) > 0.5
+            || abs(size.height - readerViewportSize.height) > 0.5
+        else { return }
+        handleReaderViewportSizeChange(size)
+    }
+
+    func handleReaderViewportSizeChange(_ newSize: CGSize) {
+        guard newSize.width > 1, newSize.height > 1 else { return }
+
+        let previousSize = readerViewportSize
+        readerViewportSize = newSize
+        epubRenderer.notifyViewportSize(newSize)
+        readerSessionCoordinator?.send(.updateViewport(newSize))
+        readerSessionCoordinator?.send(.updateSpreadMode(effectiveReaderSpreadMode))
+
+        let sizeChanged =
+            abs(newSize.width - previousSize.width) > 0.5 ||
+            abs(newSize.height - previousSize.height) > 0.5
+        guard sizeChanged else { return }
+
+        let targetRenderSize = readerRenderSize(forViewport: newSize)
+
+        guard let engine = epubRenderer.engine, engine.renderSize != .zero else {
+            if epubRenderer.scrollEngine != nil {
+                submitReaderRefresh(
+                    intent: .layout,
+                    viewportSize: targetRenderSize
+                )
+            }
+            return
+        }
+
+        if abs(targetRenderSize.width - engine.renderSize.width) > 0.5 ||
+            abs(targetRenderSize.height - engine.renderSize.height) > 0.5 {
+            submitReaderRefresh(
+                intent: .layout,
+                viewportSize: targetRenderSize
+            )
+        }
+    }
+
+    func ensureReaderNavigator(initialPosition: CoreTextReadingPosition) {
+        if readerSessionCoordinator == nil {
+            var state = currentReaderPresentationState
+            state.location = ReaderLocation(initialPosition, source: .restored)
+            let navigator = ReaderNavigator(
+                initialState: state,
+                positionStore: dependencies.readingPositionStore,
+                bookId: book?.id.uuidString ?? bookId.uuidString
+            )
+            readerSessionCoordinator = ReaderSessionCoordinator(navigator: navigator)
+            // One book per session coordinator, so this is the per-book reset point.
+            // Positions from the previous book share no coordinate space with this
+            // one; carrying `lastCommitted` across would report an anomaly at every
+            // book open.
+            ReaderPositionSentry.shared.beginBook(label: book?.title ?? bookId.uuidString)
+            return
+        }
+        readerSessionCoordinator?.send(.updateAppearance(currentReaderPresentationState.appearance))
+        readerSessionCoordinator?.send(.updateViewport(readerViewportSize))
+        readerSessionCoordinator?.send(.updateDirection(effectiveWritingMode.isVertical ? .rtl : .ltr))
+        readerSessionCoordinator?.send(.updatePagingStyle(ReaderPagingStyle(pageTurnStyle: settings.pageTurnStyle)))
+        readerSessionCoordinator?.send(.updateSpreadMode(effectiveReaderSpreadMode))
+    }
+
+    func moveReaderSession(
+        to position: CoreTextReadingPosition,
+        source: ReaderLocation.Source,
+        pageIndex: Int? = nil,
+        totalPages: Int? = nil,
+        isEstimated: Bool = false,
+        shouldPersist: Bool = true
+    ) {
+        guard ReaderProgressSyncPolicy.canPublishIndexPosition(
+            isTXT: book?.resolvedPipelineKind == .txt, indexReady: txtIndexReady
+        ) else { return }
+        ensureReaderNavigator(initialPosition: position)
+        epubRenderer.engine?.updateReadingPosition(position)
+        recordReadingStatsPosition(position, source: source)
+        declarePositionIntent(for: source, target: position)
+        switch source {
+        case .settledPage:
+            readerSessionCoordinator?.send(.settlePage(
+                position: position,
+                pageIndex: pageIndex,
+                totalPages: totalPages,
+                persist: shouldPersist
+            ))
+        case .scrollCommit:
+            readerSessionCoordinator?.send(.scrollCommit(position: position))
+        case .internalLink:
+            readerSessionCoordinator?.send(.internalLinkResolved(
+                position: position,
+                pageIndex: pageIndex,
+                totalPages: totalPages
+            ))
+        case .jump:
+            readerSessionCoordinator?.send(.jumpToPosition(
+                position: position,
+                pageIndex: pageIndex,
+                totalPages: totalPages,
+                isEstimated: isEstimated
+            ))
+        case .modeSwitch:
+            readerSessionCoordinator?.send(.switchMode(position: position))
+        case .restored:
+            readerSessionCoordinator?.navigator.restore(
+                to: position,
+                pageIndex: pageIndex,
+                totalPages: totalPages,
+                isEstimated: isEstimated
+            )
+        case .placeholder:
+            readerSessionCoordinator?.send(.jumpToPosition(
+                position: position,
+                pageIndex: pageIndex,
+                totalPages: totalPages,
+                isEstimated: true
+            ))
+        }
+    }
+
+    /// Tells `ReaderPositionSentry` that this move was asked for, so its
+    /// unexplained-jump guard does not flag a legitimate destination.
+    ///
+    /// Hooked here because `moveReaderSession` is already the single funnel every
+    /// deliberate move passes through — TOC taps, internal links, restore, TTS
+    /// alignment and mode switches all arrive as a `ReaderLocation.Source`. Declaring
+    /// at each of those call sites instead would leave the next one added silently
+    /// unguarded.
+    ///
+    /// `settledPage` and `scrollCommit` are excluded deliberately: they report where
+    /// the reader *ended up*, they do not ask it to go anywhere. Treating them as
+    /// intent would vouch for exactly the jumps this is meant to catch.
+    private func declarePositionIntent(for source: ReaderLocation.Source, target: CoreTextReadingPosition) {
+        let intent: ReaderPositionSentry.JumpIntent
+        switch source {
+        case .settledPage, .scrollCommit:
+            return
+        case .restored:
+            intent = .openRestore
+        case .jump, .placeholder:
+            intent = .tocJump
+        case .internalLink:
+            intent = .contentLink
+        case .modeSwitch:
+            intent = .userSeek
+        }
+        ReaderPositionSentry.shared.declareIntent(intent, target: target)
+    }
+
+    func setCoreTextExternalTarget(_ position: CoreTextReadingPosition) {
+        epubRenderer.engine?.updateReadingPosition(position)
+        readerSessionCoordinator?.setExternalTarget(position)
+        coreTextExternalTargetVersion &+= 1
+    }
+
+    func clearCoreTextExternalTarget() {
+        readerSessionCoordinator?.send(.clearExternalTarget)
+        coreTextExternalTargetVersion &+= 1
+    }
+
+    func applyReaderEffects(
+        _ effects: [ReaderEffect],
+        engine: any PageRenderingProvider
+    ) {
+        for effect in effects {
+            switch effect {
+            case let .warmUpNext(currentGlobalPage):
+                engine.warmUpNext(currentGlobalPage: currentGlobalPage)
+            default:
+                break
+            }
+        }
+    }
+
+    func coreTextPositionIfLayoutReady(
+        engine: any PageRenderingProvider,
+        page: Int
+    ) -> (spineIndex: Int, charOffset: Int)? {
+        let (spineIndex, charOffset) = engine.charOffset(forPage: page)
+        guard engine.chapterPagination(forSpine: spineIndex, charOffset: charOffset) != nil else {
+            return nil
+        }
+        return (spineIndex, charOffset)
+    }
+
+    func scheduleCoreTextPageChanged(
+        _ newPage: Int,
+        engine: any PageRenderingProvider,
+        visiblePosition: CoreTextReadingPosition? = nil
+    ) {
+        DispatchQueue.main.async {
+            handleCoreTextPageChanged(newPage, engine: engine, visiblePosition: visiblePosition)
+        }
+    }
+
+    func handleCoreTextPageChanged(
+        _ newPage: Int,
+        engine: any PageRenderingProvider,
+        visiblePosition: CoreTextReadingPosition? = nil
+    ) {
+        guard ReaderProgressSyncPolicy.canPublishIndexPosition(
+            isTXT: book?.resolvedPipelineKind == .txt, indexReady: txtIndexReady
+        ) else { return }
+        let newChapter = visiblePosition?.spineIndex ?? engine.charOffset(forPage: newPage).spineIndex
+        let chapterChanged = newChapter != currentChapterIndex
+
+        currentChapterIndex = newChapter
+        let settledPosition = visiblePosition
+            ?? engine.readingPosition(forPage: newPage)
+            ?? CoreTextReadingPosition(
+                spineIndex: engine.charOffset(forPage: newPage).spineIndex,
+                charOffset: engine.charOffset(forPage: newPage).charOffset
+            )
+        moveReaderSession(
+            to: settledPosition,
+            source: .settledPage,
+            pageIndex: newPage,
+            totalPages: engine.totalPages,
+            shouldPersist: false
+        )
+
+        progressTrace("onPageChanged page=\(newPage) chapter=\(currentChapterIndex) visiblePosition=\(String(describing: visiblePosition))")
+
+        if chapterChanged {
+            let entryState = readerViewModel.chapterState(for: newChapter)
+            let entryContentAvailable = isChapterContentAvailable(at: newChapter)
+            let entryAction = ReaderChapterPresentation.entryRefreshAction(
+                chapterIndex: newChapter,
+                usesCoreText: usesCoreTextEPUB,
+                loadState: entryState,
+                isContentAvailable: entryContentAvailable,
+                isLayoutAvailable: engine.chapterPagination(forSpine: newChapter, charOffset: 0) != nil
+            )
+            ensureChapterReady(chapterIndex: newChapter)
+            // Entering a chapter whose state was already `.ready` publishes no transition, so
+            // the state/cache mismatch check in `applyChapterRefreshAction` never runs for it.
+            if entryState == .ready, !entryContentAvailable {
+                recoverInconsistentChapterOnce(newChapter)
+            }
+            if case .notifyChapterDataChanged = entryAction {
+                submitChapterContentRefresh(chapterIndex: newChapter, update: .available)
+            }
+            // Switch the authored background soundtrack to the new chapter's (or stop it if none).
+            if let session = activePublicationSession {
+                Task { await backgroundAudioCoordinator.update(session: session, chapterIndex: newChapter) }
+            }
+            // Keep BOTH neighbors paginated, not just forward ones. Previously only
+            // chapters ahead stayed warm, so turning back (or a nearby TOC jump) hit a
+            // cold chapter and stalled on on-demand pagination — the "laggy" feel.
+            //
+            // Neighbour pagination is the heaviest work an open triggers, and this
+            // runs while the card transition is still in flight — its layer updates
+            // land in the transition's own render pass and drop frames. Waiting for
+            // the transition to commit costs nothing visible: the first page comes
+            // from `applyInitialProgressIfNeeded`, which deliberately does not wait.
+            // The gate is open (returns instantly) for every later page turn.
+            if let engine = epubRenderer.engine, usesCoreTextEPUB {
+                let navigator = readerNavigator
+                for neighbor in [newChapter - 1, newChapter + 1]
+                where chapters.indices.contains(neighbor) && isChapterContentAvailable(at: neighbor) {
+                    Task { @MainActor in
+                        let waitStart = ProcessInfo.processInfo.systemUptime
+                        let waited = await navigator?.awaitOpeningTransitionEnd() ?? false
+                        // Threshold 0 so this line appears even when the gate
+                        // was already open: absent output would otherwise be
+                        // ambiguous between "never reached here" and "did not
+                        // need to wait", which are very different diagnoses.
+                        SourcePerfTrace.record(
+                            "reader.open.deferredPreload",
+                            "spine=\(neighbor) waited=\(waited)",
+                            since: waitStart,
+                            thresholdMs: 0
+                        )
+                        await engine.preloadChapter(at: neighbor)
+                    }
+                }
+            }
+        }
+
+        guard ReaderProgressSyncPolicy.shouldPersistOnPageChanged(
+            isCoreTextReady: epubRenderer.isCoreTextReady,
+            totalPages: engine.totalPages,
+            isRestoringPosition: isRestoringPosition
+        ) else {
+            progressTrace(
+                "onPageChanged skipPersist page=\(newPage) ready=\(epubRenderer.isCoreTextReady) totalPages=\(engine.totalPages) restoring=\(isRestoringPosition)"
+            )
+            return
+        }
+
+        guard coreTextPositionIfLayoutReady(engine: engine, page: newPage) != nil else {
+            progressTrace("onPageChanged skipPersist page=\(newPage) reason=layoutNotReady")
+            return
+        }
+
+        epubRenderer.updateCurrentPosition(globalPage: newPage, engine: engine)
+
+        readerSessionCoordinator?.send(.settlePage(
+            position: settledPosition,
+            pageIndex: newPage,
+            totalPages: engine.totalPages,
+            persist: true
+        ))
+    }
+
+    /// EPUB font asset directory (Documents/{uuid}_epub_assets/).
+    var epubAssetsURL: URL? {
+        guard let b = book, b.isLegacyParsedEPUB else { return nil }
+        let assetsDir = b.contentFilename.replacingOccurrences(
+            of: "_epub.json", with: "_epub_assets")
+        let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = docsDir.appendingPathComponent(assetsDir)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// Base URL for the current chapter: assets root + chapter subdirectory (for resolving relative font paths in CSS).
+    var epubBaseURL: URL? {
+        guard let assetsURL = epubAssetsURL else { return nil }
+        if isEPUB {
+            guard chapters.indices.contains(currentChapterIndex) else { return assetsURL }
+            let href = chapters[currentChapterIndex].href
+            guard !href.isEmpty, href != "synthetic_cover" else { return assetsURL }
+            let hrefDir = (href as NSString).deletingLastPathComponent
+            return hrefDir.isEmpty ? assetsURL : assetsURL.appendingPathComponent(hrefDir)
+        }
+        guard chapters.indices.contains(currentPage) else { return assetsURL }
+        let href = chapters[currentPage].href
+        guard !href.isEmpty, href != "synthetic_cover" else { return assetsURL }
+        let hrefDir = (href as NSString).deletingLastPathComponent
+        return hrefDir.isEmpty ? assetsURL : assetsURL.appendingPathComponent(hrefDir)
+    }
+
+    var currentChapterTitle: String {
+        if usesCoreTextEPUB {
+            if let chapter = currentTOCChapter {
+                return chapter.title
+            }
+            return book?.title ?? ""
+        }
+        guard !allPages.isEmpty else { return "" }
+        return allPages[min(currentPage, allPages.count - 1)].chapterTitle
+    }
+
+    /// Everything a screen-fixed bar shows, for one set of clock readings.
+    ///
+    /// Takes the clock rather than reading it so `ReaderPageBarsLayer` — which owns
+    /// the ticking model — can build this from the value it is redrawing for, without
+    /// the reader having to observe the clock to stay in step.
+    func readerOverlayContentSnapshot(
+        clock: ReaderOverlayClockSnapshot
+    ) -> ReaderOverlayContentSnapshot {
+        let now = clock.now
+        let pageMetrics = readerOverlayPageMetrics
+        let readingMetrics = readingStatsTracker?.currentMetrics(at: now) ?? (elapsed: 0, charactersRead: 0)
+        let paceMetrics = readingStatsTracker?.currentPaceMetrics(at: now) ?? (elapsed: 0, contentUnitsRead: 0)
+        let estimatedRemainingTime = ReaderRemainingTimeEstimator.estimate(
+            elapsed: paceMetrics.elapsed,
+            contentUnitsRead: paceMetrics.contentUnitsRead,
+            remainingContentUnits: readerOverlayRemainingContentUnits
+        )
+
+        return ReaderOverlayContentSnapshot(
+            bookTitle: book?.title ?? snapshotBook?.title ?? "",
+            chapterTitle: currentChapterTitle.converted(to: settings.textConversion),
+            chapterPage: pageMetrics.chapterPage,
+            chapterPageCount: pageMetrics.chapterPageCount,
+            totalProgress: pageMetrics.totalProgress,
+            now: now,
+            batteryLevel: clock.batteryLevel,
+            isCharging: clock.isCharging,
+            readingDuration: readingMetrics.elapsed,
+            estimatedRemainingTime: estimatedRemainingTime
+        )
+    }
+
+    private var readerOverlayPageMetrics: (
+        chapterPage: Int,
+        chapterPageCount: Int,
+        totalProgress: Double
+    ) {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB, engine.totalPages > 0 {
+            let position = displayedCoreTextPosition(in: engine)
+            let pagination = displayedChapterPagination(in: engine)
+            let chapterPageCount = pagination?.displayPageCount ?? 0
+            let chapterPage = pagination.map { $0.localPageIndex + 1 } ?? 0
+            return (
+                chapterPage,
+                chapterPageCount,
+                engine.totalProgress(
+                    forSpine: position.spineIndex,
+                    charOffset: position.charOffset
+                )
+            )
+        }
+
+        guard !allPages.isEmpty else { return (0, 0, 0) }
+        let pageIndex = max(0, min(currentPage, allPages.count - 1))
+        let page = allPages[pageIndex]
+        return (
+            page.pageInChapter + 1,
+            readerOverlayLegacyContentIndex.chapterPageCount(for: page.chapterIndex),
+            Double(pageIndex) / Double(max(allPages.count - 1, 1))
+        )
+    }
+
+    private var readerOverlayRemainingContentUnits: Int? {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            let position = displayedCoreTextPosition(in: engine)
+            return readerContentMetrics(
+                for: CoreTextReadingPosition(
+                    spineIndex: position.spineIndex,
+                    charOffset: position.charOffset
+                ),
+                engine: engine
+            )?.remainingUnitCount
+        }
+
+        guard book?.isOnline != true, !allPages.isEmpty else { return nil }
+        let currentIndex = max(0, min(currentPage, allPages.count - 1))
+        return readerOverlayLegacyContentIndex.remainingUnitCount(forPageAt: currentIndex)
+    }
+
+    /// The position the reader is showing, in either mode: what the bars, the
+    /// menu, the TOC's current chapter and a bookmark all describe. Scroll mode does
+    /// not move `currentPage` (it stays on the page the book opened at), so its
+    /// position is the session's, as each settled scroll commits it.
+    func displayedCoreTextPosition(
+        in engine: any PagedReaderEngine
+    ) -> (spineIndex: Int, charOffset: Int) {
+        let position = ReaderDisplayedPosition.resolve(
+            engine: engine, currentPage: currentPage, isScrolling: effectiveScrollMode,
+            sessionLocation: readerSessionCoordinator?.state.location
+        )
+        return (position.spineIndex, position.charOffset)
+    }
+
+    /// The displayed position's page within its chapter. Scroll mode has no pages:
+    /// one visible band between the bars counts as one (the user's choice,
+    /// 2026-09-23), measured on the scroll view.
+    func displayedChapterPagination(in engine: any PagedReaderEngine) -> ChapterPagination? {
+        let position = displayedCoreTextPosition(in: engine)
+        if effectiveScrollMode {
+            return autoScrollHandle.screenPagination?(position.spineIndex)
+        }
+        return engine.chapterPagination(forSpine: position.spineIndex, charOffset: position.charOffset)
+    }
+
+    var canGoPrevChapter: Bool { currentChapterIndex > 0 }
+    var canGoNextChapter: Bool { currentChapterIndex < chapters.count - 1 }
+
+    /// Footer intrinsic height (points), excluding safe area bottom.
+    let footerOverlayHeight: CGFloat = ReaderLayoutMetrics.footerHeight
+
+    /// 一頁一個書籤：目前這一頁在章節內的字元範圍。頂部書籤鈕、觸控區動作、
+    /// 翻頁模式的下拉手勢全部以它為準，所以三者永遠談的是同一個書籤。
+    var currentPageBookmarkRange: ReaderPageBookmarkRange? {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            let displayed = displayedCoreTextPosition(in: engine)
+            return ReaderPageBookmarkRange.page(
+                startingAt: CoreTextReadingPosition(
+                    spineIndex: displayed.spineIndex, charOffset: displayed.charOffset),
+                in: engine
+            )
+        }
+        if !allPages.isEmpty {
+            let index = min(currentPage, allPages.count - 1)
+            let page = allPages[index]
+            // 舊的 allPages 路徑沒有字元位移，頁在章內的序號就是它的位置。
+            // 同一章的頁在 allPages 裡是連續的，所以章首頁減一下就是章內頁號。
+            let localPage = index - (findChapterFirstPage(page.chapterIndex) ?? index)
+            return ReaderPageBookmarkRange(
+                spineIndex: page.chapterIndex, startOffset: localPage, endOffset: localPage + 1)
+        }
+        guard chapters.indices.contains(currentChapterIndex) else { return nil }
+        return ReaderPageBookmarkRange(spineIndex: currentChapterIndex, startOffset: 0, endOffset: 1)
+    }
+
+    /// Whether the current page has a bookmark.
+    var isCurrentPageBookmarked: Bool {
+        guard let range = currentPageBookmarkRange else { return false }
+        return store.isPageBookmarked(bookId: bookId, range: range)
+    }
+
+    /// 加書籤／移除書籤：頂部書籤鈕、觸控區動作與下拉手勢共用這一條路徑，
+    /// 成功後的提示也只在這裡發。
+    /// - Returns: `true` 加入、`false` 移除；沒有可用的頁面範圍、什麼都沒做時是 `nil`。
+    @discardableResult
+    func toggleCurrentPageBookmark() -> Bool? {
+        guard let range = currentPageBookmarkRange else { return nil }
+        let added = store.togglePageBookmark(
+            bookId: bookId,
+            chapterIndex: range.spineIndex,
+            chapterTitle: bookmarkChapterTitle(for: range.spineIndex),
+            range: range,
+            excerpt: currentPageBookmarkExcerpt
+        )
+        let toast = ReaderBookmarkToast(isAdded: added)
+        withAnimation(accessibilityReduceMotion ? nil : DSAnimation.fast) {
+            bookmarkToast = toast
+        }
+        UIAccessibility.post(notification: .announcement, argument: localized(toast.titleKey))
+        return added
+    }
+
+    func bookmarkChapterTitle(for chapterIndex: Int) -> String {
+        if usesCoreTextEPUB,
+           let chapter = tocChapter(forSpineIndex: chapterIndex, charOffset: 0) {
+            return chapter.title
+        }
+        if chapters.indices.contains(chapterIndex) {
+            return chapters[chapterIndex].title
+        }
+        if let page = allPages.first(where: { $0.chapterIndex == chapterIndex }) {
+            return page.chapterTitle
+        }
+        return currentChapterTitle
+    }
+
+    /// Current page excerpt (first 30 characters).
+    var currentPageExcerpt: String {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            if effectiveScrollMode {
+                let position = displayedCoreTextPosition(in: engine)
+                return ReaderDisplayedPosition.excerpt(
+                    in: epubRenderer.scrollEngine?.chapterText(forSpine: position.spineIndex) ?? "",
+                    charOffset: position.charOffset
+                )
+            }
+            return String(engine.plainText(forPage: currentPage).prefix(30))
+        }
+        guard !allPages.isEmpty else { return "" }
+        let content = allPages[min(currentPage, allPages.count - 1)].content
+        return String(content.prefix(30))
+    }
+
+    /// 書籤卡片上的摘錄。比 `currentPageExcerpt` 長，因為卡片留了兩行給它；
+    /// 30 字只填得滿一行，第二行會空著。
+    var currentPageBookmarkExcerpt: String {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            if effectiveScrollMode {
+                let position = displayedCoreTextPosition(in: engine)
+                return ReaderDisplayedPosition.excerpt(
+                    in: epubRenderer.scrollEngine?.chapterText(forSpine: position.spineIndex) ?? "",
+                    charOffset: position.charOffset,
+                    maxLength: Bookmark.pageExcerptLength
+                )
+            }
+            return String(engine.plainText(forPage: currentPage).prefix(Bookmark.pageExcerptLength))
+        }
+        guard !allPages.isEmpty else { return "" }
+        let content = allPages[min(currentPage, allPages.count - 1)].content
+        return String(content.prefix(Bookmark.pageExcerptLength))
+    }
+
+    var coreTextTextAnnotations: [CoreTextTextAnnotation] {
+        (book?.bookmarks ?? []).compactMap(\.coreTextTextAnnotation)
+    }
+
+    func syncCoreTextTextAnnotations() {
+        let annotations = coreTextTextAnnotations
+        epubRenderer.engine?.setTextAnnotations(annotations)
+        epubRenderer.scrollEngine?.textAnnotations = annotations
+    }
+
+    func addUnderlineBookmark(_ request: CoreTextUnderlineSelectionRequest) {
+        let position = request.position
+        guard chapters.indices.contains(position.spineIndex) else { return }
+        if request.removesExistingUnderline {
+            store.removeTextAnnotation(
+                bookId: bookId,
+                position: position,
+                length: request.length,
+                style: request.style,
+                color: request.color
+            )
+            syncCoreTextTextAnnotations()
+            return
+        }
+        store.addTextAnnotation(
+            bookId: bookId,
+            chapterIndex: position.spineIndex,
+            chapterTitle: bookmarkChapterTitle(for: position.spineIndex),
+            position: position,
+            length: request.length,
+            excerpt: request.excerpt.isEmpty ? currentPageExcerpt : String(request.excerpt.prefix(80)),
+            style: request.style,
+            color: request.color
+        )
+        syncCoreTextTextAnnotations()
+    }
+
+    /// Overall reading progress percentage.
+    var totalProgressPercent: String {
+        if usesCoreTextEPUB, let engine = epubRenderer.engine {
+            let (spine, offset) = displayedCoreTextPosition(in: engine)
+            let pct = engine.totalProgress(forSpine: spine, charOffset: offset) * 100
+            return String(format: "%.2f%%", pct)
+        }
+        guard !allPages.isEmpty else { return "0.00%" }
+        let pct = Double(currentPage) / Double(max(allPages.count - 1, 1)) * 100
+        return String(format: "%.2f%%", pct)
+    }
+
+    /// Chapter page info.
+    var chapterPageInfo: String {
+        if book?.isOnline == true && readerViewModel.chapterState(for: currentChapterIndex) == .loading {
+            return ""
+        }
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            guard let pagination = displayedChapterPagination(in: engine) else {
+                return ""
+            }
+            return "\(pagination.localPageIndex + 1)/\(pagination.displayPageCount)"
+        }
+        guard !allPages.isEmpty else { return "" }
+        let page = allPages[min(currentPage, allPages.count - 1)]
+        let total = allPages.filter { $0.chapterIndex == page.chapterIndex }.count
+        return "\(page.pageInChapter + 1)/\(total)"
+    }
+
+    /// Current page text (for TTS).
+    var currentPageText: String {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            return engine.plainText(forPage: currentPage)
+        }
+        guard !allPages.isEmpty else { return "" }
+        return allPages[min(currentPage, allPages.count - 1)].content
+    }
+
+    /// The words to wash, plus where the reader expects to find them.
+    ///
+    /// Media overlays carry no narration mapping — their text comes from the SMIL clip, not
+    /// from a narration unit — so they supply the words alone and the render paths search
+    /// for them exactly as they always have.
+    var activePlaybackHighlight: ReaderPlaybackHighlight? {
+        if mediaOverlayCoordinator.playbackState != .stopped {
+            return ReaderPlaybackHighlight(text: currentMediaOverlayHighlightText())
+        }
+        guard ttsCoordinator.playbackState != .stopped else { return nil }
+        return ReaderPlaybackHighlight(
+            text: ttsCoordinator.currentSegmentText,
+            expectedChapterOffset: expectedPlaybackChapterOffset(),
+            chapterIndex: ttsChapterIndex
+        )
+    }
+
+    /// Chapter offset of the segment now being spoken, or `nil` when the narration unit
+    /// carried no mapping back to the laid-out chapter.
+    private func expectedPlaybackChapterOffset() -> Int? {
+        guard let offsets = ttsNarrationOffsets,
+              let narrationRange = ttsCoordinator.currentSegmentNarrationRange
+        else { return nil }
+        return offsets.sourceOffset(forNarrationOffset: narrationRange.location)
+    }
+
+    var activeTTSChapterTitle: String {
+        let index = ttsChapterIndex ?? currentChapterIndex
+        let title = chapters.indices.contains(index) ? chapters[index].title : currentChapterTitle
+        return title.converted(to: settings.textConversion)
+    }
+
+    var ttsNowPlayingBookTitle: String {
+        let title = book?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? activeTTSChapterTitle : title
+    }
+
+    var ttsNowPlayingAuthor: String {
+        book?.author.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    func ttsNowPlayingArtwork() -> UIImage? {
+        if let coverPath = book?.coverImagePath,
+           let image = loadTOCStyleCoverImage(filename: coverPath) {
+            return image
+        }
+        return makeTOCStyleTitleCardArtwork(title: ttsNowPlayingBookTitle)
+    }
+
+    func loadTOCStyleCoverImage(filename: String) -> UIImage? {
+        BookCoverLoader.localImage(filename: filename)
+    }
+
+    func makeTOCStyleTitleCardArtwork(title: String) -> UIImage? {
+        let size = CGSize(width: 512, height: 768)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = UIScreen.main.scale
+
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let displayTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return renderer.image { context in
+            UIColor.secondarySystemBackground.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .left
+            paragraph.lineBreakMode = .byTruncatingTail
+
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 44, weight: .medium),
+                .foregroundColor: UIColor.secondaryLabel,
+                .paragraphStyle: paragraph
+            ]
+            let rect = CGRect(x: 56, y: 64, width: size.width - 112, height: size.height - 128)
+            let titleString = displayTitle.isEmpty ? "閱讀" : displayTitle
+            (titleString as NSString).draw(
+                with: rect,
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                attributes: attributes,
+                context: nil
+            )
+        }
+    }
+
+    // ── Body ──
+    var body: some View {
+        ReaderNavigationContainer {
+            buildBody()
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    appleBooksToolbarContent
+                    modernToolbarContent
+                }
+                .toolbar(
+                    showsAppleBooksToolbars || showsModernToolbars ? .visible : .hidden,
+                    for: .navigationBar
+                )
+                .toolbar(showsAppleBooksBottomToolbar ? .visible : .hidden, for: .bottomBar)
+                .toolbarBackground(.hidden, for: .navigationBar, .bottomBar)
+        }
+        .tint(readerTheme.textColor)
+        .task {
+            guard readerSessionCoordinator == nil else { return }
+            let fallback = CoreTextReadingPosition(spineIndex: 0, charOffset: 0)
+            ensureReaderNavigator(initialPosition: fallback)
+            let restored = await readerSessionCoordinator?.restore()
+            if let restored {
+                currentChapterIndex = restored.spineIndex
+                scrollVisibleChapter = restored.spineIndex
+                pendingScrollJumpTarget = restored.coreTextPosition
+            }
+            isRestoringPosition = false
+        }
+        .task(id: modernCoverSourceID) {
+            // Toolbar chrome, not first-page content — and the toolbar is hidden
+            // for the whole opening transition. Decoding the cover here used to
+            // commit an image upload straight into the transition's render pass.
+            await readerNavigator?.awaitOpeningTransitionEnd()
+            loadModernCoverImage()
+        }
+    }
+
+    /// Changes when the 現代 chrome needs a different cover — a different file, or the
+    /// interface being switched to (or away from) 現代.
+    private var modernCoverSourceID: String {
+        "\(settings.appearanceReaderInterface.rawValue)|\(book?.coverImagePath ?? "")"
+    }
+
+    /// The loading spinner stays up either because there is genuinely nothing to
+    /// show yet, or because the opening card animation started on that spinner
+    /// and swapping the real page in now would land the whole first layout in
+    /// the animation's render pass. See `isHoldingContentForOpeningTransition`.
+    private var showsLoadingChrome: Bool {
+        chapters.isEmpty || isHoldingContentForOpeningTransition
+    }
+
+    /// Slow opens only. The card animation has already started on the loading
+    /// chrome — the content-ready ceiling fired — so a first page arriving now
+    /// would commit a full layout into the running animation, which is the
+    /// hitch this whole change exists to remove. Hold the chrome until the
+    /// transition commits: the spinner was already on screen, so the extra wait
+    /// is barely perceptible, and it buys an animation window with nothing
+    /// competing for the main thread. Fast opens never reach here — they signal
+    /// ready before the ceiling, leaving `openingStartedWithoutContent` false.
+    private func holdContentForOpeningTransitionIfNeeded(contentIsEmpty: Bool) {
+        guard !contentIsEmpty,
+              !isHoldingContentForOpeningTransition,
+              let navigator = readerNavigator,
+              navigator.isOpeningTransitionActive,
+              navigator.openingStartedWithoutContent
+        else { return }
+
+        isHoldingContentForOpeningTransition = true
+        let holdStart = ProcessInfo.processInfo.systemUptime
+        Task { @MainActor in
+            await navigator.awaitOpeningTransitionEnd()
+            isHoldingContentForOpeningTransition = false
+            SourcePerfTrace.record(
+                "reader.open.contentHold",
+                since: holdStart,
+                thresholdMs: 0
+            )
+        }
+    }
+
+    private func buildBody() -> AnyView {
+        // Only the page number is needed here, so the full bar snapshot — reading
+        // pace, remaining-time estimate, clock — is no longer built on every body
+        // pass. `ReaderPageBarsLayer` builds it, once, for the bars that show it.
+        let barVisibility = ReaderOverlayPresentationPolicy.visibility(
+            layout: settings.readerBarLayout,
+            headerEnabled: readerConfig.readerHeaderVisible,
+            footerEnabled: readerConfig.readerFooterVisible,
+            isChapterOpeningPage: readerOverlayPageMetrics.chapterPage == 1
+        )
+        let readerLayers = AnyView(
+            ZStack(alignment: .top) {
+            readerSurfaceBackground
+                .animation(DSAnimation.standard, value: readerTheme)
+
+            if showsLoadingChrome {
+                VStack {
+                    Spacer()
+                    ProgressView(localized("載入中…"))
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .readerLoadingChromeTap { toggleReaderChrome() }
+                .transition(accessibilityReduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
+            } else if usesFixedLayoutRenderer, let flEngine = epubRenderer.engine {
+                CoreTextPageEngineView(
+                    engine: flEngine,
+                    pageTurnStyle: effectivePageTurnStyle,
+                    theme: readerTheme,
+                    playbackHighlight: nil,
+                    isRTL: epubRenderer.pageProgressionDirection == .rtl,
+                    isDoublePageSpread: isDoublePageSpreadActive,
+                    spreadGutter: DSLayout.readerSpreadGutter,
+                    sessionCoordinator: nil,
+                    externalTargetVersion: 0,
+                    externalTargetPosition: nil,
+                    pageTurnCommand: pageTurnCommand,
+                    clearExternalTargetPosition: {},
+                    currentPage: $currentPage,
+                    onPageChanged: { newPage, _ in
+                        currentPage = newPage
+                    },
+                    onTapZone: handleTouchAction,
+                    onUserPageTurnBegan: { hideReaderChromeForPageTurn() },
+                    onSwipeUpExit: { closeReader() },
+                    isCurrentPageBookmarked: { isCurrentPageBookmarked },
+                    onPullDownBookmark: { toggleCurrentPageBookmark() },
+                    visibleRefreshCommit: epubRenderer.pendingVisibleRefreshCommit,
+                    onVisibleRefreshFinished: { transactionID, outcome in
+                        epubRenderer.finishVisibleRefresh(
+                            transactionID: transactionID,
+                            outcome: outcome
+                        )
+                    }
+                )
+                .id(readerPageViewIdentity)
+                .ignoresSafeArea()
+                .transition(.opacity.animation(DSAnimation.standard))
+            } else if effectiveScrollMode {
+                // scrollBody must stay mounted so the collection host drives the
+                // engine's start()/isReady. Overlay (not replace) the loading state,
+                // otherwise the engine never kicks off and loading spins forever.
+                ZStack {
+                    scrollBody
+                    if epubRenderer.scrollEngine != nil, !epubRenderer.scrollEngineReady {
+                        readerSurfaceBackground
+                            .overlay { ProgressView(localized("載入中…")) }
+                            .readerLoadingChromeTap { toggleReaderChrome() }
+                            .transition(.opacity)
+                    }
+                }
+                .transition(.opacity.animation(DSAnimation.standard))
+                .animation(DSAnimation.standard, value: epubRenderer.scrollEngineReady)
+            } else if let ctEngine = epubRenderer.engine, epubRenderer.isCoreTextReady {
+                let _ = { print("[ReaderView] Using CoreText engine") }()
+                CoreTextPageEngineView(
+                    engine: ctEngine,
+                    pageTurnStyle: effectivePageTurnStyle,
+                    theme: readerTheme,
+                    playbackHighlight: activePlaybackHighlight,
+                    // RTL page-turn flow applies to both vertical-rl CJK and
+                    // horizontal RTL bidi scripts (Hebrew, Arabic, …).
+                    isRTL: epubRenderer.pageProgressionDirection == .rtl || effectiveWritingMode.isVertical,
+                    isDoublePageSpread: isDoublePageSpreadActive,
+                    spreadGutter: DSLayout.readerSpreadGutter,
+                    sessionCoordinator: readerSessionCoordinator,
+                    externalTargetVersion: coreTextExternalTargetVersion,
+                    externalTargetPosition: readerSessionCoordinator?.externalTargetPosition,
+                    pageTurnCommand: pageTurnCommand,
+                    clearExternalTargetPosition: { clearCoreTextExternalTarget() },
+                    currentPage: $currentPage,
+                    pageBarsRevision: pageBarsRevision,
+                    autoReadRevealPage: autoReadRevealPage,
+                    autoReadRevealHandle: autoReadRevealHandle,
+                    onPageChanged: { newPage, visiblePosition in
+                        scheduleCoreTextPageChanged(newPage, engine: ctEngine, visiblePosition: visiblePosition)
+                    },
+                    onTapZone: handleTouchAction,
+                    onUserPageTurnBegan: { hideReaderChromeForPageTurn() },
+                    onSwipeUpExit: { closeReader() },
+                    isCurrentPageBookmarked: { isCurrentPageBookmarked },
+                    onPullDownBookmark: { toggleCurrentPageBookmark() },
+                    visibleRefreshCommit: epubRenderer.pendingVisibleRefreshCommit,
+                    onVisibleRefreshFinished: { transactionID, outcome in
+                        epubRenderer.finishVisibleRefresh(
+                            transactionID: transactionID,
+                            outcome: outcome
+                        )
+                    }
+                )
+                .id(readerPageViewIdentity)
+                .ignoresSafeArea()
+                .transition(.opacity.animation(DSAnimation.standard))
+            } else if usesCoreTextEPUB {
+                VStack {
+                    Spacer()
+                    ProgressView(localized("載入中…"))
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .readerLoadingChromeTap { toggleReaderChrome() }
+                .transition(accessibilityReduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
+            }
+
+            if usesSessionLocalScrollProgress, let session = readerSessionCoordinator?.navigator.sessionStore {
+                ReaderSessionProgressView(session: session) { _ in readerChapterStatusOverlays }
+            } else {
+                readerChapterStatusOverlays
+            }
+
+            // Paged CoreText draws its own bars inside each page, so they turn with
+            // it. What is drawn here is the two cases that cannot: scroll mode, where
+            // a stationary band is the whole point, and fixed-layout pages, which
+            // are images with no CoreText surface to draw into.
+            //
+            // The layer is mounted either way, because it also owns the reader's
+            // clock — the baked bars tick from it too, and an unmounted layer would
+            // stop the header's time at whatever minute the book opened on.
+            if usesSessionLocalScrollProgress, !chapters.isEmpty, !usesPageBakedBars,
+               let session = readerSessionCoordinator?.navigator.sessionStore {
+                // Continuous scroll keeps its position in the session; only the bars
+                // observe it, so a settled scroll redraws them and not the reader.
+                ReaderSessionProgressView(session: session) { _ in
+                    let visibility = ReaderOverlayPresentationPolicy.visibility(
+                        layout: settings.readerBarLayout,
+                        headerEnabled: readerConfig.readerHeaderVisible,
+                        footerEnabled: readerConfig.readerFooterVisible,
+                        isChapterOpeningPage: readerOverlayPageMetrics.chapterPage == 1
+                    )
+                    readerBars(visibility: visibility,
+                               drawsFixedBars: visibility.showsHeader || visibility.showsFooter)
+                }
+            } else {
+                readerBars(
+                    visibility: barVisibility,
+                    drawsFixedBars: !chapters.isEmpty
+                        && !usesPageBakedBars
+                        && (barVisibility.showsHeader || barVisibility.showsFooter)
+                )
+            }
+
+            // The pill lives at the bottom of the screen, independent of the
+            // footer bar — it shows with the footer off and overlaps whatever the
+            // footer's centre slot happens to hold. It stands down for the reading
+            // menu, which anchors its own control bar to the same safe area and has
+            // already paused the mode: two stacked bottom bars, one of them for a
+            // mode that is not currently running.
+            if autoReader.isActive, !showAutoReadPanel, !showBars {
+                VStack {
+                    Spacer()
+                    AutoReadPill(
+                        secondsPerPage: autoReader.secondsPerPage,
+                        fill: autoReadChrome.fill,
+                        tint: autoReadChrome.tint
+                    ) {
+                        withAnimation(DSAnimation.standard) { showAutoReadPanel = true }
+                    }
+                    .padding(.bottom, effectiveReaderSafeBottom + DSSpacing.sm)
+                }
+                .transition(.opacity)
+                .zIndex(44)
+            }
+
+            // Sits where the pill was, over the page rather than in a sheet: the
+            // reader has just collapsed every other surface to watch the page turn
+            // itself, and a modal would put one straight back.
+            if autoReader.isActive, showAutoReadPanel {
+                VStack {
+                    Spacer()
+                    AutoReadControlPanel(
+                        autoReader: autoReader,
+                        fill: autoReadChrome.fill,
+                        tint: autoReadChrome.tint,
+                        accent: autoReadChrome.accent,
+                        onOpenTOC: {
+                            withAnimation(DSAnimation.standard) { showAutoReadPanel = false }
+                            showTOC = true
+                        },
+                        onOpenReadingMenu: {
+                            withAnimation(DSAnimation.standard) { showAutoReadPanel = false }
+                            setReaderChromeVisible(true)
+                        },
+                        onOpenSettings: {
+                            withAnimation(DSAnimation.standard) { showAutoReadPanel = false }
+                            showSettings = true
+                        },
+                        onCollapse: { consumeTapForAutoReadPanel() },
+                        onClose: {
+                            withAnimation(DSAnimation.standard) { showAutoReadPanel = false }
+                            exitAutoRead()
+                        }
+                    )
+                    .padding(.bottom, effectiveReaderSafeBottom + DSSpacing.sm)
+                }
+                .transition(
+                    accessibilityReduceMotion
+                        ? .opacity
+                        : .move(edge: .bottom).combined(with: .opacity)
+                )
+                .zIndex(45)
+            }
+            if showBars { readerChrome }
+            if showBars,
+               settings.appearanceReaderInterface == .appleBooks,
+               appleBooksActivePanel != nil {
+                appleBooksControls
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+                    .zIndex(60)
+            }
+            if showTTSJumpPrompt {
+                VStack {
+                    Spacer()
+                    ttsJumpPromptView(alignment: showBars ? .trailing : .center)
+                        .padding(.horizontal, showBars ? 20 : 120)
+                        .padding(.bottom, showBars ? 150 : ttsJumpPromptCollapsedBottomPadding)
+                }
+                .transition(
+                    accessibilityReduceMotion
+                        ? .opacity
+                        : .move(edge: .bottom).combined(with: .opacity)
+                )
+                .zIndex(20)
+            }
+            // Always present (even with the reader bars hidden); it self-hides when
+            // nothing is playing. `barsVisible` lets it lift above the bottom toolbar
+            // when the bars appear, and drop lower while they're hidden.
+            NowPlayingMiniPlayer(placement: .reader, barsVisible: showBars)
+                .zIndex(50)
+
+            if let toast = bookmarkToast {
+                // A banner at the top, just under the Dynamic Island: the status bar
+                // is hidden while reading, so that band is free. With the chrome up it
+                // sits over the top bar's empty middle, clear of its buttons.
+                ReaderBookmarkToastView(
+                    toast: toast,
+                    colorScheme: readerTheme == .night ? .dark : .light
+                )
+                .padding(.top, DSSpacing.sm)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .allowsHitTesting(false)
+                .transition(
+                    accessibilityReduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .offset(y: -DSSpacing.lg))
+                )
+                .zIndex(70)
+                .task(id: toast.id) {
+                    do {
+                        try await Task.sleep(for: ReaderBookmarkToast.displayDuration)
+                    } catch {
+                        // Cancelled: a newer toast replaced this one, or the reader
+                        // closed. Either way the dismissal is no longer this one's.
+                        return
+                    }
+                    guard bookmarkToast?.id == toast.id else { return }
+                    withAnimation(accessibilityReduceMotion ? nil : DSAnimation.standard) {
+                        bookmarkToast = nil
+                    }
+                }
+            }
+
+            if showTouchZoneEditor {
+                ReaderTouchZoneEditorView(
+                    isRTL: epubRenderer.pageProgressionDirection == .rtl || effectiveWritingMode.isVertical,
+                    onCancel: { showTouchZoneEditor = false },
+                    onSave: { showTouchZoneEditor = false }
+                )
+                .zIndex(100)
+            }
+
+            }
+        )
+        let configuredLayers = AnyView(
+            readerLayers
+                .background(
+            GeometryReader { g in
+                Color.clear
+                    .preference(key: ReaderSafeAreaTopKey.self, value: g.safeAreaInsets.top)
+                    .preference(key: ReaderSafeAreaBottomKey.self, value: g.safeAreaInsets.bottom)
+                    .preference(key: ReaderViewportSizeKey.self, value: g.size)
+            }
+        )
+        .onPreferenceChange(ReaderSafeAreaTopKey.self) {
+            readerSafeAreaTop = max($0, windowSafeTop)
+        }
+        .onPreferenceChange(ReaderSafeAreaBottomKey.self) {
+            // An event handler is the correct place to consult UIKit; the getter
+            // the bars call must not.
+            readerSafeAreaBottom = max($0, windowSafeBottom)
+        }
+        .onPreferenceChange(ReaderViewportSizeKey.self) { newSize in
+            handleReaderViewportSizeChange(newSize)
+        }
+        // Everything the bars show, in one Equatable value: the clock ticking, the
+        // battery moving, a theme or style edit, the safe area settling. Any of
+        // them and the pages already on screen need their bars rebuilt.
+        .onChange(of: readerPageBarsEnvironment) { _, _ in
+            refreshPageBars()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .readerPageBarsNeedRedraw)) { _ in
+            refreshPageBars()
+        }
+        // The ribbon rides in the bars, so a bookmark added or removed any way at
+        // all is a bars change for the page it sits on.
+        .onChange(of: pageBookmarkPositions) { _, _ in
+            refreshPageBars()
+        }
+        .sensoryFeedback(trigger: bookmarkToast?.id) { _, _ in
+            guard let toast = bookmarkToast else { return nil }
+            return toast.isAdded ? .success : .impact(weight: .light)
+        }
+        // iPad rotation fix: SwiftUI does NOT re-evaluate the reader's geometry on rotation, so the
+        // `.background` GeometryReader / `onPreferenceChange` above never fires and the spread mode
+        // stays frozen (single/double only switches on a fresh reader entry). The device-orientation
+        // notification DOES fire reliably; derive the settled viewport from the window's two
+        // dimensions ordered by the (already-updated) interface orientation, and drive the same
+        // relayout path the in-app single/double toggle uses.
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            applyRotatedViewportIfNeeded()
+        }
+        .animation(DSAnimation.standard, value: chapters.isEmpty)
+        .statusBarHidden(
+            ReaderOverlayPresentationPolicy.hidesStatusBar(
+                showsReaderChrome: showBars,
+                isEditing: false
+            )
+        )
+        // The home indicator is the other half of the system chrome the immersive
+        // page has to shed. `.hidden` is an auto-hide request, so the indicator
+        // fades out while reading and still reappears on the next touch — exactly
+        // how it behaves in Books. Applied on the same layer as `.statusBarHidden`
+        // because that layer is proven to reach the hosting controller through the
+        // reader's inner NavigationStack.
+        .persistentSystemOverlays(
+            ReaderOverlayPresentationPolicy.hidesHomeIndicator(
+                showsReaderChrome: showBars,
+                isEditing: false
+            ) ? .hidden : .automatic
+        )
+        // Chrome-owned panels close with the chrome, wherever the chrome was hidden
+        // from — the tap zone, the touch-zone editor, or a search result jump. Clearing
+        // this at each `showBars = false` site left panels that popped back up the next
+        // time the bars were shown.
+        .onChange(of: showBars) { _, visible in
+            guard !visible else { return }
+            appleBooksActivePanel = nil
+            showModernBookCard = false
+        }
+        // The reveal holds while the reading menu or one of the panel's own sheets
+        // is over the page — and only then. 目錄 and 設置 used to let it run on
+        // behind them, because the pause was keyed to the panel closing.
+        .onChange(of: autoReadIsCoveredBySurface) { _, _ in
+            applyAutoReadPause()
+        }
+        .hidesRootTabBar()
+        .alert(localized("TXT 目錄修復未完成"), isPresented: $showTXTIndexFailure) {
+            Button(localized("確定"), role: .cancel) { setReaderChromeVisible(true) }
+        } message: {
+            Text(localized("為避免閱讀進度或書籤錯移，尚未套用新目錄。原有位置資料已保留。請保留原始 TXT，並匯出診斷記錄以供檢查。"))
+        }
+        .alert(String(format: localized("將「%@」加入書架？"), snapshotBook?.title ?? ""), isPresented: $showAddToShelfAlert) {
+            Button(localized("加入書架")) {
+                if let snap = snapshotBook {
+                    store.addOnlineBook(
+                        name: snap.title,
+                        author: snap.author,
+                        sourceId: snap.bookSourceId ?? UUID(),
+                        bookInfoURL: snap.bookInfoURL ?? "",
+                        tocURL: snap.tocURL,
+                        coverUrl: snap.coverUrl ?? "",
+                        runtimeVariables: snap.runtimeVariables,
+                        chapters: snap.onlineChapters ?? []
+                    )
+                }
+                dismissReaderPresentation()
+            }
+            Button(localized("不加入"), role: .cancel) {
+                dismissReaderPresentation()
+            }
+        }
+        )
+        let lifecycleLayers = AnyView(
+            configuredLayers
+                .onAppear {
+            ensureReaderOverlaySVGAssetStore()
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            readerViewModel.configure(
+                chapterFetcher: dependencies.chapterFetcher,
+                offlineDownloadManager: dependencies.offlineDownloadManager
+            )
+            ReaderTelemetry.shared.log(
+                "reader_load_start",
+                attributes: [
+                    "bookId": bookId.uuidString,
+                    "pipelineKind": telemetryPipelineKind,
+                    "turnStyle": settings.pageTurnStyle.rawValue,
+                    "scrollMode": effectiveScrollMode ? "1" : "0",
+                ]
+            )
+            readerConfig.syncFromGlobalSettings()
+            alignReaderModeWithDevice()
+            syncActiveThemePreset()
+            if !hasPerformedInitialLoad {
+                snapshotBook = book
+                hasPerformedInitialLoad = true
+                performInitialLoad()
+            } else {
+                snapshotBook = book
+                restoreReaderDisplayStateAfterResume()
+            }
+            if let chapterIndex = pendingDetailChapterIndex {
+                pendingDetailChapterIndex = nil
+                jumpToChapter(chapterIndex)
+            }
+            rebuildReaderOverlayLegacyContentIndex()
+            beginReadingStatsSession()
+            syncCoreTextTextAnnotations()
+            systemBrightness = Double(UIScreen.main.brightness)
+            if settings.followSystemBrightness {
+                settings.readerBrightness = systemBrightness
+            } else {
+                UIScreen.main.brightness = CGFloat(settings.readerBrightness)
+            }
+            volumeHandler.onPageTurn = { dir in
+                switch dir {
+                case .prev: goToPrevPage()
+                case .next: goToNextPage()
+                }
+            }
+            if volumeHandler.isEnabled { volumeHandler.startListening() }
+            bindAutoRead()
+            bindPageBarsProvider()
+            ttsCoordinator.showsGlobalFloatingPlayer = true
+            // Allow the in-reader mini-player the whole time the reader is on screen,
+            // independent of the bars — bar visibility only repositions it now.
+            setTTSFloatingOverlayVisible(true)
+            ttsCoordinator.nextChapterLoadingStatusTitle = localized("正在載入下一章…")
+            ttsCoordinator.onNextNarrationUnit = {
+                ttsLog("[TTS][Reader] onChapterFinished ttsChapter=\(ttsChapterIndex.map(String.init) ?? "nil") currentChapter=\(currentChapterIndex)")
+                return advanceTTSChapterFromEngine()
+            }
+            ttsCoordinator.onWillResume = {
+                alignReaderToTTSAnchorIfNeeded()
+            }
+            ttsCoordinator.onNextTrackRequested = {
+                startAdjacentTTSChapter(delta: 1)
+            }
+            ttsCoordinator.onPreviousTrackRequested = {
+                startAdjacentTTSChapter(delta: -1)
+            }
+            ttsCoordinator.onStop = {
+                ttsChapterIndex = nil
+                ttsNarrationOffsets = nil
+                ttsPendingChapterIndex = nil
+                ttsStartLayoutRequest = nil
+                ttsPlaybackAnchor = nil
+                showTTSJumpPrompt = false
+                ttsJumpPromptChapterIndex = nil
+            }
+        }
+        .onDisappear {
+            ttsLog("[TTS][Reader] onDisappear cleanup only ttsPlaying=\(ttsCoordinator.isPlaying)")
+            // No pagination cancel here. `onDisappear` also fires when the reader is
+            // merely *covered* — a pushed page, a sheet, a full-screen cover — and the
+            // reader is still on screen underneath, about to be uncovered. The comment
+            // on the fetch cancel below already established exactly this; the layout
+            // cancel that used to sit on this line never got the same treatment, so
+            // opening any sheet threw away every laid-out chapter in the book.
+            if !settings.followSystemBrightness {
+                UIScreen.main.brightness = CGFloat(systemBrightness)
+            }
+            saveProgress()
+            finishReadingStatsSession()
+            restoreFixedLayoutOrientationPreference()
+            // Same invariant as the pagination guard above: while TTS is narrating, the
+            // chapter-supply pipeline must stay up. `onDisappear` also fires when the reader
+            // is merely covered (a pushed page, a full-screen cover), and cancelling the
+            // in-flight fetch there would strand a chapter-boundary wait with no fetch left
+            // to complete it. A real teardown stops the coordinator, which releases these.
+            if let b = book, b.isOnline, ttsCoordinator.playbackState == .stopped {
+                Task {
+                    await readerViewModel.cancelAll(for: b.id)
+                }
+            }
+            volumeHandler.stopListening()
+            autoReader.stopForReaderExit()
+            applyAutoReadIdleTimer()
+            mediaOverlayCoordinator.stop()
+            EPUBVideoPlaybackManager.shared.stopAll()
+            backgroundAudioCoordinator.stop()
+            setTTSFloatingOverlayVisible(false)
+        }
+        .onChanged(of: scenePhase) { phase in
+            ttsLog("[TTS][Reader] scenePhase=\(String(describing: phase)) ttsPlaying=\(ttsCoordinator.isPlaying)")
+            if phase == .background || phase == .inactive {
+                ttsCoordinator.refreshNowPlayingForSystemSurfaces()
+                saveProgress()
+                finishReadingStatsSession()
+            }
+            // Only a real move to the background drops pagination. `.inactive` is
+            // transient and the user has not left: a notification banner, a Control
+            // Centre pull, an app-switcher glance, an incoming call. Cancelling there
+            // discarded every laid-out chapter mid-read — a device log showed 18 of 19
+            // generation bumps coming from this path, four of them inside the same four
+            // minutes as 26 page-turn anomalies.
+            if phase == .background {
+                cancelPendingRenderWorkUnlessNarrating()
+            }
+            // Back from the background, the environment's light／dark is the device's
+            // again, and the device may have changed while the app was away.
+            if phase.showsDeviceAppearance {
+                alignReaderModeWithDevice(in: phase)
+                syncActiveThemePreset()
+            }
+            if phase == .active {
+                restoreReaderDisplayStateAfterResume()
+                beginReadingStatsSession()
+            }
+        }
+        .onReceive(epubRenderer.$scrollEngine) { engine in
+            guard engine != nil else { return }
+            syncCoreTextTextAnnotations()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+        ) { _ in
+            // Resign-active is the same moment `scenePhase` reports `.inactive`, so the
+            // pagination cancel that used to be here ran a second time for one phase
+            // change — the paired bumps a second apart in the device log. Saving
+            // progress twice is harmless and worth the belt-and-braces; discarding
+            // every layout twice is not.
+            saveProgress()
+            finishReadingStatsSession()
+        }
+        .onChanged(of: settings.readerBrightness) { val in
+            if !settings.followSystemBrightness { UIScreen.main.brightness = CGFloat(val) }
+        }
+        .onChanged(of: settings.followSystemBrightness) { follow in
+            if follow {
+                syncReaderBrightnessFromSystem()
+            } else {
+                UIScreen.main.brightness = CGFloat(settings.readerBrightness)
+            }
+        }
+        .onChanged(of: systemColorScheme) { _ in
+            alignReaderModeWithDevice()
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.readerFollowSystemTheme) { _ in
+            alignReaderModeWithDevice()
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.readerDarkMode) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceThemeID) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceDarkThemeID) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceUsesSeparateDarkTheme) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceBindReaderTheme) { _ in
+            alignReaderModeWithDevice()
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceBoundLightReaderTheme) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.appearanceBoundDarkReaderTheme) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.readerCustomBackgroundID) { _ in
+            syncActiveThemePreset()
+        }
+        .onChanged(of: settings.readerCustomBackgrounds) { _ in
+            syncActiveThemePreset()
+        }
+        )
+        let settingsObservationLayers = AnyView(
+            lifecycleLayers
+                .onChanged(of: activeReaderRenderSettings) { oldSettings, newSettings in
+                    guard let intent = newSettings.refreshIntent(comparedTo: oldSettings) else {
+                        return
+                    }
+                    submitReaderRefresh(intent: intent, settings: newSettings)
+                }
+                .onChanged(of: readerDocumentStyleFingerprint) { _ in
+                    submitReaderRefresh(
+                        intent: .documentStyle,
+                        settings: activeReaderRenderSettings
+                    )
+                }
+                .onChanged(of: readerTranslation) { old, new in
+                    readerTranslationDidChange(from: old, to: new)
+                }
+                .onChanged(of: readerPremiumVisibility.allowsAI) { _ in aiAccessDidChange() }
+                .onReceive(AIChapterTranslationService.shared.updates) { chapter in
+                    applyTranslationUpdate(chapter)
+                }
+                .onChanged(of: currentChapterIndex) { _ in translationChapterDidChange() }
+                .onChanged(of: scrollVisibleChapter) { _ in translationChapterDidChange() }
+                .onChanged(of: epubRenderer.isCoreTextReady) { _ in translateVisibleChapterIfNeeded() }
+                // A chapter's text is only there once it is laid out: paged mode lands on a
+                // page, scroll mode inserts the chapter's chunks.
+                .onChanged(of: currentPage) { _ in translateVisibleChapterIfNeeded() }
+                .onChanged(of: epubRenderer.scrollChapterInsertions) { _ in translateVisibleChapterIfNeeded() }
+        .onChanged(of: settings.customAppearanceThemes) { _ in
+            syncActiveThemePreset()
+        }
+        .onReceive(subscriptionStore.$isProActive) { _ in
+            syncActiveThemePreset()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIScreen.brightnessDidChangeNotification))
+        { _ in
+            let current = Double(UIScreen.main.brightness)
+            systemBrightness = current
+            if settings.followSystemBrightness {
+                settings.readerBrightness = current
+            }
+        }
+        )
+        let selectionObservationLayers = AnyView(
+            settingsObservationLayers
+        .readerSelectionTranslation(isPresented: $showReaderTranslation, text: readerTranslationSelection)
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextSearchSelectionRequested)) { notification in
+            guard let text = notification.userInfo?["text"] as? String else { return }
+            readerSearchSelection = text
+            showReaderSearch = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextAISelectionRequested)) { notification in
+            guard let request = notification.userInfo?["request"] as? CoreTextAISelectionRequest else { return }
+            let renderedChapterText = effectiveScrollMode
+                ? epubRenderer.scrollEngine?.chapterText(forSpine: request.spineIndex) ?? epubRenderer.engine?.chapterText(forSpine: request.spineIndex)
+                : epubRenderer.engine?.chapterText(forSpine: request.spineIndex)
+            // 查詞's 繼續問 AI continues as 解釋 of the same selection.
+            var launch = AIReadingLaunch(action: request.action == .lookup ? .explain : request.action,
+                selection: .init(bookID: bookId, spineIndex: request.spineIndex, range: request.range, text: request.text),
+                renderedChapterText: renderedChapterText)
+            if let source = aiSourceAdapter, aiPreparedSourceIdentity == aiSourceIdentity { launch = launch.resolvingSelection(in: source) }
+            if request.action == .lookup {
+                let context = request.context ?? renderedChapterText.map { AIWordLookup.context(in: $0, range: request.range) } ?? ""
+                // A translation has no place in the book for the assistant to cite.
+                wordLookup = ReaderWordLookupRoute(term: request.text, context: context.isEmpty ? request.text : context,
+                                                   launch: request.isTranslation ? nil : launch)
+                return
+            }
+            guard !request.isTranslation else { return }
+            aiLaunch = launch
+            showAIAssistantPanel = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextTranslateSelectionRequested)) { notification in
+            guard let text = notification.userInfo?["text"] as? String else { return }
+            readerTranslationSelection = text
+            showReaderTranslation = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextUnderlineSelectionRequested)) { notification in
+            guard let request = notification.userInfo?["request"] as? CoreTextUnderlineSelectionRequest else { return }
+            addUnderlineBookmark(request)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextNoteEditRequested)) { notification in
+            guard let request = notification.userInfo?["request"] as? CoreTextNoteEditRequest else { return }
+            openNoteEditor(request)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextNoteDeleteRequested)) { notification in
+            guard let request = notification.userInfo?["request"] as? CoreTextNoteDeleteRequest else { return }
+            noteDeleteRoute = ReaderNoteDeleteRoute(
+                position: request.position,
+                length: request.length,
+                style: request.style,
+                color: request.color
+            )
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .coreTextReplaceSelectionRequested)) { notification in
+            guard let request = notification.userInfo?["request"] as? CoreTextReplaceSelectionRequest else { return }
+            let currentBook = book ?? snapshotBook
+            let sourceURL = currentBook?.bookSourceId.flatMap { sourceID in
+                BookSourceStore.shared.sources.first(where: { $0.id == sourceID })?.bookSourceUrl
+            }
+            replaceRuleDraft = ReplaceSelectionDraft.makeRule(
+                selectedText: request.selectedText,
+                scope: sourceURL ?? "global"
+            )
+        }
+        .onReceive(ReplaceRuleStore.shared.$rules) { _ in refreshAIContentIfVisible() }
+        .onChanged(of: settings.textConversion) { _ in refreshAIContentIfVisible() }
+        .onChange(of: aiSourceIdentity) { _, _ in
+            aiSourceAdapter = nil
+            refreshAIContentIfVisible()
+        }
+        .onReceive(readerViewModel.$chapterStates) { states in
+            handleChapterStateChanges(states)
+            refreshAIContentIfVisible()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .onlineChapterCacheDidClear)) { notification in
+            guard notification.userInfo?["bookId"] as? UUID == bookId else { return }
+            handleOnlineChapterCacheCleared()
+            refreshAIContentIfVisible()
+        }
+        )
+        let positionObservationLayers = AnyView(
+            selectionObservationLayers
+        .onChanged(of: settings.pageTurnStyle) { _ in
+            if settings.pageTurnStyle == .curl {
+                beginCurlStartupTrace(reason: "style_changed")
+            } else {
+                curlStartupStartedAt = nil
+                hasLoggedCurlInteractiveReady = false
+            }
+        }
+        .onChanged(of: settings.scrollMode) { enabled in
+            handleScrollModeChanged(enabled)
+        }
+        .onChanged(of: settings.readerWritingMode) { writingMode in
+            // Only TXT, online and converted Aozora books follow 排版方向. It also changes
+            // with the worn theme now, and an EPUB, which keeps its own writing mode, need
+            // not relayout.
+            guard (book ?? snapshotBook)?.allowsVerticalWritingMode == true else { return }
+            readerNavigator?.updateOpeningDirection(
+                ReaderBookOpeningDirection.resolve(
+                    writingMode: writingMode,
+                    pageProgressionIsRTL: false
+                )
+            )
+            submitReaderRefresh(intent: .layout)
+        }
+        .onChanged(of: effectiveReaderSpreadMode) { _ in
+            readerSessionCoordinator?.send(.updateSpreadMode(effectiveReaderSpreadMode))
+            submitReaderRefresh(
+                intent: .layout,
+                viewportSize: currentReaderRenderSize
+            )
+        }
+        .onChanged(of: book?.bookmarks ?? []) { _ in
+            syncCoreTextTextAnnotations()
+        }
+        .onChanged(of: chapterPresentation.currentChangeRevision) { _ in
+            guard chapterPresentation.consumeCurrentChapterChange() else { return }
+            handleReaderPositionChangedForTTS()
+        }
+        .onChanged(of: currentPage) { _ in
+            handleReaderPositionChangedForTTS()
+        }
+        .onChanged(of: ttsCoordinator.currentSegmentIndex) { _ in
+            // Auto page-turn while listening: follow the spoken sentence.
+            followTTSPlaybackHighlight()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .ttsFloatingPlayerOpenPanel)) { _ in
+            showTTSPanel = true
+        }
+        .onChanged(of: chapterPresentation.visibleChangeRevision) { _ in
+            guard chapterPresentation.consumeVisibleChapterChange() else { return }
+            let newChapter = scrollVisibleChapter
+            autoSaveProgress()
+            handleReaderPositionChangedForTTS()
+            if let session = activePublicationSession {
+                Task { await backgroundAudioCoordinator.update(session: session, chapterIndex: newChapter) }
+            }
+        }
+        )
+        let presentationLayers = AnyView(
+            positionObservationLayers
+                .sheet(isPresented: $showSettings, onDismiss: presentDeferredReaderSettingsRoute) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                ReaderSettingsView(
+                    fontSize: Binding(
+                        get: { fontSize },
+                        set: { fontSize = $0 }
+                    ),
+                    theme: Binding(
+                        get: { readerTheme },
+                        set: { readerTheme = $0 }
+                    ),
+                    readerSafeTop: effectiveReaderSafeTop,
+                    readerSafeBottom: effectiveReaderSafeBottom,
+                    capabilities: readerCapabilities,
+                    allowsUserSelectedReaderFont: book?.allowsUserSelectedReaderFont == true,
+                    usesPublicationFontDefault: book?.resolvedPipelineKind == .epub,
+                    isVerticalWritingMode: effectiveWritingMode.isVertical,
+                    allowsVerticalWritingMode: (book ?? snapshotBook)?.allowsVerticalWritingMode == true,
+                    hasParagraphReviews: currentBookHasParagraphReviews,
+                    onOpenFontImporter: requestFirstLevelReaderFontImporter,
+                    onOpenTouchZoneEditor: {
+                        guard subscriptionStore.isProActive, !effectiveScrollMode else { return }
+                        setReaderChromeVisible(false)
+                        showTouchZoneEditor = true
+                    },
+                    onOpenStyleImporter: requestFirstLevelReaderStyleImporter,
+                    onOpenPaywall: ReaderSettingsPresentationPolicy.requiresFirstLevelImporter
+                        ? requestFirstLevelReaderPaywall : nil
+                )
+            }
+        }
+        .sheet(isPresented: $showQuickThemePanel, onDismiss: presentDeferredQuickPanelRoute) {
+            ReaderQuickThemePanelView(
+                fontSize: Binding(
+                    get: { fontSize },
+                    set: { fontSize = $0 }
+                ),
+                readerTheme: Binding(
+                    get: { readerTheme },
+                    set: { readerTheme = $0 }
+                ),
+                pageTurnOption: quickPageTurnOption,
+                isVerticalWritingMode: effectiveWritingMode.isVertical,
+                onSelectPageTurnOption: { applyQuickPageTurnOption($0) },
+                onStartAutoRead: {
+                    // The whole flow: enter the mode, put every surface away, and
+                    // leave the reader on the page. From here the only control is
+                    // the footer pill, which starts collapsed and opens on tap.
+                    enterAutoRead()
+                    showAutoReadPanel = false
+                    setReaderChromeVisible(false)
+                    showQuickThemePanel = false
+                },
+                onCustomize: {
+                    quickPanelDeferredRoute = .settings
+                    showQuickThemePanel = false
+                },
+                onOpenPaywall: { feature in
+                    quickPanelDeferredRoute = .paywall(feature)
+                    showQuickThemePanel = false
+                }
+            )
+        }
+        .sheet(isPresented: $showReaderSearch, onDismiss: { readerSearchSelection = "" }) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                ReaderBookSearchView(
+                    items: readerSearchItems,
+                    initialQuery: readerSearchSelection,
+                    onSelect: { item in
+                        showReaderSearch = false
+                        setReaderChromeVisible(false)
+                        issuePageTurn(to: item.pageIndex)
+                    },
+                    onClose: { showReaderSearch = false }
+                )
+            }
+        }
+        .sheet(isPresented: $showDownloadOptions) {
+            if let b = book {
+                AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                    ReaderDownloadOptionsView(
+                        bookId: b.id,
+                        bookTitle: b.title,
+                        currentChapterIndex: currentChapterIndex,
+                        totalChapters: b.onlineChapters?.count ?? chapters.count,
+                        onStart: { startChapterIndex, chapterCount in
+                            startOfflineDownload(
+                                startChapterIndex: startChapterIndex,
+                                chapterCount: chapterCount
+                            )
+                        },
+                        onPause: { pauseOfflineDownload() },
+                        onResume: { resumeOfflineDownload() },
+                        onSkipFailed: { skipFailedOfflineDownload() },
+                        onRemove: {
+                            Task {
+                                do {
+                                    try await dependencies.offlineDownloadManager.remove(
+                                        bookId: b.id,
+                                        store: store
+                                    )
+                                    await MainActor.run { showDownloadOptions = false }
+                                } catch {
+                                    AppLogger.error("Offline book removal failed", error: error)
+                                }
+                            }
+                        },
+                        onClose: { showDownloadOptions = false }
+                    )
+                    .environmentObject(store)
+                }
+            }
+        }
+        // UIKit-pushed readers route details through their outer coordinator.
+        // Activating an inner SwiftUI destination there previously reconciled
+        // the reader off the shelf stack. SwiftUI-owned readers use this route.
+        .navigationDestination(isPresented: Binding(
+            get: { readerNavigator == nil && showOnlineBookDetail },
+            set: { showOnlineBookDetail = $0 }
+        )) {
+            if let detail = onlineBookDetailSnapshot {
+                onlineBookDetailDestination(detail)
+            }
+        }
+        .sheet(isPresented: $showTOC) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                ReaderTOCView(
+                    chapters: chapters.map { chapter in
+                        var display = chapter
+                        display.title = chapter.title.converted(to: settings.textConversion)
+                        return display
+                    },
+                    bookTitle: book?.title ?? "",
+                    currentPage: currentPage,
+                    totalPages: renderedPageCount,
+                    tocLayoutMode: .from(writingMode: effectiveWritingMode),
+                    pageOffsets: tocPageOffsets,
+                    showsPageNumbers: book?.isOnline != true,
+                    currentIndex: currentChapterIndex,
+                    currentChapterID: currentTOCChapterID,
+                    onSelectChapter: { jumpToTOCEntry($0) },
+                    isPresented: $showTOC
+                )
+            }
+        }
+        .sheet(isPresented: $showBookmarkList) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                ReaderBookmarkListView(
+                    bookTitle: book?.title ?? "",
+                    bookmarks: book?.bookmarks ?? [],
+                    pageNumber: { inChapterPageNumber(for: $0) },
+                    chapterTitle: { index in
+                        // 章節已經不在目錄裡（換源、目錄重抓）就回空字串，讓清單退回
+                        // 書籤存檔時的章名——`bookmarkChapterTitle` 最後一手會回「目前
+                        // 章節」，掛在別章的書籤上是錯的。
+                        guard chapters.indices.contains(index) else { return "" }
+                        return bookmarkChapterTitle(for: index).converted(to: settings.textConversion)
+                    },
+                    onSelect: { bm in
+                        showBookmarkList = false
+                        jumpToBookmark(bm)
+                    },
+                    onSelectChapter: { index in
+                        showBookmarkList = false
+                        jumpToChapter(index)
+                    },
+                    onDelete: { deleteBookmarkEntry($0) },
+                    isPresented: $showBookmarkList
+                )
+            }
+        }
+        .sheet(
+            item: $noteEditorRoute,
+            onDismiss: {
+                switch noteEditorFollowUp.consumeAfterDismissal() {
+                case .confirmDelete(let route): noteDeleteRoute = route
+                case .paywall: paywallFeature = .paragraphNote
+                case nil: break
+                }
+            }
+        ) { route in
+            ReaderNoteEditorView(
+                excerpt: route.excerpt,
+                note: route.note,
+                date: route.date,
+                showsDelete: !route.note.isEmpty,
+                isEditable: route.isEditable,
+                onSave: { saveNote($0, for: route) },
+                onDelete: {
+                    noteEditorFollowUp.select(
+                        .confirmDelete(
+                            ReaderNoteDeleteRoute(
+                                position: route.position,
+                                length: route.length,
+                                style: route.style,
+                                color: route.color
+                            )
+                        )
+                    )
+                    noteEditorRoute = nil
+                },
+                onUpgrade: {
+                    noteEditorFollowUp.select(.paywall)
+                    noteEditorRoute = nil
+                },
+                onClose: { noteEditorRoute = nil }
+            )
+        }
+        .sheet(item: $paywallFeature) { feature in
+            PaywallView(highlightedFeature: feature)
+                .environmentObject(subscriptionStore)
+        }
+        .alert(
+            localized("刪除筆記"),
+            isPresented: Binding(
+                get: { noteDeleteRoute != nil },
+                set: { if !$0 { noteDeleteRoute = nil } }
+            ),
+            presenting: noteDeleteRoute
+        ) { route in
+            Button(localized("刪除筆記和標註"), role: .destructive) {
+                deleteNote(route, removesAnnotation: true)
+            }
+            Button(localized("只刪除筆記"), role: .destructive) {
+                deleteNote(route, removesAnnotation: false)
+            }
+            Button(localized("取消"), role: .cancel) {}
+        } message: { _ in
+            Text(localized("標註可以保留下來，或是連同筆記一起刪除。"))
+        }
+        .sheet(isPresented: $showAIAssistantPanel, onDismiss: { aiLaunch = nil }) {
+            let sourceContext = aiCurrentSourceContext
+            let sourceBook = book
+            let sourceChapters = aiSourceIdentity.chapters
+            let sourceConversion = settings.textConversion
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                AIAssistantPanelView(
+                    bookID: bookId,
+                    bookTitle: book?.title ?? currentChapterTitle,
+                    adapter: aiBookAdapter(),
+                    progress: aiReadingProgress(),
+                    onOpenCitation: { citation, boundary in openAICitation(citation, boundary: boundary) },
+                    launch: aiLaunch,
+                    sourceIdentity: sourceContext,
+                    isSourceReady: aiSourceAdapter != nil && aiPreparedSourceIdentity == aiSourceIdentity,
+                    prepareContent: { context in
+                        guard sourceContext == aiCurrentSourceContext else { throw CancellationError() }
+                        let prepared = try await AIReadingContentService.prepare(context, book: sourceBook, chapters: sourceChapters,
+                            renderer: epubRenderer, store: store, conversion: sourceConversion)
+                        guard sourceContext == aiCurrentSourceContext else { throw CancellationError() }
+                        return prepared
+                    },
+                    onSourcePrepared: { source in
+                        guard source.chunkBookID == bookId, sourceContext == aiCurrentSourceContext else { return }
+                        aiSourceAdapter = source
+                    },
+                    bookAnnotations: { [store, bookId] in
+                        (store.readingBook(id: bookId)?.bookmarks ?? []).compactMap { AIReaderAnnotation($0, bookTitle: nil) }
+                    },
+                    libraryAnnotations: { [store, bookId] in
+                        store.books.filter { $0.id != bookId }.flatMap { other in
+                            other.bookmarks.compactMap { AIReaderAnnotation($0, bookTitle: other.title) }
+                        }
+                    }
+                )
+                .task { await gatherAIBookText() }
+                .alert(localized("引用定位未驗證"), isPresented: Binding(get: { aiCitationError != nil }, set: { if !$0 { aiCitationError = nil } })) {
+                    Button(localized("確定"), role: .cancel) { aiCitationError = nil }
+                } message: { Text(aiCitationError ?? "") }
+            }
+        }
+        .sheet(isPresented: $showTranslationSheet) {
+            let position = translationReadingPosition
+            ReaderTranslationSheet(
+                presentation: $readerTranslation,
+                bookID: bookId,
+                chapter: position?.spineIndex ?? currentChapterIndex,
+                chapterText: translationSourceText(forSpine: position?.spineIndex ?? currentChapterIndex),
+                onTranslateChapter: {
+                    guard let position = translationReadingPosition else { return }
+                    translateChapter(position.spineIndex, readingOffset: position.charOffset, force: true)
+                }
+            )
+        }
+        .sheet(item: $wordLookup, onDismiss: {
+            // Opened only after the card is gone: two sheets asked for at once, one is dropped.
+            guard let launch = aiLaunchAfterWordLookup else { return }
+            aiLaunchAfterWordLookup = nil
+            aiLaunch = launch
+            showAIAssistantPanel = true
+        }) { route in
+            AIWordLookupView(term: route.term, context: route.context, bookTitle: book?.title, bookID: bookId,
+                             onAskAI: route.launch.map { launch in {
+                                 aiLaunchAfterWordLookup = launch
+                                 wordLookup = nil
+                             } })
+        }
+        .sheet(isPresented: $showTTSPanel) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                TTSPanelView(
+                    tts: ttsCoordinator,
+                    chapters: chapters,
+                    currentReaderChapterIndex: currentChapterIndex,
+                    activeTTSChapterIndex: ttsChapterIndex,
+                    activeChapterTitle: activeTTSChapterTitle,
+                    onPlayPause: { handleTTSPlayPause() },
+                    onPreviousChapter: { startAdjacentTTSChapter(delta: -1) },
+                    onNextChapter: { startAdjacentTTSChapter(delta: 1) },
+                    onSelectChapter: { startTTSChapter($0, syncReader: true) },
+                    bookID: bookId,
+                    detectedSpeakers: ttsDetectedSpeakers,
+                    aiAdapter: aiBookAdapter(),
+                    aiProgress: aiReadingProgress()
+                )
+                .task(id: ttsSpeakerDetectionKey) {
+                    // Detection may load persisted cards. Never perform it
+                    // during SwiftUI body/accessibility tree evaluation.
+                    ttsDetectedSpeakers = detectedTTSSpeakers()
+                }
+                .task { await gatherAIBookText() }
+            }
+        }
+        )
+        let mediaPresentationLayers = AnyView(
+            presentationLayers
+        .sheet(isPresented: $showMediaOverlayPanel) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                if let chapterIndex = activeMediaOverlayChapterIndex,
+                   let overlay = epubRenderer.mediaOverlaysByChapter[chapterIndex] {
+                    EPUBMediaOverlayPlayerView(
+                        title: (chapters.indices.contains(chapterIndex) ? chapters[chapterIndex].title : currentChapterTitle)
+                            .converted(to: settings.textConversion),
+                        overlay: overlay,
+                        chapterIndex: chapterIndex,
+                        coordinator: mediaOverlayCoordinator,
+                        resourceURL: { epubRenderer.resourceURL(for: $0) }
+                    )
+                } else {
+                    ContentUnavailableView {
+                        UnavailableLabel(localized("媒體旁白"), systemImage: "waveform")
+                    } description: {
+                        Text(localized("目前章節沒有媒體旁白")).foregroundStyle(DSColor.textSecondary)
+                    }
+                }
+            }
+        }
+
+        .sheet(isPresented: $showChangeSourceSheet) {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableExpandedWidth) {
+                changeSourceSheetContent
+            }
+        }
+        .sheet(item: $replaceRuleDraft) { rule in
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
+                ReplaceRuleEditView(rule: rule) { savedRule in
+                    ReplaceRuleStore.shared.add(savedRule)
+                    refreshCurrentChapter()
+                }
+            }
+        }
+        .sheet(item: $reviewTarget) { target in
+            LegadoReviewBrowserView(target: target) { _ in
+                reviewTarget = nil
+            }
+        }
+        )
+        return AnyView(
+            mediaPresentationLayers
+                .fileImporter(
+                    isPresented: $showReaderFontImporter,
+                    allowedContentTypes: ReaderSettingsView.fontContentTypes,
+                    allowsMultipleSelection: false,
+                    onCompletion: handleReaderFontImport
+                )
+                .alert(item: $readerFontImportError) { error in
+                    Alert(
+                        title: Text(localized("字體匯入失敗")),
+                        message: Text(error.message),
+                        dismissButton: .default(Text(localized("確定")))
+                    )
+                }
+                .readerStyleImportPresentation(route: $readerStyleImportRoute)
+                .onChanged(of: showChangeSourceSheet) { show in
+            if show {
+                loadOtherOrigins()
+            } else {
+                // Swiping the sheet away is a cancel too — otherwise a switch the user
+                // walked away from would still commit and yank them to another source.
+                readerViewModel.cancelPendingSourceSwitch()
+                readerViewModel.stopChangeSourceSearch()
+            }
+        }
+        .onChanged(of: chapters.isEmpty) { isEmpty in
+            holdContentForOpeningTransitionIfNeeded(contentIsEmpty: isEmpty)
+        }
+        .onChanged(of: epubRenderer.isCoreTextReady) { ready in
+            if ready {
+                // Releases the card animation, which is holding at the shelf
+                // tile so this chapter's CSS/font/pagination work does not land
+                // inside the animation window.
+                readerNavigator?.signalReaderContentReady()
+                if !isVerticalEPUB && epubRenderer.cssDetectedVerticalWritingMode {
+                    isVerticalEPUB = true
+                    readerNavigator?.updateOpeningDirection(.rightSpine)
+                }
+                syncCoreTextTextAnnotations()
+                applyInitialProgressIfNeeded()
+                relocateReadingStatsPosition()
+            }
+        }
+        .onChanged(of: epubRenderer.fixedLayoutOrientation) { _ in
+            updateFixedLayoutOrientationPreference()
+        }
+        .onChanged(of: allPages.count) { _ in
+            rebuildReaderOverlayLegacyContentIndex()
+            applyInitialProgressIfNeeded()
+            relocateReadingStatsPosition()
+        }
+        .onChanged(of: chapters.count) { _ in
+            applyInitialProgressIfNeeded()
+        }
+        )
+    }
+
+    private func requestFirstLevelReaderFontImporter() {
+        guard ReaderSettingsPresentationPolicy.requiresFirstLevelImporter else {
+            showReaderFontImporter = true
+            return
+        }
+        readerSettingsDeferredPresentation.select(.fontImporter)
+        showSettings = false
+    }
+
+    private func requestFirstLevelReaderPaywall(_ feature: PremiumFeature) {
+        readerSettingsDeferredPresentation.select(.paywall(feature))
+        showSettings = false
+    }
+
+    private func requestFirstLevelReaderStyleImporter(_ route: ReaderStyleImportRoute) {
+        guard ReaderSettingsPresentationPolicy.requiresFirstLevelImporter else {
+            readerStyleImportRoute = route
+            return
+        }
+        readerSettingsDeferredPresentation.select(.styleImporter(route))
+        showSettings = false
+    }
+
+    /// Runs whatever the quick panel asked for, once its sheet is actually gone.
+    private func presentDeferredQuickPanelRoute() {
+        guard let route = quickPanelDeferredRoute else { return }
+        quickPanelDeferredRoute = nil
+        switch route {
+        case .settings:
+            showSettings = true
+        case .paywall(let feature):
+            paywallFeature = feature
+        }
+    }
+
+    private func presentDeferredReaderSettingsRoute() {
+        guard let route = readerSettingsDeferredPresentation.consumeAfterDismissal() else {
+            return
+        }
+        switch route {
+        case .fontImporter:
+            showReaderFontImporter = true
+        case .styleImporter(let styleRoute):
+            readerStyleImportRoute = styleRoute
+        case .paywall(let feature):
+            paywallFeature = feature
+        }
+    }
+
+    private func handleReaderFontImport(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            let shouldStopAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if shouldStopAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            try settings.importReaderFont(from: url)
+        } catch {
+            readerFontImportError = ReaderFontImportPresentationError(
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    func handleTouchAction(_ action: TouchAction) {
+        // While 自動閱讀's panel is up the page behaves like the area outside
+        // legado's `AutoReadDialog`: the first touch anywhere dismisses it and does
+        // nothing else, whichever tap zone it landed in. Only the touch after that
+        // means what the zone says.
+        guard !consumeTapForAutoReadPanel() else { return }
+        // With the menu up, a tap on a page- or chapter-turn zone only puts the menu
+        // away, as in Apple Books and legado. A swipe still turns the page, and closes
+        // the menu as it starts (`hideReaderChromeForPageTurn`).
+        if showBars, action.readerCommand.turnsPage {
+            hideReaderChromeForPageTurn()
+            return
+        }
+        switch action.readerCommand {
+        case .none:
+            return
+        case .toggleMenu:
+            setReaderChromeVisible(!showBars)
+        case .previousPage:
+            goToPrevPage()
+        case .nextPage:
+            goToNextPage()
+        case .previousChapter:
+            guard canGoPrevChapter else { return }
+            jumpToChapter(currentChapterIndex - 1)
+        case .nextChapter:
+            guard canGoNextChapter else { return }
+            jumpToChapter(currentChapterIndex + 1)
+        case .toggleBookmark:
+            toggleCurrentPageBookmark()
+        case .tableOfContents:
+            showTOC = true
+        }
+    }
+
+    private func performInitialLoad() {
+        refreshInitialRestoreState()
+        guard let currentBook = book, currentBook.isOnline else {
+            loadContent()
+            return
+        }
+
+        // Repair only when metadata is genuinely missing: no TOC URL or no chapters.
+        // Empty `runtimeVariables` is NOT a defect — most sources never set any, so gating
+        // on it made `needsRepair` true on EVERY open of such a book, firing a background
+        // `refreshOnlineBookMetadata(forceInfoRefresh: true)` that re-fetches the book info AND
+        // re-traverses the whole multi-page TOC (serial, ~13s for 神魔/捞尸人). That refetch
+        // contends with the opening chapter's 段評 fetch on the same per-source bridge/network,
+        // dragging a ~3s first-chapter open out to ~10s — every single time. Runtime variables
+        // that a source DOES need are captured per-chapter during content parse (runtimeBox),
+        // not from this open-time repair, so dropping the check doesn't starve them.
+        let needsRepair =
+            (currentBook.bookSourceId != nil)
+            && (
+                (currentBook.tocURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                    || (currentBook.onlineChapters?.isEmpty != false)
+            )
+
+        guard needsRepair else {
+            loadContent()
+            return
+        }
+
+        // Bookshelf has chapters: open reader immediately, repair metadata in background —
+        // at `.utility`, so the opening chapter's parse goes first on the source's bridge.
+        if currentBook.onlineChapters?.isEmpty == false {
+            loadContent()
+            Task(priority: .utility) {
+                _ = try? await store.refreshOnlineBookMetadata(
+                    bookId: currentBook.id,
+                    forceInfoRefresh: true,
+                    bookSourceFetcher: dependencies.bookSourceFetcher,
+                    offlineChapterStore: dependencies.offlineChapterStore
+                )
+            }
+        } else {
+            // No chapters: open as soon as the first batch of TOC arrives, without waiting for the full TOC.
+            Task {
+                _ = try? await store.refreshOnlineBookMetadata(
+                    bookId: currentBook.id,
+                    forceInfoRefresh: true,
+                    bookSourceFetcher: dependencies.bookSourceFetcher,
+                    offlineChapterStore: dependencies.offlineChapterStore,
+                    onFirstChaptersReady: { repairedBook in
+                        guard repairedBook.id == currentBook.id, self.chapters.isEmpty else { return }
+                        self.loadContent()
+                    }
+                )
+                await MainActor.run {
+                    if self.chapters.isEmpty {
+                        loadContent()
+                    }
+                }
+            }
+        }
+    }
+
+    func refreshInitialRestoreState() {
+        let fallback = CoreTextReadingPosition(spineIndex: currentChapterIndex, charOffset: 0)
+        ensureReaderNavigator(initialPosition: fallback)
+        guard let restored = readerSessionCoordinator?.restoreSync(),
+              restored.source == .restored else {
+            savedCoreTextRestoreTarget = nil
+            isApplyingCoreTextRestore = false
+            progressTrace("refreshInitialRestoreState source=none target=nil")
+            return
+        }
+
+        let position = restored.coreTextPosition
+        savedCoreTextRestoreTarget = (position.spineIndex, max(0, position.charOffset))
+        setCoreTextExternalTarget(position)
+        currentChapterIndex = position.spineIndex
+        scrollVisibleChapter = position.spineIndex
+        pendingScrollJumpTarget = position
+        isApplyingCoreTextRestore = false
+        progressTrace(
+            "refreshInitialRestoreState source=positionStore target=(\(position.spineIndex),\(position.charOffset))"
+        )
+    }
+
+    func applyInitialProgressIfNeeded() {
+        if effectiveScrollMode, scrollAxis == .vertical {
+            // Every continuous source restores a character anchor in the scroll
+            // host. A late paged-engine preload must not reassert the opening
+            // position after the reader has already scrolled elsewhere.
+            guard epubRenderer.scrollEngine != nil,
+                  ReaderProgressSyncPolicy.canPublishIndexPosition(isTXT: isTXT, indexReady: txtIndexReady)
+            else { return }
+            if let target = savedCoreTextRestoreTarget {
+                let position = CoreTextReadingPosition(spineIndex: max(0, min(target.chapterIndex, chapters.count - 1)),
+                                                       charOffset: max(0, target.charOffset))
+                pendingScrollJumpTarget = position
+                currentChapterIndex = position.spineIndex
+                scrollVisibleChapter = position.spineIndex
+                moveReaderSession(to: position, source: .restored, shouldPersist: false)
+                savedCoreTextRestoreTarget = nil
+                isRestoringPosition = false
+            }
+            return
+        }
+        if let engine = epubRenderer.engine {
+            progressTrace(
+                "applyInitialProgress start enginePage=\(engine.currentPage) totalPages=\(engine.totalPages) target=\(savedCoreTextRestoreTarget.map { "(\($0.chapterIndex),\($0.charOffset))" } ?? "nil")"
+            )
+
+            if let target = savedCoreTextRestoreTarget,
+               !isApplyingCoreTextRestore {
+                isApplyingCoreTextRestore = true
+                Task { @MainActor in
+                    defer { self.isApplyingCoreTextRestore = false }
+                    let maxSpine = max(0, self.chapters.count - 1)
+                    let spineIndex = max(0, min(target.chapterIndex, maxSpine))
+                    self.progressTrace("applyInitialProgress tryPreciseRestore requested=(\(target.chapterIndex),\(target.charOffset)) clampedSpine=\(spineIndex)")
+                    await engine.preloadChapter(at: spineIndex)
+                    guard let resolvedPage = ReaderProgressRestoreResolver.resolvePage(
+                        chapterIndex: spineIndex,
+                        charOffset: target.charOffset,
+                        resolver: { position in
+                            engine.pageIndex(for: position)
+                        }
+                    ) else {
+                        self.progressTrace("applyInitialProgress preciseRestore unresolved keepTarget=(\(target.chapterIndex),\(target.charOffset))")
+                        return
+                    }
+                    self.progressTrace("applyInitialProgress preciseRestore resolvedPage=\(resolvedPage) from=(\(spineIndex),\(target.charOffset))")
+                    self.currentPage = resolvedPage
+                    // Phase-2: binding writes are display-only; re-issue the position
+                    // command so the executor corrects any estimated-page residual
+                    // (previously the binding-vs-visible reconciler picked this up).
+                    self.setCoreTextExternalTarget(
+                        CoreTextReadingPosition(spineIndex: spineIndex, charOffset: target.charOffset)
+                    )
+                    self.currentChapterIndex = spineIndex
+                    self.moveReaderSession(
+                        to: CoreTextReadingPosition(spineIndex: spineIndex, charOffset: target.charOffset),
+                        source: .restored,
+                        pageIndex: resolvedPage,
+                        totalPages: engine.totalPages,
+                        shouldPersist: false
+                    )
+                    self.ensureChapterReady(chapterIndex: spineIndex)
+                    self.epubRenderer.updateCurrentPosition(globalPage: resolvedPage, engine: engine)
+                    self.savedCoreTextRestoreTarget = nil
+                    self.isRestoringPosition = false
+                }
+                return
+            }
+            return
+        }
+    }
+
+    func beginCurlStartupTrace(reason: String) {
+        guard settings.pageTurnStyle == .curl else { return }
+        curlStartupStartedAt = CFAbsoluteTimeGetCurrent()
+        hasLoggedCurlInteractiveReady = false
+        ReaderTelemetry.shared.log(
+            "curl_startup_begin",
+            attributes: [
+                "bookId": bookId.uuidString,
+                "pipelineKind": telemetryPipelineKind,
+                "reason": reason,
+            ]
+        )
+    }
+
+    func logCurlInteractiveReadyIfNeeded(source: String) {
+        guard !hasLoggedCurlInteractiveReady else { return }
+        hasLoggedCurlInteractiveReady = true
+        let durationMs: String
+        if let startedAt = curlStartupStartedAt {
+            durationMs = "\((CFAbsoluteTimeGetCurrent() - startedAt) * 1000)"
+        } else {
+            durationMs = "0"
+        }
+        ReaderTelemetry.shared.log(
+            "curl_interactive_ready",
+            attributes: [
+                "bookId": bookId.uuidString,
+                "pipelineKind": telemetryPipelineKind,
+                "source": source,
+                "pageIndex": "\(currentPage)",
+                "durationMs": durationMs,
+            ]
+        )
+    }
+
+    func handleScrollModeChanged(_ enabled: Bool) {
+        let targetMode: ReaderDisplayMode = enabled ? .scroll : .paged
+        let position: CoreTextReadingPosition
+        if enabled {
+            guard let pagedPosition = currentPagedReadingPositionForModeSwitch() else { return }
+            position = pagedPosition
+            moveReaderSession(to: position, source: .modeSwitch)
+            currentChapterIndex = position.spineIndex
+            scrollVisibleChapter = position.spineIndex
+            pendingScrollJumpTarget = position
+            ensureChapterReady(chapterIndex: position.spineIndex, priority: .jump)
+        } else {
+            pendingScrollJumpTarget = nil
+            position = readerSessionCoordinator?.state.location.coreTextPosition
+                ?? CoreTextReadingPosition(spineIndex: scrollVisibleChapter, charOffset: 0)
+            moveReaderSession(to: position, source: .modeSwitch)
+            currentChapterIndex = position.spineIndex
+            if let page = findChapterFirstPage(position.spineIndex), !usesCoreTextEPUB {
+                currentPage = page
+            }
+        }
+
+        submitReaderRefresh(
+            intent: .modeActivation,
+            settings: readerRenderSettings(for: targetMode),
+            mode: targetMode,
+            position: position
+        )
+    }
+
+    func currentPagedReadingPositionForModeSwitch() -> CoreTextReadingPosition? {
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            return engine.readingPosition(forPage: currentPage)
+                ?? CoreTextReadingPosition(
+                    spineIndex: engine.charOffset(forPage: currentPage).spineIndex,
+                    charOffset: engine.charOffset(forPage: currentPage).charOffset
+                )
+        }
+
+        guard !allPages.isEmpty else { return nil }
+        let page = allPages[min(currentPage, allPages.count - 1)]
+        return CoreTextReadingPosition(spineIndex: page.chapterIndex, charOffset: 0)
+    }
+
+    // MARK: - Bottom Footer (overlay for slide/cover/tab modes)
+    // Extracted to ReaderView+Footer.swift
+
+    // MARK: - Inline Footer (curl mode: baked into page texture, moves with the page)
+    // Extracted to ReaderView+Footer.swift
+
+    // MARK: - TXT Vertical Scroll Mode
+    // Extracted to ReaderView+TXTVerticalScroll.swift
+
+    // MARK: - Top Bar
+    // Extracted to ReaderView+Toolbars.swift
+
+    // MARK: - Bottom Bar
+    // Extracted to ReaderView+Toolbars.swift
+
+    // MARK: - Source Change Sheet
+    // Extracted to ReaderView+SourceChange.swift
+
+    // MARK: - Logic
+    // Extracted to ReaderView+Logic.swift
+
+    // MARK: - Online Chapter Lazy Loading
+    // Extracted to ReaderView+OnlineChapterLoading.swift
+
+    // MARK: - Loading & Page Building
+    // Extracted to ReaderView+PageBuilding.swift
+}
+
+/// One AI 查詞 card: the selected word, its sentence, and the assistant launch that
+/// 繼續問 AI opens for the same selection.
+struct ReaderWordLookupRoute: Identifiable {
+    let id = UUID()
+    let term: String
+    let context: String
+    /// Nil when the word is in a translation (整章翻譯): the assistant cites the book, and a
+    /// translation has no place in it.
+    let launch: AIReadingLaunch?
+}

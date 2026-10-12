@@ -1,0 +1,855 @@
+import Foundation
+
+protocol OfflineDownloadManaging: Sendable {
+    func start(
+        book: ReadingBook,
+        selection: OfflineChapterSelection,
+        store: BookStore
+    ) async
+    func pause(bookId: UUID, store: BookStore) async
+    func resume(book: ReadingBook, store: BookStore) async
+    func retryFailed(book: ReadingBook, store: BookStore) async
+    func skipFailed(bookId: UUID, store: BookStore) async
+    func remove(bookId: UUID, store: BookStore) async throws
+    func reconcileInterruptedDownloads(store: BookStore) async
+}
+
+private enum OfflineDownloadManagerError: LocalizedError {
+    case invalidPackage
+
+    var errorDescription: String? {
+        "Fetched chapter did not produce a complete durable package"
+    }
+}
+
+actor OfflineDownloadManager: OfflineDownloadManaging {
+    private struct WaitingBook {
+        var book: ReadingBook
+        var store: BookStore
+        var enqueuedAt: TimeInterval
+    }
+
+    private let chapterFetcher: any ChapterFetching
+    private let chapterStore: any OfflineChapterStoring
+    private let maximumConcurrentBooks: Int
+    /// Fixed chapter concurrency, for tests that need a deterministic width. `nil` in the
+    /// app: the pool follows 網路設定 → 並發數.
+    private let configuredChapterConcurrency: Int?
+    /// Seconds to wait before the first automatic retry; later attempts scale with the
+    /// attempt number. Injectable so tests exercise the retry path without real waiting.
+    private let retryBackoff: TimeInterval
+    private var bookJobs: [UUID: Task<Void, Never>] = [:]
+    /// Chapter indices in flight, per book. A worker claims its index here before starting
+    /// and holds the claim through every retry, so two workers of the same book can never
+    /// spend attempts on the same chapter. `pause` cancels exactly this set.
+    private var inFlightChapters: [UUID: Set<Int>] = [:]
+    private var waitingBooks: [WaitingBook] = []
+    private var isReconciling = false
+    /// The store each running book is downloading into, so the background-expiry handler can
+    /// pause them without being handed one.
+    private var runningStores: [UUID: BookStore] = [:]
+    private var hasInstalledBackgroundExpiryHandler = false
+    /// Attempts spent per chapter, `bookId → chapterIndex → count`. In memory only, like
+    /// Legado's `errorDownloadMap`: a relaunch is a fresh set of attempts.
+    private var chapterAttempts: [UUID: [Int: Int]] = [:]
+
+    /// Chapter outcomes not yet written to the store, per book.
+    ///
+    /// Every write of the download task publishes the store to every view on it — the
+    /// shelf, the reader — and refreshes the Live Activity, so writing one per chapter made
+    /// a 2000-chapter download re-render the app several times a second for its whole
+    /// duration. Outcomes are staged here and written in one batch at most once per
+    /// `progressPublishInterval`, the way legado's shelf collects its book flow with
+    /// `conflate()` rather than per row. `claimNextChapter` reads the stage too, so a
+    /// finished chapter is never handed out again before its write lands.
+    private struct PendingProgress {
+        var completed: Set<Int> = []
+        var failed: [Int: OfflineChapterFailure] = [:]
+        var removed: Set<Int> = []
+        var isEmpty: Bool { completed.isEmpty && failed.isEmpty && removed.isEmpty }
+        var indices: Set<Int> { completed.union(failed.keys).union(removed) }
+    }
+    private var pendingProgress: [UUID: PendingProgress] = [:]
+    private var progressFlushes: [UUID: Task<Void, Never>] = [:]
+    private static let progressPublishInterval: Duration = .seconds(1)
+
+    /// Legado gives each chapter three tries before recording a failure
+    /// (`CacheBook.onPostError`). Paid sources, sources behind a login, and chapters that
+    /// also fetch 段評 all take longer and are the ones that lose to a single blip; failing
+    /// them on the first error is what made a download report failures it could have avoided.
+    private static let maximumChapterAttempts = 3
+
+    /// Whether spending another attempt on this failure could plausibly change the outcome.
+    /// A volume header or a malformed chapter URL fails identically every time, so retrying
+    /// only spends requests against a source that may already be throttling us.
+    private static func isRetryable(_ category: OfflineChapterFailure.Category) -> Bool {
+        switch category {
+        case .invalidChapter, .canceled:
+            return false
+        case .network, .parsing, .emptyContent, .textWrite,
+             .imageDownload, .imageValidation, .unknown:
+            return true
+        }
+    }
+
+    init(
+        chapterFetcher: any ChapterFetching,
+        chapterStore: any OfflineChapterStoring = OfflineChapterStore(),
+        maximumConcurrentBooks: Int = 2,
+        chapterConcurrency: Int? = nil,
+        retryBackoff: TimeInterval = 1.0
+    ) {
+        self.chapterFetcher = chapterFetcher
+        self.chapterStore = chapterStore
+        self.maximumConcurrentBooks = max(1, maximumConcurrentBooks)
+        self.configuredChapterConcurrency = chapterConcurrency
+        self.retryBackoff = max(0, retryBackoff)
+    }
+
+    func start(
+        book: ReadingBook,
+        selection: OfflineChapterSelection,
+        store: BookStore
+    ) async {
+        let libraryBook = await MainActor.run {
+            store.ensureOnlineBookForDownload(book)
+        }
+        guard let refs = libraryBook.onlineChapters, !refs.isEmpty else { return }
+
+        let validIndices = Set(selection.indices.filter { refs.indices.contains($0) })
+        let volumeIndices = Set(validIndices.filter { refs[$0].shouldRenderAsVolumeSeparator })
+        let requested = validIndices.subtracting(volumeIndices)
+        guard !requested.isEmpty else { return }
+
+        await MainActor.run {
+            var task = store.books.first(where: { $0.id == libraryBook.id })?.offlineDownloadTask
+                ?? BookOfflineDownloadTask(requestedIndices: [])
+            task.mergeRequestedIndices(requested)
+            task.setPaused(false)
+            store.replaceOfflineDownloadTask(
+                bookId: libraryBook.id,
+                task: task,
+                isRunning: true
+            )
+        }
+        enqueue(libraryBook, store: store)
+    }
+
+    func pause(bookId: UUID, store: BookStore) async {
+        waitingBooks.removeAll { $0.book.id == bookId }
+        let activeChapterIndices = inFlightChapters[bookId] ?? []
+        let job = bookJobs[bookId]
+        job?.cancel()
+        for chapterIndex in activeChapterIndices {
+            await chapterFetcher.cancelChapter(bookId: bookId, chapterIndex: chapterIndex)
+        }
+        await job?.value
+        await publishProgress(bookId: bookId, store: store, isRunning: false)
+        await MainActor.run {
+            guard var task = store.books.first(where: { $0.id == bookId })?.offlineDownloadTask else {
+                return
+            }
+            task.setPaused(true)
+            store.replaceOfflineDownloadTask(bookId: bookId, task: task, isRunning: false)
+        }
+    }
+
+    func resume(book: ReadingBook, store: BookStore) async {
+        let shouldResume = await MainActor.run { () -> Bool in
+            guard var task = store.books.first(where: { $0.id == book.id })?.offlineDownloadTask else {
+                return false
+            }
+            task.setPaused(false)
+            store.replaceOfflineDownloadTask(bookId: book.id, task: task, isRunning: true)
+            return !task.pendingIndices.isEmpty
+        }
+        guard shouldResume else { return }
+        enqueue(book, store: store)
+    }
+
+    func retryFailed(book: ReadingBook, store: BookStore) async {
+        // An explicit 重試 is a fresh verdict: the user may have logged into the source or
+        // bought the chapter since, so the automatic attempts already spent must not count
+        // against this round.
+        chapterAttempts.removeValue(forKey: book.id)
+        let shouldRetry = await MainActor.run { () -> Bool in
+            guard var task = store.books.first(where: { $0.id == book.id })?.offlineDownloadTask,
+                  !task.failedChapters.isEmpty else {
+                return false
+            }
+            task.retryFailedIndices()
+            store.replaceOfflineDownloadTask(bookId: book.id, task: task, isRunning: true)
+            return true
+        }
+        guard shouldRetry else { return }
+        enqueue(book, store: store)
+    }
+
+    func skipFailed(bookId: UUID, store: BookStore) async {
+        guard bookJobs[bookId] == nil,
+              !waitingBooks.contains(where: { $0.book.id == bookId }) else {
+            return
+        }
+        await MainActor.run {
+            guard var task = store.books.first(where: { $0.id == bookId })?.offlineDownloadTask,
+                  task.pendingIndices.isEmpty,
+                  !task.failedChapters.isEmpty else {
+                return
+            }
+            task.removeRequestedIndices(Set(task.failedChapters.keys))
+            store.replaceOfflineDownloadTask(bookId: bookId, task: task, isRunning: false)
+        }
+    }
+
+    func remove(bookId: UUID, store: BookStore) async throws {
+        chapterAttempts.removeValue(forKey: bookId)
+        waitingBooks.removeAll { $0.book.id == bookId }
+        let job = bookJobs[bookId]
+        job?.cancel()
+        // Every fetch for this book, not just the one index `activeChapterIndices` happens to
+        // hold: the reader is usually open on the same book and has its own requests in
+        // flight, and any of them landing after the directory is deleted writes into a book
+        // the user just cleared.
+        await chapterFetcher.cancelAll(for: bookId, includingDownloads: true)
+        await job?.value
+        discardStagedProgress(bookId: bookId)
+        // Cancelling a download cancels many chapters at once. Each one that surfaced as a
+        // failure counted against the book's quarantine budget, which only ever reset on a
+        // success — so removing a download could quarantine the book permanently.
+        await chapterFetcher.resetFailureBudget(for: bookId)
+        await MainActor.run { store.clearAutomaticQuarantine(bookId: bookId) }
+        try await store.clearOnlineDownload(
+            bookId: bookId,
+            offlineChapterStore: chapterStore
+        )
+        // A reconcile pass suspended inside its validation loop can queue this book
+        // again while the awaits above run. Its job would exit immediately (the task
+        // is gone), but dropping the entry keeps the queue honest for the books
+        // still waiting behind it.
+        waitingBooks.removeAll { $0.book.id == bookId }
+    }
+
+    func reconcileInterruptedDownloads(store: BookStore) async {
+        guard !isReconciling else { return }
+        isReconciling = true
+        defer { isReconciling = false }
+        // Shelf records carry no table of contents; each downloading book's is read here.
+        let books = await MainActor.run {
+            store.books
+                .filter { $0.isOnline && $0.offlineDownloadTask != nil }
+                .compactMap { store.readingBook(id: $0.id) }
+        }
+        for book in books {
+            guard let refs = book.onlineChapters else { continue }
+            // A reconcile validates; it never destroys. With an empty table of contents every
+            // requested index falls outside `refs.indices`, so the merge below would drop them
+            // all, leave an empty task, and `derivedState` would answer `.none` — the book
+            // silently reverts to "never downloaded", flushed immediately because the targets
+            // changed. Nothing here can tell "this book lost its chapters" apart from "the TOC
+            // fetch failed", so it must not act on either. `OnlineTOCCommitPolicy` keeps an
+            // empty list from being committed in the first place; this is the second lock.
+            guard !refs.isEmpty else {
+                AppLogger.cache("⟐ reconcile skipped, empty TOC", context: [
+                    "bookId": book.id.uuidString,
+                    "title": book.title,
+                ])
+                continue
+            }
+            let requestedIndices = await MainActor.run {
+                store.books.first(where: { $0.id == book.id })?.offlineDownloadTask?.requestedIndices
+            }
+            guard let requestedIndices else { continue }
+
+            var droppedIndices = Set(requestedIndices.filter { !refs.indices.contains($0) })
+            var verifiedIndices: Set<Int> = []
+            var missingIndices: Set<Int> = []
+
+            for index in requestedIndices.subtracting(droppedIndices).sorted() {
+                let ref = refs[index]
+                if ref.shouldRenderAsVolumeSeparator {
+                    droppedIndices.insert(index)
+                    continue
+                }
+                let validation = await SourcePerfTrace.spanAsync(
+                    "offline.validation",
+                    book.title
+                ) {
+                    await chapterStore.validationState(
+                        bookId: book.id,
+                        chapterIndex: index,
+                        expectedSourceURL: ref.url,
+                        expectedTOCTitle: ref.title,
+                        requiresManga: book.contentPipelineKind == .manga,
+                        hasBookSource: book.bookSourceId != nil
+                    )
+                }
+                if validation == .complete {
+                    verifiedIndices.insert(index)
+                } else {
+                    missingIndices.insert(index)
+                }
+            }
+
+            // Validating a long book is one await per chapter, and 移除下載 can
+            // land in the middle of them (下載管理 even starts this pass on the
+            // same screen as the 移除 button). Merging into the task that is live
+            // *now* is what keeps a removal removed: writing the pre-validation
+            // snapshot back resurrected the task, and because removal had just
+            // deleted the artifacts it still listed as completed, the follow-up
+            // enqueue restarted the whole download.
+            // The loop above is done mutating the three index sets, so capture them by
+            // value — reaching into this actor's mutable locals from the @MainActor
+            // closure is an error under the Swift 6 language mode.
+            let merged = await MainActor.run {
+                [droppedIndices, verifiedIndices, missingIndices] () -> BookOfflineDownloadTask? in
+                guard var task = store.books
+                    .first(where: { $0.id == book.id })?.offlineDownloadTask
+                else { return nil }
+                task.removeRequestedIndices(droppedIndices)
+                for index in verifiedIndices where task.requestedIndices.contains(index) {
+                    task.markCompleted(index)
+                }
+                for index in missingIndices where task.completedIndices.contains(index) {
+                    task.markPending(index)
+                }
+                store.replaceOfflineDownloadTask(bookId: book.id, task: task, isRunning: false)
+                return task
+            }
+            guard let merged, !merged.isPaused, !merged.pendingIndices.isEmpty else { continue }
+            enqueue(book, store: store)
+        }
+    }
+
+    func waitUntilIdle() async {
+        while let job = bookJobs.values.first {
+            await job.value
+        }
+    }
+
+    private func enqueue(_ book: ReadingBook, store: BookStore) {
+        guard bookJobs[book.id] == nil else { return }
+        if let index = waitingBooks.firstIndex(where: { $0.book.id == book.id }) {
+            waitingBooks[index].book = book
+            waitingBooks[index].store = store
+            return
+        }
+        waitingBooks.append(WaitingBook(
+            book: book,
+            store: store,
+            enqueuedAt: ProcessInfo.processInfo.systemUptime
+        ))
+        startWaitingBooksIfPossible()
+    }
+
+    private func startWaitingBooksIfPossible() {
+        while bookJobs.count < maximumConcurrentBooks, !waitingBooks.isEmpty {
+            let waiting = waitingBooks.removeFirst()
+            SourcePerfTrace.record(
+                "offline.queueWait",
+                waiting.book.title,
+                since: waiting.enqueuedAt
+            )
+            let bookId = waiting.book.id
+            runningStores[bookId] = waiting.store
+            bookJobs[bookId] = Task { [weak self] in
+                await self?.beginBackgroundAssertion()
+                await self?.refreshChapterSlotCapacity()
+                await self?.runBook(waiting.book, store: waiting.store)
+                await MainActor.run { OfflineDownloadBackgroundTask.shared.release() }
+            }
+        }
+    }
+
+    /// Hands the book's pending chapters to the shared chapter-slot pool until there are
+    /// none left and every worker has returned.
+    ///
+    /// This used to fetch one chapter, await it, then fetch the next — a book downloaded
+    /// with exactly one request in flight, which is most of why a long book took minutes of
+    /// mostly-idle network. Legado has never done that: `CacheBook.startProcessJob` collects
+    /// a flow of books with `onEachParallel(threadCount)`, so `threadCount` chapter fetches
+    /// run at once and the slots are shared across every downloading book.
+    private func runBook(_ originalBook: ReadingBook, store: BookStore) async {
+        defer { finishBook(bookId: originalBook.id) }
+
+        await withTaskGroup(of: Void.self) { group in
+            var running = 0
+            while !Task.isCancelled {
+                let snapshot = await MainActor.run { () -> (ReadingBook, BookOfflineDownloadTask)? in
+                    guard
+                        let book = store.readingBook(id: originalBook.id), book.isInBookshelf,
+                        let task = book.offlineDownloadTask
+                    else { return nil }
+                    return (book, task)
+                }
+                guard let (book, task) = snapshot, !task.isPaused else { break }
+
+                guard let index = claimNextChapter(bookId: book.id, task: task) else {
+                    // Nothing left to hand out. Workers still in flight are the last writers
+                    // of this task, so the download is only finished once they have returned.
+                    if running == 0 {
+                        if await publishProgress(bookId: book.id, store: store, isRunning: false) {
+                            break
+                        }
+                        await MainActor.run {
+                            guard let finalTask = store.books
+                                .first(where: { $0.id == book.id })?.offlineDownloadTask else { return }
+                            store.replaceOfflineDownloadTask(
+                                bookId: book.id,
+                                task: finalTask,
+                                isRunning: false
+                            )
+                        }
+                        break
+                    }
+                    if await group.next() != nil { running -= 1 } else { running = 0 }
+                    continue
+                }
+
+                guard let refs = book.onlineChapters, refs.indices.contains(index) else {
+                    releaseChapter(index, bookId: book.id)
+                    removeInvalidIndex(index, bookId: book.id, store: store)
+                    continue
+                }
+                let ref = refs[index]
+                if ref.shouldRenderAsVolumeSeparator {
+                    releaseChapter(index, bookId: book.id)
+                    removeInvalidIndex(index, bookId: book.id, store: store)
+                    continue
+                }
+
+                await acquireChapterSlot()
+                guard !Task.isCancelled else {
+                    releaseChapter(index, bookId: book.id)
+                    releaseChapterSlot()
+                    break
+                }
+                group.addTask { [weak self] in
+                    await self?.downloadChapter(
+                        index: index,
+                        ref: ref,
+                        book: book,
+                        store: store
+                    )
+                    await self?.releaseChapterSlot()
+                }
+                running += 1
+            }
+            await group.waitForAll()
+        }
+    }
+
+    /// One chapter, start to finish, including its retries. The worker keeps the chapter
+    /// claimed across every attempt: releasing it between attempts would let a sibling worker
+    /// pick the same index straight out of `pendingIndices` and spend the remaining attempts
+    /// in parallel with this one.
+    private func downloadChapter(
+        index: Int,
+        ref: OnlineChapterRef,
+        book: ReadingBook,
+        store: BookStore
+    ) async {
+        defer { releaseChapter(index, bookId: book.id) }
+
+        while !Task.isCancelled {
+            do {
+                let validation = await SourcePerfTrace.spanAsync(
+                    "offline.validation",
+                    book.title
+                ) {
+                    await chapterStore.validationState(
+                        bookId: book.id,
+                        chapterIndex: index,
+                        expectedSourceURL: ref.url,
+                        expectedTOCTitle: ref.title,
+                        requiresManga: book.contentPipelineKind == .manga,
+                        hasBookSource: book.bookSourceId != nil
+                    )
+                }
+                if validation != .complete {
+                    let package = try await SourcePerfTrace.spanAsync(
+                        "offline.textCommit",
+                        book.title
+                    ) {
+                        try await chapterFetcher.fetchChapter(
+                            book: book,
+                            chapterIndex: index,
+                            priority: .download,
+                            store: store
+                        )
+                    }
+                    guard package.state == .cached,
+                          !package.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                        throw OfflineDownloadManagerError.invalidPackage
+                    }
+                    if book.contentPipelineKind == .manga {
+                        let request = await mangaRequest(
+                            book: book,
+                            chapterIndex: index,
+                            ref: ref,
+                            package: package
+                        )
+                        try await SourcePerfTrace.spanAsync(
+                            "offline.imageCommit",
+                            book.title
+                        ) {
+                            try await chapterStore.persistMangaImages(request)
+                        }
+                    } else {
+                        // 插图 chapters of a light novel are prose chapters that happen to be all
+                        // pictures; without this a "downloaded" book still needed a connection to
+                        // show them. Best effort on purpose — see `persistTextImages`, and note it
+                        // is NOT part of `validationState`, so a missing plate never re-queues the
+                        // chapter.
+                        let request = await textImageRequest(book: book, package: package)
+                        if !request.images.isEmpty {
+                            await SourcePerfTrace.spanAsync(
+                                "offline.textImageCommit",
+                                book.title
+                            ) {
+                                _ = await chapterStore.persistTextImages(request)
+                            }
+                        }
+                    }
+                }
+
+                guard !Task.isCancelled else { return }
+                let finalValidation = await chapterStore.validationState(
+                    bookId: book.id,
+                    chapterIndex: index,
+                    expectedSourceURL: ref.url,
+                    expectedTOCTitle: ref.title,
+                    requiresManga: book.contentPipelineKind == .manga,
+                    hasBookSource: book.bookSourceId != nil
+                )
+                guard finalValidation == .complete else {
+                    throw OfflineDownloadManagerError.invalidPackage
+                }
+                markCompleted(index, bookId: book.id, store: store)
+                return
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                let category = failureCategory(for: error)
+                let attempts = (chapterAttempts[book.id]?[index] ?? 0) + 1
+                chapterAttempts[book.id, default: [:]][index] = attempts
+
+                if attempts < Self.maximumChapterAttempts, Self.isRetryable(category) {
+                    // Back off before trying again — retrying a source the instant it failed
+                    // is how a transient error becomes three of them. Legado waits a flat
+                    // second here; the wait grows with the attempt so a struggling source
+                    // gets more room each round. Cancellation lands as a thrown sleep, which
+                    // the `while` condition then catches.
+                    AppLogger.parse("⟐ offline chapter retry", context: [
+                        "index": index,
+                        "attempt": attempts,
+                        "category": category.rawValue,
+                    ])
+                    ChapterRetryLog.record(
+                        .offlineDownload,
+                        chapter: index,
+                        bookId: book.id.uuidString,
+                        attempt: attempts,
+                        detail: "category=\(category.rawValue)"
+                    )
+                    let backoff = retryBackoff * Double(attempts)
+                    if backoff > 0 {
+                        try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                    }
+                    continue
+                }
+
+                markFailed(
+                    index,
+                    title: ref.title,
+                    error: error,
+                    bookId: book.id,
+                    store: store
+                )
+                chapterAttempts[book.id]?.removeValue(forKey: index)
+                return
+            }
+        }
+    }
+
+    /// The lowest pending index no worker holds, claimed for the caller.
+    private func claimNextChapter(bookId: UUID, task: BookOfflineDownloadTask) -> Int? {
+        let claimed = inFlightChapters[bookId] ?? []
+        let staged = pendingProgress[bookId]?.indices ?? []
+        guard let index = task.pendingIndices.subtracting(claimed).subtracting(staged).min() else { return nil }
+        inFlightChapters[bookId, default: []].insert(index)
+        return index
+    }
+
+    private func releaseChapter(_ index: Int, bookId: UUID) {
+        inFlightChapters[bookId]?.remove(index)
+        if inFlightChapters[bookId]?.isEmpty == true {
+            inFlightChapters.removeValue(forKey: bookId)
+        }
+    }
+
+    // MARK: - Chapter slot pool
+
+    /// Chapter fetches allowed in flight across EVERY downloading book at once — Legado's
+    /// shared `threadCount` pool, not a per-book budget. Capacity is read when a book job
+    /// starts, the same moment `CacheBookService` reads `AppConfig.threadCount`, so changing
+    /// 並發數 mid-download applies from the next book (or the next resume).
+    private var chapterSlotCapacity = 1
+    private var chapterSlotsInUse = 0
+    private var chapterSlotWaiters: [CheckedContinuation<Void, Never>] = []
+
+    private func refreshChapterSlotCapacity() async {
+        let configured: Int
+        if let configuredChapterConcurrency {
+            configured = configuredChapterConcurrency
+        } else {
+            configured = await MainActor.run { GlobalSettings.shared.searchConcurrency }
+        }
+        chapterSlotCapacity = NetworkSearchSettings.clampedDownloadConcurrency(configured)
+        // The effective width, named on device. "Is the download actually running N at a
+        // time?" is otherwise unanswerable from the outside, and it was exactly the question
+        // nobody could answer while this pool did not exist.
+        AppLogger.cache("⟐ offline slots", context: [
+            "capacity": chapterSlotCapacity,
+            "configured": configured,
+            "inUse": chapterSlotsInUse,
+            "waiting": chapterSlotWaiters.count,
+        ])
+        drainChapterSlotWaiters()
+    }
+
+    private func acquireChapterSlot() async {
+        if chapterSlotsInUse < chapterSlotCapacity {
+            chapterSlotsInUse += 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            chapterSlotWaiters.append(continuation)
+        }
+    }
+
+    private func releaseChapterSlot() {
+        chapterSlotsInUse = max(0, chapterSlotsInUse - 1)
+        drainChapterSlotWaiters()
+    }
+
+    /// Hands freed slots to waiters in arrival order, which is what keeps two books sharing
+    /// the pool instead of the first one holding every slot until it finishes.
+    private func drainChapterSlotWaiters() {
+        while chapterSlotsInUse < chapterSlotCapacity, !chapterSlotWaiters.isEmpty {
+            chapterSlotsInUse += 1
+            chapterSlotWaiters.removeFirst().resume()
+        }
+    }
+
+    private func markCompleted(_ index: Int, bookId: UUID, store: BookStore) {
+        chapterAttempts[bookId]?.removeValue(forKey: index)
+        pendingProgress[bookId, default: PendingProgress()].completed.insert(index)
+        pendingProgress[bookId]?.failed.removeValue(forKey: index)
+        scheduleProgressPublish(bookId: bookId, store: store)
+        ReaderTelemetry.shared.log("book_download_progress", attributes: [
+            "bookId": bookId.uuidString,
+            "chapterIndex": "\(index)",
+            "result": "success",
+        ])
+    }
+
+    private func markFailed(
+        _ index: Int,
+        title: String,
+        error: Error,
+        bookId: UUID,
+        store: BookStore
+    ) {
+        let category = failureCategory(for: error)
+        let failure = OfflineChapterFailure(
+            chapterIndex: index,
+            title: title,
+            category: category,
+            message: error.localizedDescription,
+            occurredAt: Date()
+        )
+        pendingProgress[bookId, default: PendingProgress()].failed[index] = failure
+        pendingProgress[bookId]?.completed.remove(index)
+        scheduleProgressPublish(bookId: bookId, store: store)
+        AppLogger.error("Offline chapter download failed [\(category.rawValue)] index=\(index)", error: error)
+        ReaderTelemetry.shared.log("book_download_progress", attributes: [
+            "bookId": bookId.uuidString,
+            "chapterIndex": "\(index)",
+            "result": "failed",
+            "category": category.rawValue,
+        ])
+    }
+
+    private func removeInvalidIndex(_ index: Int, bookId: UUID, store: BookStore) {
+        pendingProgress[bookId, default: PendingProgress()].removed.insert(index)
+        pendingProgress[bookId]?.completed.remove(index)
+        pendingProgress[bookId]?.failed.removeValue(forKey: index)
+        scheduleProgressPublish(bookId: bookId, store: store)
+    }
+
+    private func scheduleProgressPublish(bookId: UUID, store: BookStore) {
+        guard progressFlushes[bookId] == nil else { return }
+        progressFlushes[bookId] = Task { [weak self] in
+            // A rate limit on publishing, not a wait for anything: the outcomes are already
+            // staged, and the next batch goes out when this interval ends.
+            try? await Task.sleep(for: Self.progressPublishInterval)
+            guard !Task.isCancelled else { return }
+            _ = await self?.publishProgress(bookId: bookId, store: store, isRunning: true)
+        }
+    }
+
+    /// Writes every staged outcome of the book to its task in one store write. Returns
+    /// whether there was anything to write.
+    @discardableResult
+    private func publishProgress(bookId: UUID, store: BookStore, isRunning: Bool) async -> Bool {
+        progressFlushes[bookId]?.cancel()
+        progressFlushes.removeValue(forKey: bookId)
+        guard let pending = pendingProgress.removeValue(forKey: bookId), !pending.isEmpty else {
+            return false
+        }
+        await MainActor.run {
+            guard var task = store.books.first(where: { $0.id == bookId })?.offlineDownloadTask else {
+                return
+            }
+            for index in pending.completed { task.markCompleted(index) }
+            for failure in pending.failed.values { task.markFailed(failure) }
+            if !pending.removed.isEmpty { task.removeRequestedIndices(pending.removed) }
+            store.replaceOfflineDownloadTask(bookId: bookId, task: task, isRunning: isRunning)
+        }
+        return true
+    }
+
+    private func discardStagedProgress(bookId: UUID) {
+        progressFlushes[bookId]?.cancel()
+        progressFlushes.removeValue(forKey: bookId)
+        pendingProgress.removeValue(forKey: bookId)
+    }
+
+    private func finishBook(bookId: UUID) {
+        inFlightChapters.removeValue(forKey: bookId)
+        chapterAttempts.removeValue(forKey: bookId)
+        bookJobs.removeValue(forKey: bookId)
+        runningStores.removeValue(forKey: bookId)
+        startWaitingBooksIfPossible()
+    }
+
+    /// Takes the shared background assertion for this job, installing the expiry handler the
+    /// first time. See `OfflineDownloadBackgroundTask` for what the assertion does and does
+    /// not buy — it is a clean stop, not background downloading.
+    private func beginBackgroundAssertion() async {
+        let needsHandler = !hasInstalledBackgroundExpiryHandler
+        hasInstalledBackgroundExpiryHandler = true
+        await MainActor.run { [weak self] in
+            if needsHandler {
+                OfflineDownloadBackgroundTask.shared.onExpiration = {
+                    Task { await self?.pauseForBackgroundExpiry() }
+                }
+            }
+            OfflineDownloadBackgroundTask.shared.acquire()
+        }
+    }
+
+    /// iOS is about to reclaim the assertion. Stop where we are and write it down: a paused
+    /// task is a state the next foreground resumes from, whereas being frozen mid-chapter
+    /// leaves the reconcile to reconstruct one.
+    private func pauseForBackgroundExpiry() async {
+        let running = runningStores
+        guard !running.isEmpty else { return }
+        AppLogger.cache("⟐ pausing offline downloads for background expiry", context: [
+            "books": running.count,
+        ])
+        for (bookId, store) in running {
+            await pause(bookId: bookId, store: store)
+        }
+    }
+
+    private func failureCategory(for error: Error) -> OfflineChapterFailure.Category {
+        if error is ChapterCacheWriteError { return .textWrite }
+        if let error = error as? OfflineChapterStoreError {
+            switch error {
+            case .noImages:
+                return .emptyContent
+            case .invalidImageURL, .imageResponse, .emptyImage, .imageWrite:
+                return .imageDownload
+            case .invalidImageData, .manifestWrite, .manifestValidation, .commit:
+                return .imageValidation
+            case .remove:
+                return .unknown
+            }
+        }
+        if let error = error as? FetchError {
+            switch error {
+            case .emptyContent:
+                return .emptyContent
+            case .invalidURL, .noSearchURL, .volumeSeparator:
+                return .invalidChapter
+            case .httpError, .cloudflareChallengeRequired, .sourceAPIError:
+                return .network
+            case .encodingError:
+                return .parsing
+            }
+        }
+        if error is OfflineDownloadManagerError { return .emptyContent }
+        if error is URLError { return .network }
+        if error is CancellationError { return .canceled }
+        return .unknown
+    }
+
+    /// The header map every image of `book` is fetched with — the source's own, exactly as the
+    /// cover loader and the reader build it.
+    private func sourceImageHeaders(for book: ReadingBook) async -> [String: String] {
+        await MainActor.run { () -> [String: String] in
+            let source = book.bookSourceId.flatMap { id in
+                BookSourceStore.shared.sources.first { $0.id == id }
+            }
+            return BookCoverLoader.headers(
+                sourceBaseURL: source?.bookSourceUrl,
+                sourceHeaders: source?.parsedHeaders ?? [:]
+            )
+        }
+    }
+
+    private func textImageRequest(
+        book: ReadingBook,
+        package: ChapterPackage
+    ) async -> OfflineTextImageRequest {
+        let defaultHeaders = await sourceImageHeaders(for: book)
+        // Same extraction the comic path uses — `<img>` srcs, http(s) only, `,{headers}` honoured.
+        // Prose chapters additionally carry per-image headers as a src fragment, because the
+        // sanitizer had to move them off the tag; decode those back before requesting.
+        let images = MangaChapterParser.parsedImages(from: package.content).map { image -> OfflineMangaImageRequest in
+            let decoded = OnlineImageRequestOptions.decode(image.url)
+            return OfflineMangaImageRequest(
+                sourceURL: decoded.src,
+                headers: defaultHeaders
+                    .merging(image.headers) { _, perImage in perImage }
+                    .merging(decoded.headers) { _, perImage in perImage }
+            )
+        }
+        return OfflineTextImageRequest(bookId: book.id, images: images)
+    }
+
+    private func mangaRequest(
+        book: ReadingBook,
+        chapterIndex: Int,
+        ref: OnlineChapterRef,
+        package: ChapterPackage
+    ) async -> OfflineMangaChapterRequest {
+        let defaultHeaders = await sourceImageHeaders(for: book)
+        let images = MangaChapterParser.parsedImages(from: package.content).map { image in
+            OfflineMangaImageRequest(
+                sourceURL: image.url,
+                headers: defaultHeaders.merging(image.headers) { _, perImage in perImage }
+            )
+        }
+        return OfflineMangaChapterRequest(
+            bookId: book.id,
+            chapterIndex: chapterIndex,
+            chapterSourceURL: package.sourceURL ?? ref.url,
+            tocTitle: package.tocTitle ?? ref.title,
+            images: images
+        )
+    }
+
+}

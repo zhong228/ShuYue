@@ -1,0 +1,293 @@
+import Foundation
+import UniformTypeIdentifiers
+
+/// What a file picked by 匯入閱讀設定 turned out to contain, before anything is
+/// written. Loading and applying are separate so replacing the reading setup can
+/// be confirmed with the user *after* the file parsed and *before* it lands.
+struct ReaderSettingsImportPlan {
+    var layout: ReaderLayoutPreset?
+    var chapterTitleStyle: ChapterTitleStyle?
+    var regexHighlights: RegexHighlightConfiguration?
+    var dialogueBubbleStyle: ReaderDialogueBubbleStyle?
+    /// Name carried by a file that has no layout preset to name it — currently
+    /// the `nm` of an imported Lottie title template.
+    var contentName: String?
+    /// What the file asked for but could not be reproduced exactly. Reported
+    /// alongside the success message so a lossy conversion is never silent.
+    var notes: [String] = []
+
+    var isEmpty: Bool {
+        layout == nil && chapterTitleStyle == nil && regexHighlights == nil
+            && dialogueBubbleStyle == nil
+    }
+
+    var name: String? {
+        let candidate = layout?.name ?? contentName
+        return candidate?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+enum ReaderSettingsImportError: LocalizedError {
+    case emptyFile
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyFile:
+            return localized("這個檔案沒有可匯入的內容。")
+        }
+    }
+}
+
+/// The single route every 閱讀設定 import takes — the 匯入閱讀設定 button, the
+/// 正則高亮 ⋯ menu, and the older 匯入排版參數 file all land here.
+///
+/// Deliberately one entry point: layout parameters are parsed only by
+/// `ReaderLayoutPresetImporter`, styles only by `ReaderStylePackage`. A second
+/// parse route is how two files that look identical start importing differently.
+@MainActor
+enum ReaderSettingsImportService {
+    static let readerSettingsContentTypes: [UTType] = [
+        .yueduReaderStyle,
+        .json,
+        UTType(filenameExtension: "zip") ?? .data,
+        .data,
+    ]
+
+    static let styleContentTypes: [UTType] = [.yueduReaderStyle, .json, .plainText, .data]
+
+    /// Accepts every style file the app writes plus legado's `readConfig.json` /
+    /// `.zip`. A `.yuedustyle` holding only one half (章節標題樣式 or 正則高亮) is
+    /// accepted here too — the user picked it, and refusing a file we authored
+    /// because it is "the wrong kind of ours" is not a useful failure.
+    static func loadReaderSettings(from url: URL) async throws -> ReaderSettingsImportPlan {
+        guard url.pathExtension.lowercased() == "yuedustyle" else {
+            let data = try Data(contentsOf: url)
+            // Checked before the chapter-title probe: a Lottie document shares
+            // none of its keys, but both end up as a 章節標題樣式 and only one
+            // decoder can be right for a given file.
+            // Checked first: a bubble script is a `{ name, script … }` document
+            // whose `name` would otherwise satisfy the layout-preset decoder.
+            if DialogueBubbleScriptImporter.looksLikeBubbleScript(data) {
+                let imported = try await DialogueBubbleScriptImporter.import(
+                    data,
+                    assetStore: .shared
+                )
+                return ReaderSettingsImportPlan(
+                    layout: nil,
+                    chapterTitleStyle: nil,
+                    regexHighlights: nil,
+                    dialogueBubbleStyle: imported.style,
+                    contentName: imported.name,
+                    notes: imported.notes
+                )
+            }
+            if LottieTitleTemplateImporter.looksLikeTitleTemplate(data) {
+                let imported = try await LottieTitleTemplateImporter.import(
+                    data,
+                    assetStore: .shared
+                )
+                return ReaderSettingsImportPlan(
+                    layout: nil,
+                    chapterTitleStyle: imported.style,
+                    regexHighlights: nil,
+                    dialogueBubbleStyle: nil,
+                    contentName: imported.templateName,
+                    notes: imported.notes
+                )
+            }
+            if looksLikeChapterTitleJSON(data) {
+                return ReaderSettingsImportPlan(
+                    layout: nil,
+                    chapterTitleStyle: try ReaderStylePackage.decodeLegacyChapterTitleJSON(data),
+                    regexHighlights: nil
+                )
+            }
+            return ReaderSettingsImportPlan(
+                layout: try await ReaderLayoutPresetImporter.importPreset(from: url),
+                chapterTitleStyle: nil,
+                regexHighlights: nil
+            )
+        }
+
+        let payload = try await ReaderStylePackage.import(
+            try Data(contentsOf: url),
+            assetStore: .shared
+        )
+        return try plan(from: payload)
+    }
+
+    static func plan(from payload: ReaderStylePackagePayload) throws -> ReaderSettingsImportPlan {
+        switch payload.kind {
+        case .readerSettings:
+            let bundle = try payload.decode(ReaderSettingsBundle.self)
+            return ReaderSettingsImportPlan(
+                layout: try bundle.decodedLayoutPreset(),
+                chapterTitleStyle: bundle.chapterTitleStyle?.sanitized(),
+                regexHighlights: bundle.regexHighlights?.sanitized()
+            )
+        case .chapterTitle:
+            return ReaderSettingsImportPlan(
+                layout: nil,
+                chapterTitleStyle: try payload.decode(ChapterTitleStyle.self).sanitized(),
+                regexHighlights: nil
+            )
+        case .regexHighlights:
+            return ReaderSettingsImportPlan(
+                layout: nil,
+                chapterTitleStyle: nil,
+                regexHighlights: try payload.decode(RegexHighlightConfiguration.self).sanitized()
+            )
+        case .appearance:
+            throw ReaderStylePackageError.unexpectedKind(
+                expected: .readerSettings,
+                actual: .appearance
+            )
+        }
+    }
+
+    /// Both `ChapterTitleStyle` and legado's `readConfig.json` decode every field
+    /// with `decodeIfPresent`, so **either** decoder accepts **any** JSON object
+    /// and silently returns a full set of defaults. A bare `.json` therefore has
+    /// to be told apart by the keys it carries, not by which decoder throws —
+    /// otherwise importing a 章節標題樣式 file quietly resets the type size to 18pt.
+    nonisolated static func looksLikeChapterTitleJSON(_ data: Data) -> Bool {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return false
+        }
+        let keys = Set(object.keys)
+        // Keys unique to one schema. Anything both share (there is nothing today)
+        // must stay out of both sets.
+        let titleKeys: Set<String> = [
+            "visible", "topSpacing", "bottomSpacing", "weight", "alignment",
+            "followsBodyFont", "splitEnabled", "numberRelativeSize",
+            "numberFontPostScript", "nameFontPostScript",
+            "advancedCSSEnabled", "lightTemplate", "darkTemplate", "design",
+        ]
+        let layoutKeys: Set<String> = [
+            "textSize", "textBold", "lineSpacingExtra", "paragraphSpacing",
+            "paddingLeft", "paddingRight", "paddingTop", "paddingBottom",
+            "pageAnim", "headerMode", "readerOverlayLayout",
+        ]
+        return !titleKeys.isDisjoint(with: keys) && layoutKeys.isDisjoint(with: keys)
+    }
+
+    /// Writes the plan into the reader's current setup through the one reading-setup
+    /// writer that theme switches use too. It lands like an edit, setting by setting:
+    /// on the worn theme for what 排版生效範圍 lets follow the theme, in 全域 for the rest.
+    @discardableResult
+    static func apply(_ plan: ReaderSettingsImportPlan) throws -> ReaderSettingsImportSummary {
+        guard !plan.isEmpty else { throw ReaderSettingsImportError.emptyFile }
+        try GlobalSettings.shared.writeReadingSettings(plan.readingSettings, origin: .userImport)
+
+        var summary = ReaderSettingsImportSummary()
+        summary.appliedLayout = plan.layout != nil
+        summary.appliedChapterTitleStyle = plan.chapterTitleStyle != nil
+        summary.appliedRegexHighlights = plan.regexHighlights != nil
+        summary.appliedDialogueBubbleStyle = plan.dialogueBubbleStyle != nil
+        return summary
+    }
+}
+
+extension ReaderSettingsImportPlan {
+    /// The plan as a reading setup: what 取代目前設定 writes live, and what
+    /// 隨主題切換 stores on the imported theme. The one place a layout preset is
+    /// translated into settings.
+    var readingSettings: AppearanceThemeReadingSettings {
+        var reading = AppearanceThemeReadingSettings()
+        if let preset = layout {
+            // Native presets retain both page scopes and every margin. Older presets
+            // and external theme packs still enter through the coordinate migration.
+            // Normalized the way storing it normalizes, so the stored value compares
+            // equal to what the reader ends up wearing.
+            reading.barLayout = (preset.readerBarLayout
+                ?? preset.readerOverlayLayout.map(ReaderBarLayoutMigration.snap))?
+                .normalized(preservingVersion: false)
+            reading.fontSize = preset.fontSize.map(Double.init)
+            reading.isBold = preset.isBold
+            reading.lineHeightMultiple = preset.lineHeightMultiple.map(Double.init)
+            reading.letterSpacing = preset.letterSpacing.map(Double.init)
+            reading.paragraphSpacingMultiplier = preset.paragraphSpacingMultiplier.map(Double.init)
+            reading.pageMarginH = preset.pageMarginH.map(Double.init)
+            reading.pageMarginV = preset.pageMarginV.map(Double.init)
+            reading.pageMarginTop = (preset.pageMarginTop ?? preset.pageMarginV).map(Double.init)
+            reading.pageMarginBottom = (preset.pageMarginBottom ?? preset.pageMarginV).map(Double.init)
+            reading.scrollMode = preset.scrollMode
+            // Scroll mode outranks the page animation, as in legado's `pageAnim`.
+            if preset.scrollMode != true {
+                reading.pageTurnStyle = preset.pageTurnStyle?.rawValue
+            }
+            // The preset's loose title fields are not carried: the renderer reads only
+            // `ChapterTitleStyle`, and those keys survive solely as a one-time migration
+            // source (`GlobalSettings.loadChapterTitleStyle`).
+        }
+        reading.chapterTitleStyle = chapterTitleStyle
+        reading.regexHighlights = regexHighlights
+        reading.dialogueBubbleStyle = dialogueBubbleStyle
+        return reading
+    }
+}
+
+enum ReaderOverlayLayoutPersistenceError: LocalizedError {
+    case writeFailed
+
+    var errorDescription: String? {
+        localized("無法儲存頁首頁尾設定")
+    }
+}
+
+/// The cheap main-actor value read a 匯出閱讀設定 archive is built from — no
+/// encoding and no disk I/O here. `ReaderSettingsExportFile` does the work off it,
+/// where a failure can surface instead of being swallowed.
+struct ReaderSettingsExportInputs: Sendable {
+    var layout: ReaderLayoutSnapshot
+    var chapterTitleStyle: ChapterTitleStyle
+    var regexHighlights: RegexHighlightConfiguration
+
+    func makeBundle() throws -> ReaderSettingsBundle {
+        ReaderSettingsBundle(
+            layoutConfig: try ReaderLayoutPresetExporter.encode(layout),
+            chapterTitleStyle: chapterTitleStyle,
+            regexHighlights: regexHighlights
+        )
+    }
+}
+
+@MainActor
+enum ReaderSettingsExportSnapshot {
+    static func make() -> ReaderSettingsExportInputs {
+        let settings = GlobalSettings.shared
+        let readerConfig = ReaderConfig.shared
+        let style = readerConfig.chapterTitleStyle
+        let snapshot = ReaderLayoutSnapshot(
+            name: localized("閱讀設定"),
+            fontSize: readerConfig.fontSize,
+            isBold: readerConfig.readerFontBold,
+            lineHeightMultiple: readerConfig.lineHeightMultiple,
+            letterSpacing: readerConfig.letterSpacing,
+            paragraphSpacingMultiplier: readerConfig.paragraphSpacingMultiplier,
+            pageMarginH: readerConfig.pageMarginH,
+            pageMarginV: readerConfig.pageMarginV,
+            footerBottomPadding: readerConfig.footerBottomPadding,
+            footerTextGap: readerConfig.footerTextGap,
+            titleVisible: style.visible,
+            titleSize: style.size,
+            titleTopSpacing: style.topSpacing,
+            titleBottomSpacing: style.bottomSpacing,
+            pageTurnStyle: settings.pageTurnStyle,
+            scrollMode: settings.scrollMode,
+            // Rendered out of the bar layout rather than read from the stored
+            // free-position one, which no longer reflects what the reader draws.
+            readerOverlayLayout: ReaderBarLayoutMigration.freePositionLayout(
+                from: settings.readerBarLayout
+            ),
+            pageMarginTop: readerConfig.pageMarginTop,
+            pageMarginBottom: readerConfig.pageMarginBottom,
+            readerBarLayout: settings.readerBarLayout
+        )
+        return ReaderSettingsExportInputs(
+            layout: snapshot,
+            chapterTitleStyle: style,
+            regexHighlights: settings.regexHighlightConfiguration
+        )
+    }
+}

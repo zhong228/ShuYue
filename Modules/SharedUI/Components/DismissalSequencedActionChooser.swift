@@ -1,0 +1,100 @@
+import SwiftUI
+
+struct DismissalSequencedAction<Route: Hashable>: Identifiable {
+    let route: Route
+    let title: String
+    let systemImage: String
+    let isEnabled: Bool
+    /// Carries the destructive cue into this compatibility list. A `Menu` gets
+    /// it from `Button(role: .destructive)`; this list draws it itself so an
+    /// iOS 17 user isn't offered a delete that looks like every other row.
+    let isDestructive: Bool
+    /// A second line under the title — a menu row's subtitle, e.g. 「需要 Pro」.
+    let subtitle: String?
+
+    init(
+        route: Route,
+        title: String,
+        systemImage: String,
+        isEnabled: Bool = true,
+        isDestructive: Bool = false,
+        subtitle: String? = nil
+    ) {
+        self.route = route
+        self.title = title
+        self.systemImage = systemImage
+        self.isEnabled = isEnabled
+        self.isDestructive = isDestructive
+        self.subtitle = subtitle
+    }
+
+    var id: Route { route }
+}
+
+/// A direct sheet entry used before iOS 18 instead of launching another modal
+/// from a still-dismissing toolbar menu.
+struct DismissalSequencedActionChooser<Route: Hashable>: View {
+    let title: String
+    let actions: [DismissalSequencedAction<Route>]
+    let onSelect: (Route) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(actions) { action in
+                Button(role: action.isDestructive ? .destructive : nil) {
+                    onSelect(action.route)
+                    dismiss()
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(action.title)
+                            if let subtitle = action.subtitle {
+                                Text(subtitle)
+                                    .font(DSFont.caption)
+                                    .foregroundStyle(DSColor.textSecondary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: action.systemImage)
+                    }
+                    .foregroundStyle(
+                        action.isDestructive ? DSColor.destructive : DSColor.textPrimary
+                    )
+                }
+                .disabled(!action.isEnabled)
+            }
+            .softScrollEdges()
+            .navigationTitle(title)
+            .toolbarTitleDisplayMode(.inline)
+            .themedAppSurface(for: .settings)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(localized("取消")) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    DismissalSequencedActionChooser(
+        title: localized("匯入"),
+        actions: [
+            DismissalSequencedAction(
+                route: "local",
+                title: localized("本地導入"),
+                systemImage: "doc.badge.plus"
+            ),
+            DismissalSequencedAction(
+                route: "network",
+                title: localized("網路導入"),
+                systemImage: "network"
+            ),
+        ],
+        onSelect: { _ in }
+    )
+}

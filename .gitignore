@@ -1,0 +1,69 @@
+.DS_Store
+# Obsidian vault: keep personal UI state and recoverable trash local.
+docs/.obsidian/
+docs/.trash/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.build/
+functions/lib/
+functions/node_modules/
+.worktrees/
+build/
+
+# Firebase CLI local state and debug logs
+.firebase/
+*-debug.log
+pglite-debug.log
+
+# Local agent/skill tooling and backups
+.agents/
+.understand-anything/
+skills-lock.json
+*.bak
+
+# Log captures from diff toolchain
+scripts/logs/*.txt
+scripts/logs/*.html
+
+docs/superpowers/
+.superpowers/
+
+# OAuth / credentials
+*.plist
+!Info.plist
+# App Store Connect API keys & signing material — NEVER commit
+*.p8
+AuthKey_*
+*.mobileprovision
+*.cer
+*.certSigningRequest
+serviceAccount*.json
+.env
+.env.*
+
+# Xcode build artifacts
+.derivedData/
+*.xcworkspace/xcuserdata/
+
+# CocoaPods (if added later)
+Pods/
+
+# Claude Code skills (local dev only)
+.claude/
+
+# Agent instructions (local dev only)
+AGENTS.md
+
+# Local SPM package forks (local dev only)
+LocalPackages/
+CLAUDE.md
+.codex/
+
+# Local theme-pack sample material (IP images, ~52MB) — not shipped; theme packs deferred
+Resources/Assets/ReaderThemes/
+
+# legado reference sources (read-only, cloned for comparison — see CLAUDE.md)
+legado-upstream/
+legado-md3/
+legado-E/

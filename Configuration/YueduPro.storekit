@@ -1,0 +1,144 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "D6E64924-88B9-4443-B9DB-BA7DA9C6F7ED",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : true,
+      "internalID" : "E47B2A91",
+      "localizations" : [
+        {
+          "description" : "永久解鎖全部 ShuYue Pro 高級個人化",
+          "displayName" : "閱讀Pro 永久會員",
+          "locale" : "zh_Hant"
+        },
+        {
+          "description" : "永久解锁全部 ShuYue Pro 高级个性化",
+          "displayName" : "阅读Pro 永久会员",
+          "locale" : "zh_Hans"
+        },
+        {
+          "description" : "Unlock all ShuYue Pro premium features forever",
+          "displayName" : "ShuYue Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.zhong228.shuyue.pro.lifetime",
+      "referenceName" : "ShuYue Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "zh_Hant",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+    {
+      "id" : "4B1A0032-648A-4BE4-AAE6-86B68D25D05B",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "閱讀Pro 月會員",
+          "locale" : "zh_Hant"
+        },
+        {
+          "description" : "",
+          "displayName" : "阅读Pro 月会员",
+          "locale" : "zh_Hans"
+        },
+        {
+          "description" : "",
+          "displayName" : "ShuYue Pro Monthly",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "閱讀Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "1.99",
+              "displayPrice" : "1.99",
+              "internalID" : "04E985CE",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "1CECCECC-C9F7-4D2E-91CE-EBE64E3EE96C",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "每月解鎖全部 ShuYue Pro 高級個人化",
+              "displayName" : "閱讀Pro 月會員",
+              "locale" : "zh_Hant"
+            },
+            {
+              "description" : "每月解锁全部 ShuYue Pro 高级个性化",
+              "displayName" : "阅读Pro 月会员",
+              "locale" : "zh_Hans"
+            },
+            {
+              "description" : "Unlock all ShuYue Pro personalization, billed monthly",
+              "displayName" : "ShuYue Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.zhong228.shuyue.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "ShuYue Pro Monthly",
+          "subscriptionGroupID" : "4B1A0032-648A-4BE4-AAE6-86B68D25D05B",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}

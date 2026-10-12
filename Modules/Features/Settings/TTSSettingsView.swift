@@ -1,0 +1,1062 @@
+import AVFoundation
+import SwiftUI
+import UniformTypeIdentifiers
+
+private enum TTSImportPresentationRoute: Hashable {
+    case local
+    case network
+}
+
+struct TTSSettingsView: View {
+    @ObservedObject private var gs = GlobalSettings.shared
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.presentationMode) private var presentationMode
+    @StateObject private var testCoordinator = TTSCoordinator()
+    @State private var sourceListURL = ""
+    @State private var sourceImportMessage: String?
+    @State private var isImportingSources = false
+    @State private var showSourceFileImporter = false
+    @State private var showNetworkImport = false
+    /// Parsed voice sources awaiting the user's picks in the confirmation list.
+    @State private var pendingSourceReview: PendingTTSSourceReview?
+    /// Held while the network-import sheet dismisses; presenting the list on the same frame
+    /// is unreliable, so it waits for that sheet's real `onDismiss`.
+    @State private var queuedSourceReview: [ImportedTTSSource]?
+    @State private var showLegacyImportChooser = false
+    @State private var legacyImportSequence =
+        DismissalSequencedPresentation<TTSImportPresentationRoute>()
+    @State private var searchText = ""
+    @State private var selectedSourceIds: Set<String> = []
+    @State private var loginSource: ImportedTTSSource?
+    /// Web login asked for from the login form. Retained until that form is really gone —
+    /// same presentation boundary the import chooser above already respects.
+    @State private var pendingWebLogin: SourceWebLogin?
+    @State private var webLogin: SourceWebLogin?
+    @State private var loginFieldValues: [String: String] = [:]
+    @State private var showLoginSuccess: Bool = false
+
+    private var filteredSources: [ImportedTTSSource] {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return gs.importedTTSSources }
+        return gs.importedTTSSources.filter {
+            $0.name.localizedCaseInsensitiveContains(q)
+                || $0.urlTemplate.localizedCaseInsensitiveContains(q)
+        }
+    }
+
+    private var filteredSourceIds: Set<String> {
+        Set(filteredSources.map(\.id))
+    }
+
+    var body: some View {
+        NavigationStack {
+            AdaptiveSheetContainer(maxWidth: DSLayout.readableWideWidth) {
+                VStack(spacing: 0) {
+                    sourceList
+
+                    Divider()
+
+                    bottomToolbar
+                }
+            }
+            .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
+            .navigationTitle(localized("語音朗讀設定"))
+            .toolbarTitleDisplayMode(.inline)
+            .pageBackgroundToolbar(for: .settings)
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: localized("搜索語音源")
+            )
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { dismissSettings() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(localized("關閉"))
+                }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    importToolbarControl
+                    .disabled(isImportingSources)
+                }
+            }
+            .sheet(
+                isPresented: $showLegacyImportChooser,
+                onDismiss: presentLegacyImportAfterChooserDismissal
+            ) {
+                AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
+                    DismissalSequencedActionChooser(
+                        title: localized("匯入"),
+                        actions: [
+                            DismissalSequencedAction(
+                                route: .local,
+                                title: localized("本地導入"),
+                                systemImage: "doc.badge.plus"
+                            ),
+                            DismissalSequencedAction(
+                                route: .network,
+                                title: localized("網路導入"),
+                                systemImage: "network"
+                            ),
+                        ],
+                        onSelect: { legacyImportSequence.select($0) }
+                    )
+                }
+            }
+            .sheet(
+                isPresented: $showNetworkImport,
+                onDismiss: presentQueuedSourceReview
+            ) {
+                AdaptiveSheetContainer(maxWidth: DSLayout.readablePanelWidth) {
+                    networkImportSheet
+                }
+            }
+            .sheet(item: $pendingSourceReview) { review in
+                TTSSourceImportReviewHost(
+                    sources: review.sources,
+                    existing: gs.importedTTSSources,
+                    onFinish: { merged, count in
+                        gs.importedTTSSources = merged
+                        pendingSourceReview = nil
+                        sourceImportMessage = String(
+                            format: localized("已匯入 %d 個語音源"), count)
+                    },
+                    onCancel: { pendingSourceReview = nil }
+                )
+            }
+            .alert(
+                localized("語音源設定"),
+                isPresented: Binding(
+                    get: { sourceImportMessage != nil },
+                    set: { isPresented in
+                        if !isPresented { sourceImportMessage = nil }
+                    }
+                )
+            ) {
+                Button(localized("確定"), role: .cancel) {}
+            } message: {
+                Text(sourceImportMessage ?? "")
+            }
+        }
+        .fileImporter(
+            isPresented: $showSourceFileImporter,
+            allowedContentTypes: [.json, .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            handleSourceFileImport(result)
+        }
+            .sheet(item: $loginSource, onDismiss: presentPendingWebLogin) { source in
+                TTSSourceLoginView(source: source) {
+                    loginSource = nil
+                } onOpenWebLogin: {
+                    pendingWebLogin = SourceWebLogin(ttsSource: source)
+                    loginSource = nil
+                }
+            }
+            .sheet(item: $webLogin) { login in
+                SourceLoginWebView(login: login) {
+                    webLogin = nil
+                }
+            }
+            .onDisappear {
+                testCoordinator.stop()
+            }
+    }
+
+    // MARK: - Private
+
+    @ViewBuilder
+    private var importToolbarControl: some View {
+        if MenuModalPresentationPolicy.requiresDismissalSequencedChooser {
+            Button {
+                legacyImportSequence.cancel()
+                showLegacyImportChooser = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel(localized("匯入"))
+        } else {
+            Menu {
+                Button {
+                    showSourceFileImporter = true
+                } label: {
+                    Label(localized("本地導入"), systemImage: "doc.badge.plus")
+                }
+                Button {
+                    showNetworkImport = true
+                } label: {
+                    Label(localized("網路導入"), systemImage: "network")
+                }
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel(localized("匯入"))
+        }
+    }
+
+    private func presentLegacyImportAfterChooserDismissal() {
+        guard let route = legacyImportSequence.consumeAfterDismissal() else {
+            return
+        }
+        switch route {
+        case .local:
+            showSourceFileImporter = true
+        case .network:
+            showNetworkImport = true
+        }
+    }
+
+    // MARK: - Source list
+
+    private var sourceList: some View {
+        List {
+            Section {
+                Picker(localized("預合成並行數"), selection: $gs.ttsPreSynthesisConcurrency) {
+                    ForEach(GlobalSettings.ttsPreSynthesisConcurrencyRange, id: \.self) { count in
+                        Text(count, format: .number).tag(count)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("tts_pre_synthesis_concurrency")
+            } header: {
+                Text(localized("語音預合成"))
+                    .foregroundStyle(DSColor.textSecondary)
+            } footer: {
+                Text(localized("同時合成語音的請求數。適用於網路語音，下次開始朗讀時生效。"))
+                    .dsSectionFooter()
+            }
+            .interfaceSectionSurface()
+
+            Section {
+                systemVoiceSourceRow
+                systemVoicePickerRow
+                    .frame(minHeight: DSLayout.minimumTapTarget)
+                edgeVoiceRows
+            } header: {
+                Text(localized("內建語音"))
+                    .accessibilityIdentifier("tts_builtin_section")
+                    .foregroundStyle(DSColor.textSecondary)
+            } footer: {
+                if let error = testCoordinator.errorMessage {
+                    Text(error)
+                        .dsSectionFooter(color: DSColor.destructive)
+                        .accessibilityIdentifier("tts_preview_error")
+                }
+            }
+            .interfaceSectionSurface()
+
+            Section {
+                if filteredSources.isEmpty {
+                    Text(localized("尚無語音源"))
+                        .foregroundStyle(DSColor.textSecondary)
+                        .frame(minHeight: DSLayout.minimumTapTarget)
+                } else {
+                    ForEach(filteredSources) { source in
+                        sourceRow(source)
+                    }
+                }
+            } header: {
+                Text(localized("已匯入語音源"))
+                    .accessibilityIdentifier("tts_imported_section")
+                    .foregroundStyle(DSColor.textSecondary)
+            }
+            .interfaceSectionSurface()
+        }
+        .softScrollEdges()
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    /// One VoiceOver element per voice source — same contract as 書源管理's row
+    /// (`BookSourceListView.sourceRow`): the 核取方塊 / 名稱區 / 更多選單 collapse into a
+    /// single focus, every control comes back as a rotor action, and the 網址 moves to
+    /// rotor custom content so it isn't re-read on every swipe. `docs/design.md` §7.
+    @ViewBuilder
+    private func sourceRow(_ source: ImportedTTSSource) -> some View {
+        sourceRowContent(source)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(source.name)
+            .accessibilityIdentifier("tts_imported_\(source.id)")
+            .accessibilityValue(sourceAccessibilityValue(source))
+            .accessibilityAddTraits(sourceAccessibilityTraits(source))
+            .accessibilityHint(localized("點兩下設為使用中"))
+            .accessibilityCustomContent(Text(localized("網址")), Text(source.urlTemplate))
+            .accessibilityAction { selectSource(source) }
+            .accessibilityActions { sourceRotorActions(source) }
+    }
+
+    /// Announce selection and account requirements without adding visual subtitles.
+    /// Checkbox selection rides on the `.isSelected` trait instead.
+    private func sourceAccessibilityValue(_ source: ImportedTTSSource) -> String {
+        var parts: [String] = []
+        if isSelected(source) { parts.append(localized("使用中")) }
+        if source.loginUi != nil { parts.append(localized("需設定帳號")) }
+        return parts.joined(separator: "，")
+    }
+
+    private func sourceAccessibilityTraits(_ source: ImportedTTSSource) -> AccessibilityTraits {
+        var traits: AccessibilityTraits = .isButton
+        if selectedSourceIds.contains(source.id) {
+            // SwiftUI's `AccessibilityTraits.insert` is not `@discardableResult`.
+            _ = traits.insert(.isSelected)
+        }
+        return traits
+    }
+
+    /// Everything the row's checkbox and menu can do. Must stay in sync with the visible
+    /// controls in `sourceRowContent` — the merged element is VoiceOver's only route to them.
+    @ViewBuilder
+    private func sourceRotorActions(_ source: ImportedTTSSource) -> some View {
+        Button(localized(selectedSourceIds.contains(source.id) ? "取消選取" : "選取")) {
+            toggleSelection(source.id)
+        }
+        Button(localized("測試播放")) {
+            testPlayback(source)
+        }
+        if source.loginUi != nil {
+            Button(localized("帳號設定")) {
+                openLoginForm(source)
+            }
+        }
+        Button(localized("複製 JSON")) {
+            copySourceJSON(source)
+        }
+        Button(localized("刪除"), role: .destructive) {
+            deleteSource(source)
+        }
+    }
+
+    private func sourceRowContent(_ source: ImportedTTSSource) -> some View {
+        HStack(spacing: DSSpacing.sm) {
+            Button {
+                toggleSelection(source.id)
+            } label: {
+                Image(systemName: selectedSourceIds.contains(source.id) ? "checkmark.square.fill" : "square")
+                    .font(DSFont.fixed(size: 20))
+                    .foregroundColor(
+                        selectedSourceIds.contains(source.id) ? DSColor.accent : DSColor.textSecondary
+                    )
+            }
+            .buttonStyle(.plain)
+            .frame(minWidth: DSLayout.minimumTapTarget, minHeight: DSLayout.minimumTapTarget)
+
+            Button {
+                selectSource(source)
+            } label: {
+                Text(isSelected(source)
+                     ? "\(source.name) · \(localized("使用中"))"
+                     : source.name)
+                    .font(DSFont.body)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                Button {
+                    selectSource(source)
+                } label: {
+                    Label(localized("設為使用"), systemImage: "checkmark.circle")
+                }
+
+                Button {
+                    testPlayback(source)
+                } label: {
+                    Label(localized("測試播放"), systemImage: "play.circle")
+                }
+
+                if source.loginUi != nil {
+                    Button {
+                        openLoginForm(source)
+                    } label: {
+                        Label(localized("帳號設定"), systemImage: "person.fill")
+                    }
+                }
+
+                Button {
+                    copySourceJSON(source)
+                } label: {
+                    Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    deleteSource(source)
+                } label: {
+                    Label(localized("刪除"), systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(DSFont.toolbarIcon)
+                    .foregroundColor(DSColor.textSecondary)
+                    .rotationEffect(.degrees(90))
+                    .frame(width: DSLayout.minimumTapTarget, height: DSLayout.minimumTapTarget)
+            }
+            .accessibilityLabel(localized("更多"))
+        }
+        .frame(minHeight: DSLayout.minimumTapTarget)
+    }
+
+    private var bottomToolbar: some View {
+        HStack(spacing: 0) {
+            Button {
+                toggleSelectAll()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(
+                        systemName: selectedSourceIds == filteredSourceIds && !filteredSources.isEmpty
+                            ? "checkmark.square.fill" : "square"
+                    )
+                    .font(DSFont.fixed(size: 18))
+                    .foregroundColor(
+                        selectedSourceIds == filteredSourceIds && !filteredSources.isEmpty
+                            ? DSColor.accent : Color(UIColor.systemGray3)
+                    )
+                    .accessibilityHidden(true)
+                    Text(localized("全選") + "(\(selectedSourceIds.count)/\(gs.importedTTSSources.count))")
+                        .font(DSFont.fixed(size: 13))
+                        .foregroundColor(DSColor.textPrimary)
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 16)
+            .accessibilityLabel(localized("全選"))
+            .accessibilityValue("\(selectedSourceIds.count)/\(gs.importedTTSSources.count)")
+
+            Spacer()
+
+            Button {
+                invertSelection()
+            } label: {
+                Text(localized("反選"))
+                    .font(DSFont.fixed(size: 13))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background(Color(UIColor.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .foregroundStyle(DSColor.textPrimary)
+            }
+            .buttonStyle(.plain)
+            .disabled(filteredSources.isEmpty)
+
+            Spacer().frame(width: 10)
+
+            Button(role: .destructive) {
+                deleteSelectedSources()
+            } label: {
+                Text(localized("刪除"))
+                    .font(DSFont.fixed(size: 13))
+                    .foregroundColor(selectedSourceIds.isEmpty ? .secondary : .red)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background(Color(UIColor.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+            .disabled(selectedSourceIds.isEmpty)
+
+            Spacer().frame(width: 10)
+
+            Menu {
+                Button(role: .destructive) {
+                    clearSources()
+                } label: {
+                    Label(localized("清除已匯入語音源"), systemImage: "trash")
+                }
+                .disabled(gs.importedTTSSources.isEmpty)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(DSFont.toolbarIcon)
+                    .foregroundColor(DSColor.textSecondary)
+                    .frame(width: 32, height: 32)
+                    .rotationEffect(.degrees(90))
+            }
+            .accessibilityLabel(localized("更多"))
+            .padding(.trailing, 12)
+        }
+        .padding(.vertical, 8)
+        // `.bar` — the system toolbar material, matching 書源管理's bottom bar and the ones
+        // in RSS 訂閱 / 線上書詳情 / 聽書. It honours Reduce Transparency on its own, which a
+        // hardcoded `systemBackground` could not.
+        .background(.bar)
+    }
+
+    private var networkImportSheet: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "network").foregroundColor(DSColor.accent)
+                    Text(localized("輸入語音源 JSON 的網路地址，支援直接返回 JSON 的 URL。"))
+                        .font(DSFont.caption)
+                        .foregroundColor(DSColor.textSecondary)
+                }
+                .padding()
+                .background(DSColor.accent.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding()
+
+                TextField(localized("語音源 JSON URL"), text: $sourceListURL)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .padding(.horizontal)
+
+                if isImportingSources {
+                    ProgressView()
+                        .padding(.top, 24)
+                }
+
+                Spacer()
+            }
+            .navigationTitle(localized("網路導入"))
+            .toolbarTitleDisplayMode(.inline)
+            .themedAppSurface(for: .settings)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showNetworkImport = false
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await importTTSSources() }
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .disabled(sourceListURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isImportingSources)
+                }
+            }
+        }
+    }
+
+    private func dismissSettings() {
+        presentationMode.wrappedValue.dismiss()
+    }
+
+    private func isSelected(_ source: ImportedTTSSource) -> Bool {
+        !gs.ttsUseSystemVoice && gs.httpTtsUrlTemplate == source.urlTemplate
+    }
+
+    private func selectSource(_ source: ImportedTTSSource) {
+        gs.ttsUseSystemVoice = false
+        gs.httpTtsUrlTemplate = source.urlTemplate
+        gs.httpTtsHeaders = source.headers
+    }
+
+    private func selectSystemVoice() {
+        gs.ttsUseSystemVoice = true
+        gs.httpTtsUrlTemplate = ""
+        gs.httpTtsHeaders = [:]
+    }
+
+    private var isSystemVoiceSelected: Bool {
+        gs.ttsUseSystemVoice || gs.httpTtsUrlTemplate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var edgeVoiceRows: some View {
+        Group {
+            builtInVoiceRow(
+                title: localized("微軟線上語音"),
+                isSelected: gs.usesEdgeTTS,
+                identifier: "tts_edge",
+                select: {
+                    testCoordinator.stop(reason: "selected Edge voice")
+                    gs.selectEdgeTTSVoice(gs.selectedEdgeTTSVoice)
+                },
+                preview: {
+                    gs.selectEdgeTTSVoice(gs.selectedEdgeTTSVoice)
+                    testCoordinator.speak(
+                        text: localized("你好，歡迎使用微軟語音朗讀。選一本喜歡的書，開始聆聽吧。"),
+                        title: localized("測試播放")
+                    )
+                }
+            )
+
+            Picker(localized("微軟語音音色"), selection: Binding(
+                get: { gs.selectedEdgeTTSVoice.id },
+                set: { id in
+                    guard let voice = EdgeTTSVoice.voice(id: id) else { return }
+                    testCoordinator.stop(reason: "changed Edge voice")
+                    gs.selectEdgeTTSVoice(voice)
+                }
+            )) {
+                ForEach(EdgeTTSVoice.voices) { voice in
+                    Text(voice.displayName).tag(voice.id)
+                }
+            }
+            .pickerStyle(.navigationLink)
+            .accessibilityIdentifier("tts_edge_voice")
+            .frame(minHeight: DSLayout.minimumTapTarget)
+
+            if gs.usesEdgeTTS, testCoordinator.playbackState == .playing,
+               !testCoordinator.hasAudiblePlaybackStarted {
+                ProgressView(localized("正在連接微軟語音…"))
+                    .accessibilityIdentifier("tts_edge_connecting")
+            }
+        }
+    }
+
+    private func builtInVoiceRow(
+        title: String,
+        isSelected: Bool,
+        identifier: String,
+        select: @escaping () -> Void,
+        preview: @escaping () -> Void
+    ) -> some View {
+        let isPreviewing = isSelected && testCoordinator.playbackState != .stopped
+        return HStack(spacing: DSSpacing.sm) {
+            Button(action: select) {
+                Text(isSelected ? "\(title) · \(localized("使用中"))" : title)
+                    .font(DSFont.body)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("\(identifier)_source")
+            .accessibilityLabel(title)
+            .accessibilityValue(isSelected ? localized("使用中") : localized("未選取"))
+            .accessibilityHint(localized("點兩下設為使用中"))
+
+            Button {
+                testCoordinator.stop(reason: "changed voice preview")
+                if !isPreviewing { preview() }
+            } label: {
+                Image(systemName: isPreviewing ? "stop.circle" : "play.circle")
+                    .font(DSFont.title2)
+                    .frame(width: DSLayout.minimumTapTarget, height: DSLayout.minimumTapTarget)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("\(identifier)_preview")
+            .accessibilityLabel(localized(isPreviewing ? "停止試聽" : "測試播放"))
+        }
+    }
+
+    private var systemVoiceSourceRow: some View {
+        builtInVoiceRow(
+            title: localized("系統離線語音"),
+            isSelected: isSystemVoiceSelected,
+            identifier: "tts_system",
+            select: {
+                testCoordinator.stop(reason: "selected system voice")
+                selectSystemVoice()
+            },
+            preview: { testSystemPlayback() }
+        )
+    }
+
+    /// Keep voice configuration separate from source selection and preview controls.
+    private var systemVoicePickerRow: some View {
+        NavigationLink {
+            SystemVoicePickerView()
+        } label: {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    Text(localized("系統語音音色"))
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(selectedSystemVoiceSummary)
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textSecondary)
+                }
+            } else {
+                HStack {
+                    Text(localized("系統語音音色"))
+                        .foregroundStyle(DSColor.textPrimary)
+                    Spacer()
+                    Text(selectedSystemVoiceSummary)
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textSecondary)
+                }
+            }
+        }
+    }
+
+    /// The voice that would read Chinese text right now — the one the user cares
+    /// about — or 跟隨系統預設 when they have not chosen any.
+    private var selectedSystemVoiceSummary: String {
+        let language = SystemTTSEngine.preferredLanguage(for: "中")
+        guard SystemTTSVoiceCatalog.selectedIdentifier(forLanguage: language) != nil,
+              let voice = SystemTTSVoiceCatalog.selectedVoice(forLanguage: language)
+        else {
+            return localized("跟隨系統預設")
+        }
+        return voice.name
+    }
+
+    private func testSystemPlayback() {
+        selectSystemVoice()
+        testCoordinator.stop(reason: "restart system voice test")
+        testCoordinator.speak(text: "這是一段測試文字，用於確認系統離線語音是否正常。", title: "測試")
+    }
+
+    private func toggleSelection(_ id: String) {
+        if selectedSourceIds.contains(id) {
+            selectedSourceIds.remove(id)
+        } else {
+            selectedSourceIds.insert(id)
+        }
+    }
+
+    private func toggleSelectAll() {
+        let allIds = filteredSourceIds
+        if selectedSourceIds == allIds {
+            selectedSourceIds.removeAll()
+        } else {
+            selectedSourceIds = allIds
+        }
+    }
+
+    private func invertSelection() {
+        selectedSourceIds = filteredSourceIds.subtracting(selectedSourceIds)
+    }
+
+    private func testPlayback(_ source: ImportedTTSSource) {
+        selectSource(source)
+        switch testCoordinator.playbackState {
+        case .playing:
+            testCoordinator.stop(reason: "restart source test playback")
+        case .paused:
+            testCoordinator.stop(reason: "restart source test playback")
+        case .stopped:
+            break
+        }
+        testCoordinator.speak(text: "這是一段測試文字，用於確認 HTTP TTS 引擎設定是否正確。", title: "測試")
+    }
+
+    private func copySourceJSON(_ source: ImportedTTSSource) {
+        if let data = try? JSONEncoder().encode(source),
+           let string = String(data: data, encoding: .utf8) {
+            UIPasteboard.general.string = string
+            sourceImportMessage = localized("已複製語音源 JSON")
+        }
+    }
+
+    private func deleteSource(_ source: ImportedTTSSource) {
+        gs.importedTTSSources.removeAll { $0.id == source.id }
+        selectedSourceIds.remove(source.id)
+        LoginManager.shared.clearLogin(sourceUrl: source.id)
+        if isSelected(source) {
+            gs.httpTtsUrlTemplate = ""
+            gs.httpTtsHeaders = [:]
+            testCoordinator.stop(reason: "deleted selected source")
+        }
+    }
+
+    private func deleteSelectedSources() {
+        let selected = selectedSourceIds
+        guard !selected.isEmpty else { return }
+        let deletingActiveSource = gs.importedTTSSources.contains {
+            selected.contains($0.id) && isSelected($0)
+        }
+        for id in selected {
+            LoginManager.shared.clearLogin(sourceUrl: id)
+        }
+        gs.importedTTSSources.removeAll { selected.contains($0.id) }
+        selectedSourceIds.removeAll()
+        if deletingActiveSource {
+            gs.httpTtsUrlTemplate = ""
+            gs.httpTtsHeaders = [:]
+            testCoordinator.stop(reason: "deleted selected sources")
+        }
+    }
+
+    private func clearSources() {
+        let keepsBuiltInVoice = gs.usesEdgeTTS
+        for source in gs.importedTTSSources {
+            LoginManager.shared.clearLogin(sourceUrl: source.id)
+        }
+        gs.importedTTSSources = []
+        selectedSourceIds.removeAll()
+        if !keepsBuiltInVoice {
+            gs.httpTtsUrlTemplate = ""
+            gs.httpTtsHeaders = [:]
+            testCoordinator.stop(reason: "cleared sources")
+        }
+    }
+
+    /// Opens the web login once the login form's own sheet has finished dismissing.
+    private func presentPendingWebLogin() {
+        guard let pending = pendingWebLogin else { return }
+        pendingWebLogin = nil
+        webLogin = pending
+    }
+
+    @MainActor
+    private func importTTSSources() async {
+        let trimmed = sourceListURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed) else {
+            sourceImportMessage = localized("語音源 JSON URL 無效")
+            return
+        }
+
+        isImportingSources = true
+        sourceImportMessage = nil
+        defer { isImportingSources = false }
+
+        do {
+            let (data, response) = try await MediaSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                sourceImportMessage = String(format: localized("載入失敗：HTTP %d"), http.statusCode)
+                return
+            }
+            let imported = try TTSSourceJSONParser.parse(data: data)
+            sourceListURL = ""
+            // `queueSourceReview` closes this sheet and sequences the confirmation list.
+            queueSourceReview(imported)
+        } catch {
+            sourceImportMessage = String(format: localized("載入失敗：%@"), error.localizedDescription)
+        }
+    }
+
+    private func handleSourceFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            Task { await importTTSSources(from: url) }
+        case .failure(let error):
+            sourceImportMessage = String(format: localized("載入失敗：%@"), error.localizedDescription)
+        }
+    }
+
+    @MainActor
+    private func importTTSSources(from fileURL: URL) async {
+        isImportingSources = true
+        sourceImportMessage = nil
+        defer { isImportingSources = false }
+
+        let hasAccess = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if hasAccess {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            queueSourceReview(try TTSSourceJSONParser.parse(data: data))
+        } catch {
+            sourceImportMessage = String(format: localized("無法讀取語音源檔案：%@"), error.localizedDescription)
+        }
+    }
+
+    private func openLoginForm(_ source: ImportedTTSSource) {
+        loginFieldValues = LoginManager.shared.getLoginInfo(sourceUrl: source.id) ?? [:]
+        loginSource = source
+    }
+
+    /// Nothing is written until the user confirms. The merge itself lives in
+    /// `TTSSourceImportMerge` — a source the library already holds is now replaced rather than
+    /// skipped, which is what made re-importing a corrected voice source do nothing.
+    private func queueSourceReview(_ sources: [ImportedTTSSource]) {
+        if showNetworkImport {
+            queuedSourceReview = sources
+            showNetworkImport = false
+        } else {
+            pendingSourceReview = PendingTTSSourceReview(sources: sources)
+        }
+    }
+
+    private func presentQueuedSourceReview() {
+        guard let sources = queuedSourceReview else { return }
+        queuedSourceReview = nil
+        pendingSourceReview = PendingTTSSourceReview(sources: sources)
+    }
+}
+
+// MARK: - TTS Source Login View
+
+struct TTSSourceLoginView: View {
+    let source: ImportedTTSSource
+    let onDismiss: () -> Void
+    /// Asks the presenting screen to open the web login. Handed upward rather than presented
+    /// here: this form is itself a sheet, and a sheet presenting a sheet is the nested shape
+    /// iOS 17 drops (Technotes/iOS17MenuModalPresentation.md).
+    var onOpenWebLogin: (() -> Void)?
+
+    @State private var fieldValues: [String: String] = [:]
+    @State private var saved = false
+    @State private var script: TTSLoginScript?
+    @State private var fieldLabels: [String: String] = [:]
+
+    private let fields: [LoginField]
+
+    init(
+        source: ImportedTTSSource,
+        onDismiss: @escaping () -> Void,
+        onOpenWebLogin: (() -> Void)? = nil
+    ) {
+        self.source = source
+        self.onDismiss = onDismiss
+        self.onOpenWebLogin = onOpenWebLogin
+        let loginInfo = LoginManager.shared.getLoginInfo(sourceUrl: source.id) ?? [:]
+        _fieldValues = State(initialValue: loginInfo)
+        let parsed = source.loginUi.map { LoginManager.shared.parseLoginUi($0) } ?? []
+        fields = parsed
+        _fieldLabels = State(initialValue: parsed.literalViewNames)
+    }
+
+    /// The source's login scripts, built on first use. What a script stores with
+    /// `source.putLoginInfo` shows in the form at once.
+    private func loginScript() -> TTSLoginScript {
+        if let script { return script }
+        let values = $fieldValues
+        let made = TTSLoginScript(source: source) { info in
+            Task { @MainActor in values.wrappedValue = info }
+        }
+        script = made
+        return made
+    }
+
+    /// Only shown when the source declares a page to sign in on. The captured cookie is stored
+    /// under the source's own key, which is what every synthesis request reads its login header
+    /// back from — so signing in here is enough, with no 手动填 Cookie step.
+    @ViewBuilder
+    private var webLoginSection: some View {
+        if let webLogin = SourceWebLogin(ttsSource: source), let onOpenWebLogin {
+            Section {
+                Button {
+                    onOpenWebLogin()
+                } label: {
+                    Label(localized("網頁登入"), systemImage: "globe")
+                }
+            } footer: {
+                Text(String(format: localized("在 %@ 登入後，Cookie 會自動帶進朗讀請求。"), webLogin.url.host ?? webLogin.url.absoluteString))
+                    .dsSectionFooter()
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                webLoginSection
+                if fields.isEmpty, SourceWebLogin(ttsSource: source) == nil {
+                    Text(localized("無可設定的欄位"))
+                        .foregroundStyle(DSColor.textSecondary)
+                }
+                if !fields.isEmpty {
+                    // The same grid the book-source login uses: rows pack by their
+                    // `style` (text/password full width, buttons/selects/toggles half
+                    // by default), inside a themed card so 分組卡片 / 卡片美術圖 apply.
+                    Section {
+                        LoginFormGrid(
+                            fields: fields,
+                            values: $fieldValues,
+                            labels: fieldLabels,
+                            onAction: handleButtonAction
+                        )
+                        .padding(DSSpacing.md)
+                        .interfaceCardSurface(
+                            in: RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    }
+                }
+            }
+            .softScrollEdges()
+            .navigationTitle(source.name)
+            .toolbarTitleDisplayMode(.inline)
+            .themedAppSurface(for: .settings)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(localized("取消")) { onDismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(localized("儲存")) { saveLoginInfo() }
+                        .disabled(saved)
+                }
+            }
+            .alert(localized("已儲存"), isPresented: $saved) {
+                Button(localized("確定"), role: .cancel) {
+                    onDismiss()
+                }
+            }
+            .onAppear { resolveDynamicLabels() }
+        }
+    }
+
+    /// Evaluate the source's dynamic `viewName` labels in the engine that already holds
+    /// its loginUrl JS (the same context button actions run in). Fields show their
+    /// `name` until this resolves — Legado's async `evalUiJs(viewName)` semantics.
+    private func resolveDynamicLabels() {
+        guard fields.hasDynamicViewNames else { return }
+        let script = loginScript()
+        let fields = fields
+        let values = fieldValues
+        Task {
+            let labels = await script.labels(for: fields, values: values)
+            fieldLabels.merge(labels) { _, new in new }
+        }
+    }
+
+    private func saveLoginInfo() {
+        LoginManager.shared.storeLoginInfo(sourceUrl: source.id, info: resolvedFormValues)
+        saved = true
+    }
+
+    /// What the form effectively holds: the user's edit, else the value the grid
+    /// displays (the source-declared default / first option). Toggles stay out of it —
+    /// their default is display-only.
+    private var resolvedFormValues: [String: String] {
+        var result = fieldValues
+        for field in fields {
+            guard result[field.name]?.isEmpty != false else { continue }
+            switch field.type {
+            case .text, .password:
+                if let defaultValue = field.defaultValue, !defaultValue.isEmpty {
+                    result[field.name] = defaultValue
+                }
+            case .select:
+                if let defaultValue = field.defaultValue, !defaultValue.isEmpty {
+                    result[field.name] = defaultValue
+                } else if let first = field.options.first, !first.isEmpty {
+                    result[field.name] = first
+                }
+            case .toggle, .button:
+                break
+            }
+        }
+        return result
+    }
+
+    private func handleButtonAction(_ field: LoginField) {
+        guard let action = field.action else { return }
+        LoginManager.shared.storeLoginInfo(sourceUrl: source.id, info: resolvedFormValues)
+        let script = loginScript()
+        let sourceId = source.id
+        Task {
+            // Runs in the JS context that has the loginUrl functions loaded.
+            await script.run(action: action)
+            // Reload field values after JS may have modified them
+            if let updated = LoginManager.shared.getLoginInfo(sourceUrl: sourceId) {
+                fieldValues = updated
+            }
+            // The action may have changed what its own viewName reports (`upUiData` in
+            // Legado); refresh the dynamic labels on the engine that ran it.
+            resolveDynamicLabels()
+        }
+    }
+}
+
+#Preview {
+    TTSSettingsView()
+}
+
+#Preview("TTS source login") {
+    TTSSourceLoginView(
+        source: ImportedTTSSource(
+            name: "Sample TTS",
+            urlTemplate: "https://tts.example/speak",
+            loginUi: #"[{"name":"Token","type":"text"},{"name":"Verify","type":"button","action":"verify()"}]"#,
+            loginUrl: "function verify() {}"
+        ),
+        onDismiss: {}
+    )
+}

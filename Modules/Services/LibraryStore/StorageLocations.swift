@@ -1,0 +1,219 @@
+import Foundation
+
+/// Where the app keeps things on disk, in one place.
+///
+/// The split matters because `Documents` is user-visible in the Files app
+/// (`UIFileSharingEnabled` in Info.plist): whatever lives there, the user can open,
+/// copy — and delete. So `Documents` holds only files the user owns and would
+/// recognise: the books they imported, the fonts and tab icons they added.
+///
+/// Everything the app maintains for itself lives under Application Support, which
+/// the Files app cannot show. That boundary is the point: `books_meta.json` is the
+/// entire bookshelf index, and deleting it by hand empties the shelf even though
+/// every book file is still on disk. Covers and caches are there too — losing them
+/// is only a re-download, but a folder of UUID-named JPEGs next to the user's books
+/// is noise they would reasonably try to clean up.
+///
+/// Legacy installs kept all of it in `Documents`; `StorageMigration` moves them
+/// once on launch.
+enum StorageLocations {
+    // MARK: - User-visible (Documents)
+
+    /// The user's own book files (`.epub` / `.txt` / `.md`), manga archives and
+    /// audiobook audio, plus the fonts (`fonts/`) and tab icons (`root-tab-icons/`)
+    /// they imported. Visible in the Files app.
+    ///
+    /// Two legacy items also stay here, deliberately: `<id>_epub.json` and its
+    /// `<id>_epub_assets/` directory, from an EPUB import format no longer written by
+    /// any code path (`ReadingBook.isLegacyParsedEPUB`). The JSON *is* that book's
+    /// `contentFilename`, so it belongs in Documents anyway, and its asset directory
+    /// is only meaningful next to it.
+    static var documents: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    /// A book's content file, resolved from the filename stored on `ReadingBook`.
+    static func bookFile(_ filename: String) -> URL {
+        if filename.hasPrefix("__remote_cache__/") {
+            return remoteLibraryCache.appendingPathComponent(String(filename.dropFirst("__remote_cache__/".count)))
+        }
+        return documents.appendingPathComponent(filename)
+    }
+
+    /// Regenerable remote resources, excluded from backup by the Caches location.
+    static var remoteLibraryCache: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("RemoteLibrary", isDirectory: true)
+    }
+
+    // MARK: - App-internal (Application Support)
+
+    /// Root for everything the app maintains itself. Backed up like Documents, but
+    /// not reachable from the Files app.
+    static var support: URL {
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        // Unlike Documents, Application Support is not guaranteed to exist on iOS.
+        ensureDirectory(url)
+        return url
+    }
+
+    /// The bookshelf index. Deleting this used to empty the user's shelf.
+    static var booksMetadataFile: URL {
+        support.appendingPathComponent("books_meta.json")
+    }
+
+    /// Installed book sources.
+    static var bookSourcesFile: URL {
+        support.appendingPathComponent("book_sources.json")
+    }
+
+    /// Downloaded cover images, named by `ReadingBook.coverImagePath`.
+    static var covers: URL {
+        directory(coversDirectoryName)
+    }
+
+    /// Covers the user set by hand in 書籍資訊 (封面搜索 / 相簿).
+    ///
+    /// Deliberately outside `covers`: 設定 → 快取管理 empties that directory
+    /// wholesale on the premise that every cover in it can be downloaded again,
+    /// and a picture the user chose from their photo library cannot.
+    static var customCovers: URL {
+        directory(customCoversDirectoryName)
+    }
+
+    private static let coversDirectoryName = "Covers"
+    private static let customCoversDirectoryName = "CustomCovers"
+
+    /// Marker inside the filename that says a cover is user-set and therefore
+    /// lives in `customCovers`. Encoded in the name so resolving a cover stays a
+    /// string test — the bookshelf resolves one per row while scrolling, and a
+    /// filesystem probe per cover is not worth paying for.
+    static let customCoverFilenameMarker = "_cover_custom_"
+
+    static func isCustomCoverFilename(_ filename: String) -> Bool {
+        filename.contains(customCoverFilenameMarker)
+    }
+
+    /// A cover image, resolved from the filename stored on `ReadingBook`, with its
+    /// directory created if missing — the contract the importers and sync were
+    /// written against. Readers use `coverFileLocation`, which touches nothing.
+    static func coverFile(_ filename: String) -> URL {
+        let url = coverFileLocation(filename)
+        ensureDirectory(url.deletingLastPathComponent())
+        return url
+    }
+
+    // MARK: - Pure cover paths
+
+    /// Application Support, resolved once per launch. Kept in memory only: the
+    /// sandbox container path is not stable across installs, so it is never persisted.
+    static let applicationSupportRoot: URL =
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+
+    /// Where a cover lives, from its filename alone: string work, no `stat`, no
+    /// `mkdir`. The shelf resolves one per cover it loads, so this must stay free of
+    /// file-system calls — including the hidden one `appendingPathComponent(_:)`
+    /// makes to decide whether the result is a directory.
+    ///
+    /// Creating the directory is the writer's job (`BookCoverFileStore`), which is
+    /// also what keeps writes working after 快取管理 has removed it.
+    static func coverFileLocation(_ filename: String, in root: URL = applicationSupportRoot) -> URL {
+        let directory = isCustomCoverFilename(filename) ? customCoversDirectoryName : coversDirectoryName
+        return root
+            .appendingPathComponent(directory, isDirectory: true)
+            .appendingPathComponent(filename, isDirectory: false)
+    }
+
+    /// Downloaded chapters of online books, per book id.
+    static var onlineCache: URL {
+        directory("online_cache")
+    }
+
+    /// Offline manga pages downloaded for online books, per book id.
+    static var mangaCache: URL {
+        directory("manga")
+    }
+
+    /// Temporary audio data synthesized by HTTP TTS.
+    ///
+    /// The current TTS engine keeps active chunks in memory; this directory is
+    /// reserved for file-backed audio cache entries so cache management has one
+    /// stable location if a provider writes synthesized audio to disk.
+    static var ttsAudioCache: URL {
+        directory("tts_audio_cache")
+    }
+
+    /// Per-book reading positions.
+    static var readingPosition: URL {
+        directory("reading_position")
+    }
+
+    /// Fixed-layout EPUB character-offset stores, per book id.
+    static var epubCharOffsets: URL {
+        directory("epub_charoffsets")
+    }
+
+    /// Book-source table-of-contents cache.
+    static var tocCache: URL {
+        directory("toc_cache")
+    }
+
+    /// Book-source book-detail cache.
+    static var bookInfoCache: URL {
+        directory("book_info_cache")
+    }
+
+    /// Parsed TXT chapter indexes.
+    static var txtChapterCache: URL {
+        directory("txt_chapter_cache")
+    }
+
+    /// Diagnostic logs shown in 設定 → 診斷與回報, and the crash/hang payloads
+    /// MetricKit hands back on the launch after the event.
+    ///
+    /// Excluded from backup on purpose. Application Support is backed up by
+    /// default, and this directory is pure telemetry the user can regenerate by
+    /// using the app — paying backup bandwidth and iCloud quota for it would be
+    /// strictly a cost. It also keeps the log out of the still-open
+    /// "auto-sync dirtied 1 GB" investigation's blast radius.
+    static var diagnostics: URL {
+        let url = directory("diagnostics")
+        excludeFromBackup(url)
+        return url
+    }
+
+    // MARK: - Helpers
+
+    /// Every internal subdirectory is created on first access, so callers never have
+    /// to remember to; writes into a missing directory fail silently otherwise.
+    private static func directory(_ name: String) -> URL {
+        let url = support.appendingPathComponent(name, isDirectory: true)
+        ensureDirectory(url)
+        return url
+    }
+
+    /// Marks a directory as regenerable so it never enters an iCloud or iTunes
+    /// backup. Idempotent, and cheap enough to call on every access: the resource
+    /// value is already cached by the URL machinery once set.
+    private static func excludeFromBackup(_ url: URL) {
+        do {
+            let current = try url.resourceValues(forKeys: [.isExcludedFromBackupKey])
+            guard current.isExcludedFromBackup != true else { return }
+            var mutable = url
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try mutable.setResourceValues(values)
+        } catch {
+            AppLogger.error("StorageLocations could not exclude \(url.lastPathComponent) from backup", error: error)
+        }
+    }
+
+    private static func ensureDirectory(_ url: URL) {
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        } catch {
+            AppLogger.error("StorageLocations could not create \(url.lastPathComponent)", error: error)
+        }
+    }
+}

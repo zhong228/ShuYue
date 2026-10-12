@@ -1,0 +1,4569 @@
+import Foundation
+import JavaScriptCore
+import SwiftSoup
+import Testing
+@testable import yuedu_app
+
+// MARK: - 1. RuleAnalyzer Tests
+
+@Suite("RuleAnalyzer", .serialized)
+struct RuleAnalyzerTests {
+
+    @Test("splitRule with || operator separates segments")
+    func splitByOr() {
+        let analyzer = RuleAnalyzer(data: "a||b||c")
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a", "b", "c"])
+        #expect(analyzer.elementsType == "||")
+    }
+
+    @Test("splitRule with && operator separates segments")
+    func splitByAnd() {
+        let analyzer = RuleAnalyzer(data: "x&&y&&z")
+        let result = analyzer.splitRule("&&")
+        #expect(result == ["x", "y", "z"])
+        #expect(analyzer.elementsType == "&&")
+    }
+
+    @Test("splitRule with %% operator separates segments")
+    func splitByPercent() {
+        let analyzer = RuleAnalyzer(data: "p%%q%%r")
+        let result = analyzer.splitRule("%%")
+        #expect(result == ["p", "q", "r"])
+        #expect(analyzer.elementsType == "%%")
+    }
+
+    @Test("splitRule with no operator returns entire string")
+    func splitNoOperator() {
+        let analyzer = RuleAnalyzer(data: "singleRule")
+        let result = analyzer.splitRule("||")
+        #expect(result == ["singleRule"])
+    }
+
+    @Test("splitRule preserves content inside square brackets")
+    func splitWithBrackets() {
+        let analyzer = RuleAnalyzer(data: "a[b||c]||d")
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a[b||c]", "d"])
+    }
+
+    @Test("splitRule preserves content inside parentheses")
+    func splitWithParentheses() {
+        let analyzer = RuleAnalyzer(data: "a(b||c)||d")
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a(b||c)", "d"])
+    }
+
+    @Test("splitRule preserves single-quoted strings")
+    func splitWithSingleQuotes() {
+        let analyzer = RuleAnalyzer(data: "a'b||c'||d", code: true)
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a'b||c'", "d"])
+    }
+
+    @Test("splitRule preserves double-quoted strings")
+    func splitWithDoubleQuotes() {
+        let analyzer = RuleAnalyzer(data: "a\"b||c\"||d", code: true)
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a\"b||c\"", "d"])
+    }
+
+    @Test("splitRule with multiple operator candidates picks first match")
+    func splitMultipleOperators() {
+        let analyzer = RuleAnalyzer(data: "a||b&&c")
+        let result = analyzer.splitRule("||", "&&")
+        #expect(result == ["a", "b&&c"])
+        #expect(analyzer.elementsType == "||")
+    }
+
+    @Test("splitRule with && before || picks &&")
+    func splitMultipleOperatorsAndFirst() {
+        let analyzer = RuleAnalyzer(data: "a&&b||c")
+        let result = analyzer.splitRule("||", "&&")
+        #expect(result == ["a", "b||c"])
+        #expect(analyzer.elementsType == "&&")
+    }
+
+    @Test("splitRule empty input returns single empty string")
+    func splitEmptyInput() {
+        let analyzer = RuleAnalyzer(data: "")
+        let result = analyzer.splitRule("||")
+        #expect(result == [""])
+    }
+
+    @Test("trim removes leading @ and whitespace")
+    func trimLeadingAt() {
+        let analyzer = RuleAnalyzer(data: "@@ css:div")
+        analyzer.trim()
+        let result = analyzer.splitRule("||")
+        #expect(result == ["css:div"])
+    }
+
+    @Test("trim handles no leading @ or whitespace")
+    func trimNoChange() {
+        let analyzer = RuleAnalyzer(data: "hello")
+        analyzer.trim()
+        let result = analyzer.splitRule("||")
+        #expect(result == ["hello"])
+    }
+
+    @Test("innerRule replaces {{...}} templates")
+    func innerRuleDoubleBrace() {
+        let analyzer = RuleAnalyzer(data: "prefix{{expr}}suffix", code: true)
+        let result = analyzer.innerRule(inner: "{{", startStep: 2, endStep: 2) { expr in
+            return "REPLACED"
+        }
+        #expect(result == "prefixREPLACEDsuffix")
+    }
+
+    @Test("innerRule replaces @get:{key} references")
+    func innerRuleGetRef() {
+        let analyzer = RuleAnalyzer(data: "url/@get:{token}/path", code: true)
+        let result = analyzer.innerRule(startStr: "@get:{", endStr: "}") { key in
+            return key == "token" ? "abc123" : nil
+        }
+        #expect(result == "url/abc123/path")
+    }
+
+    @Test("innerRule with no matches returns empty for brace variant")
+    func innerRuleNoMatch() {
+        let analyzer = RuleAnalyzer(data: "no templates here", code: true)
+        let result = analyzer.innerRule(inner: "{{", startStep: 2, endStep: 2) { _ in "X" }
+        #expect(result == "")
+    }
+
+    @Test("innerRule startStr/endStr with no matches returns original")
+    func innerRuleStartEndNoMatch() {
+        let analyzer = RuleAnalyzer(data: "nothing to replace", code: true)
+        let result = analyzer.innerRule(startStr: "@get:{", endStr: "}") { _ in "Y" }
+        #expect(result == "nothing to replace")
+    }
+
+    @Test("code mode handles escaped characters in brackets")
+    func codeModeEscaped() {
+        let analyzer = RuleAnalyzer(data: "a{b\\}c}||d", code: true)
+        let result = analyzer.splitRule("||")
+        #expect(result.count == 2)
+        #expect(result[1] == "d")
+    }
+
+    @Test("splitRule with deeply nested brackets")
+    func splitDeepNesting() {
+        let analyzer = RuleAnalyzer(data: "a[b[c||d]]||e")
+        let result = analyzer.splitRule("||")
+        #expect(result == ["a[b[c||d]]", "e"])
+    }
+
+    @Test("reSetPos allows re-scanning from beginning")
+    func reSetPosWorks() {
+        let analyzer = RuleAnalyzer(data: "a||b")
+        let first = analyzer.splitRule("||")
+        #expect(first == ["a", "b"])
+        analyzer.reSetPos()
+        let second = analyzer.splitRule("&&")
+        #expect(second == ["a||b"])
+    }
+}
+
+/// Covers follow Legado's `BookList` / `BookInfo`: the cover rule's text, resolved against
+/// the page only when there is one. A cover is never the page's own URL, which the app would
+/// then download as an image — for a search, the source's search request again, per result.
+@Suite("Cover links follow Legado", .serialized)
+struct CoverLinkRuleTests {
+    private struct Parsed {
+        let search: OnlineBook?
+        let explore: OnlineBook?
+        let info: OnlineBook
+    }
+
+    private func parse(
+        listHTML: String,
+        infoHTML: String,
+        configure: (inout BookSource) -> Void
+    ) throws -> Parsed {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleSearch.bookList = "li.book"
+        source.ruleSearch.name = "a@text"
+        source.ruleSearch.bookUrl = "a@href"
+        source.ruleBookInfo.name = "h1@text"
+        configure(&source)
+        source.ruleExplore.bookList = source.ruleSearch.bookList
+        source.ruleExplore.name = source.ruleSearch.name
+        source.ruleExplore.bookUrl = source.ruleSearch.bookUrl
+        source.ruleExplore.coverUrl = source.ruleSearch.coverUrl
+
+        let bridge = ModernParserBridge(source: source)
+        let search = try bridge.parseSearchResults(
+            html: listHTML, baseURL: "https://example.com/search?key=first", source: source
+        )
+        let explore = bridge.parseExploreResults(
+            html: listHTML, baseURL: "https://example.com/explore", source: source
+        )
+        let info = try bridge.parseBookInfo(
+            html: infoHTML,
+            bookUrl: "https://example.com/book/1",
+            baseURL: "https://example.com/book/1",
+            source: source
+        )
+        return Parsed(search: search.first, explore: explore.first, info: info)
+    }
+
+    @Test("a source without cover rules leaves every cover empty")
+    func missingCoverRuleLeavesCoverEmpty() throws {
+        let parsed = try parse(
+            listHTML: #"<ul><li class="book"><a href="/book/1">First</a></li></ul>"#,
+            infoHTML: "<h1>First</h1>"
+        ) { _ in }
+
+        #expect(parsed.search?.coverUrl == "")
+        #expect(parsed.explore?.coverUrl == "")
+        #expect(parsed.info.coverUrl == "")
+    }
+
+    @Test("a cover rule that matches nothing leaves the cover empty")
+    func unmatchedCoverRuleLeavesCoverEmpty() throws {
+        let parsed = try parse(
+            listHTML: #"<ul><li class="book"><a href="/book/1">First</a></li></ul>"#,
+            infoHTML: "<h1>First</h1>"
+        ) { source in
+            source.ruleSearch.coverUrl = "img@src"
+            source.ruleBookInfo.coverUrl = "img@src"
+        }
+
+        #expect(parsed.search?.coverUrl == "")
+        #expect(parsed.explore?.coverUrl == "")
+        #expect(parsed.info.coverUrl == "")
+    }
+
+    @Test("a relative cover resolves against the page")
+    func relativeCoverResolves() throws {
+        let parsed = try parse(
+            listHTML: #"<ul><li class="book"><a href="/book/1">First</a><img src="/covers/1.jpg"></li></ul>"#,
+            infoHTML: #"<h1>First</h1><img src="/covers/1-large.jpg">"#
+        ) { source in
+            source.ruleSearch.coverUrl = "img@src"
+            source.ruleBookInfo.coverUrl = "img@src"
+        }
+
+        #expect(parsed.search?.coverUrl == "https://example.com/covers/1.jpg")
+        #expect(parsed.explore?.coverUrl == "https://example.com/covers/1.jpg")
+        #expect(parsed.info.coverUrl == "https://example.com/covers/1-large.jpg")
+    }
+
+    /// zymk narrows its bookList past the <img> (`class.item@h3`); discover finds no cover
+    /// in any book, so it widens the list one level and takes the covers from there.
+    @Test("discover widens a bookList narrowed past its covers")
+    func discoverWidensToRecoverCovers() {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleExplore.bookList = "class.item@h3"
+        source.ruleExplore.name = "a@text"
+        source.ruleExplore.bookUrl = "a@href"
+        source.ruleExplore.coverUrl = "img@data-src"
+        let html = #"""
+            <div class="item"><div class="thumbnail"><img data-src="/covers/1.jpg"></div>\#
+            <h3><a href="/book/1">First</a></h3></div>
+            """#
+
+        let books = ModernParserBridge(source: source).parseExploreResults(
+            html: html, baseURL: "https://example.com/explore", source: source
+        )
+
+        #expect(books.map(\.name) == ["First"])
+        #expect(books.first?.coverUrl == "https://example.com/covers/1.jpg")
+    }
+
+    /// Legado's own fallback, which covers do not share: a result with no book link is the
+    /// page it was listed on (`BookList`: `if (searchBook.bookUrl.isEmpty()) bookUrl = baseUrl`).
+    @Test("a result without a book link keeps Legado's fallback to its page")
+    func missingBookURLFallsBackToPage() throws {
+        let parsed = try parse(
+            listHTML: #"<ul><li class="book"><a>First</a></li></ul>"#,
+            infoHTML: "<h1>First</h1>"
+        ) { source in
+            source.ruleSearch.bookUrl = ""
+        }
+
+        #expect(parsed.search?.bookUrl == "https://example.com/search?key=first")
+        #expect(parsed.explore?.bookUrl == "https://example.com/explore")
+    }
+}
+
+@Suite("ModernParserBridge Chapter Compatibility", .serialized)
+struct ModernParserBridgeChapterCompatibilityTests {
+
+    @Test("Search and discover results defer TOC URL resolution to book info")
+    func resultListsDoNotPretendBookURLIsTOCURL() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleSearch.bookList = "li.book"
+        source.ruleSearch.name = "a@text"
+        source.ruleSearch.bookUrl = "a@href"
+        source.ruleExplore.bookList = source.ruleSearch.bookList
+        source.ruleExplore.name = source.ruleSearch.name
+        source.ruleExplore.bookUrl = source.ruleSearch.bookUrl
+
+        let html = #"<ul><li class="book"><a href="/book/1">First</a></li></ul>"#
+        let bridge = ModernParserBridge(source: source)
+        let searchBooks = try bridge.parseSearchResults(
+            html: html,
+            baseURL: "https://example.com/search",
+            source: source
+        )
+        let exploreBooks = bridge.parseExploreResults(
+            html: html,
+            baseURL: "https://example.com/explore",
+            source: source
+        )
+
+        #expect(searchBooks.first?.bookUrl == "https://example.com/book/1")
+        #expect(exploreBooks.first?.bookUrl == "https://example.com/book/1")
+        #expect(searchBooks.first?.tocUrl == "")
+        #expect(exploreBooks.first?.tocUrl == "")
+    }
+
+    @Test("Search, detail, and discover parse kind with Legado List semantics")
+    func kindRulesUseStringListSemantics() throws {
+        let html = #"{"data":{"ret_data":[{"book_name":"Fixture","category":"玄幻","score":"9.1","genre":4}]}}"#
+        let kindRule = #"$.category&&$.score@js:"{{$.genre}}"==4?result.add("有声书"):result;result"#
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleSearch.bookList = "$.data.ret_data.*"
+        source.ruleSearch.name = "$.book_name"
+        source.ruleSearch.bookUrl = "https://example.com/book/1"
+        source.ruleSearch.kind = kindRule
+        source.ruleExplore.bookList = source.ruleSearch.bookList
+        source.ruleExplore.name = source.ruleSearch.name
+        source.ruleExplore.bookUrl = source.ruleSearch.bookUrl
+        source.ruleExplore.kind = kindRule
+        source.ruleBookInfo.name = "$.book_name"
+        source.ruleBookInfo.kind = kindRule
+
+        let bridge = ModernParserBridge(source: source)
+        let search = try bridge.parseSearchResults(
+            html: html,
+            baseURL: "https://example.com/search",
+            source: source
+        )
+        let explore = bridge.parseExploreResults(
+            html: html,
+            baseURL: "https://example.com/explore",
+            source: source
+        )
+        let info = try bridge.parseBookInfo(
+            html: #"{"book_name":"Fixture","category":"玄幻","score":"9.1","genre":4}"#,
+            bookUrl: "https://example.com/book/1",
+            baseURL: "https://example.com/book/1",
+            source: source
+        )
+
+        #expect(search.first?.kind == "玄幻,9.1,有声书")
+        #expect(explore.first?.kind == "玄幻,9.1,有声书")
+        #expect(info.kind == "玄幻,9.1,有声书")
+    }
+
+    @Test("Legacy Jsoup tag chain is not claimed as a CSS selector")
+    func legacyJsoupTagChainRoutesToDefaultExtractor() {
+        let engine = ModernRuleEngine()
+        engine.setContent(
+            """
+            <ul class="book-list">
+              <li><p class="book-list-info-title">First</p></li>
+              <li><p class="book-list-info-title">Second</p></li>
+            </ul>
+            """,
+            baseUrl: "https://example.com/search"
+        )
+
+        let rows = engine.getElements(ruleStr: "ul.book-list@tag.li")
+
+        #expect(rows.count == 2)
+        #expect(CssExtractor().canHandle(rule: #"div.item[data-route="@tag.li"]"#))
+    }
+
+    @Test("Legacy Jsoup bare-tag chain selects nested chapter rows")
+    func legacyJsoupBareTagChainSelectsNestedRows() {
+        let engine = ModernRuleEngine()
+        engine.setContent(
+            """
+            <ul class="detail-list-1 detail-list-select">
+              <li><a href="/c/1">First</a></li>
+              <li><a href="/c/2">Second</a></li>
+            </ul>
+            """,
+            baseUrl: "https://example.com/book"
+        )
+
+        let rows = engine.getElements(ruleStr: "ul.detail-list-select@li")
+
+        #expect(rows.count == 2)
+    }
+
+    @Test("Duplicate-id Legado search list remains parseable")
+    func duplicateIDSearchListParsesBooks() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleSearch.bookList = "id.hism"
+        source.ruleSearch.name = "h3@a@text"
+        source.ruleSearch.bookUrl = "class.mb5 fs20 f_mbo pt5 ell@tag.a@href"
+
+        let books = try ModernParserBridge(source: source).parseSearchResults(
+            html: """
+            <ul>
+              <li class="pr" id="hism">
+                <h3 class="mb5 fs20 f_mbo pt5 ell"><a href="/book/1">First</a></h3>
+              </li>
+              <li class="pr" id="hism">
+                <h3 class="mb5 fs20 f_mbo pt5 ell"><a href="/book/2">Second</a></h3>
+              </li>
+            </ul>
+            """,
+            baseURL: "https://example.com/sa",
+            source: source
+        )
+
+        #expect(books.count == 1)
+        #expect(books.first?.name == "First")
+        #expect(books.first?.bookUrl == "https://example.com/book/1")
+    }
+
+    @Test("Malformed search heading keeps nested link fields parseable")
+    func malformedSearchHeadingKeepsNestedLinkFieldsParseable() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.ruleSearch.bookList = "id.hism"
+        source.ruleSearch.name = "h3@a@text"
+        source.ruleSearch.bookUrl = "class.mb5 fs20 f_mbo pt5 ell@tag.a@href"
+
+        let books = try ModernParserBridge(source: source).parseSearchResults(
+            html: """
+            <li class="pr pb20 mb20" id="hism">
+              <h3 class="mb5 fs20 f_mbo pt5 ell"><a href="/book/19865/?for-search">
+                <span class="hot">我的</span>无限怪兽分身</h3></a>
+            </li>
+            """,
+            baseURL: "https://example.com/sa",
+            source: source
+        )
+
+        #expect(books.count == 1)
+        #expect(books.first?.name == "我的无限怪兽分身")
+        #expect(books.first?.bookUrl == "https://example.com/book/19865/?for-search")
+    }
+
+    @Test("JSON literal template expands an inner field before URL resolution")
+    func jsonLiteralTemplateExpandsInnerField() throws {
+        let engine = ModernRuleEngine()
+        engine.setContent(#"{"FolderName":"yaoshenji"}"#, baseUrl: "https://mm.example/search")
+
+        let url = engine.getString(ruleStr: "@json:/b/{$.FolderName}", isUrl: true)
+
+        #expect(url == "https://mm.example/b/yaoshenji")
+        #expect(engine.getString(ruleStr: "$.FolderName") == "yaoshenji")
+        #expect(engine.getString(ruleStr: "FolderName") == "yaoshenji")
+    }
+
+    @Test("java.getElements exposes the Legado List contract")
+    func javaGetElementsExposesLegadoListContract() {
+        let engine = JSCoreEngine()
+        engine.getElementsHandler = { _ in ["first", "second"] }
+
+        let result = engine.evaluate("""
+        var elements = java.getElements('fixture');
+        var before = elements.size() + ':' + elements.get(1);
+        elements.add('third');
+        before + ':' + elements.size() + ':' + elements.get(2);
+        """)
+
+        #expect(result == "2:second:3:third")
+    }
+
+    @Test("java.getStringList exposes Java List toArray without regressing collection methods")
+    func javaGetStringListExposesJavaListToArray() {
+        let engine = JSCoreEngine()
+        engine.getStringListHandler = { _ in ["first", "second"] }
+
+        let result = engine.evaluate("""
+        var values = java.getStringList('fixture');
+        var copied = values.toArray();
+        copied.add('third');
+        [values.size(), values.get(1), copied.size(), copied.get(2), copied.map(function (value) {
+            return value.toUpperCase();
+        }).join(',')].join('|');
+        """)
+
+        #expect(result == "2|second|3|third|FIRST,SECOND,THIRD")
+    }
+
+    @Test("chapterList JS can inspect and return java.getElements rows")
+    func chapterListJSCarriesJavaElementsIntoTOC() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "java-elements-toc-\(UUID().uuidString)"
+        source.ruleToc.chapterList = """
+        @js:
+        let elements = java.getElements("@css:.chapter");
+        let rows = [];
+        for (let i = 0; i < elements.size(); i++) {
+            rows.push(elements.get(i));
+        }
+        rows.reverse();
+        rows;
+        """
+        source.ruleToc.chapterName = "@text"
+        source.ruleToc.chapterUrl = "@href"
+
+        let chapters = try ModernParserBridge(source: source).parseTOC(
+            html: """
+            <a class="chapter" href="/1">First</a>
+            <a class="chapter" href="/2">Second</a>
+            """,
+            baseURL: "https://example.com/book",
+            source: source
+        )
+
+        #expect(chapters.map(\.title) == ["Second", "First"])
+        #expect(chapters.map(\.url) == [
+            "https://example.com/2",
+            "https://example.com/1",
+        ])
+    }
+
+    @Test("bare JSON numeric field can feed a following JS URL rule")
+    func bareJSONNumericFieldFeedsJSURLRule() {
+        let engine = ModernRuleEngine()
+        engine.jsEvaluator = { _, result in
+            guard let result else { return nil }
+            return "https://qdgo.qimo.host/api/bookDetail?bookId=\(ModernRuleEngine.toString(result))"
+        }
+        engine.setContent(#"{"bid":1041637443}"#)
+
+        let url = engine.getString(ruleStr: "bid@js:result", isUrl: true)
+
+        #expect(url == "https://qdgo.qimo.host/api/bookDetail?bookId=1041637443")
+    }
+
+    @Test("detached java base64 method keeps its bridge receiver")
+    func detachedJavaBase64MethodKeepsBridgeReceiver() {
+        let engine = JSCoreEngine()
+        let encoded = engine.evaluateIsolated(
+            "const encode = java.base64Encode; encode('1041637443,1');",
+            bindings: [:]
+        )
+
+        #expect(encoded == "MTA0MTYzNzQ0Mywx")
+    }
+
+    @Test("single-function iOS comment branch is routed through source SVG")
+    func singleFunctionIOSCommentBranchUsesSourceSVG() throws {
+        var source = BookSource()
+        source.bookSourceName = "📚书山聚合"
+        source.bookSourceUrl = "shushan-svg-\(UUID().uuidString)"
+        source.jsLib = """
+        function deviceType() {
+            try {
+                java.deviceID();
+                return false;
+            } catch (e) {
+                return true;
+            }
+        }
+        function createCommentHtmlTag(count) {
+            return '<comment count="' + count
+                + '" onPress="java.startBrowser(\\'https://example.com/review\\',\\'番茄段评\\')" />';
+        }
+        function createSvg(count) {
+            if (!deviceType()) return createCommentHtmlTag(count);
+            var svg = '<svg width="96" height="72" xmlns="http://www.w3.org/2000/svg">'
+                + '<rect x="8" y="8" width="80" height="56" />'
+                + '<text x="48" y="46">' + count + '</text></svg>';
+            return '<img src="data:image/svg+xml;base64,' + java.base64Encode(svg)
+                + ',{\\'js\\':\\'showCmt(\"1\",\"2\",\"3\",\"4\")\\',\\'style\\':\\'TEXT\\'}">';
+        }
+        """
+        source.ruleContent.content = "<js>createSvg(12)</js>"
+
+        let payload = try ModernParserBridge(source: source).parseChapterResult(
+            html: "正文",
+            baseURL: "https://example.com/chapter",
+            source: source
+        )
+
+        #expect(payload.content.contains("<img"))
+        #expect(payload.content.contains("data:image/svg+xml;base64,"))
+        #expect(!payload.content.localizedCaseInsensitiveContains("<comment"))
+    }
+
+    @Test("chapter JS receives the original response as src")
+    func chapterJSReceivesOriginalResponseAsSrc() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "xiaomi-src-\(UUID().uuidString)"
+        source.ruleContent.content = """
+        $..contentList[*]
+        <js>
+        if(result.match(/^http.+$/)){
+            src = java.base64Decode(String(java.ajax(result)).match(/\\('([^']+)'\\)/)[1]);
+        }
+        src
+        </js>
+        $..p[*]||$..contentList[*]
+        """
+
+        let payload = try ModernParserBridge(source: source).parseChapterResult(
+            html: #"{"status":0,"data":{"contentList":["paragraph one","paragraph two"]}}"#,
+            baseURL: "https://reader.browser.miui.com/api/v2/chapter/content?chapterId=1",
+            source: source
+        )
+
+        #expect(payload.content == "paragraph one\nparagraph two")
+    }
+
+    @Test("chapterList JS using new Set() parses volume rows (企点 目录显示卷名)")
+    func chapterListNewSetParsesVolumeRows() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "qidian-volume-\(UUID().uuidString)"
+        // Mirrors 企点's chapterList: volume names are de-duped via `new Set()`.
+        // The LYC compatibility shim used to shadow the builtin Set constructor,
+        // so `.has` threw and the whole TOC parsed empty — but only when the
+        // volume branch actually ran (显示卷名 on), never in the default state.
+        source.ruleToc.chapterList = """
+        <js>
+        var data = JSON.parse(result);
+        var charts = [];
+        var volumes = data.Data.Volumes;
+        var addedVolumes = new Set();
+        data.Data.Chapters.map(o => {
+            var volume = volumes.find(vs => vs.VolumeCode == o.Vc);
+            if (volume && !addedVolumes.has(volume.VolumeName)) {
+                charts.push({ title: volume.VolumeName, isVolume: true });
+                addedVolumes.add(volume.VolumeName);
+            }
+            charts.push({ title: o.N, url: "https://x.test/c/" + o.C });
+        });
+        charts;
+        </js>
+        """
+        source.ruleToc.chapterName = "title"
+        source.ruleToc.chapterUrl = "url"
+        source.ruleToc.isVolume = "isVolume"
+
+        let catalog = """
+        {"Data":{"Volumes":[{"VolumeCode":11,"VolumeName":"第一卷 风起"},{"VolumeCode":22,"VolumeName":"第二卷 云涌"}],\
+        "Chapters":[{"C":1,"N":"第1章","Vc":11},{"C":2,"N":"第2章","Vc":11},{"C":3,"N":"第3章","Vc":22}]}}
+        """
+
+        let chapters = try ModernParserBridge(source: source).parseTOC(
+            html: catalog,
+            baseURL: "https://x.test/detail?bookId=1",
+            source: source
+        )
+
+        #expect(chapters.count == 5)
+        #expect(chapters.map(\.isVolume) == [true, false, false, true, false])
+        #expect(chapters[0].title == "第一卷 风起")
+        #expect(chapters[3].title == "第二卷 云涌")
+        #expect(chapters[1].url == "https://x.test/c/1")
+    }
+}
+
+@Suite("JSON discover bridge regression", .serialized)
+struct JSONDiscoverBridgeRegressionTests {
+
+    @Test("Qidian chapterList JS preserves chapter rows")
+    func qidianChapterListPreservesRows() throws {
+        guard let path = ProcessInfo.processInfo.environment["YueduQidianBookSourceFixturePath"],
+              !path.isEmpty else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        var source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first {
+                $0.bookSourceName == "起点中文"
+            }
+        )
+        source.bookSourceUrl = "qidian-toc-\(UUID().uuidString)"
+
+        let bridge = ModernParserBridge(source: source)
+        let catalog = #"{"Data":{"BookId":1041637443,"CanReadFree":1,"Volumes":[],"Chapters":[{"C":1,"N":"第1章 测试","W":1200,"DisplayTime":1785315581,"Vc":0}]}}"#
+        let chapters = try bridge.parseTOC(
+            html: catalog,
+            baseURL: "https://qdgo.qimo.host/api/chapterList?bookId=1041637443",
+            source: source
+        )
+
+        #expect(chapters.count == 1)
+        #expect(chapters.first?.title == "第1章 测试")
+        #expect(chapters.first?.url.hasPrefix("data:chapter_info;base64,") == true)
+    }
+
+    @Test("numeric book id survives bridge URL parsing")
+    func numericBookIDSurvivesBridgeURLParsing() {
+        var source = BookSource()
+        source.bookSourceName = "起点中文 fixture"
+        source.bookSourceUrl = "qidian-json-\(UUID().uuidString)"
+        source.ruleExplore.bookList = "$.data.records[*]"
+        source.ruleExplore.name = "bName"
+        source.ruleExplore.author = "bAuth"
+        source.ruleExplore.bookUrl = """
+        bid@js:
+        /^[0-9]+$/.test(result) ? 'https://qdgo.qimo.host/api/bookDetail?bookId=' + result : result;
+        """
+
+        let bridge = ModernParserBridge(source: source)
+        bridge.debugObserver = { event in
+            NSLog("❖JSON DISCOVER DEBUG❖ %@", event.legadoStyleLog)
+        }
+        let books = bridge.parseExploreResults(
+            html: #"{"data":{"records":[{"bid":1041637443,"bName":"捞尸人","bAuth":"纯洁滴小龙"}]}}"#,
+            baseURL: "https://m.qidian.com/majax/rank/yuepiaolist",
+            source: source
+        )
+
+        #expect(books.count == 1)
+        #expect(books.first?.bookUrl == "https://qdgo.qimo.host/api/bookDetail?bookId=1041637443")
+    }
+}
+
+// MARK: - 2. SourceRule Tests
+
+@Suite("SourceRule", .serialized)
+struct SourceRuleTests {
+
+    @Test("@CSS: prefix sets default mode")
+    func cssPrefixMode() {
+        let rule = SourceRule(ruleStr: "@CSS:div.title@text")
+        #expect(rule.mode == .default)
+        #expect(rule.rule.hasPrefix("div.title"))
+    }
+
+    @Test("@XPath: prefix sets xpath mode")
+    func xpathPrefixMode() {
+        let rule = SourceRule(ruleStr: "@XPath://div[@id='content']")
+        #expect(rule.mode == .xpath)
+        #expect(rule.rule.contains("div"))
+    }
+
+    @Test("@Json: prefix sets json mode")
+    func jsonPrefixMode() {
+        let rule = SourceRule(ruleStr: "@Json:$.data.list")
+        #expect(rule.mode == .json)
+        #expect(rule.rule == "$.data.list")
+    }
+
+    @Test("@js: prefix sets js mode")
+    func jsPrefixMode() {
+        let rule = SourceRule(ruleStr: "@js:result + 'suffix'")
+        #expect(rule.mode == .js)
+        #expect(rule.rule.contains("result"))
+    }
+
+    @Test("<js>...</js> sets js mode and strips tags")
+    func jsTagMode() {
+        let rule = SourceRule(ruleStr: "<js>var x = 1;</js>")
+        #expect(rule.mode == .js)
+        #expect(rule.rule == "var x = 1;")
+    }
+
+    @Test("$. prefix auto-detects json mode")
+    func jsonAutoDetectDollarDot() {
+        let rule = SourceRule(ruleStr: "$.store.book")
+        #expect(rule.mode == .json)
+        #expect(rule.rule == "$.store.book")
+    }
+
+    @Test("$[ prefix auto-detects json mode")
+    func jsonAutoDetectDollarBracket() {
+        let rule = SourceRule(ruleStr: "$[0].title")
+        #expect(rule.mode == .json)
+    }
+
+    @Test("// prefix auto-detects xpath mode")
+    func xpathAutoDetectSlash() {
+        let rule = SourceRule(ruleStr: "//div[@class='item']")
+        #expect(rule.mode == .xpath)
+    }
+
+    @Test("@@ prefix sets default mode")
+    func doubleAtPrefix() {
+        let rule = SourceRule(ruleStr: "@@div.title@text")
+        #expect(rule.mode == .default)
+        #expect(rule.rule == "div.title@text")
+    }
+
+    @Test("@put:{key:value} is extracted into putMap")
+    func putDirectiveExtracted() {
+        let rule = SourceRule(ruleStr: "@css:div.title@text@put:{\"myKey\":\"myVal\"}")
+        #expect(rule.putMap["myKey"] == "myVal")
+        #expect(!rule.rule.contains("@put:"))
+    }
+
+    @Test("@get:{key} is parsed as template parameter")
+    func getTemplateParameter() {
+        let rule = SourceRule(ruleStr: "@get:{token}")
+        #expect(rule.mode == .regex)
+        #expect(rule.paramSize > 0)
+    }
+
+    @Test("{{expression}} is parsed as template parameter")
+    func doubleBraceTemplate() {
+        let rule = SourceRule(ruleStr: "prefix{{page}}suffix")
+        #expect(rule.paramSize > 0)
+    }
+
+    @Test("$N regex group references are parsed")
+    func dollarNGroupRef() {
+        let rule = SourceRule(ruleStr: "prefix$1middle$2end")
+        #expect(rule.mode == .regex)
+        #expect(rule.paramSize > 0)
+    }
+
+    @Test("makeUpRule splits ## into regex replacement")
+    func makeUpRuleSplitsRegex() {
+        let rule = SourceRule(ruleStr: "div.title@text##pattern##replacement")
+        rule.makeUpRule(
+            result: nil,
+            getData: { _ in "" },
+            evalJS: { _ in nil },
+            analyzeRule: { _ in nil }
+        )
+        #expect(rule.replaceRegex == "pattern")
+        #expect(rule.replacement == "replacement")
+        #expect(rule.replaceFirst == false)
+    }
+
+    @Test("makeUpRule ### sets replaceFirst flag")
+    func makeUpRuleReplaceFirst() {
+        let rule = SourceRule(ruleStr: "rule##pat##rep###")
+        rule.makeUpRule(
+            result: nil,
+            getData: { _ in "" },
+            evalJS: { _ in nil },
+            analyzeRule: { _ in nil }
+        )
+        #expect(rule.replaceRegex == "pat")
+        #expect(rule.replacement == "rep")
+        #expect(rule.replaceFirst == true)
+    }
+
+    @Test("makeUpRule resolves @get:{key} templates")
+    func makeUpRuleResolvesGet() {
+        let rule = SourceRule(ruleStr: "url/@get:{host}/path")
+        rule.makeUpRule(
+            result: nil,
+            getData: { key in key == "host" ? "example.com" : "" },
+            evalJS: { _ in nil },
+            analyzeRule: { _ in nil }
+        )
+        #expect(rule.rule == "url/example.com/path")
+    }
+
+    @Test("isJSON parameter forces json mode")
+    func isJSONForces() {
+        let rule = SourceRule(ruleStr: "data.list", mainMode: .default, isJSON: true)
+        #expect(rule.mode == .json)
+    }
+
+    @Test("##$## uses the standard end-anchor replacement")
+    func dollarHashHashUsesEndAnchorReplacement() {
+        let rule = SourceRule(ruleStr: ".count@em.0@text##$##字")
+        rule.makeUpRule(
+            result: nil,
+            getData: { _ in "" },
+            evalJS: { _ in nil },
+            analyzeRule: { _ in nil }
+        )
+        #expect(rule.rule == ".count@em.0@text")
+        #expect(rule.replaceRegex == "$")
+        #expect(rule.replacement == "字")
+    }
+
+    @Test("##$## URL suffix reaches the request parser")
+    func dollarHashHashURLSuffixReachesRequestParser() throws {
+        let engine = ModernRuleEngine()
+        engine.setContent(
+            #"<a href="/book/1">book</a>"#,
+            baseUrl: "https://example.com/list"
+        )
+        let rendered = engine.getString(
+            ruleStr: #"a@href##$##,{Cookie:"reader=1"}"#,
+            isUrl: true
+        )
+        let analyzeURL = AnalyzeUrl(ruleUrl: rendered)
+
+        #expect(AnalyzeUrl.stripOptions(from: rendered) == "https://example.com/book/1")
+        #expect(analyzeURL.headers["Cookie"] == "reader=1")
+    }
+}
+
+// MARK: - 3. RegexExtractor Tests
+
+@Suite("RegexExtractor", .serialized)
+struct RegexExtractorTests {
+
+    private let extractor = RegexExtractor()
+
+    @Test("canHandle returns true for ## prefix")
+    func canHandlePrefix() {
+        #expect(extractor.canHandle(rule: "##\\d+"))
+        #expect(!extractor.canHandle(rule: "some rule"))
+    }
+
+    @Test("extractValue returns first capture group")
+    func extractValueCaptureGroup() throws {
+        let result = try extractor.extractValue(
+            from: "Hello World 2024",
+            rule: "##(\\d+)",
+            baseURL: ""
+        )
+        #expect(result == "2024")
+    }
+
+    @Test("extractValue returns full match when no capture groups")
+    func extractValueFullMatch() throws {
+        let result = try extractor.extractValue(
+            from: "abc123def",
+            rule: "##\\d+",
+            baseURL: ""
+        )
+        #expect(result == "123")
+    }
+
+    @Test("extractValue returns empty when no match")
+    func extractValueNoMatch() throws {
+        let result = try extractor.extractValue(
+            from: "hello world",
+            rule: "##\\d+",
+            baseURL: ""
+        )
+        #expect(result == "")
+    }
+
+    @Test("extractList returns all capture groups")
+    func extractListCaptureGroups() throws {
+        let result = try extractor.extractList(
+            from: "a1b2c3",
+            rule: "##([a-z])(\\d)",
+            baseURL: ""
+        )
+        #expect(result == ["a", "1", "b", "2", "c", "3"])
+    }
+
+    @Test("extractList returns all full matches when no groups")
+    func extractListFullMatches() throws {
+        let result = try extractor.extractList(
+            from: "12-34-56",
+            rule: "##\\d+",
+            baseURL: ""
+        )
+        #expect(result == ["12", "34", "56"])
+    }
+
+    @Test("extractValue with empty pattern returns content")
+    func extractValueEmptyPattern() throws {
+        let result = try extractor.extractValue(from: "text", rule: "##", baseURL: "")
+        #expect(result == "text")
+    }
+
+    @Test("RegexReplacer replaces all matches")
+    func replacerReplaceAll() {
+        let result = RegexReplacer.replaceRegex(
+            result: "abc123def456",
+            pattern: "\\d+",
+            replacement: "NUM",
+            replaceFirst: false
+        )
+        #expect(result == "abcNUMdefNUM")
+    }
+
+    @Test("RegexReplacer replaces first match only")
+    func replacerReplaceFirst() {
+        let result = RegexReplacer.replaceRegex(
+            result: "abc123def456",
+            pattern: "\\d+",
+            replacement: "NUM",
+            replaceFirst: true
+        )
+        #expect(result == "abcNUMdef456")
+    }
+
+    @Test("RegexReplacer supports group references $1 $2")
+    func replacerGroupRefs() {
+        let result = RegexReplacer.replaceRegex(
+            result: "2024-01-15",
+            pattern: "(\\d{4})-(\\d{2})-(\\d{2})",
+            replacement: "$2/$3/$1",
+            replaceFirst: false
+        )
+        #expect(result == "01/15/2024")
+    }
+
+    @Test("RegexReplacer with empty pattern returns original")
+    func replacerEmptyPattern() {
+        let result = RegexReplacer.replaceRegex(
+            result: "hello",
+            pattern: "",
+            replacement: "x",
+            replaceFirst: false
+        )
+        #expect(result == "hello")
+    }
+
+    @Test("RegexReplacer with invalid pattern returns original")
+    func replacerInvalidPattern() {
+        let result = RegexReplacer.replaceRegex(
+            result: "hello",
+            pattern: "[invalid",
+            replacement: "x",
+            replaceFirst: false
+        )
+        #expect(result == "hello")
+    }
+}
+
+// MARK: - 4. Replace Rule Import Tests
+
+@Suite("ReplaceRuleImportParser", .serialized)
+struct ReplaceRuleImportParserTests {
+
+    @Test("parses Legado replace-rule export fields")
+    func parsesLegadoReplaceRuleExportFields() throws {
+        let json = """
+        [
+          {
+            "name": "廣告清理",
+            "group": "正文",
+            "pattern": "(?m)^廣告.*$",
+            "replacement": "",
+            "scope": "https://example.com/source",
+            "scopeContent": true,
+            "scopeTitle": false,
+            "isEnabled": true,
+            "isRegex": true,
+            "order": 7
+          },
+          {
+            "name": "標題規則",
+            "pattern": "^第(.*)章$",
+            "replacement": "$1",
+            "scopeContent": false,
+            "scopeTitle": true
+          }
+        ]
+        """
+
+        let rules = try ReplaceRuleImportParser.parse(data: Data(json.utf8))
+
+        #expect(rules.count == 1)
+        #expect(rules[0].name == "廣告清理 (正文)")
+        #expect(rules[0].pattern == #"(?m)^廣告.*$"#)
+        #expect(rules[0].replacement == "")
+        #expect(rules[0].scope == "https://example.com/source")
+        #expect(rules[0].enabled)
+        #expect(rules[0].isRegex)
+        #expect(rules[0].sortOrder == 7)
+    }
+
+    @Test("parses wrapped replacement rules with legacy regex keys")
+    func parsesWrappedReplacementRulesWithLegacyRegexKeys() throws {
+        let json = """
+        {
+          "replaceRules": [
+            {
+              "name": "純文字替換",
+              "regex": "foo",
+              "replacement": "bar",
+              "scope": "",
+              "enabled": "false",
+              "isRegex": 0,
+              "sortOrder": "3"
+            }
+          ]
+        }
+        """
+
+        let rules = try ReplaceRuleImportParser.parse(data: Data(json.utf8))
+
+        #expect(rules.count == 1)
+        #expect(rules[0].name == "純文字替換")
+        #expect(rules[0].pattern == "foo")
+        #expect(rules[0].replacement == "bar")
+        #expect(rules[0].scope == "global")
+        #expect(!rules[0].enabled)
+        #expect(!rules[0].isRegex)
+        #expect(rules[0].sortOrder == 3)
+    }
+}
+
+// MARK: - 5. JSONPath / JsonExtractor Tests
+
+@Suite("JSONPathEvaluator", .serialized)
+struct JSONPathEvaluatorTests {
+
+    private let storeJSON: [String: Any] = [
+        "store": [
+            "book": [
+                ["title": "A", "author": "Alice", "price": 8.95],
+                ["title": "B", "author": "Bob", "price": 12.99],
+                ["title": "C", "author": "Carol", "price": 5.50],
+                ["title": "D", "author": "Dave", "price": 22.00]
+            ] as [[String: Any]],
+            "name": "MyStore"
+        ] as [String: Any]
+    ]
+
+    @Test("dot notation: $.store.name")
+    func dotNotation() {
+        let results = JSONPathEvaluator.query("$.store.name", on: storeJSON)
+        #expect(results.count == 1)
+        #expect(results[0] as? String == "MyStore")
+    }
+
+    @Test("bracket notation: $['store']['name']")
+    func bracketNotation() {
+        let results = JSONPathEvaluator.query("$['store']['name']", on: storeJSON)
+        #expect(results.count == 1)
+        #expect(results[0] as? String == "MyStore")
+    }
+
+    @Test("array index: $.store.book[0].title")
+    func arrayIndex() {
+        let results = JSONPathEvaluator.query("$.store.book[0].title", on: storeJSON)
+        #expect(results.count == 1)
+        #expect(results[0] as? String == "A")
+    }
+
+    @Test("negative array index: $.store.book[-1].title")
+    func negativeIndex() {
+        let results = JSONPathEvaluator.query("$.store.book[-1].title", on: storeJSON)
+        #expect(results.count == 1)
+        #expect(results[0] as? String == "D")
+    }
+
+    @Test("wildcard: $.store.book[*].title")
+    func wildcardArray() {
+        let results = JSONPathEvaluator.query("$.store.book[*].title", on: storeJSON)
+        let titles = results.compactMap { $0 as? String }
+        #expect(titles == ["A", "B", "C", "D"])
+    }
+
+    @Test("deep scan: $..author")
+    func deepScan() {
+        let results = JSONPathEvaluator.query("$..author", on: storeJSON)
+        let authors = results.compactMap { $0 as? String }
+        #expect(authors.count == 4)
+        #expect(authors.contains("Alice"))
+        #expect(authors.contains("Dave"))
+    }
+
+    @Test("array slicing: $.store.book[0:2]")
+    func arraySlice() {
+        let results = JSONPathEvaluator.query("$.store.book[0:2]", on: storeJSON)
+        #expect(results.count == 2)
+    }
+
+    @Test("array slicing with step: $.store.book[0:4:2]")
+    func arraySliceWithStep() {
+        let results = JSONPathEvaluator.query("$.store.book[0:4:2]", on: storeJSON)
+        #expect(results.count == 2)
+        if let first = results[0] as? [String: Any] {
+            #expect(first["title"] as? String == "A")
+        }
+    }
+
+    @Test("filter: $.store.book[?(@.price < 10)]")
+    func filterLessThan() {
+        let results = JSONPathEvaluator.query("$.store.book[?(@.price < 10)]", on: storeJSON)
+        #expect(results.count == 2) // A (8.95) and C (5.50)
+    }
+
+    @Test("filter: $.store.book[?(@.author == 'Bob')]")
+    func filterEquality() {
+        let results = JSONPathEvaluator.query("$.store.book[?(@.author == 'Bob')]", on: storeJSON)
+        #expect(results.count == 1)
+        if let book = results[0] as? [String: Any] {
+            #expect(book["title"] as? String == "B")
+        }
+    }
+
+    @Test("length function: $.store.book.length()")
+    func lengthFunction() {
+        let results = JSONPathEvaluator.query("$.store.book.length()", on: storeJSON)
+        #expect(results.count == 1)
+        #expect(results[0] as? Int == 4)
+    }
+
+    @Test("multi-index: $.store.book[0,2]")
+    func multiIndex() {
+        let results = JSONPathEvaluator.query("$.store.book[0,2]", on: storeJSON)
+        #expect(results.count == 2)
+    }
+
+    @Test("nested path: $.store.book[0].title")
+    func nestedPath() {
+        let results = JSONPathEvaluator.query("$.store.book[0].title", on: storeJSON)
+        #expect(results.first as? String == "A")
+    }
+
+    @Test("wildcard on object: $.store.*")
+    func wildcardObject() {
+        let results = JSONPathEvaluator.query("$.store.*", on: storeJSON)
+        #expect(results.count == 2) // book array + name string
+    }
+
+    @Test("empty path returns nothing")
+    func emptyPath() {
+        let results = JSONPathEvaluator.query("", on: storeJSON)
+        #expect(results.isEmpty)
+    }
+
+    @Test("invalid path returns nothing")
+    func invalidPath() {
+        let results = JSONPathEvaluator.query("not_a_path", on: storeJSON)
+        #expect(results.isEmpty)
+    }
+
+    @Test("stringify converts various types to string")
+    func stringifyHelper() {
+        #expect(JSONPathEvaluator.stringify("hello") == "hello")
+        #expect(JSONPathEvaluator.stringify(nil) == "")
+        #expect(JSONPathEvaluator.stringify(NSNull()) == "")
+    }
+}
+
+@Suite("JsonExtractor", .serialized)
+struct JsonExtractorTests {
+
+    private let extractor = JsonExtractor()
+
+    private let sampleJSON = """
+    {"data":{"list":[{"title":"Book A","author":"Alice"},{"title":"Book B","author":"Bob"}],"count":2}}
+    """
+
+    @Test("canHandle recognizes @json: prefix")
+    func canHandleJsonPrefix() {
+        #expect(extractor.canHandle(rule: "@json:$.data"))
+        #expect(extractor.canHandle(rule: "$.data.list"))
+        #expect(extractor.canHandle(rule: "$[0].title"))
+        #expect(!extractor.canHandle(rule: "div.class@text"))
+    }
+
+    @Test("extractValue returns single value")
+    func extractSingleValue() throws {
+        let result = try extractor.extractValue(from: sampleJSON, rule: "$.data.list[0].title", baseURL: "")
+        #expect(result == "Book A")
+    }
+
+    @Test("extractValue returns count")
+    func extractCount() throws {
+        let result = try extractor.extractValue(from: sampleJSON, rule: "$.data.count", baseURL: "")
+        #expect(result == "2")
+    }
+
+    @Test("extractList returns flat strings")
+    func extractListFlat() throws {
+        let result = try extractor.extractList(from: sampleJSON, rule: "$.data.list[*].title", baseURL: "")
+        #expect(result == ["Book A", "Book B"])
+    }
+
+    @Test("extractValue from @json: prefixed rule")
+    func extractWithJsonPrefix() throws {
+        let result = try extractor.extractValue(from: sampleJSON, rule: "@json:$.data.list[1].author", baseURL: "")
+        #expect(result == "Bob")
+    }
+
+    @Test("extractValue from @json bare field")
+    func extractWithJsonBareField() throws {
+        let result = try extractor.extractValue(from: #"{"BookName":"斗罗大陆","AuthorName":"唐家三少"}"#, rule: "@json:BookName", baseURL: "")
+        #expect(result == "斗罗大陆")
+    }
+
+    @Test("JSON content treats bare field rule as current object property")
+    func jsonContentBareFieldRule() {
+        let engine = ModernRuleEngine()
+        engine.setContent(#"{"BookName":"斗罗大陆","AuthorName":"唐家三少"}"#)
+
+        #expect(engine.getString(ruleStr: "BookName") == "斗罗大陆")
+        #expect(engine.getString(ruleStr: "AuthorName") == "唐家三少")
+    }
+
+    @Test("extractValue from empty/null JSON returns empty")
+    func extractFromEmptyJSON() throws {
+        let result = try extractor.extractValue(from: "", rule: "$.data", baseURL: "")
+        #expect(result == "")
+    }
+
+    @Test("extractList from non-matching path returns empty")
+    func extractListNoMatch() throws {
+        let result = try extractor.extractList(from: sampleJSON, rule: "$.nonexistent", baseURL: "")
+        #expect(result.isEmpty)
+    }
+}
+
+// MARK: - 5. Cache Tests
+
+@Suite("LRUCache", .serialized)
+struct LRUCacheTests {
+
+    @Test("basic put and get")
+    func basicPutGet() {
+        let cache = LRUCache<String, Int>(capacity: 5)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        #expect(cache.get("a") == 1)
+        #expect(cache.get("b") == 2)
+        #expect(cache.get("c") == nil)
+    }
+
+    @Test("eviction at capacity")
+    func evictionAtCapacity() {
+        let cache = LRUCache<String, Int>(capacity: 2)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        cache.put("c", value: 3) // evicts "a"
+        #expect(cache.get("a") == nil)
+        #expect(cache.get("b") == 2)
+        #expect(cache.get("c") == 3)
+    }
+
+    @Test("LRU ordering: accessing moves to end")
+    func lruOrdering() {
+        let cache = LRUCache<String, Int>(capacity: 2)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        _ = cache.get("a") // access "a", moves it to end
+        cache.put("c", value: 3) // evicts "b" (now LRU)
+        #expect(cache.get("a") == 1)
+        #expect(cache.get("b") == nil)
+        #expect(cache.get("c") == 3)
+    }
+
+    @Test("update existing key does not increase count")
+    func updateExisting() {
+        let cache = LRUCache<String, Int>(capacity: 2)
+        cache.put("a", value: 1)
+        cache.put("a", value: 10)
+        #expect(cache.get("a") == 10)
+        #expect(cache.count == 1)
+    }
+
+    @Test("getOrPut creates and caches on miss")
+    func getOrPut() {
+        let cache = LRUCache<String, Int>(capacity: 5)
+        let val = cache.getOrPut("x") { 42 }
+        #expect(val == 42)
+        #expect(cache.get("x") == 42)
+    }
+
+    @Test("getOrPut returns cached on hit")
+    func getOrPutHit() {
+        let cache = LRUCache<String, Int>(capacity: 5)
+        cache.put("x", value: 10)
+        let val = cache.getOrPut("x") { 999 }
+        #expect(val == 10) // factory not called
+    }
+
+    @Test("remove specific key")
+    func removeKey() {
+        let cache = LRUCache<String, Int>(capacity: 5)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        cache.remove("a")
+        #expect(cache.get("a") == nil)
+        #expect(cache.count == 1)
+    }
+
+    @Test("clear removes all entries")
+    func clearAll() {
+        let cache = LRUCache<String, Int>(capacity: 5)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        cache.clear()
+        #expect(cache.count == 0)
+        #expect(cache.get("a") == nil)
+    }
+
+    @Test("thread safety: concurrent reads and writes")
+    func threadSafety() {
+        let cache = LRUCache<Int, Int>(capacity: 100)
+        let group = DispatchGroup()
+        let queue = DispatchQueue(label: "test", attributes: .concurrent)
+
+        for i in 0..<100 {
+            group.enter()
+            queue.async {
+                cache.put(i, value: i * 2)
+                _ = cache.get(i)
+                group.leave()
+            }
+        }
+
+        group.wait()
+        #expect(cache.count <= 100)
+    }
+
+    @Test("unlimited capacity (0) never evicts")
+    func unlimitedCapacity() {
+        let cache = LRUCache<Int, Int>(capacity: 0)
+        for i in 0..<50 {
+            cache.put(i, value: i)
+        }
+        #expect(cache.count == 50)
+        #expect(cache.get(0) == 0)
+        #expect(cache.get(49) == 49)
+    }
+}
+
+@Suite("RegexCache", .serialized)
+struct RegexCacheTests {
+
+    @Test("compile and retrieve valid pattern")
+    func compileAndRetrieve() {
+        let cache = RegexCache(capacity: 10)
+        let regex = cache.regex(for: "\\d+")
+        #expect(regex != nil)
+        let same = cache.regex(for: "\\d+")
+        #expect(same != nil)
+    }
+
+    @Test("different options produce different cache entries")
+    func optionsHandling() {
+        let cache = RegexCache(capacity: 10)
+        let cs = cache.regex(for: "hello")
+        let ci = cache.regex(for: "hello", options: .caseInsensitive)
+        #expect(cs != nil)
+        #expect(ci != nil)
+        // Both should work but are separate cache entries
+    }
+
+    @Test("invalid pattern returns nil")
+    func invalidPattern() {
+        let cache = RegexCache(capacity: 10)
+        let regex = cache.regex(for: "[invalid")
+        #expect(regex == nil)
+    }
+
+    @Test("replaceMatches works correctly")
+    func replaceMatches() {
+        let cache = RegexCache(capacity: 10)
+        let result = cache.replaceMatches(in: "a1b2c3", pattern: "\\d", replacement: "X")
+        #expect(result == "aXbXcX")
+    }
+
+    @Test("firstMatch returns correct result")
+    func firstMatchResult() {
+        let cache = RegexCache(capacity: 10)
+        let match = cache.firstMatch(in: "abc123def", pattern: "\\d+")
+        #expect(match != nil)
+        let nsStr = "abc123def" as NSString
+        #expect(nsStr.substring(with: match!.range) == "123")
+    }
+}
+
+@Suite("SelectorCache", .serialized)
+struct SelectorCacheTests {
+
+    @Test("basic put and get")
+    func basicPutGet() {
+        let cache = SelectorCache(capacity: 10)
+        let step = SelectorCache.JsoupStep(selector: "div.title", indices: nil, accessor: "@text")
+        let parsed = SelectorCache.ParsedJsoupRule(steps: [step])
+
+        cache.putParsed("div.title@text", parsed: parsed)
+        let retrieved = cache.getParsed("div.title@text")
+        #expect(retrieved == parsed)
+    }
+
+    @Test("getOrParse invokes parser on miss")
+    func getOrParse() {
+        let cache = SelectorCache(capacity: 10)
+        var parserCalled = false
+        let result = cache.getOrParse("test-rule") { _ in
+            parserCalled = true
+            return SelectorCache.ParsedJsoupRule(steps: [])
+        }
+        #expect(parserCalled)
+        #expect(result.steps.isEmpty)
+    }
+
+    @Test("getOrParse returns cached on hit")
+    func getOrParseCached() {
+        let cache = SelectorCache(capacity: 10)
+        let step = SelectorCache.JsoupStep(selector: "p", indices: nil, accessor: nil)
+        let parsed = SelectorCache.ParsedJsoupRule(steps: [step])
+        cache.putParsed("p", parsed: parsed)
+
+        var parserCalled = false
+        let result = cache.getOrParse("p") { _ in
+            parserCalled = true
+            return SelectorCache.ParsedJsoupRule(steps: [])
+        }
+        #expect(!parserCalled)
+        #expect(result.steps.count == 1)
+    }
+}
+
+// MARK: - 6. RuleData Tests
+
+@Suite("RuleData", .serialized)
+struct RuleDataTests {
+
+    @Test("putVariable and getVariable for small values")
+    func putGetSmallValue() {
+        let data = RuleData()
+        data.putVariable(key: "name", value: "Alice")
+        #expect(data.getVariable(key: "name") == "Alice")
+    }
+
+    @Test("getVariable returns empty string for missing key")
+    func getMissingKey() {
+        let data = RuleData()
+        #expect(data.getVariable(key: "missing") == "")
+    }
+
+    @Test("putVariable with nil removes key")
+    func putNilRemoves() {
+        let data = RuleData()
+        data.putVariable(key: "temp", value: "val")
+        #expect(data.getVariable(key: "temp") == "val")
+        data.putVariable(key: "temp", value: nil)
+        #expect(data.getVariable(key: "temp") == "")
+    }
+
+    @Test("putVariable overwrites existing value")
+    func overwriteValue() {
+        let data = RuleData()
+        data.putVariable(key: "k", value: "v1")
+        data.putVariable(key: "k", value: "v2")
+        #expect(data.getVariable(key: "k") == "v2")
+    }
+
+    @Test("big variable (>=10K chars) stored via putBigVariable")
+    func bigVariableThreshold() {
+        let data = RuleData()
+        let bigValue = String(repeating: "x", count: 10_000)
+        data.putVariable(key: "big", value: bigValue)
+        // RuleData's putBigVariable falls back to variableMap
+        #expect(data.getVariable(key: "big") == bigValue)
+    }
+
+    @Test("JSON serialization roundtrip")
+    func jsonRoundtrip() {
+        let data = RuleData()
+        data.putVariable(key: "a", value: "1")
+        data.putVariable(key: "b", value: "2")
+
+        let json = data.getVariableJSON()
+        #expect(json != nil)
+
+        let data2 = RuleData()
+        data2.loadVariables(from: json)
+        #expect(data2.getVariable(key: "a") == "1")
+        #expect(data2.getVariable(key: "b") == "2")
+    }
+
+    @Test("loadVariables from nil does nothing")
+    func loadNilVariables() {
+        let data = RuleData()
+        data.putVariable(key: "x", value: "y")
+        data.loadVariables(from: nil)
+        // variableMap is replaced if load succeeds, but nil load should be no-op
+        #expect(data.getVariable(key: "x") == "y")
+    }
+
+    @Test("loadVariables from invalid JSON does nothing")
+    func loadInvalidJSON() {
+        let data = RuleData()
+        data.putVariable(key: "x", value: "y")
+        data.loadVariables(from: "not json")
+        #expect(data.getVariable(key: "x") == "y")
+    }
+
+    @Test("multiple variables coexist")
+    func multipleVariables() {
+        let data = RuleData()
+        data.putVariable(key: "a", value: "1")
+        data.putVariable(key: "b", value: "2")
+        data.putVariable(key: "c", value: "3")
+        #expect(data.getVariable(key: "a") == "1")
+        #expect(data.getVariable(key: "b") == "2")
+        #expect(data.getVariable(key: "c") == "3")
+    }
+}
+
+// MARK: - BookSource Runtime Routing
+
+@Suite("BookSource runtime routing", .serialized)
+struct BookSourceRuntimeRoutingTests {
+
+    @Test("jsLib-backed template variables use Legado runtime")
+    func jsLibBackedTemplateVariablesUseRuntime() {
+        var source = BookSource()
+        source.jsLib = """
+        const CONFIG = { api: { baseUrl: 'https://api.example.com' } };
+        const qt = 'https://qt.example.com';
+        function zdym() { return 'https://domain.example.com'; }
+        """
+
+        #expect(source.shouldUseLegadoRuntimeFetch(for: "{{CONFIG.api.baseUrl}}/search.php?keyword={{key}}&page={{page}}"))
+        #expect(source.shouldUseLegadoRuntimeFetch(for: "{{qt}}/search?keyword={{key}}&page={{page}}"))
+        #expect(source.shouldUseLegadoRuntimeFetch(for: "{{this.zdym()}}/shuqi/search.php?wd={{key}}&page={{page}}"))
+    }
+
+    @Test("jsLib-backed arithmetic template uses Legado runtime")
+    func jsLibBackedArithmeticTemplateUsesRuntime() {
+        var source = BookSource()
+        source.jsLib = "function noop() { return ''; }"
+
+        #expect(source.shouldUseLegadoRuntimeFetch(for: "/api/search?query={{key}}&page={{(page-1)*10}}&tab_type=3"))
+    }
+
+    @Test("simple key and page templates keep fast search path")
+    func simpleKeyAndPageTemplatesKeepFastPath() {
+        var source = BookSource()
+        source.jsLib = "function noop() { return ''; }"
+
+        #expect(!source.shouldUseLegadoRuntimeFetch(for: "https://example.com/search?q={{key}}&page={{page}}"))
+    }
+
+    @Test("search result regex replacement resolves jsLib templates in the replacement")
+    func searchResultRegexReplacementResolvesJSLibTemplates() throws {
+        var source = BookSource()
+        source.bookSourceName = "Qidian replacement template"
+        source.bookSourceUrl = "https://m.qidian.com"
+        source.jsLib = "const ho = 'https://m.qidian.com';"
+        source.ruleSearch.bookList = "@css:div.y-list__content>div.y-list__item"
+        source.ruleSearch.name = "tag.h2@text"
+        source.ruleSearch.author = "@css:p[class^=_searchBookAuthor]@text"
+        source.ruleSearch.bookUrl =
+            "##href=\"//m.qidian.com/chapter/(\\d+)/0/\"##{{ho}}/book/$1/###"
+
+        let html = """
+        <div class="y-list__content">
+          <div class="y-list__item">
+            <a href="//m.qidian.com/chapter/1115277/0/"><h2>斗罗大陆</h2></a>
+            <p class="_searchBookAuthor_1">唐家三少</p>
+          </div>
+        </div>
+        """
+
+        let books = try ModernParserBridge(source: source).parseSearchResults(
+            html: html,
+            baseURL: "https://m.qidian.com/soushu/斗罗大陆.html?pageNum=1",
+            source: source
+        )
+
+        #expect(books.count == 1)
+        let actualURL = books.first?.bookUrl ?? "(nil)"
+        #expect(
+            actualURL == "https://m.qidian.com/book/1115277/",
+            "actual search book URL: \(actualURL)"
+        )
+    }
+}
+
+// MARK: - 7. AnalyzeUrl Tests
+
+@Suite("AnalyzeUrl", .serialized)
+struct AnalyzeUrlTests {
+
+    @Test("simple absolute URL")
+    func simpleUrl() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/api/list")
+        #expect(au.url == "https://example.com/api/list")
+        #expect(au.method == "GET")
+    }
+
+    @Test("URL with POST method via JSON options")
+    func postOptions() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/api,{\"method\":\"POST\",\"body\":\"q=test\"}")
+        #expect(au.method == "POST")
+        #expect(au.body == "q=test")
+    }
+
+    @Test("{{key}} template replacement")
+    func keyTemplateReplacement() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/search?q={{key}}", key: "hello")
+        #expect(au.url.contains("hello"))
+    }
+
+    @Test("{{page}} template replacement")
+    func pageTemplateReplacement() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/list?page={{page}}", page: 3)
+        #expect(au.url.contains("3"))
+    }
+
+    @Test("{{pageIndex}} template replacement (0-based)")
+    func pageIndexTemplate() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/list?p={{pageIndex}}", page: 3)
+        #expect(au.url.contains("2"))
+    }
+
+    @Test("@get:{key} with RuleData")
+    func getVariableReplacement() {
+        let data = RuleData()
+        data.putVariable(key: "token", value: "abc123")
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com/api?t=@get:{token}",
+            source: data
+        )
+        #expect(au.url.contains("abc123"))
+    }
+
+    @Test("buildRequest JS fallback evaluates URL argument")
+    func buildRequestFallbackEvaluatesURLArgument() throws {
+        let au = AnalyzeUrl(
+            ruleUrl: #"@js: buildRequest(`${backend}/69/search?key={{key}}&page={{page}}`)"#,
+            key: "斗罗大陆",
+            page: 2,
+            jsEvaluator: { jsCode, _ in
+                let trimmed = jsCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.hasPrefix("buildRequest") { return nil }
+                if trimmed.hasPrefix("`") {
+                    return "https://no.skybook.qzz.io/69/search?key={{key}}&page={{page}}"
+                }
+                return nil
+            }
+        )
+
+        let request = try #require(au.toURLRequest())
+        let url = try #require(request.url?.absoluteString)
+        #expect(url.contains("https://no.skybook.qzz.io/69/search"))
+        #expect(url.contains("page=2"))
+        #expect(url.contains("%E6%96%97%E7%BD%97%E5%A4%A7%E9%99%86"))
+    }
+
+    @Test("relative URL resolution against base")
+    func relativeUrlResolution() {
+        let au = AnalyzeUrl(
+            ruleUrl: "/api/list",
+            baseUrl: "https://example.com/page"
+        )
+        #expect(au.url.contains("https://example.com"))
+    }
+
+    @Test("protocol-relative URL gets https:")
+    func protocolRelativeUrl() {
+        let au = AnalyzeUrl(ruleUrl: "//cdn.example.com/file.js")
+        #expect(au.url == "https://cdn.example.com/file.js")
+    }
+
+    @Test("headers from JSON options")
+    func headersFromOptions() {
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com,{\"headers\":{\"Authorization\":\"Bearer tok\"}}"
+        )
+        #expect(au.headers["Authorization"] == "Bearer tok")
+    }
+
+    @Test("toURLRequest produces GET request")
+    func toURLRequestGet() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/page?q=test")
+        let request = au.toURLRequest()
+        #expect(request != nil)
+        #expect(request?.httpMethod == "GET")
+        #expect(request?.url?.absoluteString.contains("q=test") == true)
+    }
+
+    @Test("toURLRequest produces POST request with body")
+    func toURLRequestPost() {
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com/api,{\"method\":\"POST\",\"body\":\"data=value\"}"
+        )
+        let request = au.toURLRequest()
+        #expect(request != nil)
+        #expect(request?.httpMethod == "POST")
+        #expect(request?.httpBody != nil)
+    }
+
+    @Test("toURLRequest preserves JSON POST body")
+    func toURLRequestPostJSONBody() throws {
+        let au = AnalyzeUrl(
+            ruleUrl: #"https://example.com/api,{"method":"POST","headers":{"Content-Type":"application/json"},"body":"{\"register_email\":\"a@example.com\",\"password\":\"secret\"}"}"#
+        )
+        let request = try #require(au.toURLRequest())
+        let body = String(data: try #require(request.httpBody), encoding: .utf8)
+
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(body == #"{"register_email":"a@example.com","password":"secret"}"#)
+        #expect(body?.contains("%7B") == false)
+    }
+
+    @Test("page rules array selects correct page")
+    func pageRulesArray() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/<first,second,third>", page: 2)
+        #expect(au.url.contains("second"))
+    }
+
+    @Test("page rules out of bounds uses last")
+    func pageRulesOutOfBounds() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com/<a,b>", page: 5)
+        #expect(au.url.contains("b"))
+    }
+
+    @Test("charset from options")
+    func charsetOption() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com,{\"charset\":\"gbk\"}")
+        #expect(au.charset == "gbk")
+    }
+
+    @Test("empty URL produces nil URLRequest")
+    func emptyUrl() {
+        let au = AnalyzeUrl(ruleUrl: "")
+        // Empty URL: url is "", toURLRequest depends on URL validity
+        let request = au.toURLRequest()
+        #expect(request == nil)
+    }
+
+    @Test("data URI detection")
+    func dataUriDetection() {
+        let au = AnalyzeUrl(ruleUrl: "data:text/plain;base64,SGVsbG8=")
+        #expect(au.isDataUri)
+        if let decoded = au.decodeDataUri() {
+            #expect(decoded.mimeType == "text/plain")
+            #expect(String(data: decoded.data, encoding: .utf8) == "Hello")
+        }
+    }
+
+    @Test("useWebView option")
+    func useWebViewOption() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com,{\"useWebView\":true}")
+        #expect(au.useWebView == true)
+    }
+
+    @Test("retry option")
+    func retryOption() {
+        let au = AnalyzeUrl(ruleUrl: "https://example.com,{\"retry\":3}")
+        #expect(au.retry == 3)
+    }
+
+    @Test("bodyJs option is retained as a response transform")
+    func bodyJsOption() throws {
+        let script = #"JSON.stringify({wrapped: JSON.parse(result)})"#
+        let encoded = try #require(
+            String(
+                data: JSONSerialization.data(withJSONObject: ["bodyJs": script]),
+                encoding: .utf8
+            )
+        )
+        let au = AnalyzeUrl(ruleUrl: "https://example.com,\(encoded)")
+
+        #expect(au.bodyJs == script)
+    }
+
+    @Test("bodyJs transforms the raw response string before parsing")
+    func bodyJsTransformsResponse() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "bodyJs test"
+
+        let raw = #"{"data":{"records":[{"name":"榜單作品"}]}}"#
+        let payload = Data(raw.utf8).base64EncodedString()
+        let script = #"(function(){var j=JSON.parse(result);return JSON.stringify({data:{books:j.data.records}})})()"#
+        let options = try #require(
+            String(
+                data: JSONSerialization.data(withJSONObject: ["bodyJs": script]),
+                encoding: .utf8
+            )
+        )
+        let ruleURL = "data:application/json;base64,\(payload),\(options)"
+
+        let (body, _) = try await ModernParserBridge(source: source).fetch(ruleUrl: ruleURL)
+        let object = try #require(
+            JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any]
+        )
+        let data = try #require(object["data"] as? [String: Any])
+        let books = try #require(data["books"] as? [[String: Any]])
+
+        #expect(books.first?["name"] as? String == "榜單作品")
+    }
+
+    @Test("bodyJs failure is surfaced instead of parsing the original body")
+    func bodyJsFailureIsSurfaced() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "bodyJs failure test"
+
+        let payload = Data(#"{"data":{"records":[]}}"#.utf8).base64EncodedString()
+        let options = try #require(
+            String(
+                data: JSONSerialization.data(withJSONObject: ["bodyJs": "throw new Error('broken transform')"]),
+                encoding: .utf8
+            )
+        )
+
+        do {
+            _ = try await ModernParserBridge(source: source).fetch(
+                ruleUrl: "data:application/json;base64,\(payload),\(options)"
+            )
+            Issue.record("Expected bodyJs failure")
+        } catch let error as ModernParserBridgeError {
+            guard case .parseError(let message) = error else {
+                Issue.record("Unexpected parser error: \(error)")
+                return
+            }
+            #expect(message.contains("bodyJs failed"))
+        }
+    }
+
+    @Test("bodyJs also transforms responses fetched inside java.ajax")
+    func bodyJsTransformsJavaAjaxResponse() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "bodyJs java.ajax test"
+
+        let raw = #"{"records":[{"title":"榜單","url":"https://example.com/rank"}]}"#
+        let payload = Data(raw.utf8).base64EncodedString()
+        let script = #"JSON.stringify(JSON.parse(result).records)"#
+        let options = try #require(
+            String(
+                data: JSONSerialization.data(withJSONObject: ["bodyJs": script]),
+                encoding: .utf8
+            )
+        )
+        let ruleURL = "data:application/json;base64,\(payload),\(options)"
+        let jsURLLiteral = try #require(
+            String(
+                data: JSONSerialization.data(
+                    withJSONObject: ruleURL,
+                    options: [.fragmentsAllowed]
+                ),
+                encoding: .utf8
+            )
+        )
+        source.exploreUrl = "<js>java.ajax(\(jsURLLiteral));</js>"
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map(\.title) == ["榜單"])
+        #expect(items.map(\.url) == ["https://example.com/rank"])
+    }
+
+    @Test("bodyJs failure inside java.ajax never exposes the original response")
+    func bodyJsFailureInsideJavaAjaxDoesNotExposeRawResponse() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "bodyJs java.ajax failure test"
+
+        let raw = #"[{"title":"原始資料不得外洩","url":"https://example.com/raw"}]"#
+        let payload = Data(raw.utf8).base64EncodedString()
+        let options = try #require(
+            String(
+                data: JSONSerialization.data(
+                    withJSONObject: ["bodyJs": "throw new Error('broken transform')"]
+                ),
+                encoding: .utf8
+            )
+        )
+        let ruleURL = "data:application/json;base64,\(payload),\(options)"
+        let jsURLLiteral = try #require(
+            String(
+                data: JSONSerialization.data(
+                    withJSONObject: ruleURL,
+                    options: [.fragmentsAllowed]
+                ),
+                encoding: .utf8
+            )
+        )
+        source.exploreUrl = "<js>java.ajax(\(jsURLLiteral));</js>"
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.isEmpty)
+    }
+
+    @Test("{header} template resolves to sourceHeader in URL options")
+    func headerTemplateInOptions() {
+        let headerJSON = "{\"User-Agent\":\"Custom/1.0\"}"
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com/api,{header}",
+            sourceHeader: headerJSON
+        )
+        #expect(au.headers["User-Agent"] == "Custom/1.0")
+    }
+
+    @Test("{{header}} template resolves via resolveTemplateExpression")
+    func headerTemplateDoubleBraces() {
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com/api?_h={{header}}",
+            sourceHeader: "{\"Custom\":\"Header\"}"
+        )
+        // {{header}} expands to the source header JSON string in the URL
+        #expect(au.url.contains("%7B%22Custom%22:%22Header%22%7D")
+                || au.url.contains("{\"Custom\":\"Header\"}"))
+    }
+
+    @Test("{{header}} fallback to empty when no sourceHeader set")
+    func headerTemplateEmptyWhenNotSet() {
+        let au = AnalyzeUrl(
+            ruleUrl: "https://example.com/api?_h={{header}}"
+        )
+        #expect(au.url.contains("_h="))
+    }
+
+    @Test("<js> URL can produce typed data URI body as hex")
+    func jsUrlDataUriFetchReturnsHexBody() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "legado-test-\(UUID().uuidString)"
+        source.jsLib = "function noop() { return ''; }"
+        let bridge = ModernParserBridge(source: source)
+        let ruleUrl = """
+        <js>
+        let payload = java.base64Encode(JSON.stringify({ key: key, page: page }));
+        `data:;base64,${payload},{"type":"gysearch"}`;
+        </js>
+        """
+
+        let (body, finalUrl) = try await bridge.fetch(ruleUrl: ruleUrl, key: "needle", page: 3)
+        let decoded = LegadoJSBridge().hexDecodeToString(body)
+
+        #expect(finalUrl.hasPrefix("data:;base64,"))
+        #expect(decoded.contains("\"key\":\"needle\""))
+        #expect(decoded.contains("\"page\":3"))
+    }
+
+    @Test("source.setVariable stores nested JSON without flattening")
+    func sourceSetVariablePreservesNestedJSON() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "legado-variable-test-\(UUID().uuidString)"
+        source.jsLib = "function noop() { return ''; }"
+        BookSourceRuntimeStateStore.shared.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+        let bridge = ModernParserBridge(source: source)
+        let ruleUrl = """
+        <js>
+        source.setVariable(JSON.stringify({ more: { mode: "novel" }, list: ["a", "b"] }));
+        let payload = java.base64Encode(source.getVariable());
+        `data:;base64,${payload},{"type":"state"}`;
+        </js>
+        """
+
+        let (body, _) = try await bridge.fetch(ruleUrl: ruleUrl)
+        let decoded = LegadoJSBridge().hexDecodeToString(body)
+
+        #expect(decoded.contains("\"more\""))
+        #expect(decoded.contains("\"mode\":\"novel\""))
+        #expect(decoded.contains("\"list\""))
+        #expect(BookSourceRuntimeStateStore.shared.sourceVariableJSON(for: source.bookSourceUrl) == decoded)
+    }
+
+    @Test("cached cloud config hydrates source variables before explore JS reads filters")
+    func cachedCloudConfigHydratesExploreFilters() async throws {
+        let cloudPayload = #"{"version":"20260518","hosts":["https://v1.gyks.cf"],"小说":["番茄","七猫"]}"#
+        let encodedCloudPayload = Data(cloudPayload.utf8).base64EncodedString()
+        var source = BookSource()
+        source.bookSourceUrl = "legado-cloud-config-test-\(UUID().uuidString)"
+        source.bookSourceName = "Cloud Config Test"
+        source.jsLib = """
+        let defaultConfig = { 线路: 'https://v1.gyks.cf', 发现页来源: '番茄', 发现页类型: '小说' };
+        function _getParsedVariable() {
+            let v = source.getVariable();
+            try { return JSON.parse(v); } catch(e) { return defaultConfig; }
+        }
+        function getVariable(k) {
+            let parsed = _getParsedVariable();
+            if (!k) { return parsed; }
+            return parsed[k] == undefined ? '' : parsed[k];
+        }
+        function setVariable(k, v) {
+            let parsed = getVariable();
+            parsed[k] = v;
+            source.setVariable(JSON.stringify(parsed));
+        }
+        function getCloudSettings(force) {
+            let cachedVersion = cache.get('gyksconfig');
+            if (cachedVersion && parseInt(cachedVersion) >= 20260518) {
+                return;
+            }
+            let js = JSON.parse(java.ajax('data:application/json;base64,\(encodedCloudPayload)'));
+            cache.put('gyksconfig', js.version);
+            setVariable('云端配置', js);
+        }
+        function cloudPlatforms() {
+            getCloudSettings(true);
+            var config = getVariable('云端配置');
+            return JSON.stringify([{
+                title: '平台',
+                type: 'select',
+                chars: config['小说'] || [],
+                action: "show(infoMap['平台'],'发现页来源')",
+                default: '番茄'
+            }]);
+        }
+        """
+        source.exploreUrl = "<js>cloudPlatforms()</js>"
+
+        BookSourceRuntimeStateStore.shared.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+        LegadoCacheBridge(sourceId: source.bookSourceUrl).put("gyksconfig", "20260518")
+        defer {
+            BookSourceRuntimeStateStore.shared.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+            LegadoCacheBridge(sourceId: source.bookSourceUrl).delete("gyksconfig")
+        }
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+        let platform = try #require(items.first)
+
+        #expect(platform.chars == ["番茄", "七猫"])
+        let stored = try #require(BookSourceRuntimeStateStore.shared.sourceVariableJSON(for: source.bookSourceUrl))
+        #expect(stored.contains("\"云端配置\""))
+        #expect(stored.contains("\"hosts\""))
+    }
+
+    @Test("Legado runtime bridge runs search detail toc and content data URI pipeline")
+    func legadoRuntimePipelineDataURIFlow() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "legado-pipeline-test-\(UUID().uuidString)"
+        source.bookSourceName = "Pipeline Test"
+        source.jsLib = """
+        function request(url, method, body) {
+            if (url.indexOf('/search') === 0) {
+                return JSON.stringify({ data: [{
+                    book_id: 'b1', source: 'demo', tab: 'novel',
+                    book_name: 'Pipeline Book', author: 'Author',
+                    thumb_url: 'https://img.test/cover.jpg', abstract: 'Intro',
+                    toc_url: ''
+                }]});
+            }
+            if (url.indexOf('/detail') === 0) {
+                return JSON.stringify({ data: {
+                    book_id: 'b1', source: 'demo', tab: 'novel',
+                    book_name: 'Pipeline Book', author: 'Author',
+                    thumb_url: 'https://img.test/cover.jpg', abstract: 'Intro',
+                    toc_url: ''
+                }});
+            }
+            if (url.indexOf('/catalog') === 0) {
+                return JSON.stringify({ data: [
+                    { title: 'Chapter 1', item_id: 'c1', source: 'demo', tab: 'novel' }
+                ]});
+            }
+            if (url.indexOf('/content') === 0) {
+                return JSON.stringify({ content: 'Chapter body from runtime' });
+            }
+            return '{}';
+        }
+        """
+        source.searchUrl = """
+        <js>
+        let payload = java.base64Encode(JSON.stringify({ key: key, page: page }));
+        `data:;base64,${payload},{"type":"search"}`;
+        </js>
+        """
+        source.exploreUrl = """
+        <js>
+        let payload = java.base64Encode(JSON.stringify({ section: 'hot', page: page }));
+        JSON.stringify([{ title: 'Hot Books', url: `data:;base64,${payload},{"type":"discover"}` }]);
+        </js>
+        """
+        source.ruleSearch.bookList = """
+        <js>
+        JSON.parse(java.hexDecodeToString(result));
+        request('/search');
+        </js>$.data
+        """
+        source.ruleSearch.name = "$.book_name"
+        source.ruleSearch.author = "$.author"
+        source.ruleSearch.coverUrl = "$.thumb_url"
+        source.ruleSearch.intro = "$.abstract"
+        source.ruleSearch.bookUrl = """
+        <js>
+        let detail = java.base64Encode(JSON.stringify({
+            book_id: result.book_id, source: result.source, tab: result.tab, url: result.toc_url || ''
+        }));
+        `data:;base64,${detail},{"type":"detail"}`;
+        </js>
+        """
+        source.ruleExplore.bookList = """
+        <js>
+        JSON.parse(java.hexDecodeToString(result));
+        request('/search');
+        </js>$.data
+        """
+        source.ruleExplore.name = "$.book_name"
+        source.ruleExplore.author = "$.author"
+        source.ruleExplore.coverUrl = "$.thumb_url"
+        source.ruleExplore.intro = "$.abstract"
+        source.ruleExplore.bookUrl = source.ruleSearch.bookUrl
+        source.ruleBookInfo.initScript = """
+        <js>
+        JSON.parse(java.hexDecodeToString(result));
+        request('/detail');
+        </js>$.data
+        """
+        source.ruleBookInfo.name = "$.book_name"
+        source.ruleBookInfo.author = "$.author"
+        source.ruleBookInfo.coverUrl = "$.thumb_url"
+        source.ruleBookInfo.intro = "$.abstract"
+        source.ruleBookInfo.tocUrl = """
+        <js>
+        let toc = java.base64Encode(JSON.stringify({
+            book_id: result.book_id, source: result.source, tab: result.tab, url: result.toc_url || ''
+        }));
+        `data:;base64,${toc},{"type":"toc"}`;
+        </js>
+        """
+        source.ruleToc.chapterList = """
+        <js>
+        const res = JSON.parse(java.hexDecodeToString(result));
+        java.put('book_id', res.book_id);
+        request('/catalog');
+        </js>$.data
+        """
+        source.ruleToc.chapterName = "$.title"
+        source.ruleToc.chapterUrl = """
+        <js>
+        let content = java.base64Encode(JSON.stringify({
+            book_id: java.get('book_id'), item_id: result.item_id,
+            title: result.title, source: result.source, tab: result.tab
+        }));
+        `data:;base64,${content},{"type":"content"}`;
+        </js>
+        """
+        source.ruleContent.content = """
+        <js>
+        JSON.parse(java.hexDecodeToString(result));
+        request('/content');
+        </js>$.content
+        """
+        source.ruleContent.title = "@js:result.title || ''"
+
+        let bridge = ModernParserBridge(source: source)
+        let books = try await bridge.searchBooks(keyword: "Pipeline")
+        #expect(books.count == 1)
+        #expect(books[0].bookUrl.hasPrefix("data:;base64,"))
+
+        let info = try await bridge.getBookInfo(url: books[0].bookUrl)
+        #expect(info.name == "Pipeline Book")
+        #expect(info.tocUrl.hasPrefix("data:;base64,"))
+
+        let chapters = try await bridge.getChapterList(url: info.tocUrl)
+        #expect(chapters.map(\.title) == ["Chapter 1"])
+        #expect(chapters[0].url.hasPrefix("data:;base64,"))
+
+        let content = try await bridge.getContent(url: chapters[0].url)
+        #expect(content == "Chapter body from runtime")
+
+        let fetcher = BookSourceFetcher.shared
+        let discoverItems = await fetcher.discoverItems(page: 2, in: source)
+        #expect(discoverItems.compactMap(\.title) == ["Hot Books"])
+        let discoveredBooks = try await fetcher.discoverBooks(from: discoverItems[0], in: source)
+        #expect(discoveredBooks.map(\.name) == ["Pipeline Book"])
+
+        let fetchedBooks = try await fetcher.search(query: "Pipeline", in: source)
+        #expect(fetchedBooks.count == 1)
+        let infoPackage = try await fetcher.fetchBookInfoPackage(
+            url: fetchedBooks[0].bookUrl,
+            source: source,
+            runtimeVariables: fetchedBooks[0].runtimeVariables
+        )
+        #expect(infoPackage.name == "Pipeline Book")
+        let tocPackage = try await fetcher.fetchTOCPackage(
+            tocUrl: infoPackage.tocUrl,
+            source: source,
+            runtimeVariables: infoPackage.runtimeVariables
+        )
+        #expect(tocPackage.chapters.map(\.title) == ["Chapter 1"])
+        let bookId = UUID()
+        let chapterPackage = try await fetcher.fetchChapterPackage(
+            ref: tocPackage.chapters[0],
+            bookId: bookId,
+            source: source
+        )
+        defer {
+            fetcher.clearAllChapterCache(bookId: bookId)
+        }
+        #expect(chapterPackage.content == "Chapter body from runtime")
+    }
+}
+
+@Suite("BookSource local fixture", .serialized)
+struct BookSourceLocalFixtureTests {
+
+    @Test("local Legado source fixture decodes when path is provided")
+    func localLegadoSourceFixtureDecodes() throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let path = env["YueduLocalBookSourceFixturePath"]
+                ?? env["TEST_RUNNER_YueduLocalBookSourceFixturePath"],
+              !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let sources = try JSONDecoder().decode([BookSource].self, from: data)
+        let source = try #require(
+            sources.first { $0.bookSourceName.contains("光遇") || $0.bookSourceUrl.contains("光遇") }
+        )
+
+        #expect(!source.jsLib.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        #expect(source.searchUrl.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<js>"))
+        #expect(source.exploreUrl.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<js>"))
+        #expect(source.ruleBookInfo.initScript.contains("java.hexDecodeToString"))
+        #expect(source.ruleToc.chapterUrl.contains("data:;base64"))
+        #expect(source.ruleContent.content.contains("chapter.index"))
+        #expect(!source.loginUi.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    @Test("local GuangYu fixture hydrates cloud discover platform filters")
+    func localGuangYuFixtureHydratesCloudDiscoverFilters() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let path = env["YueduLocalBookSourceFixturePath"]
+                ?? env["TEST_RUNNER_YueduLocalBookSourceFixturePath"],
+              !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let sources = try JSONDecoder().decode([BookSource].self, from: data)
+        let source = try #require(
+            sources.first { $0.bookSourceName.contains("光遇") || $0.bookSourceUrl.contains("光遇") }
+        )
+        let runtimeStore = BookSourceRuntimeStateStore.shared
+        let cache = LegadoCacheBridge(sourceId: source.bookSourceUrl)
+        runtimeStore.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+        cache.put("gyksconfig", "20260518")
+        defer {
+            runtimeStore.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+            cache.delete("gyksconfig")
+        }
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+        let platform = try #require(items.first { $0.title == "平台" })
+        let platforms = try #require(platform.chars)
+
+        #expect(platforms.count > 6)
+        #expect(platforms.contains("69书吧"))
+        #expect(platforms.contains("小米"))
+    }
+}
+
+@Suite("Qidian source regression", .serialized)
+struct QidianSourceRegressionTests {
+
+    private static var fixturePath: String? {
+        let env = ProcessInfo.processInfo.environment
+        let value = env["YueduQidianBookSourceFixturePath"]
+            ?? env["TEST_RUNNER_YueduQidianBookSourceFixturePath"]
+        return value?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isQidianSource(_ source: BookSource) -> Bool {
+        source.bookSourceUrl.localizedCaseInsensitiveContains("qidian")
+            || source.bookSourceName.contains("起点")
+            || source.bookSourceName.contains("起點")
+    }
+
+    @Test("provided Qidian source emits discover categories with a token")
+    func providedSourceEmitsDiscoverCategories() async throws {
+        guard let path = Self.fixturePath, !path.isEmpty,
+              let token = ProcessInfo.processInfo.environment["YueduQidianToken"],
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first(where: Self.isQidianSource)
+        )
+        LoginManager.shared.storeLoginInfo(
+            sourceUrl: source.bookSourceUrl,
+            info: ["Token": token]
+        )
+        defer { LoginManager.shared.clearLogin(sourceUrl: source.bookSourceUrl) }
+
+        let items = await ModernParserBridge(source: source).getExploreItems(page: 1)
+
+        #expect(!items.isEmpty)
+        #expect(items.contains { ($0.url ?? "").contains("qidian.com") })
+
+        let category = try #require(items.first { item in
+            guard let url = item.url else { return false }
+            return url.contains("qidian.com")
+        })
+        let books = try await BookSourceFetcher.shared.discoverBooks(
+            from: category,
+            page: 1,
+            in: source
+        )
+        #expect(!books.isEmpty)
+    }
+
+    @Test("provided Qidian source passes every health-check stage")
+    @MainActor
+    func providedSourcePassesEveryHealthCheckStage() async throws {
+        guard let path = Self.fixturePath, !path.isEmpty,
+              let token = ProcessInfo.processInfo.environment["YueduQidianToken"],
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first(where: Self.isQidianSource)
+        )
+        LoginManager.shared.storeLoginInfo(
+            sourceUrl: source.bookSourceUrl,
+            info: ["Token": token]
+        )
+        defer { LoginManager.shared.clearLogin(sourceUrl: source.bookSourceUrl) }
+
+        var policy = BookSourceCheckPolicy()
+        policy.badAction = .markOnly
+        policy.timeoutSeconds = 180
+
+        let checker = BookSourceHealthChecker()
+        checker.policy = policy
+        checker.prepare(sources: [source])
+        await checker.runAll()
+
+        let item = try #require(checker.items.first)
+        let stageSummary = ValidationStage.allCases.map { stage in
+            let outcome = item.outcome(stage)
+            return "\(stage.longTitle)=\(outcome.status)"
+        }.joined(separator: " ")
+        NSLog("❖QIDIAN HEALTH REGRESSION❖ %@", stageSummary)
+
+        #expect(item.isFinished)
+        #expect(item.overallPass)
+        for stage in ValidationStage.allCases {
+            #expect(item.outcome(stage).status == .pass)
+        }
+    }
+
+    @Test("provided Qidian source fetches book info TOC chapter and review markup")
+    func providedSourceFetchesTOCChapterAndReviewMarkup() async throws {
+        guard let path = Self.fixturePath, !path.isEmpty,
+              let token = ProcessInfo.processInfo.environment["YueduQidianToken"],
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first(where: Self.isQidianSource)
+        )
+        LoginManager.shared.storeLoginInfo(
+            sourceUrl: source.bookSourceUrl,
+            info: ["Token": token]
+        )
+        defer { LoginManager.shared.clearLogin(sourceUrl: source.bookSourceUrl) }
+
+        let items = await ModernParserBridge(source: source).getExploreItems(page: 1)
+        let category = try #require(items.first { item in
+            guard let url = item.url else { return false }
+            return url.contains("qidian.com")
+        })
+        let books = try await BookSourceFetcher.shared.discoverBooks(
+            from: category,
+            page: 1,
+            in: source
+        )
+        let discovered = try #require(books.first { !$0.bookUrl.isEmpty })
+
+        let fetcher = BookSourceFetcher.shared
+        let info = try await fetcher.fetchBookInfo(
+            url: discovered.bookUrl,
+            source: source,
+            runtimeVariables: discovered.runtimeVariables
+        )
+        #expect(!info.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        #expect(info.tocUrl.contains("chapterList"))
+
+        let toc = try await fetcher.fetchTOCPackage(
+            tocUrl: info.tocUrl,
+            source: source,
+            runtimeVariables: info.runtimeVariables,
+            forceRefresh: true
+        )
+        #expect(toc.chapters.count > 0)
+        let chapter = try #require(
+            toc.chapters.first { !$0.shouldRenderAsVolumeSeparator && $0.hasLoadableContentURL }
+        )
+
+        let bookId = UUID()
+        defer { fetcher.clearAllChapterCache(bookId: bookId) }
+        let chapterPackage = try await fetcher.fetchChapterPackage(
+            ref: chapter,
+            bookId: bookId,
+            source: source
+        )
+        #expect(!chapterPackage.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+        let normalizedHTML = try #require(
+            fetcher.loadNormalizedChapterHTMLSync(
+                bookId: bookId,
+                chapterIndex: chapter.index,
+                expectedSourceURL: chapter.url,
+                expectedTOCTitle: chapter.title
+            )
+        )
+        let reviewMarkerCount = normalizedHTML.components(separatedBy: "ydreview://").count - 1
+        let reviewImageCount = normalizedHTML.components(separatedBy: "yd-review-image").count - 1
+        NSLog(
+            "❖QIDIAN REGRESSION❖ book=%@ chapters=%d chapter=%@ content=%d reviewMarkers=%d reviewImages=%d",
+            info.name,
+            toc.chapters.count,
+            chapter.title,
+            chapterPackage.content.count,
+            reviewMarkerCount,
+            reviewImageCount
+        )
+        #expect(normalizedHTML.contains("<!DOCTYPE html>"))
+    }
+}
+
+@Suite("Qimo source regression", .serialized)
+struct QimoSourceRegressionTests {
+
+    @Test("provided Qimo source transforms live discover rankings")
+    func providedSourceTransformsLiveDiscoverRankings() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let fixturePath = environment["YueduQimoBookSourceFixturePath"]
+                ?? environment["TEST_RUNNER_YueduQimoBookSourceFixturePath"],
+              !fixturePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: fixturePath))
+        let source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first {
+                $0.bookSourceName.contains("柒墨")
+            }
+        )
+        let items = await ModernParserBridge(source: source).getExploreItems(page: 1)
+        let ranking = try #require(items.first { item in
+            guard let url = item.url else { return false }
+            return url.contains("m.qidian.com/majax/rank/")
+        })
+        let books = try await BookSourceFetcher.shared.discoverBooks(
+            from: ranking,
+            page: 1,
+            in: source
+        )
+
+        #expect(!books.isEmpty)
+        #expect(books.allSatisfy { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+    }
+
+    @Test("provided Qimo source preserves live paragraph and FULL review structure")
+    func providedSourcePreservesLiveReviewStructure() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let fixturePath = environment["YueduQimoBookSourceFixturePath"]
+                ?? environment["TEST_RUNNER_YueduQimoBookSourceFixturePath"],
+              let token = environment["YueduQimoToken"]
+                ?? environment["TEST_RUNNER_YueduQimoToken"],
+              !fixturePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: fixturePath))
+        let source = try #require(
+            try JSONDecoder().decode([BookSource].self, from: data).first {
+                $0.bookSourceName.contains("柒墨")
+            }
+        )
+        LoginManager.shared.storeLoginInfo(
+            sourceUrl: source.bookSourceUrl,
+            info: ["授权令牌": token]
+        )
+        BookSourceRuntimeStateStore.shared.setSourceVariableJSON(
+            #"{"段评开关":"已开"}"#,
+            for: source.bookSourceUrl
+        )
+        defer {
+            LoginManager.shared.clearLogin(sourceUrl: source.bookSourceUrl)
+            BookSourceRuntimeStateStore.shared.setSourceVariableJSON(nil, for: source.bookSourceUrl)
+        }
+
+        let chapterPayload = Data("1033014772,794296040".utf8).base64EncodedString()
+        let chapter = OnlineChapterRef(
+            index: 1,
+            title: "1、归零",
+            url: "data:chapter_info;base64,\(chapterPayload),{\"type\":\"qdreader\"}"
+        )
+        let cacheBookID = UUID()
+        defer { BookSourceFetcher.shared.clearAllChapterCache(bookId: cacheBookID) }
+
+        let package = try await BookSourceFetcher.shared.fetchChapterPackage(
+            ref: chapter,
+            bookId: cacheBookID,
+            source: source
+        )
+        let normalizedHTML = try #require(
+            BookSourceFetcher.shared.loadNormalizedChapterHTMLSync(
+                bookId: cacheBookID,
+                chapterIndex: chapter.index,
+                expectedSourceURL: chapter.url,
+                expectedTOCTitle: chapter.title
+            )
+        )
+        let document = try SwiftSoup.parse(normalizedHTML)
+        let paragraphs = try document.select("article#reader-content > p").array()
+        let reviewImages = try document.select("a.yd-review-image").array()
+        let fullReviews = try document.select(
+            #"a.yd-review-image[data-yd-review-style="full"]"#
+        ).array()
+
+        #expect(package.content.contains("洛城，秋"))
+        #expect(paragraphs.count > 20)
+        #expect(reviewImages.count > 0)
+        #expect(fullReviews.count > 0)
+        #expect(try paragraphs.allSatisfy { try $0.text().count < 500 })
+    }
+}
+
+@Suite("CustomUrl", .serialized)
+struct CustomUrlTests {
+
+    @Test("simple URL without options")
+    func simpleUrl() {
+        let cu = CustomUrl(url: "https://example.com")
+        #expect(cu.url == "https://example.com")
+        #expect(cu.attributes.isEmpty)
+    }
+
+    @Test("serialized URL with JSON options")
+    func parseSerialized() {
+        let cu = CustomUrl(serialized: "https://example.com,{\"method\":\"POST\"}")
+        #expect(cu.url == "https://example.com")
+        #expect(cu.attributes["method"] as? String == "POST")
+    }
+
+    @Test("serialized URL without options")
+    func parseSerializedNoOptions() {
+        let cu = CustomUrl(serialized: "https://example.com/path")
+        #expect(cu.url == "https://example.com/path")
+        #expect(cu.attributes.isEmpty)
+    }
+
+    @Test("serialization roundtrip")
+    func serializationRoundtrip() {
+        var cu = CustomUrl(url: "https://example.com")
+        cu.putAttribute(key: "method", value: "POST")
+        cu.putAttribute(key: "retry", value: 3)
+
+        let serialized = cu.serialized()
+        let cu2 = CustomUrl(serialized: serialized)
+        #expect(cu2.url == "https://example.com")
+        #expect(cu2.attributes["method"] as? String == "POST")
+        #expect(cu2.attributes["retry"] as? Int == 3)
+    }
+
+    @Test("getAttribute type casting")
+    func getAttributeTyped() {
+        var cu = CustomUrl(url: "https://example.com")
+        cu.putAttribute(key: "count", value: 42)
+        let val: Int? = cu.getAttribute(key: "count")
+        #expect(val == 42)
+        let missing: String? = cu.getAttribute(key: "nonexistent")
+        #expect(missing == nil)
+    }
+
+    @Test("serialized with no attributes returns just URL")
+    func serializedNoAttributes() {
+        let cu = CustomUrl(url: "https://example.com")
+        #expect(cu.serialized() == "https://example.com")
+    }
+}
+
+// MARK: - 8. JSCoreEngine Tests
+
+@Suite("JSCoreEngine", .serialized)
+struct JSCoreEngineTests {
+
+    @Test("simple expression evaluation")
+    func simpleExpression() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("1 + 2")
+        #expect(result == "3")
+    }
+
+    @Test("string return")
+    func stringReturn() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("'hello world'")
+        #expect(result == "hello world")
+    }
+
+    @Test("number return")
+    func numberReturn() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("3.14")
+        #expect(result != nil)
+        #expect(result!.contains("3.14"))
+    }
+
+    @Test("object return is JSON serialized")
+    func objectReturn() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("({a: 1, b: 'hello'})")
+        #expect(result != nil)
+        // Should be a JSON string
+        #expect(result!.contains("\"a\""))
+        #expect(result!.contains("\"b\""))
+    }
+
+    @Test("result variable binding")
+    func resultVariableBinding() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("result.toUpperCase()", result: "hello")
+        #expect(result == "HELLO")
+    }
+
+    @Test("JSON result keeps raw string coercion and parsed field access")
+    func jsonResultKeepsRawStringCoercionAndParsedFieldAccess() {
+        let engine = JSCoreEngine()
+        let raw = #"{"data":{"books":[{"name":"榜單作品"}]}}"#
+
+        let result = engine.evaluate(
+            "JSON.stringify({raw:String(result),name:result.data.books[0].name,array:Array.isArray(result.data.books),json:JSON.stringify(result)})",
+            result: raw
+        )
+        let data = try? JSONSerialization.jsonObject(
+            with: Data((result ?? "").utf8),
+            options: .fragmentsAllowed
+        ) as? [String: Any]
+
+        #expect(data?["raw"] as? String == raw)
+        #expect(data?["name"] as? String == "榜單作品")
+        #expect(data?["array"] as? Bool == true)
+        #expect(data?["json"] as? String == raw)
+    }
+
+    @Test("result variable with nil")
+    func resultVariableNil() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("typeof result", result: nil)
+        #expect(result == "object") // NSNull maps to object
+    }
+
+    @Test("custom bindings")
+    func customBindings() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("x + y", bindings: ["x": 10, "y": 20])
+        #expect(result == "30")
+    }
+
+    @Test("java.put/get bridge")
+    func javaPutGetBridge() {
+        let engine = JSCoreEngine()
+        var storage: [String: String] = [:]
+        engine.putData = { key, val in storage[key] = val }
+        engine.getData = { key in storage[key] }
+
+        _ = engine.evaluate("java.put('myKey', 'myValue')")
+        let result = engine.evaluate("java.get('myKey')")
+        #expect(result == "myValue")
+        #expect(storage["myKey"] == "myValue")
+    }
+
+    @Test("java.base64Encode/Decode bridge")
+    func javaBase64Bridge() {
+        let engine = JSCoreEngine()
+        let encoded = engine.evaluate("java.base64Encode('Hello')")
+        #expect(encoded == "SGVsbG8=")
+        let decoded = engine.evaluate("java.base64Decode('SGVsbG8=')")
+        #expect(decoded == "Hello")
+    }
+
+    @Test("java.HMacBase64 exports HMAC-SHA256 to JavaScript")
+    func javaHMACBase64Bridge() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate(
+            "java.HMacBase64('The quick brown fox jumps over the lazy dog', 'HmacSHA256', 'key')"
+        )
+
+        #expect(result == "97yD9DBThCSxMpjmqm+xQ+9NWaFJRhdZl0edvC0aPNg=")
+    }
+
+    @Test("java.base64DecodeToByteArray exports unsigned bytes to JavaScript")
+    func javaBase64ByteArrayBridge() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate(
+            "JSON.stringify(java.base64DecodeToByteArray('AH+A/w=='))"
+        )
+
+        #expect(result == "[0,127,128,255]")
+    }
+
+    @Test("error handling for invalid JS")
+    func errorHandlingInvalidJS() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("this is not valid javascript }{")
+        // Should return nil or capture error
+        #expect(engine.lastError != nil || result == nil || result == "undefined")
+    }
+
+    @Test("LYC Set shim delegates constructor calls to the native Set")
+    func lycSetShimPreservesNativeConstructor() {
+        let engine = JSCoreEngine()
+        let constructed = engine.evaluate("""
+        (function () {
+            var s = new Set();
+            s.add('a'); s.add('a'); s.add('b');
+            var s2 = new Set(['x', 'y', 'x']);
+            return [s.size, s.has('a'), s2.size, s instanceof Set, Array.from(s2).join('-')].join('|');
+        })();
+        """)
+        #expect(constructed == "2|true|2|true|x-y")
+
+        // LYC's plain-call form must still write through the source bridge.
+        _ = engine.evaluate("Set('lyckey', 'lycvalue')")
+        let stored = engine.evaluate("source.get('lyckey')")
+        #expect(stored == "lycvalue")
+    }
+
+    @Test("reset clears context")
+    func resetClearsContext() {
+        let engine = JSCoreEngine()
+        _ = engine.evaluate("var testVar = 42")
+        engine.reset()
+        let result = engine.evaluate("typeof testVar")
+        #expect(result == "undefined")
+    }
+
+    @Test("cache object is available from JS")
+    func cacheObjectFromJS() {
+        var source = BookSource()
+        source.bookSourceUrl = "cache-js-\(UUID().uuidString)"
+        let engine = JSCoreEngine()
+        engine.bookSource = source
+
+        _ = engine.evaluate("cache.putMemory('memKey', 'memVal')")
+        let result = engine.evaluate("cache.getFromMemory('memKey')")
+
+        #expect(result == "memVal")
+    }
+
+    @Test("java.getCookie can return a named cookie")
+    func javaGetCookieNamedValue() {
+        let host = "https://cookie-\(UUID().uuidString).example.com"
+        CookieStore.shared.set(url: host, cookie: "qttoken=abc123")
+        CookieStore.shared.set(url: host, cookie: "sessionid=sid456")
+        defer {
+            CookieStore.shared.remove(url: host)
+        }
+        let engine = JSCoreEngine()
+
+        let result = engine.evaluate("java.getCookie('\(host)', 'sessionid')")
+
+        #expect(result == "sid456")
+    }
+
+    @Test("startBrowserAwait with refetchAfterSuccess false returns the page's HTML")
+    func startBrowserAwaitReturnsBody() {
+        let engine = JSCoreEngine()
+        engine.browserPresentHandler = { _, completion in
+            completion("<html>done</html>")
+        }
+
+        let result = engine.evaluate(
+            "java.startBrowserAwait('https://example.com', 'Title', false).body()"
+        )
+
+        #expect(result == "<html>done</html>")
+    }
+
+    @Test("startBrowserAwait refetches the URL through the source's requests by default, as Legado does")
+    func startBrowserAwaitRefetchesByDefault() {
+        let engine = JSCoreEngine()
+        var presented: SourceBrowserRequest?
+        engine.browserPresentHandler = { request, completion in
+            presented = request
+            completion("<html>challenge page</html>")
+        }
+        var refetched: URL?
+        engine.networkHandler = { request in
+            refetched = request.url
+            return .bodyOnly(request: request, body: #"{"books":[]}"#)
+        }
+
+        let result = engine.evaluate(
+            "java.startBrowserAwait('https://api.example.com/search?q=1', 'Verify').body()"
+        )
+
+        #expect(result == #"{"books":[]}"#)
+        #expect(refetched?.absoluteString == "https://api.example.com/search?q=1")
+        #expect(presented?.awaitsResult == true)
+        #expect(presented?.title == "Verify")
+    }
+
+    @Test("a dismissed startBrowserAwait page throws into the script")
+    func startBrowserAwaitDismissedThrows() {
+        let engine = JSCoreEngine()
+        engine.browserPresentHandler = { _, completion in completion(nil) }
+
+        let result = engine.evaluate("""
+            (function () {
+                try { java.startBrowserAwait('https://example.com', 'Title'); return 'returned'; }
+                catch (e) { return 'threw'; }
+            })()
+            """)
+
+        #expect(result == "threw")
+    }
+
+    @Test("startBrowserAwait shows source-supplied html and, without refetch, returns the page")
+    func startBrowserAwaitShowsSuppliedHTML() {
+        let engine = JSCoreEngine()
+        var presented: SourceBrowserRequest?
+        engine.browserPresentHandler = { request, completion in
+            presented = request
+            completion("<html>settings saved</html>")
+        }
+
+        let result = engine.evaluate(
+            "java.startBrowserAwait('https://example.com/', '設定', false, '<form>settings</form>').body()"
+        )
+
+        #expect(result == "<html>settings saved</html>")
+        #expect(presented?.html == "<form>settings</form>")
+        #expect(presented?.url == "https://example.com/")
+    }
+
+    @Test("startBrowserAwait with html and refetch requests the URL, as the original Legado and MD3 do")
+    func startBrowserAwaitWithHTMLRefetches() {
+        let engine = JSCoreEngine()
+        engine.browserPresentHandler = { _, completion in completion("<html>page</html>") }
+        engine.networkHandler = { request in
+            .bodyOnly(request: request, body: "refetched \(request.url?.path ?? "")")
+        }
+
+        let result = engine.evaluate(
+            "java.startBrowserAwait('https://example.com/api', 'Verify', true, '<p>local</p>').body()"
+        )
+
+        #expect(result == "refetched /api")
+    }
+
+    @Test("startBrowser forwards source-supplied html without waiting")
+    func startBrowserForwardsHTML() {
+        let engine = JSCoreEngine()
+        var presented: SourceBrowserRequest?
+        engine.browserPresentHandler = { request, _ in presented = request }
+
+        _ = engine.evaluate("java.startBrowser('https://example.com/', '說明', '<p>help</p>')")
+
+        #expect(presented?.html == "<p>help</p>")
+        #expect(presented?.awaitsResult == false)
+        #expect(presented?.title == "說明")
+    }
+
+    @Test("getVerificationCode shows the image for the attached source and returns the code typed")
+    func getVerificationCodeReturnsTypedCode() {
+        let engine = JSCoreEngine()
+        engine.bookSource = BookSource(bookSourceUrl: "https://captcha.example", bookSourceName: "驗證碼書源")
+        var presented: SourceCaptchaRequest?
+        engine.captchaPresentHandler = { request, completion in
+            presented = request
+            completion("7K3Q")
+        }
+
+        let result = engine.evaluate("java.getVerificationCode('https://captcha.example/code.jpg?r=1')")
+
+        #expect(result == "7K3Q")
+        #expect(presented?.imageURL == "https://captcha.example/code.jpg?r=1")
+        #expect(presented?.sourceName == "驗證碼書源")
+        #expect(presented?.sourceURL == "https://captcha.example")
+    }
+
+    @Test("a dismissed or empty captcha throws into the script, as Legado does")
+    func getVerificationCodeWithoutAnswerThrows() {
+        let engine = JSCoreEngine()
+        let script = """
+            (function () {
+                try { java.getVerificationCode('https://captcha.example/code.jpg'); return 'returned'; }
+                catch (e) { return 'threw'; }
+            })()
+            """
+        engine.captchaPresentHandler = { _, completion in completion(nil) }
+        #expect(engine.evaluate(script) == "threw")
+        engine.captchaPresentHandler = { _, completion in completion("") }
+        #expect(engine.evaluate(script) == "threw")
+    }
+
+    @Test("a source page opens with the URL's option headers, then the source's headers and cookies")
+    func sourceBrowserRequestCarriesHeaders() throws {
+        let host = "https://browser-\(UUID().uuidString.prefix(8).lowercased()).example.com"
+        CookieStore.shared.set(url: host, cookie: "cf_clearance=abc")
+        defer { CookieStore.shared.remove(url: host) }
+        var source = BookSource(bookSourceUrl: host, bookSourceName: "browser request fixture")
+        source.header = #"{"User-Agent":"SourceUA/1.0","Referer":"\#(host)/"}"#
+        let engine = JSCoreEngine()
+        engine.bookSource = source
+
+        let plain = try #require(engine.sourceBrowserRequest(urlString: "\(host)/verify"))
+        #expect(plain.value(forHTTPHeaderField: "User-Agent") == "SourceUA/1.0")
+        #expect(plain.value(forHTTPHeaderField: "Cookie") == "cf_clearance=abc")
+
+        let withOptions = try #require(engine.sourceBrowserRequest(
+            urlString: #"\#(host)/verify, {"headers":{"User-Agent":"OptionUA/2.0"}}"#))
+        #expect(withOptions.url?.absoluteString == "\(host)/verify")
+        #expect(withOptions.value(forHTTPHeaderField: "User-Agent") == "OptionUA/2.0")
+        #expect(withOptions.value(forHTTPHeaderField: "Referer") == "\(host)/")
+
+        #expect(engine.sourceBrowserRequest(urlString: "data:text/html,<p>settings</p>") == nil)
+    }
+
+    @Test("four-argument showBrowser preserves source-authored page contract")
+    func showBrowserPreservesSourceAuthoredPage() {
+        let engine = JSCoreEngine()
+        var captured: LegadoBrowserPageRequest?
+        engine.browserPagePresentHandler = { captured = $0 }
+
+        _ = engine.evaluate(
+            #"java.showBrowser('https://reviews.example/', '<html>reviews</html>', 'window.qmRun=run;', '{\"heightPercentage\":0.8}')"#
+        )
+
+        #expect(captured?.baseURL == "https://reviews.example/")
+        #expect(captured?.html == "<html>reviews</html>")
+        #expect(captured?.injectedJavaScript == "window.qmRun=run;")
+        #expect(captured?.configurationJSON == #"{"heightPercentage":0.8}"#)
+    }
+
+    @Test("source action restores its captured book chapter and result bindings")
+    func sourceActionRestoresCapturedBindings() {
+        var source = BookSource(
+            bookSourceUrl: "https://action-context.example",
+            bookSourceName: "action context fixture"
+        )
+        source.jsLib = #"""
+        function openReview() {
+          java.showBrowser(
+            'https://reviews.example/',
+            '<html>' + book.name + '|' + chapter.title + '|' + result + '</html>',
+            '',
+            '{"heightPercentage":0.8}'
+          );
+        }
+        """#
+        let bridge = ModernParserBridge(source: source)
+        var captured: LegadoBrowserPageRequest?
+        bridge.browserPagePresentHandler = { captured = $0 }
+        _ = bridge.evaluateSourceScript(
+            "book.name='wrong book'; chapter.title='wrong chapter'; result='wrong result'"
+        )
+        let action = ReaderHTMLUtilities.LegadoSourceActionContext(
+            version: ReaderHTMLUtilities.LegadoSourceActionContext.currentVersion,
+            sourceURL: source.bookSourceUrl,
+            script: "openReview()",
+            result: "captured result",
+            baseURL: "https://chapters.example/1",
+            runtimeVariables: [:],
+            book: .init(
+                durChapterIndex: 3,
+                durChapterTitle: "captured chapter",
+                order: 3,
+                type: 0,
+                imageStyle: "",
+                name: "captured book",
+                author: "",
+                coverURL: "",
+                bookURL: "https://books.example/1",
+                tocURL: "https://books.example/1/toc",
+                abstract: ""
+            ),
+            chapter: .init(
+                index: 3,
+                title: "captured chapter",
+                order: 3,
+                url: "https://chapters.example/1",
+                isVip: true
+            )
+        )
+
+        _ = bridge.evaluateSourceAction(action)
+
+        #expect(captured?.html == "<html>captured book|captured chapter|captured result</html>")
+        #expect(captured?.configurationJSON == #"{"heightPercentage":0.8}"#)
+    }
+
+    @Test("loginCheckJs receives StrResponse and keeps the response after side effects")
+    func loginCheckJSReceivesStrResponse() {
+        var source = BookSource(
+            bookSourceUrl: "login-check-fixture-\(UUID().uuidString)",
+            bookSourceName: "login check fixture"
+        )
+        source.loginCheckJs = #"""
+        if (JSON.parse(result.body()).message === 'refresh') {
+          source.putLoginHeader('{"authorization":"Bearer refreshed"}');
+        } else {
+          result;
+        }
+        """#
+        defer { LoginManager.shared.clearLogin(sourceUrl: source.bookSourceUrl) }
+        let bridge = ModernParserBridge(source: source)
+        let body = #"{"message":"refresh","data":null}"#
+
+        let checked = bridge.applyLoginCheck(
+            html: body,
+            baseURL: "https://example.com/catalog"
+        )
+        let authorization = bridge.evaluateSourceScript(
+            "source.getLoginHeaderMap().get('authorization')"
+        )
+
+        #expect(bridge.lastSourceScriptError == nil)
+        #expect(checked == body)
+        #expect(authorization == "Bearer refreshed")
+    }
+
+    @Test("source-authored browser page routes qmRun to the native reply bridge")
+    func sourceBrowserPageRunBridge() throws {
+        let context = try #require(JSContext())
+        _ = context.evaluateScript("""
+            var window = this;
+            window.webkit = { messageHandlers: { yueduSourceRun: {
+                postMessage: function (script) { return 'native:' + script; }
+            } } };
+        """)
+        _ = context.evaluateScript(
+            JsBridgeBrowserRepresentable.sourcePageBootstrap(
+                injectedJavaScript: "window.qmRun=run;window.qmLocalCommentPage=true;"
+            )
+        )
+
+        #expect(context.exception == nil)
+        #expect(context.evaluateScript("qmRun('fixture-script')")?.toString() == "native:fixture-script")
+        #expect(context.evaluateScript("qmLocalCommentPage")?.toBool() == true)
+    }
+
+    @Test("source-authored browser page exposes synchronous java ajax and get")
+    func sourceBrowserPageSynchronousJavaNetworkBridge() throws {
+        let context = try #require(JSContext())
+        var calls: [[String: Any]] = []
+        let prompt: @convention(block) (String, String) -> String = { name, payload in
+            guard name == JsBridgeBrowserRepresentable.sourceJavaPromptName,
+                  let data = payload.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return "unexpected bridge request"
+            }
+            calls.append(object)
+            return "native-body-\(calls.count)"
+        }
+        context.setObject(prompt, forKeyedSubscript: "prompt" as NSString)
+        _ = context.evaluateScript("var window = this;")
+        _ = context.evaluateScript(
+            JsBridgeBrowserRepresentable.sourcePageBootstrap(injectedJavaScript: "")
+        )
+
+        #expect(context.exception == nil)
+        #expect(context.evaluateScript("java.ajax('https://example.com/a')")?.toString() == "native-body-1")
+        #expect(context.evaluateScript("java.get('https://example.com/b', {'X-Test':'yes'})")?.toString() == "native-body-2")
+        #expect(calls.count == 2)
+        #expect(calls[0]["method"] as? String == "ajax")
+        #expect(calls[0]["arguments"] as? [String] == ["https://example.com/a"])
+        #expect(calls[1]["method"] as? String == "get")
+        let getArguments = try #require(calls[1]["arguments"] as? [Any])
+        #expect(getArguments.first as? String == "https://example.com/b")
+        #expect((getArguments[1] as? [String: Any])?["X-Test"] as? String == "yes")
+    }
+
+    @Test("source browser java request reuses the source runtime transport")
+    func sourceBrowserJavaRequestUsesSourceRuntime() throws {
+        var source = BookSource(
+            bookSourceUrl: "source-page-network-\(UUID().uuidString)",
+            bookSourceName: "source page network fixture"
+        )
+        source.header = #"{"X-Source":"source-header"}"#
+        let bridge = ModernParserBridge(source: source)
+        var capturedRequest: URLRequest?
+        bridge.sourceScriptNetworkHandler = { request in
+            capturedRequest = request
+            return .bodyOnly(request: request, body: #"{"comments":[1]}"#)
+        }
+        let payload = #"{"method":"get","arguments":["https://example.com/comments",{"X-Page":"page-header"}]}"#
+        let script = try JsBridgeBrowserRepresentable.sourceJavaScript(
+            forPromptPayload: payload
+        )
+
+        #expect(bridge.evaluateSourceScript(script) == #"{"comments":[1]}"#)
+        #expect(capturedRequest?.value(forHTTPHeaderField: "X-Page") == "page-header")
+        #expect(capturedRequest?.value(forHTTPHeaderField: "X-Source") == "source-header")
+    }
+
+    @Test("source browser common Java network methods preserve Android return shapes")
+    func sourceBrowserJavaNetworkMethodShapes() throws {
+        let bridge = ModernParserBridge(source: BookSource(
+            bookSourceUrl: "source-page-methods-\(UUID().uuidString)",
+            bookSourceName: "source page methods fixture"
+        ))
+        var requests: [URLRequest] = []
+        bridge.sourceScriptNetworkHandler = { request in
+            requests.append(request)
+            return LegadoHTTPResult(
+                requestURL: request.url!,
+                finalURL: request.url!,
+                statusCode: 200,
+                statusMessage: "OK",
+                headers: ["X-Reply": "yes"],
+                cookies: [:],
+                body: request.httpMethod == "POST" ? "posted" : "fetched"
+            )
+        }
+        func run(_ method: String, _ arguments: [Any]) throws -> String? {
+            let data = try JSONSerialization.data(withJSONObject: [
+                "method": method,
+                "arguments": arguments,
+            ])
+            let payload = try #require(String(data: data, encoding: .utf8))
+            return bridge.evaluateSourceScript(
+                try JsBridgeBrowserRepresentable.sourceJavaScript(
+                    forPromptPayload: payload
+                )
+            )
+        }
+
+        #expect(try run("ajax", ["https://example.com/ajax"]) == "fetched")
+        #expect(try run("get", ["https://example.com/get", ["X-Page": "get"]]) == "fetched")
+        #expect(
+            try run("post", ["https://example.com/post", "payload", ["X-Page": "post"]])
+                == "posted"
+        )
+        let head = try #require(try run("head", ["https://example.com/head", [:]]))
+        let headObject = try #require(
+            JSONSerialization.jsonObject(with: Data(head.utf8)) as? [String: String]
+        )
+        #expect(headObject["X-Reply"] == "yes")
+        #expect(
+            try run("connect", ["https://example.com/connect", ["X-Page": "connect"], 1_200])?
+                .contains("Response{code=200") == true
+        )
+        #expect(requests.map(\.httpMethod) == ["GET", "GET", "POST", "HEAD", "GET"])
+        #expect(requests[4].timeoutInterval == 1.2)
+    }
+
+    // MARK: Login-source bridge methods (番茄/起点/企点 special sources)
+
+    @Test("eval() is enabled for Legado sources")
+    func evalEnabled() {
+        let engine = JSCoreEngine()
+        #expect(engine.evaluate("eval('1 + 2')") == "3")
+        // Explore-builder pattern used by 番茄 discovery rules: eval('sort'+i+'.push(...)')
+        let r = engine.evaluate("var sort0 = []; eval('sort' + 0 + '.push(7)'); sort0[0]")
+        #expect(r == "7")
+    }
+
+    @Test("cookie.getKey returns a named cookie value")
+    func cookieGetKey() {
+        let host = "https://ck-\(UUID().uuidString).example.com"
+        CookieStore.shared.set(url: host, cookie: "sessionid=sid789")
+        defer { CookieStore.shared.remove(url: host) }
+        let engine = JSCoreEngine()
+        #expect(engine.evaluate("cookie.getKey('\(host)', 'sessionid')") == "sid789")
+    }
+
+    @Test("cookie.getKey accepts a bare domain tag")
+    func cookieGetKeyBareDomain() {
+        let domain = "fq-\(UUID().uuidString.prefix(8)).example.com"
+        CookieStore.shared.set(url: "https://\(domain)", cookie: "token=t123")
+        defer { CookieStore.shared.remove(url: "https://\(domain)") }
+        let engine = JSCoreEngine()
+        #expect(engine.evaluate("cookie.getKey('\(domain)', 'token')") == "t123")
+    }
+
+    @Test("named cookie removal clears related domains without deleting login cookies")
+    func namedCookieRemovalPreservesOtherCookies() {
+        let root = "csrf-\(UUID().uuidString.prefix(8)).example.com"
+        let parent = "https://\(root)"
+        let mobile = "https://m.\(root)"
+        CookieStore.shared.set(url: parent, cookie: "_csrfToken=parent-stale; login=parent-login")
+        CookieStore.shared.set(url: mobile, cookie: "_csrfToken=mobile-stale; session=mobile-session")
+        defer {
+            CookieStore.shared.remove(url: parent)
+            CookieStore.shared.remove(url: mobile)
+        }
+
+        CookieStore.shared.remove(
+            url: parent,
+            key: "_csrfToken",
+            includingRelatedDomains: true
+        )
+
+        #expect(CookieStore.shared.getKey(url: parent, key: "_csrfToken").isEmpty)
+        #expect(CookieStore.shared.getKey(url: mobile, key: "_csrfToken").isEmpty)
+        #expect(CookieStore.shared.getKey(url: parent, key: "login") == "parent-login")
+        #expect(CookieStore.shared.getKey(url: mobile, key: "session") == "mobile-session")
+    }
+
+    @Test("source.getLoginHeader bridges to handler")
+    func sourceGetLoginHeader() {
+        let engine = JSCoreEngine()
+        engine.sourceBridge.getLoginHeaderHandler = { "{\"Cookie\":\"a=b\"}" }
+        let result = engine.evaluate("source.getLoginHeader()")
+        #expect(result != nil)
+        #expect(result!.contains("a=b"))
+    }
+
+    @Test("java.importScript returns inline (non-http) text verbatim")
+    func javaImportScriptInline() {
+        let engine = JSCoreEngine()
+        // Non-URL input is returned unchanged (no network), so eval() can consume it.
+        let result = engine.evaluate("eval(java.importScript('1 + 4'))")
+        #expect(result == "5")
+    }
+
+    /// 书山聚合 decrypts chapter text with `DES/CBC/PKCS5Padding` through hutool's
+    /// SymmetricCrypto. The bridge used to accept AES only and returned "" without
+    /// throwing, so the source's own `catch` fallback never ran and every chapter
+    /// came back empty with no JS error.
+    @Test("java.createSymmetricCrypto decrypts DES/CBC/PKCS5Padding")
+    func createSymmetricCryptoDES() {
+        let engine = JSCoreEngine()
+        let plain = "我会奔向你，以夏天的名义。"
+        let script = """
+        (function () {
+            var c = java.createSymmetricCrypto('DES/CBC/PKCS5Padding', 'K7bM2nXy', 'tQ5v9rS1');
+            return c.decryptStr(java.base64DecodeToByteArray(c.encryptBase64('\(plain)')));
+        })()
+        """
+        #expect(engine.evaluate(script) == plain)
+    }
+
+    @Test("java.createSymmetricCrypto still handles AES/CBC")
+    func createSymmetricCryptoAES() {
+        let engine = JSCoreEngine()
+        let plain = "hello aes"
+        let script = """
+        (function () {
+            var c = java.createSymmetricCrypto('AES/CBC/PKCS5Padding', '0123456789abcdef', 'fedcba9876543210');
+            return c.decryptStr(java.base64DecodeToByteArray(c.encryptBase64('\(plain)')));
+        })()
+        """
+        #expect(engine.evaluate(script) == plain)
+    }
+}
+
+// MARK: - 9. JSSandbox Tests
+
+@Suite("JSSandbox", .serialized)
+struct JSSandboxTests {
+
+    @Test("configure removes unsafe globals")
+    func configureRemovesUnsafe() {
+        let ctx = JSContext()!
+        JSSandbox.configure(ctx)
+        let fetchResult = ctx.evaluateScript("typeof fetch")
+        #expect(fetchResult?.toString() == "undefined")
+        let xhrResult = ctx.evaluateScript("typeof XMLHttpRequest")
+        #expect(xhrResult?.toString() == "undefined")
+    }
+
+    @Test("sanitize rejects oversized scripts")
+    func sanitizeRejectsLarge() {
+        let largeScript = String(repeating: "a", count: 100 * 1024 + 1)
+        #expect(JSSandbox.sanitize(largeScript) == false)
+    }
+
+    @Test("sanitize accepts normal scripts")
+    func sanitizeAcceptsNormal() {
+        #expect(JSSandbox.sanitize("var x = 1;") == true)
+    }
+
+    @Test("evaluateWithTimeout returns result for fast script")
+    func evaluateWithTimeoutFast() {
+        let ctx = JSContext()!
+        JSSandbox.configure(ctx)
+        let result = JSSandbox.evaluateWithTimeout(ctx, script: "1 + 2", timeout: 5)
+        #expect(result?.toInt32() == 3)
+    }
+
+    @Test("URL whitelist allows matching domain")
+    func urlWhitelistAllow() {
+        let allowed = JSSandbox.isURLAllowed(
+            "https://api.example.com/data",
+            allowedDomains: ["example.com"]
+        )
+        #expect(allowed == true)
+    }
+
+    @Test("URL whitelist rejects non-matching domain")
+    func urlWhitelistReject() {
+        let allowed = JSSandbox.isURLAllowed(
+            "https://evil.com/data",
+            allowedDomains: ["example.com"]
+        )
+        #expect(allowed == false)
+    }
+
+    @Test("URL whitelist with nil allows all")
+    func urlWhitelistNilAllowsAll() {
+        let allowed = JSSandbox.isURLAllowed("https://anything.com", allowedDomains: nil)
+        #expect(allowed == true)
+    }
+
+    @Test("URL whitelist with empty set allows all")
+    func urlWhitelistEmptyAllowsAll() {
+        let allowed = JSSandbox.isURLAllowed("https://anything.com", allowedDomains: [])
+        #expect(allowed == true)
+    }
+
+    @Test("URL whitelist rejects invalid URL")
+    func urlWhitelistInvalidUrl() {
+        let allowed = JSSandbox.isURLAllowed("not a url", allowedDomains: ["example.com"])
+        #expect(allowed == false)
+    }
+
+    @Test("polyfills install btoa/atob")
+    func polyfillsBtoaAtob() {
+        let ctx = JSContext()!
+        // Install java bridge stub for btoa/atob to use
+        let bridge = LegadoJSBridge()
+        ctx.setObject(bridge, forKeyedSubscript: "java" as NSString)
+        JSSandbox.configure(ctx)
+
+        let encoded = ctx.evaluateScript("btoa('Hello')")
+        #expect(encoded?.toString() == "SGVsbG8=")
+    }
+}
+
+// MARK: - 10. LoginManager & LoginState Tests
+
+@Suite("LoginState", .serialized)
+struct LoginStateTests {
+
+    @Test("LoginState equality")
+    func loginStateEquality() {
+        #expect(LoginState.notRequired == LoginState.notRequired)
+        #expect(LoginState.loggedIn == LoginState.loggedIn)
+        #expect(LoginState.loggedOut == LoginState.loggedOut)
+        #expect(LoginState.failed("x") == LoginState.failed("x"))
+        #expect(LoginState.failed("x") != LoginState.failed("y"))
+        #expect(LoginState.loggedIn != LoginState.loggedOut)
+    }
+}
+
+@Suite("LoginError", .serialized)
+struct LoginErrorTests {
+
+    @Test("error descriptions are non-empty")
+    func errorDescriptions() {
+        let errors: [LoginError] = [
+            .noLoginUrl,
+            .invalidLoginUrl("bad"),
+            .loginFunctionMissing,
+            .javaScriptError("msg"),
+            .httpError(401),
+        ]
+        for error in errors {
+            #expect(error.errorDescription != nil)
+            #expect(!error.errorDescription!.isEmpty)
+        }
+    }
+
+    @Test("httpError includes status code")
+    func httpErrorCode() {
+        let error = LoginError.httpError(403)
+        #expect(error.errorDescription!.contains("403"))
+    }
+
+    @Test("networkError wraps underlying error")
+    func networkErrorWraps() {
+        let underlying = NSError(domain: "test", code: -1)
+        let error = LoginError.networkError(underlying)
+        #expect(error.errorDescription != nil)
+    }
+}
+
+// MARK: - 11. LegadoJSBridge Tests
+
+@Suite("LegadoJSBridge", .serialized)
+struct LegadoJSBridgeTests {
+
+    @Test("base64Encode and base64Decode roundtrip")
+    func base64Roundtrip() {
+        let bridge = LegadoJSBridge()
+        let encoded = bridge.base64Encode("Hello World")
+        let decoded = bridge.base64Decode(encoded)
+        #expect(decoded == "Hello World")
+    }
+
+    @Test("base64Decode with invalid input returns empty")
+    func base64DecodeInvalid() {
+        let bridge = LegadoJSBridge()
+        let result = bridge.base64Decode("!!!invalid!!!")
+        // Returns empty on failure
+        #expect(result.isEmpty || result == "!!!invalid!!!")
+    }
+
+    @Test("HMacBase64 supports Legado HMAC algorithm names")
+    func hmacBase64Algorithms() {
+        let bridge = LegadoJSBridge()
+        let content = "The quick brown fox jumps over the lazy dog"
+        let vectors: [(algorithm: String, expected: String)] = [
+            ("HmacSHA1", "3nybhbi3iqa8ino29wqQcBydtNk="),
+            ("HmacSHA256", "97yD9DBThCSxMpjmqm+xQ+9NWaFJRhdZl0edvC0aPNg="),
+            ("HmacSHA384", "1/RyfiwLOa4PHkDMlvYCQtW3gBhBzqb8WSxdPhrlBwBYKpbPNeHlVJlf5OAzgcI3"),
+            ("HmacSHA512", "tCrwkFe6weLUFwjkipAuCbX/fxKrQopP6GZTxz3SSPuC+UilSfe3kaW0GRXuTR7Dk1NX5OIxclDQNyr6Lr7rOg=="),
+        ]
+
+        for vector in vectors {
+            #expect(bridge.HMacBase64(content, vector.algorithm, "key") == vector.expected)
+        }
+        #expect(
+            bridge.HMacBase64(content, "hmac-sha-256", "key")
+                == vectors[1].expected
+        )
+        #expect(bridge.HMacBase64(content, "unsupported", "key").isEmpty)
+    }
+
+    @Test("base64DecodeToByteArray preserves unsigned byte values")
+    func base64DecodeToByteArray() {
+        let bridge = LegadoJSBridge()
+
+        #expect(bridge.base64DecodeToByteArray("AH+A/w==") == [0, 127, 128, 255])
+        #expect(bridge.base64DecodeToByteArray("A").isEmpty)
+    }
+
+    @Test("md5Encode produces 32-char hex")
+    func md5Encode() {
+        let bridge = LegadoJSBridge()
+        let hash = bridge.md5Encode("hello")
+        #expect(hash.count == 32)
+        #expect(hash == "5d41402abc4b2a76b9719d911017c592")
+    }
+
+    @Test("md5Encode16 produces 16-char hex")
+    func md5Encode16() {
+        let bridge = LegadoJSBridge()
+        let hash = bridge.md5Encode16("hello")
+        #expect(hash.count == 16)
+    }
+
+    @Test("put and get via delegates")
+    func putGetDelegates() {
+        let bridge = LegadoJSBridge()
+        var storage: [String: String] = [:]
+        bridge.putData = { k, v in storage[k] = v }
+        bridge.getData = { k in storage[k] }
+
+        bridge.put("key1", "val1")
+        #expect(bridge.get("key1") == "val1")
+    }
+
+    @Test("get without delegate returns empty")
+    func getWithoutDelegate() {
+        let bridge = LegadoJSBridge()
+        #expect(bridge.get("anything") == "")
+    }
+
+    @Test("log returns the message")
+    func logReturns() {
+        let bridge = LegadoJSBridge()
+        let result = bridge.log("test message")
+        #expect(result == "test message")
+    }
+
+    @Test("aaDecode maps Unicode obfuscation to ASCII")
+    func aaDecodeMapsUnicode() {
+        // 源阅 aaencode: fullwidth Latin + special Unicode → ASCII
+        let encoded = "\u{FF28}\u{FF45}\u{FF4C}\u{FF4C}\u{FF4F}"  // Ｈｅｌｌｏ
+        let decoded = LegadoJSBridge.aaDecode(encoded)
+        #expect(decoded == "Hello")
+    }
+
+    @Test("aaDecode maps fullwidth lowercase z")
+    func aaDecodeFullwidthLowercaseZ() {
+        #expect(LegadoJSBridge.aaDecode("\u{FF3A}\u{FF5A}") == "Zz")
+    }
+
+    @Test("aaDecode handles empty input")
+    func aaDecodeEmptyInput() {
+        #expect(LegadoJSBridge.aaDecode("") == "")
+    }
+
+    @Test("aaDecode handles mixed obfuscation (源阅 style)")
+    func aaDecodeMixedObfuscation() {
+        // Fullwidth chars and special Unicode in a typical obfuscated JS pattern
+        let obfuscated = "\u{FF28}\u{0E31}\u{15AD}\u{FF29}\u{FF2A}\u{0E32}\u{14A6}"
+        let decoded = LegadoJSBridge.aaDecode(obfuscated)
+        // Compared whole: the unmapped Thai marks stay, and `contains("H")` compares
+        // graphemes — H followed by the combining U+0E31 is a different grapheme — so it
+        // could never hold, however the text decoded.
+        #expect(decoded == "H\u{0E31}(IJ\u{0E32}}")
+    }
+
+    @Test("java.axja exposed via JS bridge")
+    func javaAxjaBridgeExposed() {
+        let engine = JSCoreEngine()
+        let result = engine.evaluate("typeof java.axja")
+        #expect(result == "function")
+    }
+}
+
+// MARK: - 11b. LegadoSourceBridge Tests
+
+@Suite("LegadoSourceBridge", .serialized)
+struct LegadoSourceBridgeTests {
+
+    @Test("static properties are exposed correctly")
+    func staticProperties() {
+        let bridge = LegadoSourceBridge(
+            bookSourceUrl: "https://example.com",
+            bookSourceName: "Test",
+            bookSourceGroup: "Group",
+            bookSourceComment: "Comment",
+            loginUrl: "login",
+            header: "{}",
+            loginCheckJs: "check"
+        )
+        #expect(bridge.bookSourceUrl == "https://example.com")
+        #expect(bridge.bookSourceName == "Test")
+        #expect(bridge.bookSourceGroup == "Group")
+        #expect(bridge.bookSourceComment == "Comment")
+        #expect(bridge.loginUrl == "login")
+        #expect(bridge.header == "{}")
+        #expect(bridge.loginCheckJs == "check")
+        #expect(bridge.key == "https://example.com")
+    }
+
+    @Test("getVariable/setVariable via handlers")
+    func getSetVariable() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        var stored: String? = "{\"key\":\"value\"}"
+        bridge.getVariableHandler = { stored }
+        bridge.setVariableHandler = { stored = $0 }
+        #expect(bridge.getVariable() == "{\"key\":\"value\"}")
+        bridge.setVariable("{\"key\":\"new\"}")
+        #expect(stored == "{\"key\":\"new\"}")
+    }
+
+    @Test("getVariable returns empty when no handler set")
+    func getVariableNoHandler() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        #expect(bridge.getVariable() == "")
+    }
+
+    @Test("getLoginInfo returns nil when no handler set")
+    func getLoginInfoNoHandler() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        #expect(bridge.getLoginInfo() == nil)
+    }
+
+    @Test("getLoginInfoMap returns empty when no handler set")
+    func getLoginInfoMapNoHandler() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        #expect(bridge.getLoginInfoMap().toDictionary()?.isEmpty ?? true)
+    }
+
+    @Test("putLoginInfo delegates to handler")
+    func putLoginInfo() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        var received: String?
+        bridge.putLoginInfoHandler = { received = $0 }
+        bridge.putLoginInfo("{\"email\":\"test\"}")
+        #expect(received == "{\"email\":\"test\"}")
+    }
+
+    @Test("putLoginHeader delegates to handler")
+    func putLoginHeader() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        var received: String?
+        bridge.putLoginHeaderHandler = { received = $0 }
+        bridge.putLoginHeader("{\"Cookie\":\"abc\"}")
+        #expect(received == "{\"Cookie\":\"abc\"}")
+    }
+
+    @Test("getHeaderMap returns empty when no handler set")
+    func getHeaderMapNoHandler() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        #expect(bridge.getHeaderMap().toDictionary()?.isEmpty ?? true)
+    }
+
+    @Test("put/get key-value store with handlers")
+    func putGetKV() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        var stored: String? = "{}"
+        bridge.getVariableHandler = { stored }
+        bridge.setVariableHandler = { stored = $0 }
+        bridge.put("name", "value")
+        // get reads from variable handler (stored JSON)
+        #expect(bridge.get("name") == "value")
+    }
+
+    @Test("get returns empty for unknown key")
+    func getUnknownKey() {
+        let bridge = LegadoSourceBridge.from(BookSource())
+        #expect(bridge.get("unknown") == "")
+    }
+
+    @Test("Factory creates bridge from BookSource")
+    func factoryFromBookSource() {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.bookSourceName = "Test"
+        source.bookSourceGroup = "group"
+        source.bookSourceComment = "cmt"
+        source.loginUrl = "login"
+        source.header = "{}"
+        source.loginCheckJs = "check"
+        let bridge = LegadoSourceBridge.from(source)
+        #expect(bridge.bookSourceUrl == "https://example.com")
+        #expect(bridge.bookSourceName == "Test")
+    }
+}
+
+// MARK: - 11c. LegadoCacheBridge Tests
+
+@Suite("LegadoCacheBridge", .serialized)
+struct LegadoCacheBridgeTests {
+
+    @Test("put and get persistent")
+    func putGetPersistent() {
+        let bridge = LegadoCacheBridge(sourceId: "test")
+        bridge.put("key1", "value1")
+        #expect(bridge.get("key1") == "value1")
+        bridge.delete("key1")
+    }
+
+    @Test("get returns nil for unknown key")
+    func getUnknownKey() {
+        let bridge = LegadoCacheBridge(sourceId: "test2")
+        #expect(bridge.get("nonexistent") == nil)
+    }
+
+    @Test("delete removes key")
+    func deleteKey() {
+        let bridge = LegadoCacheBridge(sourceId: "test3")
+        bridge.put("temp", "val")
+        #expect(bridge.get("temp") == "val")
+        bridge.delete("temp")
+        #expect(bridge.get("temp") == nil)
+    }
+
+    @Test("putMemory and getFromMemory")
+    func memoryCache() {
+        let bridge = LegadoCacheBridge(sourceId: "test4")
+        bridge.putMemory("memKey", "memVal")
+        #expect(bridge.getFromMemory("memKey") == "memVal")
+    }
+
+    @Test("deleteMemory removes from memory")
+    func deleteMemory() {
+        let bridge = LegadoCacheBridge(sourceId: "test5")
+        bridge.putMemory("memDel", "val")
+        #expect(bridge.getFromMemory("memDel") == "val")
+        bridge.deleteMemory("memDel")
+        #expect(bridge.getFromMemory("memDel") == nil)
+    }
+
+    @Test("getFromMemory returns nil for unknown key")
+    func memoryUnknown() {
+        let bridge = LegadoCacheBridge(sourceId: "test6")
+        #expect(bridge.getFromMemory("nothing") == nil)
+    }
+
+    @Test("different source IDs are isolated")
+    func sourceIdIsolation() {
+        let bridgeA = LegadoCacheBridge(sourceId: "A")
+        let bridgeB = LegadoCacheBridge(sourceId: "B")
+        bridgeA.put("shared", "fromA")
+        bridgeB.put("shared", "fromB")
+        #expect(bridgeA.get("shared") == "fromA")
+        #expect(bridgeB.get("shared") == "fromB")
+        bridgeA.delete("shared")
+        bridgeB.delete("shared")
+    }
+}
+
+// MARK: - 11d. LegadoStrResponse Tests
+
+@Suite("LegadoStrResponse", .serialized)
+struct LegadoStrResponseTests {
+
+    @Test("body returns stored body")
+    func bodyReturns() {
+        let response = LegadoStrResponse(url: "https://example.com", body: "<html>test</html>")
+        #expect(response.url == "https://example.com")
+        #expect(response.body() == "<html>test</html>")
+    }
+
+    @Test("empty body is fine")
+    func emptyBody() {
+        let response = LegadoStrResponse(url: "about:blank", body: "")
+        #expect(response.url == "about:blank")
+        #expect(response.body() == "")
+    }
+}
+
+// MARK: - 12. Integration: RuleAnalyzer + SourceRule
+
+@Suite("RuleAnalyzer + SourceRule Integration", .serialized)
+struct RuleAnalyzerSourceRuleIntegrationTests {
+
+    @Test("split and parse multiple rules with ||")
+    func splitAndParseMultiple() {
+        let analyzer = RuleAnalyzer(data: "@css:div.title@text||@json:$.title")
+        let parts = analyzer.splitRule("||")
+        #expect(parts.count == 2)
+
+        let rule1 = SourceRule(ruleStr: parts[0])
+        #expect(rule1.mode == .default)
+
+        let rule2 = SourceRule(ruleStr: parts[1])
+        #expect(rule2.mode == .json)
+    }
+
+    @Test("rule with combined @put and @get")
+    func combinedPutGet() {
+        let rule = SourceRule(ruleStr: "@css:a@href@put:{\"host\":\"example.com\"}")
+        #expect(rule.putMap["host"] == "example.com")
+        #expect(rule.mode == .default)
+    }
+
+    @Test("rule with ## regex and @get template")
+    func regexWithGetTemplate() {
+        let rule = SourceRule(ruleStr: "div@text##@get:{pattern}##replacement")
+        #expect(rule.paramSize > 0)
+    }
+}
+
+// MARK: - 13. Explore / Discover Parsing
+
+@Suite("ModernParserBridge Explore", .serialized)
+struct ModernParserBridgeExploreTests {
+
+    @Test("a JSON explore rule decodes despite legado flexbox style values")
+    func jsonExploreRuleDecodesWithFlexboxStyle() async throws {
+        // Real sources attach legado's `ExploreKind.Style` to each chip, and its values are
+        // numbers and booleans — `layout_flexGrow: 1`, `layout_flexBasisPercent: 0.33`. `style` is
+        // typed `[String: String]`, so this only decodes because `DiscoverItem.init(from:)` reads
+        // it through `LenientScalar` and drops the whole style rather than the item when it cannot.
+        // 457 of the 493 JSON-shaped explore rules in a 1912-source pack carry such a style; a
+        // future switch to synthesized Codable would silently empty every one of their 發現頁.
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.bookSourceName = "json explore flexbox style"
+        source.exploreUrl = """
+        [{"title":"🔥热播榜","url":"https://example.com/a?page={{page}}","style":{"layout_flexGrow":1,"layout_flexBasisPercent":0.33}},\
+        {"title":"完结","url":"https://example.com/b","style":{"layout_flexGrow":1.5,"layout_flexShrink":1,"layout_alignSelf":"auto","layout_wrapBefore":true}},\
+        {"title":"分类","url":"https://example.com/c","style":{"layout_flexBasisPercent":null}}]
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map(\.title) == ["🔥热播榜", "完结", "分类"], "actual=\(items.map(\.title))")
+        #expect(items.compactMap(\.url).count == 3, "actual=\(items.compactMap(\.url))")
+    }
+
+    @Test("a JSON explore rule survives an unexpected style shape")
+    func jsonExploreRuleSurvivesOddStyleShape() async throws {
+        // The other half of that contract: a style that is not even an object (or misspells a key,
+        // as several sources do — `layout_flexBasisPersent`) must cost the style, never the category.
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.bookSourceName = "json explore odd style"
+        source.exploreUrl = """
+        [{"title":"甲","url":"https://example.com/a","style":{"layout_flexGrow":"1","layout_flexBasisPersent":0.5}},\
+        {"title":"乙","url":"https://example.com/b","style":"not-an-object"}]
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map(\.title) == ["甲", "乙"], "actual=\(items.map(\.title))")
+    }
+
+    @Test("a static explore rule keeps categories whose URL carries legado page syntax")
+    func staticExploreRuleKeepsPageSyntaxCategories() async throws {
+        // `<,{{page}}>` / `<,_{{page}}>` is legado's page-range syntax (AnalyzeUrl.pagePattern is
+        // literally `<(.*?)>`) and appears in ordinary static `名稱::URL` explore rules. A guard
+        // meant to drop HTML debris from a dead endpoint matched `<…>` of any shape, so it deleted
+        // every category of such a source and the 發現頁 came up empty — 38 sources in a
+        // 1912-source pack, 万象书城 and 小红书 among them.
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.bookSourceName = "static explore page syntax"
+        source.exploreUrl = """
+        玄幻·奇幻::/nav/xuanhuan<,_{{page}}>.html
+        仙侠·武侠::/nav/xianxia<,_{{page}}>.html
+        全部::/category/0/<,{{page}}.html>
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map(\.title) == ["玄幻·奇幻", "仙侠·武侠", "全部"], "actual=\(items.map(\.title))")
+        #expect(items.compactMap(\.url) == [
+            "/nav/xuanhuan<,_{{page}}>.html",
+            "/nav/xianxia<,_{{page}}>.html",
+            "/category/0/<,{{page}}.html>",
+        ], "actual=\(items.compactMap(\.url))")
+    }
+
+    @Test("a static explore rule still drops HTML debris from a dead endpoint")
+    func staticExploreRuleStillDropsMarkupDebris() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com"
+        source.bookSourceName = "static explore markup debris"
+        // Kept clear of `looksLikeMarkupOrError`'s whole-payload check (leading `<`, `<html`,
+        // `404 not found`): this covers the per-line guard, which is what the fix touches.
+        source.exploreUrl = """
+        玄幻::/nav/xuanhuan.html
+        <p>nginx</p>
+        <div class="err">something</div>
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map(\.title) == ["玄幻"], "actual=\(items.map(\.title))")
+    }
+
+    @Test("LYC explore supports infoMap save used by source filters")
+    func lycExploreSupportsInfoMapSave() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "lyc-explore-\(UUID().uuidString)"
+        source.bookSourceName = "LYC Explore"
+        source.jsLib = """
+        function csh() {
+            var initial = { sort: '玄幻' };
+            try {
+                if (!source.getVariable()) throw new Error('empty');
+                JSON.parse(source.getVariable());
+            } catch (e) {
+                source.setVariable(JSON.stringify(initial));
+            }
+        }
+        function Get(key) {
+            return JSON.parse(source.getVariable())[key];
+        }
+        function createFilter(title, chars, defaultValue, paramKey, size) {
+            return {
+                title: title,
+                type: 'select',
+                chars: chars,
+                default: defaultValue,
+                action: `show(infoMap['${title}'],'${paramKey}')`
+            };
+        }
+        """
+        source.exploreUrl = """
+        @js:
+        csh();
+        var result = [];
+        result.push(createFilter('分类', ['玄幻', '都市'], Get('sort'), 'sort', 0.5));
+        infoMap.save();
+        JSON.stringify(result);
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+        let filter = try #require(items.first)
+
+        #expect(filter.title == "分类")
+        #expect(filter.type == "select")
+        #expect(filter.chars == ["玄幻", "都市"])
+    }
+
+    @Test("source key values do not overwrite a raw source variable token")
+    func sourceKeyValuesPreserveRawVariableToken() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "raw-token-source-\(UUID().uuidString)"
+        source.bookSourceName = "Raw Token Source"
+        source.exploreUrl = """
+        @js:
+        let androidId = String(source.get('androidId'));
+        if (!androidId) {
+            androidId = java.androidId();
+            source.put('androidId', androidId);
+        }
+        JSON.stringify([{ title: source.getVariable(), url: androidId }]);
+        """
+
+        let token = String(repeating: "token-", count: 16)
+        BookSourceRuntimeStateStore.shared.setSourceVariableJSON(
+            token,
+            for: source.bookSourceUrl
+        )
+
+        let firstItems = await ModernParserBridge(source: source).getExploreItems()
+        let first = try #require(firstItems.first)
+        let secondItems = await ModernParserBridge(source: source).getExploreItems()
+        let second = try #require(secondItems.first)
+
+        #expect(first.title == token)
+        #expect(!((first.url ?? "").isEmpty))
+        #expect(second.title == token)
+        #expect(second.url == first.url)
+        #expect(
+            BookSourceRuntimeStateStore.shared.sourceVariableJSON(
+                for: source.bookSourceUrl
+            ) == token
+        )
+    }
+
+    @Test("java variables survive a new parser bridge")
+    func javaVariablesPersistAcrossParserBridges() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "java-variable-\(UUID().uuidString)"
+        source.bookSourceName = "Persistent java variable"
+
+        let writer = ModernParserBridge(source: source)
+        _ = writer.evaluateSourceScript("java.put('yunpara', 'on')")
+
+        let reader = ModernParserBridge(source: source)
+        #expect(reader.evaluateSourceScript("java.get('yunpara')") == "on")
+    }
+
+    @Test("cached source headers remain readable while the JS queue is busy")
+    func cachedSourceHeadersDoNotWaitForJSQueue() {
+        var source = BookSource()
+        source.bookSourceUrl = "header-cache-\(UUID().uuidString)"
+        source.header = #"{"X-Test":"cached"}"#
+        let engine = JSCoreEngine()
+        engine.bookSource = source
+        #expect(engine.resolvedSourceHeaders()["X-Test"] == "cached")
+
+        let networkStarted = DispatchSemaphore(value: 0)
+        let releaseNetwork = DispatchSemaphore(value: 0)
+        engine.networkHandler = { _ in
+            networkStarted.signal()
+            _ = releaseNetwork.wait(timeout: .now() + 2)
+            return LegadoHTTPResult(
+                requestURL: URL(string: "https://example.com/blocked")!,
+                finalURL: URL(string: "https://example.com/blocked")!,
+                statusCode: 200,
+                statusMessage: "OK",
+                headers: [:],
+                cookies: [:],
+                body: "{}"
+            )
+        }
+
+        let evaluationDone = DispatchGroup()
+        evaluationDone.enter()
+        DispatchQueue.global().async {
+            _ = engine.evaluate("java.ajax('https://example.com/blocked')")
+            evaluationDone.leave()
+        }
+        #expect(networkStarted.wait(timeout: .now() + 1) == .success)
+
+        let headerRead = DispatchGroup()
+        headerRead.enter()
+        DispatchQueue.global().async {
+            _ = engine.resolvedSourceHeaders()
+            headerRead.leave()
+        }
+        let readFinishedWithoutWaitingForJS = headerRead.wait(timeout: .now() + 0.2) == .success
+        releaseNetwork.signal()
+        _ = evaluationDone.wait(timeout: .now() + 2)
+        _ = headerRead.wait(timeout: .now() + 2)
+
+        #expect(readFinishedWithoutWaitingForJS)
+    }
+
+    @Test("plain text exploreUrl is parsed as Legado explore kinds without fetching")
+    func plainTextExploreKinds() async {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "Plain Explore"
+        source.exploreUrl = """
+        分類一::https://example.com/cat/1?page={{page}}
+        分組標題
+        分類二::https://example.com/cat/2
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems(page: 2)
+
+        #expect(items.map { $0.title ?? "" } == ["分類一", "分組標題", "分類二"])
+        #expect(items.map { $0.url } == [
+            "https://example.com/cat/1?page={{page}}",
+            nil,
+            "https://example.com/cat/2"
+        ])
+    }
+
+    @Test("JS exploreUrl returning plain text is parsed as Legado explore kinds")
+    func jsReturnedPlainTextExploreKinds() async {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "JS Text Explore"
+        source.exploreUrl = """
+        <js>
+        '排行榜::https://example.com/rank\\n完本::https://example.com/done'
+        </js>
+        """
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.map { $0.title ?? "" } == ["排行榜", "完本"])
+        #expect(items.map { $0.url ?? "" } == [
+            "https://example.com/rank",
+            "https://example.com/done"
+        ])
+    }
+
+    @Test("inline JSON exploreUrl is parsed without fetching")
+    func inlineJSONExploreKinds() async {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "JSON Explore"
+        source.exploreUrl = #"[{"title":"推薦","url":"https://example.com/recommend","style":{"layout_flexBasisPercent":0.45}}]"#
+
+        let items = await ModernParserBridge(source: source).getExploreItems()
+
+        #expect(items.count == 1)
+        #expect(items.first?.title == "推薦")
+        #expect(items.first?.url == "https://example.com/recommend")
+        #expect(items.first?.style?["layout_flexBasisPercent"] == "0.45")
+    }
+
+    @Test("templated discover URL remains fetchable and resolves through AnalyzeUrl")
+    func templatedDiscoverURLFetchesThroughAnalyzeUrl() async throws {
+        var source = BookSource()
+        source.bookSourceUrl = "https://example.com/source"
+        source.bookSourceName = "Template Discover"
+        source.jsLib = """
+        function makeDiscoverData() {
+            let payload = java.base64Encode(JSON.stringify({
+                data: {
+                    books: [{
+                        name: 'Discover Template Book',
+                        author: 'Template Author',
+                        url: 'https://example.com/book/1'
+                    }]
+                }
+            }));
+            return `data:;base64,${payload},{"type":"discover"}`;
+        }
+        """
+        source.ruleExplore.bookList = """
+        <js>
+        JSON.parse(java.hexDecodeToString(result));
+        </js>$.data.books[*]
+        """
+        source.ruleExplore.name = "$.name"
+        source.ruleExplore.author = "$.author"
+        source.ruleExplore.bookUrl = "$.url"
+
+        let raw = ModernParserBridge.DiscoverItem(
+            title: "歷史",
+            url: "{{makeDiscoverData()}}"
+        )
+
+        let card = try #require(await MainActor.run { DiscoverViewModel.mapItem(raw) })
+        #expect(!card.isAction)
+        #expect(card.isFetchable)
+
+        let books = try await BookSourceFetcher.shared.discoverBooks(from: raw, in: source)
+        #expect(books.map(\.name) == ["Discover Template Book"])
+        #expect(books.map(\.author) == ["Template Author"])
+        #expect(books.map(\.bookUrl) == ["https://example.com/book/1"])
+    }
+
+    @Test("browser script discover URL stays an action")
+    func browserScriptDiscoverURLStaysAction() async throws {
+        let raw = ModernParserBridge.DiscoverItem(
+            title: "登入",
+            url: "{{java.startBrowser('https://example.com/login','登入')}}"
+        )
+
+        let card = try #require(await MainActor.run { DiscoverViewModel.mapItem(raw) })
+        #expect(card.isAction)
+        #expect(!card.isFetchable)
+        #expect(card.actionURL == "https://example.com/login")
+    }
+}
+
+@Suite("Discover Filters", .serialized)
+struct DiscoverFilterTests {
+
+    @MainActor
+    @Test("source select items become filters and stay out of showcase cards")
+    func sourceSelectItemsBecomeFilters() throws {
+        let raw: [ModernParserBridge.DiscoverItem] = [
+            .init(
+                title: "平台",
+                type: "select",
+                action: "show(infoMap['平台'],'发现页来源')",
+                chars: ["番茄", "七猫", "喜马拉雅"],
+                default: "番茄"
+            ),
+            .init(title: "排行榜", url: "https://example.com/rank")
+        ]
+
+        let filters = DiscoverViewModel.extractFilters(from: raw)
+        let platform = try #require(filters.first)
+
+        #expect(platform.title == "平台")
+        #expect(platform.paramKey == "发现页来源")
+        #expect(platform.options == ["番茄", "七猫", "喜马拉雅"])
+        #expect(platform.selected == "番茄")
+        #expect(raw.compactMap(DiscoverViewModel.mapItem).map(\.title) == ["排行榜"])
+    }
+
+    @MainActor
+    @Test("duplicate source categories collapse into one showcase section")
+    func duplicateDiscoverCategoriesCollapseIntoOneSection() throws {
+        // 番茄-style sources repeat the same tag (identical title + url, hence
+        // identical stableKey) in several explore groups.
+        let raw: [ModernParserBridge.DiscoverItem] = [
+            .init(title: "重生", url: "https://example.com/tag/1"),
+            .init(title: "系统", url: "https://example.com/tag/2"),
+            .init(title: "重生", url: "https://example.com/tag/1"),
+            .init(title: "都市", url: "https://example.com/tag/3")
+        ]
+        let cards = raw.compactMap(DiscoverViewModel.mapItem)
+
+        #expect(DiscoverViewModel.showcaseItems(from: cards).map(\.title) == ["重生", "系统", "都市"])
+    }
+
+    @Test("discover pagination drops duplicate page results")
+    func discoverPaginationDropsDuplicatePageResults() {
+        let sourceId = UUID()
+        func book(_ name: String, _ url: String, author: String = "Author") -> OnlineBook {
+            OnlineBook(
+                name: name,
+                author: author,
+                intro: "",
+                coverUrl: "https://img.example.com/\(name).jpg",
+                bookUrl: url,
+                tocUrl: "",
+                wordCount: "",
+                lastChapter: "",
+                kind: "",
+                sourceId: sourceId,
+                sourceName: "Discover Test"
+            )
+        }
+
+        let existing = [
+            book("A", "https://example.com/book/a"),
+            book("No URL", "", author: "Same Author")
+        ]
+        let incoming = [
+            book("A Again", "https://example.com/book/a"),
+            book("B", "https://example.com/book/b"),
+            book("No URL", "", author: "Same Author")
+        ]
+
+        let unique = DiscoverViewModel.uniqueAdditionalBooks(incoming, existing: existing)
+
+        #expect(unique.map(\.name) == ["B"])
+        #expect(unique.map(\.bookUrl) == ["https://example.com/book/b"])
+    }
+
+    @MainActor
+    @Test("selecting platform stores search source under the current mode")
+    func selectingPlatformStoresSearchSourceForCurrentMode() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "discover-filter-test-\(UUID().uuidString)"
+        source.bookSourceName = "Aggregator Explore"
+        source.enabledExplore = true
+        let runtimeStore = BookSourceRuntimeStateStore.shared
+        runtimeStore.setSourceVariableJSON(
+            #"{"发现页类型":"漫画","更多设置":{"搜索模式":"漫画"}}"#,
+            for: source.bookSourceUrl
+        )
+        defer { runtimeStore.setSourceVariableJSON(nil, for: source.bookSourceUrl) }
+
+        let model = DiscoverViewModel(source: source)
+        model.filters = [
+            DiscoverFilter(
+                title: "平台",
+                paramKey: "发现页来源",
+                options: ["番茄", "全面漫画"],
+                selected: "番茄"
+            )
+        ]
+
+        let filter = try #require(model.filters.first)
+        model.selectFilter(filter, value: "全面漫画")
+
+        let stored = try #require(runtimeStore.sourceVariableJSON(for: source.bookSourceUrl))
+        let dict = try #require(Self.jsonObject(stored))
+        let more = try #require(dict["更多设置"] as? [String: Any])
+        let memory = try #require(
+            dict[DiscoverViewModel.discoverPlatformMemoryKey] as? [String: Any]
+        )
+
+        #expect(dict["发现页来源"] as? String == "全面漫画")
+        #expect(more["搜索模式"] as? String == "漫画")
+        #expect(!more.keys.contains("漫画"))
+        #expect(memory["漫画"] as? String == "全面漫画")
+    }
+
+    @MainActor
+    @Test("selecting mode keeps the saved source instead of forcing Fanqie")
+    func selectingModeUsesSavedSourceForMode() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "discover-mode-source-test-\(UUID().uuidString)"
+        source.bookSourceName = "Aggregator Explore"
+        source.enabledExplore = true
+        let runtimeStore = BookSourceRuntimeStateStore.shared
+        runtimeStore.setSourceVariableJSON(
+            #"{"发现页类型":"小说","发现页来源":"番茄","更多设置":{"搜索模式":"小说","漫画":"全面漫画"}}"#,
+            for: source.bookSourceUrl
+        )
+        defer { runtimeStore.setSourceVariableJSON(nil, for: source.bookSourceUrl) }
+
+        let model = DiscoverViewModel(source: source)
+        model.filters = [
+            DiscoverFilter(
+                title: "类型",
+                paramKey: "发现页类型",
+                options: ["小说", "漫画"],
+                selected: "小说"
+            )
+        ]
+
+        let filter = try #require(model.filters.first)
+        model.selectFilter(filter, value: "漫画")
+
+        let stored = try #require(runtimeStore.sourceVariableJSON(for: source.bookSourceUrl))
+        let dict = try #require(Self.jsonObject(stored))
+        let more = try #require(dict["更多设置"] as? [String: Any])
+        let memory = try #require(
+            dict[DiscoverViewModel.discoverPlatformMemoryKey] as? [String: Any]
+        )
+
+        #expect(dict["发现页类型"] as? String == "漫画")
+        #expect(dict["发现页来源"] as? String == "全面漫画")
+        // 更多设置 belongs to the source: the 默认搜索网站 the user picked for 漫画 and
+        // the 搜索模式 that selects which row search reads must both survive untouched.
+        #expect(more["漫画"] as? String == "全面漫画")
+        #expect(more["搜索模式"] as? String == "小说")
+        #expect(memory["漫画"] as? String == "全面漫画")
+    }
+
+    @MainActor
+    @Test("selecting mode defaults discover source to all when no mode source is saved")
+    func selectingModeDefaultsSourceToAll() throws {
+        var source = BookSource()
+        source.bookSourceUrl = "discover-mode-all-test-\(UUID().uuidString)"
+        source.bookSourceName = "Aggregator Explore"
+        source.enabledExplore = true
+        let runtimeStore = BookSourceRuntimeStateStore.shared
+        runtimeStore.setSourceVariableJSON(
+            #"{"发现页类型":"小说","发现页来源":"番茄","更多设置":{"搜索模式":"小说"}}"#,
+            for: source.bookSourceUrl
+        )
+        defer { runtimeStore.setSourceVariableJSON(nil, for: source.bookSourceUrl) }
+
+        let model = DiscoverViewModel(source: source)
+        model.filters = [
+            DiscoverFilter(
+                title: "类型",
+                paramKey: "发现页类型",
+                options: ["小说", "听书"],
+                selected: "小说"
+            )
+        ]
+
+        let filter = try #require(model.filters.first)
+        model.selectFilter(filter, value: "听书")
+
+        let stored = try #require(runtimeStore.sourceVariableJSON(for: source.bookSourceUrl))
+        let dict = try #require(Self.jsonObject(stored))
+        let more = try #require(dict["更多设置"] as? [String: Any])
+        let memory = try #require(
+            dict[DiscoverViewModel.discoverPlatformMemoryKey] as? [String: Any]
+        )
+
+        #expect(dict["发现页类型"] as? String == "听书")
+        #expect(dict["发现页来源"] as? String == "全部")
+        #expect(more["搜索模式"] as? String == "小说")
+        #expect(!more.keys.contains("听书"))
+        #expect(memory["听书"] as? String == "全部")
+    }
+
+    @MainActor
+    @Test("reload repairs old hard-coded Fanqie source from saved mode setting")
+    func repairsOldHardcodedFanqieSourceFromSavedModeSetting() throws {
+        let repaired = DiscoverViewModel.repairHardcodedDiscoverSource(in: [
+            "发现页类型": "漫画",
+            "发现页来源": "番茄",
+            "更多设置": [
+                "搜索模式": "漫画",
+                "漫画": "全面漫画"
+            ]
+        ])
+
+        #expect(repaired["发现页来源"] as? String == "全面漫画")
+    }
+
+    private static func jsonObject(_ json: String) -> [String: Any]? {
+        guard let data = json.data(using: .utf8) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+}
+
+@Suite("Source Variable Runtime State", .serialized)
+struct SourceVariableRuntimeStateTests {
+    private final class NotificationRecorder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var storage: [String] = []
+
+        func append(_ value: String) {
+            lock.lock()
+            storage.append(value)
+            lock.unlock()
+        }
+
+        var values: [String] {
+            lock.lock()
+            defer { lock.unlock() }
+            return storage
+        }
+    }
+
+    @Test("user source-variable saves notify only on a real change")
+    func userSourceVariableSaveNotification() async throws {
+        let sourceURL = "source-variable-notification-\(UUID().uuidString)"
+        let store = BookSourceRuntimeStateStore.shared
+        store.setSourceVariableJSON(nil, for: sourceURL)
+        defer { store.setSourceVariableJSON(nil, for: sourceURL) }
+
+        let notifications = NotificationRecorder()
+        let observer = NotificationCenter.default.addObserver(
+            forName: .bookSourceUserVariableDidChange,
+            object: nil,
+            queue: nil
+        ) { notification in
+            if let changedURL = notification.userInfo?["sourceURL"] as? String {
+                notifications.append(changedURL)
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        store.setUserSourceVariableJSON("plain-token", for: sourceURL)
+        store.setUserSourceVariableJSON("plain-token", for: sourceURL)
+        store.setSourceVariableJSON("rule-internal-update", for: sourceURL)
+
+        #expect(notifications.values == [sourceURL])
+    }
+
+    @Test("source-variable diagnostics expose shape but never secret values")
+    func sourceVariableDiagnosticRedaction() {
+        let plainSecret = "private-token-value"
+        let jsonSecret = "json-secret-value"
+
+        let plain = ModernParserBridge.sourceVariableLogSummary(plainSecret)
+        let json = ModernParserBridge.sourceVariableLogSummary(
+            "{\"token\":\"\(jsonSecret)\",\"mode\":\"novel\"}"
+        )
+
+        #expect(plain.contains("configured"))
+        #expect(plain.contains("plain"))
+        #expect(!plain.contains(plainSecret))
+        #expect(json.contains("mode,token"))
+        #expect(!json.contains(jsonSecret))
+        #expect(ModernParserBridge.sourceVariableLogSummary(nil) == "not configured")
+    }
+}
+
+// MARK: - 14. Edge Cases & Stress Tests
+
+@Suite("Edge Cases", .serialized)
+struct EdgeCaseTests {
+
+    @Test("JSONPath on deeply nested data")
+    func deepNesting() {
+        let data: [String: Any] = ["a": ["b": ["c": ["d": ["e": "deep"]]]]]
+        let results = JSONPathEvaluator.query("$.a.b.c.d.e", on: data)
+        #expect(results.first as? String == "deep")
+    }
+
+    @Test("JSONPath on empty array")
+    func emptyArray() {
+        let data: [String: Any] = ["list": [] as [Any]]
+        let results = JSONPathEvaluator.query("$.list[0]", on: data)
+        #expect(results.isEmpty)
+    }
+
+    @Test("JSONPath filter with nested AND")
+    func filterNestedAnd() {
+        let data: [String: Any] = [
+            "items": [
+                ["a": 1, "b": 2],
+                ["a": 3, "b": 4],
+                ["a": 1, "b": 4],
+            ] as [[String: Any]]
+        ]
+        let results = JSONPathEvaluator.query("$.items[?(@.a == 1 && @.b == 2)]", on: data)
+        #expect(results.count == 1)
+    }
+
+    @Test("JSONPath filter with OR")
+    func filterOr() {
+        let data: [String: Any] = [
+            "items": [
+                ["x": 1],
+                ["x": 2],
+                ["x": 3],
+            ] as [[String: Any]]
+        ]
+        let results = JSONPathEvaluator.query("$.items[?(@.x == 1 || @.x == 3)]", on: data)
+        #expect(results.count == 2)
+    }
+
+    @Test("SourceRule with empty string")
+    func sourceRuleEmpty() {
+        let rule = SourceRule(ruleStr: "")
+        #expect(rule.rule == "")
+    }
+
+    @Test("Legado book bridge exports media type runtime state")
+    func legadoBookBridgeExportsMediaTypeRuntimeState() {
+        let bridge = LegadoBookBridge(
+            durChapterIndex: 2,
+            durChapterTitle: "第 3 集",
+            order: 1,
+            type: 1,
+            imageStyle: "FULL",
+            name: "聚合聽書",
+            author: "主播",
+            coverUrl: "https://example.com/cover.jpg",
+            abstract: "簡介"
+        )
+
+        let state = bridge.runtimeStateVariables()
+
+        #expect(state["book.durChapterIndex"] == "2")
+        #expect(state["book.durChapterTitle"] == "第 3 集")
+        #expect(state["book.type"] == "1")
+        #expect(state["book.imageStyle"] == "FULL")
+        #expect(state["book.name"] == "聚合聽書")
+        #expect(state["book.author"] == "主播")
+    }
+
+    @Test("LRUCache with capacity 1")
+    func cacheCapacityOne() {
+        let cache = LRUCache<String, Int>(capacity: 1)
+        cache.put("a", value: 1)
+        cache.put("b", value: 2)
+        #expect(cache.get("a") == nil)
+        #expect(cache.get("b") == 2)
+    }
+
+    @Test("RuleAnalyzer with very long input")
+    func longInput() {
+        let long = String(repeating: "a", count: 1000) + "||" + String(repeating: "b", count: 1000)
+        let analyzer = RuleAnalyzer(data: long)
+        let result = analyzer.splitRule("||")
+        #expect(result.count == 2)
+        #expect(result[0].count == 1000)
+        #expect(result[1].count == 1000)
+    }
+
+    @Test("CustomUrl with malformed JSON options")
+    func customUrlMalformedJson() {
+        let cu = CustomUrl(serialized: "https://example.com,{not json}")
+        #expect(cu.url == "https://example.com")
+        #expect(cu.attributes.isEmpty)
+    }
+
+    @Test("RegexReplacer preserves original on no match")
+    func replacerNoMatch() {
+        let result = RegexReplacer.replaceRegex(
+            result: "hello world",
+            pattern: "\\d+",
+            replacement: "X",
+            replaceFirst: false
+        )
+        #expect(result == "hello world")
+    }
+
+    @Test("JSONPath deep scan on flat object")
+    func deepScanFlat() {
+        let data: [String: Any] = ["key": "value"]
+        let results = JSONPathEvaluator.query("$..key", on: data)
+        #expect(results.first as? String == "value")
+    }
+
+    @Test("JSONPath negative slice")
+    func negativeSlice() {
+        let data: [String: Any] = ["arr": [1, 2, 3, 4, 5]]
+        let results = JSONPathEvaluator.query("$.arr[-2:]", on: data)
+        // Last two elements
+        #expect(results.count == 2)
+    }
+}

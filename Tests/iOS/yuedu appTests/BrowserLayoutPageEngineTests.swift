@@ -1,0 +1,569 @@
+@testable import YueduCoreText
+import Testing
+import UIKit
+@testable import yuedu_app
+
+/// Mock resource provider + mock attributed-string builder for engine tests.
+@MainActor
+final class MockBrowserLayoutResource: BrowserLayoutResourceProviding {
+    struct Chapter {
+        let title: String
+        let href: String
+        let html: String
+        let css: [String]
+    }
+
+    var chapters: [Chapter]
+    var failChapterHTML: Set<Int> = []
+    var failChapterCSS: Set<Int> = []
+    var preparedFontRequests: [Set<BrowserFontRequest>] = []
+
+    init(chapters: [Chapter]) {
+        self.chapters = chapters
+    }
+
+    var chapterCount: Int { chapters.count }
+    func chapterTitle(at index: Int) -> String { chapters[safe: index]?.title ?? "" }
+    func chapterSourceHref(at index: Int) -> String? { chapters[safe: index]?.href }
+    func chapterHTML(at index: Int) async throws -> String {
+        if failChapterHTML.contains(index) { throw MockError.failed }
+        return chapters[safe: index]?.html ?? ""
+    }
+    func cssFrontendInput(forChapter index: Int, html: String) async -> CSSFrontendInput {
+        let css = failChapterCSS.contains(index) ? [] : (chapters[safe: index]?.css ?? [])
+        return .currentCompatibility(html: html, cssTexts: css)
+    }
+    func prefetchImages(forChapter index: Int, html: String, renderWidth: CGFloat) async -> [String: UIImage] { [:] }
+    func loadImage(forChapter index: Int, source: String, renderWidth: CGFloat) async -> UIImage? { nil }
+    func fontResolver() -> (([String], Int, Bool, CGFloat) -> UIFont?)? { nil }
+    func prepareFonts(requests: Set<BrowserFontRequest>) async {
+        preparedFontRequests.append(requests)
+    }
+
+    enum MockError: Error { case failed }
+}
+
+/// Plain-text attributed builder so the legacy delegate can paginate without
+/// the full HTML pipeline.
+@MainActor
+final class MockAttributedStringBuilder: AttributedStringBuilding {
+    let texts: [String]
+
+    init(texts: [String]) {
+        self.texts = texts
+    }
+
+    var chapterCount: Int { texts.count }
+
+    func chapterTitle(at index: Int) -> String { "Chapter \(index)" }
+
+    func chapterSourceHref(at index: Int) -> String? { "chapter\(index).xhtml" }
+
+    func chapterDataSize(at index: Int) async -> Int {
+        texts[safe: index]?.utf8.count ?? 0
+    }
+
+    func chapterIndex(for href: String) -> Int? {
+        texts.indices.first { "chapter\($0).xhtml" == href }
+    }
+
+    func buildChapter(
+        at index: Int,
+        settings: ReaderRenderSettings,
+        themeTextColor: UIColor,
+        themeBackgroundColor: UIColor
+    ) async throws -> AttributedChapterBuildResult {
+        guard texts.indices.contains(index) else { throw AttributedStringBuildingError.chapterOutOfRange(index) }
+        let text = texts[index]
+        let attributed = NSMutableAttributedString(string: text, attributes: [
+            .font: UIFont.systemFont(ofSize: settings.fontSize),
+            .foregroundColor: themeTextColor,
+        ])
+        return AttributedChapterBuildResult(
+            attributedString: attributed,
+            imagePage: nil,
+            pageBackgroundImage: nil,
+            anchorOffsets: [:],
+            revision: ContentRevision()
+        )
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
+/// Engine contract: page mapping, position restore, anchors, links, atomic
+/// fallback, theme change — through the full PageRenderingProvider surface.
+@MainActor
+struct BrowserLayoutPageEngineTests {
+
+    private func makeSettings(fontSize: CGFloat = 17) -> ReaderRenderSettings {
+        ReaderRenderSettings(
+            theme: "paper",
+            textColor: .black,
+            backgroundColor: .white,
+            fontSize: fontSize,
+            lineHeightMultiple: 1.4,
+            lineSpacing: 0,
+            paragraphSpacing: 6,
+            letterSpacing: 0,
+            marginH: 12,
+            marginV: 12,
+            footerHeight: 24,
+            contentInsets: UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        )
+    }
+
+    private func makeEngine(
+        chapters: [MockBrowserLayoutResource.Chapter],
+        fontSize: CGFloat = 17,
+        fontPostScriptName: String? = nil,
+        mode: EPUBLayoutEngineMode = .browserAuto
+    ) async -> (engine: BrowserLayoutPageEngine, resource: MockBrowserLayoutResource, delegate: CoreTextPageEngine) {
+        let resource = MockBrowserLayoutResource(chapters: chapters)
+        let builder = MockAttributedStringBuilder(texts: chapters.map { $0.title })
+        let store = CharOffsetStore(directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent("bl-test-\(UUID().uuidString)"))
+        var settings = makeSettings(fontSize: fontSize)
+        settings.fontPostScriptName = fontPostScriptName
+        let delegate = CoreTextPageEngine(attributedBuilder: builder, renderSettings: settings, offsetStore: store)
+        let engine = BrowserLayoutPageEngine(
+            resource: resource, delegate: delegate, settings: settings, mode: mode
+        )
+        await engine.start(renderSize: CGSize(width: 300, height: 400), bookId: "test")
+        return (engine, resource, delegate)
+    }
+
+    private func plainChapter(_ text: String, index: Int = 0) -> MockBrowserLayoutResource.Chapter {
+        MockBrowserLayoutResource.Chapter(
+            title: "Chapter \(index)",
+            href: "chapter\(index).xhtml",
+            html: "<html><body><p>\(text)</p></body></html>",
+            css: []
+        )
+    }
+
+    @Test func selectedEPUBFontOverridesAuthorFamilyAndResets() async throws {
+        let chapter = MockBrowserLayoutResource.Chapter(title: "Fonts", href: "fonts.xhtml",
+            html: "<html><body><p style=\"font-family:Georgia\">Regular <b>Bold</b> <i>Italic</i></p></body></html>", css: [])
+        let (engine, _, _) = await makeEngine(chapters: [chapter], fontPostScriptName: "Courier")
+        func textItems() throws -> [DisplayTextItem] {
+            let vc = try #require(engine.pageViewController(at: 0) as? BrowserLayoutPageViewController)
+            return vc.pageView.displayList.items.compactMap { if case .text(let t) = $0 { return t }; return nil }
+        }
+        let items = try textItems()
+        #expect(!items.isEmpty)
+        #expect(items.allSatisfy { $0.font.familyName == "Courier" })
+        #expect(try #require(items.first { $0.text.contains("Bold") }).font.fontDescriptor.symbolicTraits.contains(.traitBold))
+        #expect(try #require(items.first { $0.text.contains("Italic") }).font.fontDescriptor.symbolicTraits.contains(.traitItalic))
+        let source = engine.chapterText(forSpine: 0)
+        engine.updateRenderSettings(makeSettings())
+        await engine.invalidateLayout(newSize: CGSize(width: 300, height: 400))
+        #expect(try textItems().allSatisfy { $0.font.familyName == "Georgia" })
+        #expect(engine.chapterText(forSpine: 0) == source)
+    }
+
+    @Test func browserChapterPagesAndOffsetMapping() async throws {
+        let chapter = plainChapter(String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 20))
+        let (engine, _, _) = await makeEngine(chapters: [chapter])
+        #expect(engine.choice(for: 0)?.isBrowser == true)
+        #expect(engine.totalPages >= 2)
+
+        // charOffset → page → charOffset round trip lands within the same page.
+        let offset = 200
+        let page = engine.pageIndex(forSpine: 0, charOffset: offset)
+        let (spine, restoredOffset) = engine.charOffset(forPage: page)
+        #expect(spine == 0)
+        let restoredPage = engine.pageIndex(forSpine: 0, charOffset: restoredOffset)
+        #expect(restoredPage == page)
+
+        // Page view vends and carries its reading position.
+        let vc = engine.pageViewController(at: page)
+        #expect(vc is BrowserLayoutPageViewController)
+        let position = (vc as? CoreTextReadingPositionProviding)?.coreTextReadingPosition
+        #expect(position?.spineIndex == 0)
+
+        // `pageSourceRanges` is now STORED and refreshed by `pages`'s didSet
+        // (it used to re-walk every fragment on every access, inside a binary
+        // search). It must stay in step with the pages the chapter ended with.
+        let layout = try #require(engine.testChapterLayout?.layout)
+        #expect(layout.pageSourceRanges.count == layout.pages.count,
+                "stale page ranges: \(layout.pageSourceRanges.count) ranges for \(layout.pages.count) pages")
+        let pagination = try #require(engine.chapterPagination(forSpine: 0, charOffset: restoredOffset))
+        #expect(pagination.localPageIndex == page)
+        #expect(pagination.displayPageCount == layout.pages.count)
+        #expect(engine.chapterText(forSpine: 0)?.contains("quick brown fox") == true)
+    }
+
+    @Test func everyPageStartRoundTripsAndTapWalkerAdvances() async throws {
+        let (engine, _, _) = await makeEngine(chapters: [
+            plainChapter(String(repeating: "每一頁的起點必須屬於該頁，點擊翻頁不能返回原頁。", count: 120)),
+            .init(title: "Table fallback", href: "chapter1.xhtml",
+                  html: "<html><body><table><tr><td>Fallback content</td></tr></table></body></html>", css: []),
+            plainChapter(String(repeating: "Browser prose after the fallback chapter. ", count: 60), index: 2)
+        ])
+        _ = await engine.preloadChapter(at: 1)
+        _ = await engine.preloadChapter(at: 2)
+        #expect(engine.choice(for: 1)?.isBrowser == false)
+        #expect(engine.choice(for: 2)?.isBrowser == true)
+        #expect(engine.totalPages > 3)
+        for page in 0..<engine.totalPages {
+            let position = try #require(engine.readingPosition(forPage: page))
+            #expect(engine.pageIndex(for: position) == page, "page start round trip: \(page)")
+            let pageVC = try #require(engine.pageViewController(at: page) as? any PageIndexProviding)
+            #expect(pageVC.globalPageIndex == page, "A fallback controller must use its owning engine's page space")
+            let positionedVC = try #require(engine.pageViewController(for: position) as? any PageIndexProviding)
+            #expect(positionedVC.globalPageIndex == page)
+            if page + 1 < engine.totalPages {
+                let next = try #require(engine.positionAfter(position))
+                #expect(engine.pageIndex(for: next) == page + 1)
+                #expect(engine.positionBefore(next) == position)
+            }
+        }
+    }
+
+    @Test func fallbackNavigationCallbacksTranslateDelegatePageSpace() async throws {
+        let (engine, _, delegate) = await makeEngine(chapters: [
+            plainChapter(String(repeating: "Browser has more pages than its legacy test builder. ", count: 120)),
+            .init(title: "Fallback", href: "chapter1.xhtml",
+                  html: "<html><body><table><tr><td>Link destination</td></tr></table></body></html>", css: [])
+        ])
+        _ = await engine.preloadChapter(at: 1)
+        let position = CoreTextReadingPosition.chapterStart(1)
+        let legacyPage = try #require(delegate.pageIndex(for: position))
+        let compositePage = try #require(engine.pageIndex(for: position))
+        #expect(legacyPage != compositePage)
+        var barsPage: Int?
+        engine.pageBarsProvider = { page in
+            barsPage = page
+            return nil
+        }
+        _ = delegate.pageBars(forGlobalPage: legacyPage)
+        #expect(barsPage == compositePage, "Fallback bars must use BrowserAuto's page numbering")
+        var linkedPage: Int?
+        var navigatedPage: Int?
+        engine.onLinkNavigate = { linkedPage = $0 }
+        engine.onNavigateToPage = { navigatedPage = $0 }
+        delegate.onLinkNavigate?(legacyPage)
+        delegate.onNavigateToPage?(legacyPage)
+        #expect(linkedPage == compositePage)
+        #expect(navigatedPage == compositePage)
+    }
+
+    @Test func longPressSelectsSemanticParagraphWithoutChangingSourceOffsets() async throws {
+        let chapter = MockBrowserLayoutResource.Chapter(
+            title: "paragraphs", href: "p.xhtml",
+            html: "<html><body><p>第一段<em>包含行內文字</em>。</p><p>第二段不應一起反白。</p></body></html>", css: []
+        )
+        let (engine, _, _) = await makeEngine(chapters: [chapter])
+        let controller = try #require(engine.pageViewController(at: 0) as? BrowserLayoutPageViewController)
+        let source = try #require(engine.chapterText(forSpine: 0))
+        #expect(source == "第一段包含行內文字。第二段不應一起反白。")
+        let range = (source as NSString).range(of: "第一段")
+        let rect = try #require(BrowserTextGeometry.rects(in: controller.pageView.displayList, range: range).first)
+        let interaction = try #require(controller.pageView.textInteraction)
+        interaction.begin(at: CGPoint(x: rect.midX, y: rect.midY))
+        #expect(interaction.selection.selectedTextForCopy == "第一段包含行內文字。")
+        let second = (source as NSString).range(of: "第二段")
+        let secondRect = try #require(BrowserTextGeometry.rects(in: controller.pageView.displayList, range: second).first)
+        interaction.clear()
+        interaction.begin(at: CGPoint(x: secondRect.midX, y: secondRect.midY))
+        #expect(interaction.selection.selectedRange?.location == second.location)
+        #expect(interaction.selection.selectedTextForCopy == "第二段不應一起反白。")
+    }
+
+    @Test func browserPageReceivesBackgroundAndSupportsVoiceOverAndPlayback() async throws {
+        let (engine, _, _) = await makeEngine(chapters: [plainChapter("The quick brown fox jumps.")])
+        let backgroundURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("browser-background-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: backgroundURL) }
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }
+        try #require(image.pngData()).write(to: backgroundURL)
+        var settings = makeSettings()
+        settings.readerBackgroundImageURL = backgroundURL
+        engine.updateRenderSettings(settings)
+        let controller = try #require(engine.pageViewController(at: 0) as? BrowserLayoutPageViewController)
+        controller.loadViewIfNeeded()
+        let view = controller.pageView
+        #expect(view.readerBackgroundImage != nil)
+        var actions: [TouchAction] = []
+        view.onAccessibilityAction = { actions.append($0) }
+        #expect(view.accessibilityLabel?.contains("quick brown fox") == true)
+        #expect(view.accessibilityCustomActions?.count == 5)
+        #expect(view.accessibilityCustomActions?.contains { $0.name == localized("選取文字") } == true)
+        #expect(view.accessibilityActivate())
+        #expect(view.accessibilityScroll(.left))
+        #expect(actions == [.toggleMenu, .nextPage])
+
+        view.setPlaybackHighlight(ReaderPlaybackHighlight(text: "quick brown fox"))
+        #expect(view.layer.sublayers?.contains {
+            guard let shape = $0 as? CAShapeLayer else { return false }
+            return !shape.isHidden && shape.path?.isEmpty == false
+        } == true)
+        view.setPlaybackHighlight(nil)
+        #expect(view.layer.sublayers?.allSatisfy {
+            guard let shape = $0 as? CAShapeLayer else { return true }
+            return shape.isHidden
+        } == true)
+    }
+
+    /// A page whose chapter layout has not reached it yet must still identify
+    /// ITSELF. The placeholder used to be default-constructed
+    /// (`PlaceholderPageViewController()`), reporting `globalPageIndex == 0`
+    /// and a nil reading position; when the turn settled,
+    /// `CoreTextPagedView.Coordinator.readingPosition(from:)` fell back to that
+    /// 0 and resolved it to spine 0 / offset 0 — so turning a page while a
+    /// chapter was still paginating threw the reader back to the front cover.
+    @Test func placeholderForUnlaidChapterCarriesItsOwnPageIndex() async throws {
+        let text = String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 20)
+        let (engine, _, _) = await makeEngine(chapters: [
+            plainChapter(text, index: 0),
+            plainChapter(text, index: 1),
+        ])
+        // start() preloads chapter 0 only — chapter 1 has no pages yet.
+        let target = engine.pageIndex(forSpine: 1, charOffset: 0)
+        #expect(target > 0, "chapter 1 must not begin at global page 0")
+
+        let vc = engine.pageViewController(at: target)
+        let placeholder = try #require(
+            vc as? PlaceholderPageViewController,
+            "an un-laid-out chapter page should vend a placeholder"
+        )
+        #expect(placeholder.globalPageIndex == target,
+                "placeholder reported page \(placeholder.globalPageIndex), expected \(target)")
+        #expect(placeholder.coreTextReadingPosition?.spineIndex == 1,
+                "placeholder must anchor to its OWN chapter, not the book start")
+    }
+
+    @Test func positionRestoresNearOffsetAfterInvalidate() async throws {
+        let text = String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 30)
+        let (engine, _, _) = await makeEngine(chapters: [plainChapter(text)])
+        let offset = 600
+        let pageBefore = engine.pageIndex(forSpine: 0, charOffset: offset)
+        _ = engine.pageViewController(at: pageBefore)  // sets currentPage
+
+        await engine.invalidateLayout(newSize: CGSize(width: 260, height: 360))
+
+        // After re-layout with a different size, the offset restores to the
+        // SAME vicinity (not the old page number).
+        let pageAfter = engine.pageIndex(forSpine: 0, charOffset: offset)
+        let (_, offsetAfter) = engine.charOffset(forPage: pageAfter)
+        #expect(abs(offsetAfter - offset) < 600)  // within a couple of pages
+    }
+
+    @Test func fontChangeRestoresByOffsetNotPageNumber() async throws {
+        let text = String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 30)
+        let (engine, _, _) = await makeEngine(chapters: [plainChapter(text)], fontSize: 17)
+        let offset = 600
+        let pageSmall = engine.pageIndex(forSpine: 0, charOffset: offset)
+        #expect(pageSmall != 0)
+
+        // Larger font → fewer chars per page → same offset must map to a
+        // LATER page, and the restored offset stays near 600.
+        engine.updateRenderSettings(makeSettings(fontSize: 24))
+        await engine.invalidateLayout(newSize: CGSize(width: 300, height: 400))
+        let pageLarge = engine.pageIndex(forSpine: 0, charOffset: offset)
+        #expect(pageLarge >= pageSmall)
+        let (_, restored) = engine.charOffset(forPage: pageLarge)
+        #expect(abs(restored - offset) < 600)
+    }
+
+
+    /// Toggling 粗體 — or any other relayout setting — on a local EPUB whose
+    /// visible chapter fell back to the legacy engine left the reader on the
+    /// pre-change page until the book was reopened.
+    ///
+    /// `invalidateLayout` cleared `choices` and then re-preloaded only the
+    /// chapters the BROWSER engine owned, so a legacy chapter's routing entry
+    /// never came back. `choices[spine] ?? .browser` then sent its pagination,
+    /// drawing and page count to a browser layout that had just been discarded:
+    /// `rebuildOffsets` fell back to its 1-page estimate and `EPUBPageRenderer`
+    /// refused the visible commit with `.layoutUnavailable`. Online books never
+    /// construct this engine, which is why only local books showed it.
+    @Test func legacyChapterKeepsRoutingAcrossRelayout() async throws {
+        let body = String(repeating: "The quick brown fox jumps over the lazy dog. ", count: 40)
+        let floaty = MockBrowserLayoutResource.Chapter(
+            // The legacy mock builds its content from the chapter title.
+            title: body,
+            href: "floaty.xhtml",
+            html: "<html><body><div style=\"float: left\">x</div><p>\(body)</p></body></html>",
+            css: []
+        )
+        let (engine, _, _) = await makeEngine(chapters: [floaty])
+        #expect(engine.choice(for: 0)?.isBrowser == false, "fixture must fall back to the legacy engine")
+        let pagesBefore = engine.totalPages
+        #expect(pagesBefore > 1, "fixture must paginate to more than the 1-page browser estimate")
+
+        engine.updateRenderSettings(makeSettings(fontSize: 24))
+        await engine.invalidateLayout(newSize: CGSize(width: 300, height: 400))
+
+        #expect(engine.choice(for: 0) != nil, "legacy chapter lost its engine choice")
+        #expect(
+            engine.chapterPagination(forSpine: 0, charOffset: 0) != nil,
+            "legacy chapter has no pagination after relayout"
+        )
+        #expect(engine.totalPages >= pagesBefore, "page count collapsed to the browser estimate")
+    }
+
+    @Test func anchorNavigation() async throws {
+        let html = """
+        <html><body><p id="mark">Target paragraph with anchor.</p><p>More text.</p></body></html>
+        """
+        let chapter = MockBrowserLayoutResource.Chapter(title: "c", href: "c.xhtml", html: html, css: [])
+        let (engine, _, _) = await makeEngine(chapters: [chapter])
+        let offset = try #require(engine.charOffset(forSpine: 0, fragment: "mark"))
+        let page = engine.pageIndex(forSpine: 0, charOffset: offset)
+        let (_, restored) = engine.charOffset(forPage: page)
+        #expect(abs(restored - offset) < 100)
+    }
+
+    @Test func linkResolutionNavigatesToTargetChapter() async throws {
+        let c0 = plainChapter("First chapter text.", index: 0)
+        let c1 = plainChapter("Second chapter text.", index: 1)
+        let (engine, _, _) = await makeEngine(chapters: [c0, c1])
+        // Link from chapter 0 to chapter1.xhtml.
+        let page = await engine.resolveInternalLink("chapter1.xhtml", fromSpineIndex: 0)
+        let (spine, _) = engine.localPosition(for: try #require(page))
+        #expect(spine == 1)
+    }
+
+    @Test func capabilityFailureFallsBackWholeChapterToLegacy() async throws {
+        // float CSS → scanner rejects → the DELEGATE lays out the chapter.
+        let chapter = MockBrowserLayoutResource.Chapter(
+            title: "floaty",
+            href: "f.xhtml",
+            html: "<html><body><div style=\"float: left\">x</div></body></html>",
+            css: []
+        )
+        let (engine, _, delegate) = await makeEngine(chapters: [chapter])
+        let choice = engine.choice(for: 0)
+        guard case .legacyFallback(let reasons) = choice else {
+            Issue.record("expected legacyFallback, got \(String(describing: choice))")
+            return
+        }
+        #expect(reasons.contains(.float))
+        // The chapter must be laid out on the DELEGATE (atomic fallback).
+        #expect(delegate.layouts[0] != nil)
+        #expect(engine.totalPages >= 1)
+        // Page view comes from the legacy engine.
+        let vc = engine.pageViewController(at: 0)
+        #expect(vc is CoreTextPageViewController)
+    }
+
+    @Test func engineFailureFallsBackWholeChapter() async throws {
+        let chapter = plainChapter("Text that will fail to load.", index: 0)
+        let (engine, resource, _) = await makeEngine(chapters: [chapter])
+        resource.failChapterHTML.insert(0)
+        await engine.notifyChapterDataChanged(at: 0)
+        let choice = engine.choice(for: 0)
+        guard case .legacyEngineFailure = choice else {
+            Issue.record("expected legacyEngineFailure, got \(String(describing: choice))")
+            return
+        }
+        // The whole chapter renders from the legacy engine — no partial browser
+        // pages.
+        let vc = engine.pageViewController(at: 0)
+        #expect(vc is CoreTextPageViewController)
+    }
+
+    @Test func themeChangeKeepsBrowserPages() async throws {
+        let chapter = plainChapter("Theme text.")
+        let (engine, _, _) = await makeEngine(chapters: [chapter])
+        engine.applyThemeChange(textColor: .systemBlue, backgroundColor: .systemGray6)
+        let vc = engine.pageViewController(at: 0)
+        guard let pageVC = vc as? BrowserLayoutPageViewController else {
+            Issue.record("expected browser page")
+            return
+        }
+        let textItems = pageVC.pageView.displayList.items.compactMap { item -> DisplayTextItem? in
+            if case .text(let t) = item { return t }
+            return nil
+        }
+        let first = try #require(textItems.first)
+        #expect(first.color == UIColor.systemBlue)
+    }
+
+    @Test func readingPositionRoundTrip() async throws {
+        let chapter = plainChapter(String(repeating: "A sentence for position mapping. ", count: 10))
+        let (engine, _, _) = await makeEngine(chapters: [chapter])
+        let page = engine.totalPages - 1
+        let position = try #require(engine.readingPosition(forPage: page))
+        let restored = engine.pageIndex(for: position)
+        #expect(restored == page)
+    }
+
+    /// THE LIVELOCK REGRESSION: an image-only / zero-page chapter under
+    /// browserForced MUST publish a terminal diagnostic page (1 page, browser
+    /// engine, never re-ensured). Position queries must not start a second
+    /// session, and the reader must be able to turn past the diagnostic.
+    @Test func browserForcedImageOnlyChapterPublishesDiagnosticPage() async throws {
+        // A chapter that lays out ZERO pages (SVG-only body). The legacy
+        // delegate would render the title placeholder; forced mode must NOT
+        // delegate — it publishes the browser engine's diagnostic page.
+        let emptyCover = MockBrowserLayoutResource.Chapter(
+            title: "cover",
+            href: "c0.xhtml",
+            html: "<html><body><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\"><rect width=\"100\" height=\"100\"/></svg></body></html>",
+            css: []
+        )
+        let nextChapter = MockBrowserLayoutResource.Chapter(
+            title: "ch1", href: "c1.xhtml",
+            html: "<html><body><p>Real chapter text to keep the reader moving.</p></body></html>",
+            css: []
+        )
+        let resource = MockBrowserLayoutResource(chapters: [emptyCover, nextChapter])
+        let builder = MockAttributedStringBuilder(texts: ["cover", "next1"])
+        let store = CharOffsetStore(directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent("bl-rg-\(UUID().uuidString)"))
+        let settings = makeSettings()
+        let delegate = CoreTextPageEngine(attributedBuilder: builder, renderSettings: settings, offsetStore: store)
+        // Forced mode is injected, never set on the global: two tests in this
+        // suite run in parallel, and flipping a shared `var` made the capability
+        // fallback test fail depending on interleaving.
+        let engine = BrowserLayoutPageEngine(
+            resource: resource, delegate: delegate, settings: settings,
+            mode: .browserForced, showDebugOverlay: true
+        )
+        await engine.start(renderSize: CGSize(width: 390, height: 844), bookId: "rg")
+
+        // Choice stays BROWSER — the browser engine owns the diagnostic page.
+        #expect(engine.choice(for: 0)?.isBrowser == true)
+        // State is a TERMINAL unsupported diagnostic (image-only document).
+        let state = engine.testChapterLayoutStates[0]
+        guard case .unsupportedDiagnostic(let page) = state else {
+            Issue.record("expected unsupportedDiagnostic state, got \(String(describing: state))")
+            return
+        }
+        #expect(page.reason == .imageOnlyDocument)
+        #expect(page.spineIndex == 0)
+        #expect(page.unsupportedFeatures.contains(.unsupportedSVG))
+        // The diagnostic counts as exactly ONE page so the reader can turn past.
+        #expect(engine.totalPages >= 1)
+
+        // pageViewController(at:)/(for:) returns the DIAGNOSTIC page VC — never
+        // a placeholder that re-triggers ensure.
+        let atVC = engine.pageViewController(at: 0)
+        #expect(atVC is BrowserForcedDiagnosticViewController)
+        let positionVC = engine.pageViewController(for: .chapterStart(0))
+        #expect(positionVC is BrowserForcedDiagnosticViewController)
+
+        // Session-ensure seal: exactly ONE (generation, spine) session; 100
+        // position queries must not start another (the livelock loops forever
+        // when placeholders keep re-ensuring).
+        #expect(engine.testSessionEnsureCounts["0:0"] == 1)
+        for _ in 0..<100 {
+            _ = engine.pageViewController(for: .chapterStart(0))
+        }
+        #expect(engine.testSessionEnsureCounts["0:0"] == 1, "100 position queries must not re-ensure the session")
+        #expect(engine.totalPages >= 1)
+
+        // Reader can still move to chapter 1: preload proceeds normally.
+        await engine.preloadChapter(at: 1)
+        #expect(engine.choice(for: 1)?.isBrowser == true)
+        #expect(engine.totalPages >= 2, "reader can turn past the diagnostic cover into chapter one")
+    }
+}

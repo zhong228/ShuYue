@@ -1,0 +1,6817 @@
+{
+  "metadata": {
+    "date": "2026-09-30",
+    "configuration": "Debug",
+    "xcode": "27.0 (27A266a)",
+    "destination": "670FCE12-43E9-444F-ACAD-96AACDB4EAEC",
+    "device": "iPhone 18 Pro Max simulator",
+    "runtime": "iOS 27.0",
+    "viewportPoints": [
+      390,
+      800
+    ],
+    "samplePolicy": "Six observations per route/case; discard repetition 0; report median and range of five. Fresh publication/engine objects, warm OS file and font caches.",
+    "sources": {
+      "Modules/Core/ReaderCore/BrowserLayout/BrowserLayoutPageEngine.swift": "ba208621e8b04edca6c3c0380aec7232545e5096ed3bdc7e89ca722f50ffdaca",
+      "Modules/Core/ReaderCore/CoreText/CoreTextPageEngine.swift": "b3b0531e95f68edbc0fa7d988c7434f55732ffd5fea2947d0a54a990b1da39b5",
+      "Modules/Core/ReaderCore/CoreText/CoreTextScrollEngine.swift": "f61b9deb108039c3e725bd784c2bd3ad1e45e4e70a80bd0ff1973dce35c42f68",
+      "Modules/Core/ReaderCore/CoreText/EPUBAttributedStringBuilder.swift": "4272e3baf8f09493b696195ccde0995e96a0f38689e70adf6cb5e78fada69033",
+      "Modules/Core/ReaderCore/BrowserLayout/EPUBBrowserLayoutResourceAdapter.swift": "f6ea3b0982a8014895344d17253566fbc66671a781c5e2cefde816caabe69f9f",
+      "Modules/Core/ReaderCore/BrowserLayout/EPUBStylesheetIngestion.swift": "167b67df10f4ebe8460ba25f981a0e17a2d1498eaca513858f3e847d3d949cfe",
+      "Modules/Core/ReaderCore/CoreText/EPUBStyleResolver.swift": "da1bdd09bf7b0764bf9d1740e6edeb68e5cf6b85a1e1cdc9754999a39fa5d4aa",
+      "Modules/Core/ReaderCore/EPUBPageRenderer.swift": "aeb14c52071227e38a0387e1efbc65855f461fe08fc9b1fb5a978cb62fe84723",
+      "Tests/iOS/yuedu appTests/EPUBEngineLoadingBenchmarkTests.swift": "5c097ba4e1ab58f3071bbaad78ed961643f58a015a8a824171a0b3dd381b46d4"
+    },
+    "packagePin": {
+      "identity": "yueducoretext",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/CHANG-JUI-LIN/YueduCoreText",
+      "state": {
+        "revision": "8cd1bf6f12b2100fdbc1e641ecd7c4459ad2bf03",
+        "version": "0.6.0"
+      }
+    },
+    "headAtStart": "47b75547266a23d6770a22dd7034b4ab04ccfa83",
+    "auditedPackageSources": {
+      "Sources/YueduCoreText/Engine/BrowserLayoutCapabilityScanner.swift": {
+        "sha256": "21012041774d1c3eec5393f5ad99aa32d8ac54add4dd84070af38a6e7608f40a",
+        "matchesSiblingAudit": true
+      },
+      "Sources/YueduCoreText/Engine/CurrentCSSFrontend.swift": {
+        "sha256": "fcb9c212433ecb0149f3d6abeab6721df5f8d42340fbbdd51101a05e3196c903",
+        "matchesSiblingAudit": true
+      },
+      "Sources/YueduCoreText/Engine/BrowserLayoutSession.swift": {
+        "sha256": "4ca8efe3d8f3baca83eb20babf8f156cbfc9879199b03b52024d6ade7d36b733",
+        "matchesSiblingAudit": true
+      },
+      "Sources/YueduCoreText/PublicAPI/HTMLLayoutDocument.swift": {
+        "sha256": "8756a673a272f182e1c92eb6798ee5104dc98b0799fc5ab85f6fcfccebe14745",
+        "matchesSiblingAudit": true
+      }
+    },
+    "headAtCompletion": "47b75547266a23d6770a22dd7034b4ab04ccfa83",
+    "sourceValidation": {
+      "Modules/Core/ReaderCore/BrowserLayout/BrowserLayoutPageEngine.swift": true,
+      "Modules/Core/ReaderCore/CoreText/CoreTextPageEngine.swift": true,
+      "Modules/Core/ReaderCore/CoreText/CoreTextScrollEngine.swift": true,
+      "Modules/Core/ReaderCore/CoreText/EPUBAttributedStringBuilder.swift": true,
+      "Modules/Core/ReaderCore/BrowserLayout/EPUBBrowserLayoutResourceAdapter.swift": true,
+      "Modules/Core/ReaderCore/BrowserLayout/EPUBStylesheetIngestion.swift": true,
+      "Modules/Core/ReaderCore/CoreText/EPUBStyleResolver.swift": true,
+      "Modules/Core/ReaderCore/EPUBPageRenderer.swift": true,
+      "Tests/iOS/yuedu appTests/EPUBEngineLoadingBenchmarkTests.swift": true
+    },
+    "testLog": "/tmp/yuedu-loading-benchmark-20260930-final.log",
+    "xcresult": "/tmp/yuedu-loading-benchmark-20260930-final.xcresult",
+    "rawObservationCount": 120,
+    "measuredObservationCount": 100,
+    "testVerdict": "TEST SUCCEEDED",
+    "runNotes": [
+      "Initial audit run interrupted after finding that onChapterReady(nil) also reports page-count changes; no samples retained.",
+      "Two attempted reruns failed before test execution because unrelated Xcode tests held the shared build.db.",
+      "Final run waits for the final chapterDataSize call in each paged observation and uses the normal project and shared DerivedData."
+    ]
+  },
+  "summary": [
+    {
+      "book": "game-designer-fallback",
+      "route": "auto-paged",
+      "spine": 10,
+      "engines": [
+        "legacy: capability positioned,unknown-block-display,flex-grid"
+      ],
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "legacyBuildCounts": [
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "css.10": 1,
+          "html.0": 2,
+          "html.10": 1,
+          "images.0": 1,
+          "css.0": 2
+        },
+        {
+          "css.0": 2,
+          "html.10": 1,
+          "html.0": 2,
+          "css.10": 1,
+          "images.0": 1
+        },
+        {
+          "css.10": 1,
+          "css.0": 2,
+          "images.0": 1,
+          "html.0": 2,
+          "html.10": 1
+        },
+        {
+          "css.10": 1,
+          "images.0": 1,
+          "html.0": 2,
+          "css.0": 2,
+          "html.10": 1
+        },
+        {
+          "css.10": 1,
+          "html.0": 2,
+          "html.10": 1,
+          "css.0": 2,
+          "images.0": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 1581.9515000330284,
+          "min": 1542.824375035707,
+          "max": 1646.282458328642
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 1582.360250002239,
+          "min": 1543.2170000276528,
+          "max": 1646.6860833461396
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 128.5850833519362,
+          "min": 125.2507499884814,
+          "max": 173.701333347708
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 129.0709583554417,
+          "min": 125.71441667387262,
+          "max": 174.3037083069794
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 234.73916662624106,
+          "min": 231.1983749968931,
+          "max": 247.346208372619
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.32483332324773073,
+          "min": 0.3031250089406967,
+          "max": 0.34304166911169887
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 9668.474041682202,
+          "min": 9621.162166644353,
+          "max": 10104.587499983609
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 139.03529167873785,
+          "min": 136.99750002706423,
+          "max": 142.52429164480418
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 696.2305000051856,
+          "min": 682.2067916509695,
+          "max": 723.9743333193474
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 694,
+          "min": 684,
+          "max": 751
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 12,
+          "min": 12,
+          "max": 12
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "game-designer-fallback",
+      "route": "auto-scroll",
+      "spine": 10,
+      "engines": [
+        "legacy: capability positioned,unknown-block-display,flex-grid"
+      ],
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "legacyBuildCounts": [
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "html.10": 1,
+          "css.10": 1
+        },
+        {
+          "css.10": 1,
+          "html.10": 1
+        },
+        {
+          "css.10": 1,
+          "html.10": 1
+        },
+        {
+          "html.10": 1,
+          "css.10": 1
+        },
+        {
+          "css.10": 1,
+          "html.10": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 1403.506374976132,
+          "min": 1376.0550416773185,
+          "max": 1458.0682083615102
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 1403.506374976132,
+          "min": 1376.0550416773185,
+          "max": 1458.0682083615102
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 242.6745833363384,
+          "min": 233.3218333660625,
+          "max": 271.74825000111014
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002583314199000597,
+          "min": 0.0022916938178241253,
+          "max": 0.004124944098293781
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 139.56204167334363,
+          "min": 137.081999971997,
+          "max": 143.89066665899009
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 621.8812916777097,
+          "min": 612.031708296854,
+          "max": 644.7651666821912
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 616,
+          "min": 608,
+          "max": 634
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 12,
+          "min": 12,
+          "max": 12
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 4
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "book": "game-designer-fallback",
+      "route": "legacy-paged",
+      "spine": 10,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "legacyBuildCounts": [
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "10": 1,
+          "0": 1
+        },
+        {
+          "0": 1,
+          "10": 1
+        },
+        {
+          "10": 1,
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 709.0118749765679,
+          "min": 699.883499997668,
+          "max": 724.74579163827
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 709.1225416515954,
+          "min": 700.0008333125152,
+          "max": 724.8631250113249
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 58.278416690882295,
+          "min": 57.2565000038594,
+          "max": 59.527958335820585
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 66.59887498244643,
+          "min": 66.5451250388287,
+          "max": 66.93999998969957
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 239.00170833803713,
+          "min": 232.7859583310783,
+          "max": 252.69995833514258
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.03504165215417743,
+          "min": 0.0315000070258975,
+          "max": 0.03887497587129474
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 9595.615875034127,
+          "min": 9555.584583373275,
+          "max": 9764.542625052854
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 167,
+          "min": 163,
+          "max": 176
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 3,
+          "min": 3,
+          "max": 3
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "game-designer-fallback",
+      "route": "legacy-scroll",
+      "spine": 10,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "legacyBuildCounts": [
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        },
+        {
+          "10": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 641.904333315324,
+          "min": 629.1421249625273,
+          "max": 653.9825416402891
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 641.904333315324,
+          "min": 629.1421249625273,
+          "max": 653.9825416402891
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 234.78704161243513,
+          "min": 233.1668749684468,
+          "max": 236.4839999936521
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002374988980591297,
+          "min": 0.0021666637621819973,
+          "max": 0.00241666566580534
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 152,
+          "min": 151,
+          "max": 157
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 3,
+          "min": 3,
+          "max": 3
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-long",
+      "route": "auto-paged",
+      "spine": 64,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "images.0": 1,
+          "css.64": 2,
+          "html.0": 2,
+          "css.0": 2,
+          "images.64": 1,
+          "html.64": 2,
+          "image.64": 1
+        },
+        {
+          "images.64": 1,
+          "html.0": 2,
+          "images.0": 1,
+          "html.64": 2,
+          "image.64": 1,
+          "css.0": 2,
+          "css.64": 2
+        },
+        {
+          "images.64": 1,
+          "html.64": 2,
+          "images.0": 1,
+          "html.0": 2,
+          "css.0": 2,
+          "css.64": 2,
+          "image.64": 1
+        },
+        {
+          "image.64": 1,
+          "css.64": 2,
+          "css.0": 2,
+          "images.64": 1,
+          "html.64": 2,
+          "images.0": 1,
+          "html.0": 2
+        },
+        {
+          "images.64": 1,
+          "html.0": 2,
+          "images.0": 1,
+          "html.64": 2,
+          "image.64": 1,
+          "css.0": 2,
+          "css.64": 2
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 5525.758125004359,
+          "min": 5462.468416662887,
+          "max": 5642.303541710135
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 5539.132250007242,
+          "min": 5475.610374996904,
+          "max": 5656.5509583451785
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 157.3935000342317,
+          "min": 156.82587499031797,
+          "max": 186.9817499537021
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 158.07570837205276,
+          "min": 157.49750001123175,
+          "max": 187.60999996447936
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 427.4278750526719,
+          "min": 404.8165417043492,
+          "max": 460.6724583427422
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.034541706554591656,
+          "min": 0.0312916818074882,
+          "max": 0.04437501775100827
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 14200.361041701399,
+          "min": 14083.251541655045,
+          "max": 14582.17895834241
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 845.8448333549313,
+          "min": 838.310208346229,
+          "max": 855.937999964226
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 954.3296250049025,
+          "min": 952.1098749828525,
+          "max": 1053.9565000217408
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 2677.4937916197814,
+          "min": 2639.8956250050105,
+          "max": 2706.180041655898
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 733,
+          "min": 730,
+          "max": 800
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 11,
+          "min": 11,
+          "max": 11
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-long",
+      "route": "auto-scroll",
+      "spine": 64,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "resourceCalls": [
+        {
+          "images.64": 1,
+          "html.64": 2,
+          "image.64": 1,
+          "css.64": 2
+        },
+        {
+          "image.64": 1,
+          "html.64": 2,
+          "css.64": 2,
+          "images.64": 1
+        },
+        {
+          "image.64": 1,
+          "images.64": 1,
+          "css.64": 2,
+          "html.64": 2
+        },
+        {
+          "images.64": 1,
+          "image.64": 1,
+          "html.64": 2,
+          "css.64": 2
+        },
+        {
+          "css.64": 2,
+          "images.64": 1,
+          "html.64": 2,
+          "image.64": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 4975.043458340224,
+          "min": 4893.7569166882895,
+          "max": 5076.827708340716
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 4975.043458340224,
+          "min": 4893.7569166882895,
+          "max": 5076.827708340716
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 430.1492916420102,
+          "min": 413.3861666196026,
+          "max": 441.1134999827482
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.0035833800211548805,
+          "min": 0.0027500209398567677,
+          "max": 0.003999972250312567
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 848.3903750311583,
+          "min": 827.1489166654646,
+          "max": 898.9669166621752
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 861.5492916433141,
+          "min": 843.9800416817889,
+          "max": 914.4185833865777
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 2422.547249996569,
+          "min": 2358.200416667387,
+          "max": 2480.4024166660383
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 657,
+          "min": 640,
+          "max": 674
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 11,
+          "min": 11,
+          "max": 11
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-long",
+      "route": "legacy-paged",
+      "spine": 64,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "0": 1,
+          "64": 1
+        },
+        {
+          "0": 1,
+          "64": 1
+        },
+        {
+          "0": 1,
+          "64": 1
+        },
+        {
+          "64": 1,
+          "0": 1
+        },
+        {
+          "64": 1,
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 4491.388500027824,
+          "min": 4447.241166664753,
+          "max": 4610.968416673131
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 4798.492791713215,
+          "min": 4764.7669583093375,
+          "max": 4912.028458318673
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 72.23266665823758,
+          "min": 70.67458337405697,
+          "max": 75.51533333025873
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 83.41433334862813,
+          "min": 82.02500001061708,
+          "max": 84.76470835739747
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 411.1398333334364,
+          "min": 408.88366667786613,
+          "max": 435.3881249553524
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.06154167931526899,
+          "min": 0.05533336661756039,
+          "max": 0.06512500112876296
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 13467.460666666739,
+          "min": 13398.05558329681,
+          "max": 13598.384249955416
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 397,
+          "min": 395,
+          "max": 403
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 6,
+          "min": 6,
+          "max": 6
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-long",
+      "route": "legacy-scroll",
+      "spine": 64,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "64": 1
+        },
+        {
+          "64": 1
+        },
+        {
+          "64": 1
+        },
+        {
+          "64": 1
+        },
+        {
+          "64": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 4239.813458290882,
+          "min": 4090.04108334193,
+          "max": 4299.6114999987185
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 4239.813458290882,
+          "min": 4090.04108334193,
+          "max": 4299.6114999987185
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 420.55008333409205,
+          "min": 408.2157500088215,
+          "max": 439.25366667099297
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.004166678991168737,
+          "min": 0.0032082898542284966,
+          "max": 0.005208305083215237
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 347,
+          "min": 345,
+          "max": 386
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 6,
+          "min": 6,
+          "max": 6
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-prose",
+      "route": "auto-paged",
+      "spine": 80,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "css.80": 2,
+          "css.0": 2,
+          "images.80": 1,
+          "html.80": 2,
+          "images.0": 1,
+          "html.0": 2
+        },
+        {
+          "html.0": 2,
+          "images.80": 1,
+          "html.80": 2,
+          "images.0": 1,
+          "css.0": 2,
+          "css.80": 2
+        },
+        {
+          "images.80": 1,
+          "css.0": 2,
+          "html.80": 2,
+          "images.0": 1,
+          "css.80": 2,
+          "html.0": 2
+        },
+        {
+          "html.0": 2,
+          "images.0": 1,
+          "html.80": 2,
+          "css.80": 2,
+          "images.80": 1,
+          "css.0": 2
+        },
+        {
+          "css.80": 2,
+          "html.80": 2,
+          "html.0": 2,
+          "images.80": 1,
+          "css.0": 2,
+          "images.0": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 1161.8328749900684,
+          "min": 1144.2096250248142,
+          "max": 1171.8939166748896
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 1163.2335416506976,
+          "min": 1145.708708325401,
+          "max": 1173.4516666620038
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 156.75083332462236,
+          "min": 155.4154583136551,
+          "max": 158.85795833310112
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 157.38329163286835,
+          "min": 156.09887498430908,
+          "max": 159.514874976594
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 417.16837498825043,
+          "min": 407.90874999947846,
+          "max": 424.44283328950405
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.029375019948929548,
+          "min": 0.026666675694286823,
+          "max": 0.03187498077750206
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 12981.511874997523,
+          "min": 12855.722291686106,
+          "max": 13175.626916694455
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 40.901375003159046,
+          "min": 40.51129170693457,
+          "max": 45.86887499317527
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 935.8113749767654,
+          "min": 921.1034167092294,
+          "max": 942.8145832498558
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 130.1195416599512,
+          "min": 127.8652916662395,
+          "max": 130.96645835321397
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 731,
+          "min": 717,
+          "max": 739
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 11,
+          "min": 11,
+          "max": 11
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-prose",
+      "route": "auto-scroll",
+      "spine": 80,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "resourceCalls": [
+        {
+          "images.80": 1,
+          "html.80": 2,
+          "css.80": 2
+        },
+        {
+          "images.80": 1,
+          "css.80": 2,
+          "html.80": 2
+        },
+        {
+          "css.80": 2,
+          "images.80": 1,
+          "html.80": 2
+        },
+        {
+          "html.80": 2,
+          "images.80": 1,
+          "css.80": 2
+        },
+        {
+          "html.80": 2,
+          "css.80": 2,
+          "images.80": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 1026.4834166155197,
+          "min": 1008.2933750236407,
+          "max": 1038.4547083522193
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 1026.4834166155197,
+          "min": 1008.2933750236407,
+          "max": 1038.4547083522193
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 416.2177916732617,
+          "min": 405.3637500037439,
+          "max": 444.7941250400618
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002291635610163212,
+          "min": 0.0021666637621819973,
+          "max": 0.002749962732195854
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 40.05404171766713,
+          "min": 39.69200002029538,
+          "max": 40.611375006847084
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 829.885125043802,
+          "min": 817.0812500175089,
+          "max": 843.8858750741929
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 116.96629162179306,
+          "min": 112.57062503136694,
+          "max": 119.46212500333786
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 645,
+          "min": 634,
+          "max": 659
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 11,
+          "min": 11,
+          "max": 11
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-prose",
+      "route": "legacy-paged",
+      "spine": 80,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "80": 1,
+          "0": 1
+        },
+        {
+          "0": 1,
+          "80": 1
+        },
+        {
+          "0": 1,
+          "80": 1
+        },
+        {
+          "0": 1,
+          "80": 1
+        },
+        {
+          "0": 1,
+          "80": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 451.23516663443297,
+          "min": 444.2607083474286,
+          "max": 478.3832500106655
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 451.3802499859594,
+          "min": 444.3937499891035,
+          "max": 478.57795836171135
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 72.45541666634381,
+          "min": 71.6082917060703,
+          "max": 73.29412503167987
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 83.9855833328329,
+          "min": 82.64999999664724,
+          "max": 84.47195834014565
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 422.078458359465,
+          "min": 409.0565833612345,
+          "max": 445.748416648712
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.042625004425644875,
+          "min": 0.03908330108970404,
+          "max": 0.06216665497049689
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 13007.66108330572,
+          "min": 12667.778999952134,
+          "max": 13077.483958331868
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 65,
+          "min": 63,
+          "max": 67
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "guimi-prose",
+      "route": "legacy-scroll",
+      "spine": 80,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "legacyBuildCounts": [
+        {
+          "80": 1
+        },
+        {
+          "80": 1
+        },
+        {
+          "80": 1
+        },
+        {
+          "80": 1
+        },
+        {
+          "80": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 396.0389999556355,
+          "min": 386.1433332785964,
+          "max": 405.2077916567214
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 396.0389999556355,
+          "min": 386.1433332785964,
+          "max": 405.2077916567214
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 412.7427083440125,
+          "min": 406.3470833352767,
+          "max": 423.3552083023824
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002500019036233425,
+          "min": 0.00220834044739604,
+          "max": 0.0027916976250708103
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 57,
+          "min": 54,
+          "max": 59
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "hail-mary-prose",
+      "route": "auto-paged",
+      "spine": 6,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "legacyBuildCounts": [
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "css.0": 2,
+          "images.6": 1,
+          "html.0": 2,
+          "html.6": 2,
+          "images.0": 1,
+          "css.6": 2
+        },
+        {
+          "images.0": 1,
+          "images.6": 1,
+          "css.0": 2,
+          "html.0": 2,
+          "html.6": 2,
+          "css.6": 2
+        },
+        {
+          "html.0": 2,
+          "css.6": 2,
+          "css.0": 2,
+          "images.0": 1,
+          "html.6": 2,
+          "images.6": 1
+        },
+        {
+          "html.6": 2,
+          "html.0": 2,
+          "images.6": 1,
+          "css.0": 2,
+          "css.6": 2,
+          "images.0": 1
+        },
+        {
+          "css.0": 2,
+          "html.0": 2,
+          "images.0": 1,
+          "html.6": 2,
+          "images.6": 1,
+          "css.6": 2
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 284.1939166537486,
+          "min": 280.4828750086017,
+          "max": 295.223958324641
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 286.1541250022128,
+          "min": 282.3804166982882,
+          "max": 297.1372083411552
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 40.674249990843236,
+          "min": 40.46720830956474,
+          "max": 57.1268749772571
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 40.72824999457225,
+          "min": 40.51550000440329,
+          "max": 57.17866664053872
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 11.691250023432076,
+          "min": 11.41141663538292,
+          "max": 12.30566669255495
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.02875004429370165,
+          "min": 0.02658338053151965,
+          "max": 0.0327499583363533
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 11.286749970167875,
+          "min": 11.015750002115965,
+          "max": 11.757333297282457
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 128.02120833657682,
+          "min": 125.84545835852623,
+          "max": 135.35095832776278
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 7.313958369195461,
+          "min": 7.255083357449621,
+          "max": 7.512999989558011
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 4.297000006772578,
+          "min": 4.209583334159106,
+          "max": 4.58141666604206
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "hail-mary-prose",
+      "route": "auto-scroll",
+      "spine": 6,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "legacyBuildCounts": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "resourceCalls": [
+        {
+          "images.6": 1,
+          "html.6": 2,
+          "css.6": 2
+        },
+        {
+          "html.6": 2,
+          "css.6": 2,
+          "images.6": 1
+        },
+        {
+          "images.6": 1,
+          "html.6": 2,
+          "css.6": 2
+        },
+        {
+          "html.6": 2,
+          "images.6": 1,
+          "css.6": 2
+        },
+        {
+          "css.6": 2,
+          "images.6": 1,
+          "html.6": 2
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 245.17650000052527,
+          "min": 238.81000000983477,
+          "max": 255.68612501956522
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 245.17650000052527,
+          "min": 238.81000000983477,
+          "max": 255.68612501956522
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 12.598333356436342,
+          "min": 11.307958338875324,
+          "max": 13.341833371669054
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.0022500171326100826,
+          "min": 0.0019583385437726974,
+          "max": 0.002916669473052025
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 128.4311666386202,
+          "min": 125.66345831146464,
+          "max": 131.68841670267284
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 8.081208390649408,
+          "min": 7.698625035118312,
+          "max": 8.135874988511205
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 4.552791710011661,
+          "min": 4.142208315897733,
+          "max": 6.431374989915639
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "hail-mary-prose",
+      "route": "legacy-paged",
+      "spine": 6,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "legacyBuildCounts": [
+        {
+          "6": 1,
+          "0": 1
+        },
+        {
+          "0": 1,
+          "6": 1
+        },
+        {
+          "0": 1,
+          "6": 1
+        },
+        {
+          "0": 1,
+          "6": 1
+        },
+        {
+          "6": 1,
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 146.29645831882954,
+          "min": 145.39474999764934,
+          "max": 168.62529166974127
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 198.7278750166297,
+          "min": 198.0805416824296,
+          "max": 224.2459167027846
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 15.66445833304897,
+          "min": 15.589958289638162,
+          "max": 27.536500012502074
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 17.68041664035991,
+          "min": 17.489458376076072,
+          "max": 29.5952083542943
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 11.847958317957819,
+          "min": 11.51316671166569,
+          "max": 15.397916664369404
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.04395836731418967,
+          "min": 0.03620836650952697,
+          "max": 0.048666668590158224
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 11.331666610203683,
+          "min": 10.977541620377451,
+          "max": 22.793999989517033
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "hail-mary-prose",
+      "route": "legacy-scroll",
+      "spine": 6,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "legacyBuildCounts": [
+        {
+          "6": 1
+        },
+        {
+          "6": 1
+        },
+        {
+          "6": 1
+        },
+        {
+          "6": 1
+        },
+        {
+          "6": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 188.45704168779776,
+          "min": 185.2927083382383,
+          "max": 200.59891662094742
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 188.45704168779776,
+          "min": 185.2927083382383,
+          "max": 200.59891662094742
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 11.649125022813678,
+          "min": 11.548541660886258,
+          "max": 11.960000032559037
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002333370503038168,
+          "min": 0.0020416919142007828,
+          "max": 0.002833374310284853
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "quanzhi-prose",
+      "route": "auto-paged",
+      "spine": 69,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "legacyBuildCounts": [
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        },
+        {
+          "0": 1
+        }
+      ],
+      "resourceCalls": [
+        {
+          "images.0": 1,
+          "html.69": 2,
+          "images.69": 1,
+          "css.69": 2,
+          "html.0": 2,
+          "css.0": 2
+        },
+        {
+          "css.69": 2,
+          "images.0": 1,
+          "css.0": 2,
+          "html.0": 2,
+          "images.69": 1,
+          "html.69": 2
+        },
+        {
+          "html.69": 2,
+          "css.69": 2,
+          "css.0": 2,
+          "images.69": 1,
+          "html.0": 2,
+          "images.0": 1
+        },
+        {
+          "html.69": 2,
+          "css.0": 2,
+          "html.0": 2,
+          "css.69": 2,
+          "images.0": 1,
+          "images.69": 1
+        },
+        {
+          "html.0": 2,
+          "css.0": 2,
+          "images.69": 1,
+          "css.69": 2,
+          "html.69": 2,
+          "images.0": 1
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 948.1191249797121,
+          "min": 944.4060000241734,
+          "max": 966.604791698046
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 949.8666666913778,
+          "min": 946.1423333850689,
+          "max": 968.4285833500326
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 152.55837503354996,
+          "min": 152.07841666415334,
+          "max": 154.65995838167146
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 153.3262916491367,
+          "min": 152.7920833323151,
+          "max": 155.467625008896
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 371.32658337941393,
+          "min": 359.84295833623037,
+          "max": 388.96399998338893
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.02600002335384488,
+          "min": 0.024708337150514126,
+          "max": 0.027999980375170708
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 17181.184666696936,
+          "min": 16771.918916667346,
+          "max": 17578.448833315633
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 57.358000020030886,
+          "min": 56.35770835215226,
+          "max": 60.52749999798834
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 531.4525417052209,
+          "min": 519.529249984771,
+          "max": 549.1845833021216
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 286.41699999570847,
+          "min": 275.3886666614562,
+          "max": 289.42750004353
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 284,
+          "min": 278,
+          "max": 293
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 4,
+          "min": 4,
+          "max": 4
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "quanzhi-prose",
+      "route": "auto-scroll",
+      "spine": 69,
+      "engines": [
+        "browser"
+      ],
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "legacyBuildCounts": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "resourceCalls": [
+        {
+          "css.69": 2,
+          "images.69": 1,
+          "html.69": 2
+        },
+        {
+          "images.69": 1,
+          "css.69": 2,
+          "html.69": 2
+        },
+        {
+          "html.69": 2,
+          "images.69": 1,
+          "css.69": 2
+        },
+        {
+          "css.69": 2,
+          "images.69": 1,
+          "html.69": 2
+        },
+        {
+          "images.69": 1,
+          "html.69": 2,
+          "css.69": 2
+        }
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 803.6532083642669,
+          "min": 795.7135000033304,
+          "max": 847.7692083106376
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 803.6532083642669,
+          "min": 795.7135000033304,
+          "max": 847.7692083106376
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 367.60741664329544,
+          "min": 364.0374167007394,
+          "max": 376.77508330671117
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002874992787837982,
+          "min": 0.0022500171326100826,
+          "max": 0.0031666713766753674
+        },
+        "scannerProbeMs": {
+          "n": 5,
+          "median": 56.35683337459341,
+          "min": 55.62754167476669,
+          "max": 60.41154166450724
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 459.4684583717026,
+          "min": 455.9649999719113,
+          "max": 481.78412503330037
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 240.68062502192333,
+          "min": 237.99962498014793,
+          "max": 247.90720833698288
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 242,
+          "min": 240,
+          "max": 259
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 4,
+          "min": 4,
+          "max": 4
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "quanzhi-prose",
+      "route": "legacy-paged",
+      "spine": 69,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "legacyBuildCounts": [
+        {
+          "69": 1,
+          "0": 1
+        },
+        {
+          "69": 1,
+          "0": 1
+        },
+        {
+          "0": 1,
+          "69": 1
+        },
+        {
+          "0": 1,
+          "69": 1
+        },
+        {
+          "0": 1,
+          "69": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 731.5625416813418,
+          "min": 729.1483333683573,
+          "max": 825.9966250043362
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 731.7040000343695,
+          "min": 729.2767916806042,
+          "max": 826.1585417203605
+        },
+        "openingFirstReadyMs": {
+          "n": 5,
+          "median": 68.12762498157099,
+          "min": 67.35412497073412,
+          "max": 70.25020831497386
+        },
+        "openingReturnMs": {
+          "n": 5,
+          "median": 83.11704162042588,
+          "min": 82.30374997947365,
+          "max": 83.66866665892303
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 372.0481666387059,
+          "min": 363.2741250330582,
+          "max": 384.18533332878724
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.041208346374332905,
+          "min": 0.03412499791011214,
+          "max": 0.04704162711277604
+        },
+        "byteScanMs": {
+          "n": 5,
+          "median": 16900.254249980208,
+          "min": 16662.454125005752,
+          "max": 17275.093041651417
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 146,
+          "min": 145,
+          "max": 160
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 2,
+          "min": 2,
+          "max": 2
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "book": "quanzhi-prose",
+      "route": "legacy-scroll",
+      "spine": 69,
+      "engines": [
+        "legacy"
+      ],
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "legacyBuildCounts": [
+        {
+          "69": 1
+        },
+        {
+          "69": 1
+        },
+        {
+          "69": 1
+        },
+        {
+          "69": 1
+        },
+        {
+          "69": 1
+        }
+      ],
+      "resourceCalls": [
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "metrics": {
+        "firstReadyMs": {
+          "n": 5,
+          "median": 649.3003749637865,
+          "min": 637.1985416626558,
+          "max": 676.6573750064708
+        },
+        "requestReturnMs": {
+          "n": 5,
+          "median": 649.3003749637865,
+          "min": 637.1985416626558,
+          "max": 676.6573750064708
+        },
+        "sessionOpenMs": {
+          "n": 5,
+          "median": 371.1477083270438,
+          "min": 367.63012496521696,
+          "max": 384.10891668172553
+        },
+        "cachedRequestMs": {
+          "n": 5,
+          "median": 0.002583314199000597,
+          "min": 0.0022916938178241253,
+          "max": 0.005333335138857365
+        },
+        "targetCSSMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "targetImagesMs": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.fetch": {
+          "n": 5,
+          "median": 124,
+          "min": 124,
+          "max": 128
+        },
+        "epub.font.fetch.count": {
+          "n": 5,
+          "median": 2,
+          "min": 2,
+          "max": 2
+        },
+        "epub.font.register": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "epub.font.register.count": {
+          "n": 5,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    }
+  ],
+  "fontSpanObservations": [
+    {
+      "cachedRequestMs": 0.15616667224094272,
+      "route": "legacy-paged",
+      "book": "quanzhi-prose",
+      "effectiveEngine": "legacy",
+      "spine": 69,
+      "repetition": 0,
+      "resourceCalls": {},
+      "legacyBuildCounts": {
+        "69": 1,
+        "0": 1
+      },
+      "byteScanMs": 18399.20620835619,
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "resourceMs": {},
+      "contentUnits": 4103,
+      "legacyBuildMs": {
+        "69": 914.9974166648462,
+        "0": 114.85670832917094
+      },
+      "sessionOpenMs": 545.9341666428372,
+      "openingFirstReadyMs": 131.17274997057393,
+      "openingReturnMs": 138.9492916641757,
+      "requestReturnMs": 937.6798333250917,
+      "openingEngine": "legacy",
+      "firstReadyMs": 937.1309583075345,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 176
+        },
+        "epub.font.register": {
+          "count": 1,
+          "sumMs": 10
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "openingReturnMs": 164.5329583552666,
+      "legacyBuildMs": {
+        "0": 70.32404164783657
+      },
+      "byteScanMs": 17163.336874975357,
+      "spine": 69,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceCalls": {
+        "css.0": 2,
+        "images.69": 1,
+        "css.69": 2,
+        "html.0": 2,
+        "images.0": 1,
+        "html.69": 2
+      },
+      "sessionOpenMs": 364.8399166413583,
+      "repetition": 0,
+      "book": "quanzhi-prose",
+      "resourceMs": {
+        "images.69": 280.95133329043165,
+        "css.0": 1.4780833735130727,
+        "css.69": 519.4623333518393,
+        "images.0": 64.43920830497518,
+        "html.0": 0.9775416110642254,
+        "html.69": 4.058125021401793
+      },
+      "scannerProbeMs": 58.5925416671671,
+      "cachedRequestMs": 0.029583286959677935,
+      "contentUnits": 4031,
+      "openingFirstReadyMs": 163.7530000298284,
+      "effectiveEngine": "browser",
+      "firstReadyMs": 967.1420000377111,
+      "requestReturnMs": 969.0282916999422,
+      "route": "auto-paged",
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 276
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildMs": {
+        "69": 640.5607916531153
+      },
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "spine": 69,
+      "resourceCalls": {},
+      "sessionOpenMs": 370.04633335163817,
+      "repetition": 0,
+      "book": "quanzhi-prose",
+      "resourceMs": {},
+      "contentUnits": 4,
+      "cachedRequestMs": 0.0031666713766753674,
+      "effectiveEngine": "legacy",
+      "chapterHTMLBytes": 13962,
+      "firstReadyMs": 648.5349166323431,
+      "requestReturnMs": 648.5349166323431,
+      "route": "legacy-scroll",
+      "chapterCount": 1881,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 127
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "legacyBuildMs": {},
+      "legacyBuildCounts": {},
+      "spine": 69,
+      "resourceCalls": {
+        "html.69": 2,
+        "images.69": 1,
+        "css.69": 2
+      },
+      "sessionOpenMs": 371.2981666903943,
+      "repetition": 0,
+      "book": "quanzhi-prose",
+      "resourceMs": {
+        "html.69": 3.725916671101004,
+        "images.69": 237.7323749824427,
+        "css.69": 460.61383333289996
+      },
+      "scannerProbeMs": 57.94729164335877,
+      "cachedRequestMs": 0.0024583423510193825,
+      "contentUnits": 4031,
+      "effectiveEngine": "browser",
+      "chapterHTMLBytes": 13962,
+      "requestReturnMs": 803.6519999732263,
+      "firstReadyMs": 803.6519999732263,
+      "route": "auto-scroll",
+      "chapterCount": 1881,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 240
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "cachedRequestMs": 0.035583332646638155,
+      "openingEngine": "legacy",
+      "book": "guimi-prose",
+      "legacyBuildMs": {
+        "80": 438.21354169631377,
+        "0": 72.6451666560024
+      },
+      "openingFirstReadyMs": 74.60895832628012,
+      "repetition": 0,
+      "chapterCount": 1594,
+      "requestReturnMs": 448.5237916233018,
+      "contentUnits": 3251,
+      "effectiveEngine": "legacy",
+      "byteScanMs": 12889.779166667722,
+      "resourceMs": {},
+      "openingReturnMs": 84.54200002597645,
+      "route": "legacy-paged",
+      "sessionOpenMs": 415.5366250197403,
+      "resourceCalls": {},
+      "chapterHTMLBytes": 10917,
+      "firstReadyMs": 448.40008328901604,
+      "legacyBuildCounts": {
+        "80": 1,
+        "0": 1
+      },
+      "spine": 80,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 64
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "openingEngine": "browser",
+      "effectiveEngine": "browser",
+      "openingFirstReadyMs": 156.07195830671117,
+      "legacyBuildMs": {
+        "0": 72.20958336256444
+      },
+      "spine": 80,
+      "openingReturnMs": 156.77662496455014,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "route": "auto-paged",
+      "sessionOpenMs": 419.13741669850424,
+      "cachedRequestMs": 0.025291636120527983,
+      "book": "guimi-prose",
+      "scannerProbeMs": 42.158416646998376,
+      "byteScanMs": 13115.46079168329,
+      "repetition": 0,
+      "firstReadyMs": 1191.9132916955277,
+      "resourceMs": {
+        "css.0": 0.8554999949410558,
+        "html.80": 5.2755416836589575,
+        "images.0": 68.73962498502806,
+        "html.0": 1.0681666899472475,
+        "css.80": 960.8432916575111,
+        "images.80": 132.51595833571628
+      },
+      "chapterHTMLBytes": 10917,
+      "resourceCalls": {
+        "css.0": 2,
+        "html.80": 2,
+        "html.0": 2,
+        "images.0": 1,
+        "css.80": 2,
+        "images.80": 1
+      },
+      "chapterCount": 1594,
+      "requestReturnMs": 1193.3248750283383,
+      "contentUnits": 3173,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 733
+        },
+        "epub.font.register": {
+          "count": 1,
+          "sumMs": 21
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "requestReturnMs": 397.8312083054334,
+      "spine": 80,
+      "route": "legacy-scroll",
+      "chapterHTMLBytes": 10917,
+      "contentUnits": 4,
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "firstReadyMs": 397.8312083054334,
+      "repetition": 0,
+      "effectiveEngine": "legacy",
+      "cachedRequestMs": 0.002625049091875553,
+      "book": "guimi-prose",
+      "legacyBuildMs": {
+        "80": 392.8451666724868
+      },
+      "resourceCalls": {},
+      "chapterCount": 1594,
+      "resourceMs": {},
+      "sessionOpenMs": 415.5063333455473,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 56
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "sessionOpenMs": 414.3586250138469,
+      "resourceCalls": {
+        "html.80": 2,
+        "css.80": 2,
+        "images.80": 1
+      },
+      "spine": 80,
+      "book": "guimi-prose",
+      "contentUnits": 3173,
+      "legacyBuildCounts": {},
+      "legacyBuildMs": {},
+      "cachedRequestMs": 0.002083310391753912,
+      "scannerProbeMs": 40.48149997834116,
+      "chapterHTMLBytes": 10917,
+      "effectiveEngine": "browser",
+      "repetition": 0,
+      "firstReadyMs": 1024.7791250003502,
+      "route": "auto-scroll",
+      "requestReturnMs": 1024.7791250003502,
+      "resourceMs": {
+        "html.80": 4.999249998945743,
+        "css.80": 832.8665833105333,
+        "images.80": 115.17966666724533
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 647
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "openingEngine": "legacy",
+      "route": "legacy-paged",
+      "book": "hail-mary-prose",
+      "resourceMs": {},
+      "firstReadyMs": 178.46795835066587,
+      "chapterCount": 41,
+      "resourceCalls": {},
+      "sessionOpenMs": 12.612875027116388,
+      "requestReturnMs": 232.60958335595205,
+      "spine": 6,
+      "openingReturnMs": 17.651083355303854,
+      "cachedRequestMs": 0.04166667349636555,
+      "legacyBuildCounts": {
+        "0": 1,
+        "6": 1
+      },
+      "byteScanMs": 11.408249964006245,
+      "repetition": 0,
+      "openingFirstReadyMs": 16.114833357278258,
+      "chapterHTMLBytes": 33642,
+      "legacyBuildMs": {
+        "6": 145.65174997551367,
+        "0": 15.336708340328187
+      },
+      "contentUnits": 25016,
+      "effectiveEngine": "legacy",
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "resourceMs": {
+        "html.0": 0.4020417109131813,
+        "css.6": 7.421083282679319,
+        "images.0": 1.8096666317433119,
+        "html.6": 0.7721667061559856,
+        "css.0": 5.640541610773653,
+        "images.6": 4.252750019077212
+      },
+      "legacyBuildMs": {
+        "0": 15.272249991539866
+      },
+      "chapterHTMLBytes": 33642,
+      "sessionOpenMs": 12.392750009894371,
+      "effectiveEngine": "browser",
+      "byteScanMs": 11.571916693355888,
+      "repetition": 0,
+      "scannerProbeMs": 129.836083331611,
+      "requestReturnMs": 305.8586666593328,
+      "openingReturnMs": 41.47033329354599,
+      "openingEngine": "browser",
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceCalls": {
+        "html.0": 2,
+        "css.6": 2,
+        "images.0": 1,
+        "html.6": 2,
+        "css.0": 2,
+        "images.6": 1
+      },
+      "chapterCount": 41,
+      "contentUnits": 24820,
+      "route": "auto-paged",
+      "cachedRequestMs": 0.027458358090370893,
+      "openingFirstReadyMs": 41.42074997071177,
+      "firstReadyMs": 304.05191669706255,
+      "book": "hail-mary-prose",
+      "spine": 6,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "book": "hail-mary-prose",
+      "cachedRequestMs": 0.0022916938178241253,
+      "legacyBuildMs": {
+        "6": 144.15541663765907
+      },
+      "repetition": 0,
+      "chapterCount": 41,
+      "requestReturnMs": 191.52745831524953,
+      "contentUnits": 8,
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "route": "legacy-scroll",
+      "sessionOpenMs": 11.460708279628307,
+      "resourceCalls": {},
+      "chapterHTMLBytes": 33642,
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "firstReadyMs": 191.52745831524953,
+      "spine": 6,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "requestReturnMs": 244.55900001339614,
+      "effectiveEngine": "browser",
+      "legacyBuildMs": {},
+      "scannerProbeMs": 127.52545828698203,
+      "book": "hail-mary-prose",
+      "chapterCount": 41,
+      "resourceCalls": {
+        "images.6": 1,
+        "css.6": 2,
+        "html.6": 2
+      },
+      "cachedRequestMs": 0.0018333084881305695,
+      "contentUnits": 24820,
+      "repetition": 0,
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "images.6": 4.308041650801897,
+        "css.6": 8.00629163859412,
+        "html.6": 0.8109166519716382
+      },
+      "sessionOpenMs": 11.39091665390879,
+      "firstReadyMs": 244.55900001339614,
+      "route": "auto-scroll",
+      "spine": 6,
+      "chapterHTMLBytes": 33642,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "cachedRequestMs": 0.038833299186080694,
+      "openingEngine": "legacy",
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 721.7176666599698,
+        "0": 65.90416666585952
+      },
+      "openingFirstReadyMs": 66.82337494567037,
+      "repetition": 0,
+      "chapterCount": 1192,
+      "requestReturnMs": 729.6302083414048,
+      "contentUnits": 2270,
+      "effectiveEngine": "legacy",
+      "byteScanMs": 9697.994958318304,
+      "resourceMs": {},
+      "openingReturnMs": 83.72358331689611,
+      "route": "legacy-paged",
+      "sessionOpenMs": 240.3314583352767,
+      "resourceCalls": {},
+      "chapterHTMLBytes": 10912,
+      "firstReadyMs": 729.5170833240263,
+      "legacyBuildCounts": {
+        "10": 1,
+        "0": 1
+      },
+      "spine": 10,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 172
+        },
+        "epub.font.register": {
+          "count": 2,
+          "sumMs": 9
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "openingEngine": "browser",
+      "route": "auto-paged",
+      "scannerProbeMs": 139.45508329197764,
+      "book": "game-designer-fallback",
+      "resourceMs": {
+        "html.0": 2.1740833180956542,
+        "images.0": 55.026416666805744,
+        "html.10": 0.5346666439436376,
+        "css.10": 699.6260000159964,
+        "css.0": 0.7515833131037652
+      },
+      "firstReadyMs": 1612.4826250015758,
+      "chapterCount": 1192,
+      "resourceCalls": {
+        "html.0": 2,
+        "html.10": 1,
+        "images.0": 1,
+        "css.0": 2,
+        "css.10": 1
+      },
+      "sessionOpenMs": 234.5661249710247,
+      "requestReturnMs": 1612.9801250062883,
+      "spine": 10,
+      "openingReturnMs": 127.25858332123607,
+      "cachedRequestMs": 0.33062498550862074,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "byteScanMs": 9883.293499995489,
+      "repetition": 0,
+      "openingFirstReadyMs": 126.7799999914132,
+      "chapterHTMLBytes": 10912,
+      "legacyBuildMs": {
+        "0": 60.137833293993026,
+        "10": 737.7930000075139
+      },
+      "contentUnits": 2270,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 700
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "effectiveEngine": "legacy",
+      "requestReturnMs": 633.6771250353195,
+      "legacyBuildMs": {
+        "10": 629.0994166629389
+      },
+      "chapterCount": 1192,
+      "book": "game-designer-fallback",
+      "resourceCalls": {},
+      "cachedRequestMs": 0.002749962732195854,
+      "contentUnits": 3,
+      "repetition": 0,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "resourceMs": {},
+      "sessionOpenMs": 234.03125000186265,
+      "firstReadyMs": 633.6771250353195,
+      "route": "legacy-scroll",
+      "spine": 10,
+      "chapterHTMLBytes": 10912,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 149
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "scannerProbeMs": 146.2486666860059,
+      "cachedRequestMs": 0.004250032361596823,
+      "book": "game-designer-fallback",
+      "route": "auto-scroll",
+      "requestReturnMs": 1435.3725000401028,
+      "contentUnits": 3,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "resourceCalls": {
+        "css.10": 1,
+        "html.10": 1
+      },
+      "legacyBuildMs": {
+        "10": 664.6695417002775
+      },
+      "chapterCount": 1192,
+      "resourceMs": {
+        "css.10": 620.8584166597575,
+        "html.10": 0.5902916309423745
+      },
+      "spine": 10,
+      "sessionOpenMs": 233.46133332233876,
+      "chapterHTMLBytes": 10912,
+      "firstReadyMs": 1435.3725000401028,
+      "repetition": 0,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 624
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "requestReturnMs": 11712.35658338992,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 214.68737500254065,
+      "legacyBuildMs": {
+        "64": 10967.162375047337,
+        "0": 203.76825000857934
+      },
+      "chapterCount": 1594,
+      "book": "guimi-long",
+      "openingFirstReadyMs": 206.2747916788794,
+      "resourceCalls": {},
+      "cachedRequestMs": 0.06366666639223695,
+      "contentUnits": 29112,
+      "byteScanMs": 24221.937291673385,
+      "openingEngine": "legacy",
+      "repetition": 0,
+      "legacyBuildCounts": {
+        "64": 1,
+        "0": 1
+      },
+      "resourceMs": {},
+      "sessionOpenMs": 617.5204583560117,
+      "firstReadyMs": 11054.610500053968,
+      "route": "legacy-paged",
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 1029
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "book": "guimi-long",
+      "legacyBuildMs": {
+        "0": 72.43741664569825
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 28099,
+      "openingReturnMs": 160.37983336718753,
+      "byteScanMs": 14500.443333294243,
+      "resourceMs": {
+        "css.64": 981.2312916619703,
+        "html.0": 1.0602917172946036,
+        "css.0": 1.1609999928623438,
+        "images.64": 2807.165000005625,
+        "image.64": 57.01200000476092,
+        "html.64": 5.483708344399929,
+        "images.0": 69.5160833420232
+      },
+      "firstReadyMs": 5779.77204171475,
+      "sessionOpenMs": 458.89341668225825,
+      "cachedRequestMs": 0.03354164073243737,
+      "resourceCalls": {
+        "images.0": 1,
+        "css.64": 2,
+        "css.0": 2,
+        "html.0": 2,
+        "images.64": 1,
+        "html.64": 2,
+        "image.64": 1
+      },
+      "scannerProbeMs": 838.4859583457,
+      "chapterHTMLBytes": 121736,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 159.66333338292316,
+      "spine": 64,
+      "repetition": 0,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1594,
+      "requestReturnMs": 5793.095416680444,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 754
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "resourceMs": {},
+      "effectiveEngine": "legacy",
+      "book": "guimi-long",
+      "cachedRequestMs": 0.00400003045797348,
+      "requestReturnMs": 4119.197291671298,
+      "contentUnits": 36,
+      "firstReadyMs": 4119.197291671298,
+      "chapterCount": 1594,
+      "route": "legacy-scroll",
+      "repetition": 0,
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "sessionOpenMs": 436.5674167056568,
+      "resourceCalls": {},
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "legacyBuildMs": {
+        "64": 3852.7537916670553
+      },
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 345
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "image.64": 55.1952917012386,
+        "images.64": 2365.0364166824147,
+        "css.64": 851.9044583663344,
+        "html.64": 4.906541667878628
+      },
+      "spine": 64,
+      "firstReadyMs": 4935.028041654732,
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "effectiveEngine": "browser",
+      "contentUnits": 28099,
+      "sessionOpenMs": 429.36841666232795,
+      "book": "guimi-long",
+      "legacyBuildMs": {},
+      "requestReturnMs": 4935.028041654732,
+      "resourceCalls": {
+        "image.64": 1,
+        "css.64": 2,
+        "images.64": 1,
+        "html.64": 2
+      },
+      "cachedRequestMs": 0.002708344254642725,
+      "repetition": 0,
+      "scannerProbeMs": 863.9334583422169,
+      "route": "auto-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 647
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "css.69": 481.78412503330037,
+        "images.69": 247.90720833698288,
+        "html.69": 4.077374993357807
+      },
+      "spine": 69,
+      "firstReadyMs": 847.7692083106376,
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "sessionOpenMs": 376.77508330671117,
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {},
+      "requestReturnMs": 847.7692083106376,
+      "resourceCalls": {
+        "css.69": 2,
+        "images.69": 1,
+        "html.69": 2
+      },
+      "repetition": 1,
+      "cachedRequestMs": 0.0031666713766753674,
+      "scannerProbeMs": 60.41154166450724,
+      "route": "auto-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 259
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "resourceMs": {},
+      "spine": 69,
+      "firstReadyMs": 655.2170416689478,
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "effectiveEngine": "legacy",
+      "contentUnits": 4,
+      "sessionOpenMs": 384.10891668172553,
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "69": 648.278083303012
+      },
+      "requestReturnMs": 655.2170416689478,
+      "resourceCalls": {},
+      "repetition": 1,
+      "cachedRequestMs": 0.005333335138857365,
+      "route": "legacy-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 128
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "0": 69.64141665957868
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "openingReturnMs": 155.467625008896,
+      "byteScanMs": 17578.448833315633,
+      "resourceMs": {
+        "images.0": 67.79883336275816,
+        "html.69": 4.1150833130814135,
+        "images.69": 275.3886666614562,
+        "css.69": 549.1845833021216,
+        "html.0": 1.0282083530910313,
+        "css.0": 0.988250074442476
+      },
+      "firstReadyMs": 953.6656666896306,
+      "sessionOpenMs": 388.96399998338893,
+      "cachedRequestMs": 0.02704164944589138,
+      "resourceCalls": {
+        "images.0": 1,
+        "html.69": 2,
+        "images.69": 1,
+        "css.69": 2,
+        "html.0": 2,
+        "css.0": 2
+      },
+      "scannerProbeMs": 59.58720832131803,
+      "chapterHTMLBytes": 13962,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 154.65995838167146,
+      "spine": 69,
+      "repetition": 1,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1881,
+      "requestReturnMs": 955.4323750198819,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 293
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildMs": {
+        "69": 816.5440000011586,
+        "0": 68.87929164804518
+      },
+      "route": "legacy-paged",
+      "legacyBuildCounts": {
+        "69": 1,
+        "0": 1
+      },
+      "openingFirstReadyMs": 70.25020831497386,
+      "resourceCalls": {},
+      "chapterCount": 1881,
+      "spine": 69,
+      "byteScanMs": 17275.093041651417,
+      "resourceMs": {},
+      "sessionOpenMs": 384.18533332878724,
+      "openingEngine": "legacy",
+      "repetition": 1,
+      "book": "quanzhi-prose",
+      "contentUnits": 4103,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 83.1249583279714,
+      "cachedRequestMs": 0.04445837112143636,
+      "chapterHTMLBytes": 13962,
+      "requestReturnMs": 826.1585417203605,
+      "firstReadyMs": 825.9966250043362,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 160
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "chapterCount": 1594,
+      "resourceMs": {
+        "images.80": 117.08620830904692,
+        "css.80": 842.3567499849014,
+        "html.80": 5.233708361629397
+      },
+      "firstReadyMs": 1038.2110416539945,
+      "contentUnits": 3173,
+      "cachedRequestMs": 0.0021666637621819973,
+      "legacyBuildCounts": {},
+      "repetition": 1,
+      "spine": 80,
+      "route": "auto-scroll",
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "images.80": 1,
+        "html.80": 2,
+        "css.80": 2
+      },
+      "book": "guimi-prose",
+      "sessionOpenMs": 416.2177916732617,
+      "requestReturnMs": 1038.2110416539945,
+      "chapterHTMLBytes": 10917,
+      "legacyBuildMs": {},
+      "scannerProbeMs": 40.611375006847084,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 653
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "sessionOpenMs": 411.9824166991748,
+      "resourceCalls": {},
+      "spine": 80,
+      "book": "guimi-prose",
+      "contentUnits": 4,
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "cachedRequestMs": 0.002500019036233425,
+      "legacyBuildMs": {
+        "80": 391.05845836456865
+      },
+      "chapterHTMLBytes": 10917,
+      "effectiveEngine": "legacy",
+      "repetition": 1,
+      "firstReadyMs": 396.0389999556355,
+      "route": "legacy-scroll",
+      "requestReturnMs": 396.0389999556355,
+      "resourceMs": {},
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 57
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "spine": 80,
+      "cachedRequestMs": 0.029375019948929548,
+      "scannerProbeMs": 42.06225002417341,
+      "book": "guimi-prose",
+      "contentUnits": 3173,
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "css.80": 2,
+        "css.0": 2,
+        "images.80": 1,
+        "html.80": 2,
+        "images.0": 1,
+        "html.0": 2
+      },
+      "openingReturnMs": 156.09887498430908,
+      "openingEngine": "browser",
+      "byteScanMs": 13080.83554165205,
+      "chapterCount": 1594,
+      "repetition": 1,
+      "legacyBuildMs": {
+        "0": 70.20695833489299
+      },
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceMs": {
+        "css.80": 942.8145832498558,
+        "css.0": 0.8051666663959622,
+        "images.0": 68.4635000070557,
+        "images.80": 130.4176666890271,
+        "html.80": 5.247500026598573,
+        "html.0": 1.0541665833443403
+      },
+      "openingFirstReadyMs": 155.4154583136551,
+      "sessionOpenMs": 423.0799999786541,
+      "route": "auto-paged",
+      "firstReadyMs": 1171.8939166748896,
+      "requestReturnMs": 1173.4516666620038,
+      "chapterHTMLBytes": 10917,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 738
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildCounts": {
+        "80": 1,
+        "0": 1
+      },
+      "cachedRequestMs": 0.04075001925230026,
+      "book": "guimi-prose",
+      "route": "legacy-paged",
+      "requestReturnMs": 448.1938332901336,
+      "contentUnits": 3251,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "byteScanMs": 12830.67383337766,
+      "resourceCalls": {},
+      "legacyBuildMs": {
+        "80": 441.0912499879487,
+        "0": 70.5284167197533
+      },
+      "chapterCount": 1594,
+      "resourceMs": {},
+      "spine": 80,
+      "sessionOpenMs": 422.078458359465,
+      "openingReturnMs": 84.47195834014565,
+      "chapterHTMLBytes": 10917,
+      "repetition": 1,
+      "firstReadyMs": 448.071374965366,
+      "openingFirstReadyMs": 71.6082917060703,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 63
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "spine": 6,
+      "route": "auto-scroll",
+      "requestReturnMs": 247.00241669779643,
+      "chapterHTMLBytes": 33642,
+      "contentUnits": 24820,
+      "legacyBuildCounts": {},
+      "firstReadyMs": 247.00241669779643,
+      "repetition": 1,
+      "effectiveEngine": "browser",
+      "cachedRequestMs": 0.0022500171326100826,
+      "scannerProbeMs": 129.93045838084072,
+      "book": "hail-mary-prose",
+      "legacyBuildMs": {},
+      "resourceCalls": {
+        "images.6": 1,
+        "html.6": 2,
+        "css.6": 2
+      },
+      "chapterCount": 41,
+      "resourceMs": {
+        "css.6": 8.116708311717957,
+        "images.6": 4.552791710011661,
+        "html.6": 0.9947082726284862
+      },
+      "sessionOpenMs": 12.598333356436342,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildMs": {
+        "6": 152.62075001373887
+      },
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "spine": 6,
+      "resourceCalls": {},
+      "sessionOpenMs": 11.70824997825548,
+      "repetition": 1,
+      "book": "hail-mary-prose",
+      "resourceMs": {},
+      "contentUnits": 8,
+      "cachedRequestMs": 0.002291635610163212,
+      "effectiveEngine": "legacy",
+      "chapterHTMLBytes": 33642,
+      "requestReturnMs": 200.59891662094742,
+      "firstReadyMs": 200.59891662094742,
+      "route": "legacy-scroll",
+      "chapterCount": 41,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "requestReturnMs": 296.4222083101049,
+      "openingReturnMs": 40.72824999457225,
+      "spine": 6,
+      "route": "auto-paged",
+      "chapterHTMLBytes": 33642,
+      "contentUnits": 24820,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "firstReadyMs": 294.2105416441336,
+      "effectiveEngine": "browser",
+      "openingEngine": "browser",
+      "repetition": 1,
+      "cachedRequestMs": 0.029375019948929548,
+      "scannerProbeMs": 128.02120833657682,
+      "book": "hail-mary-prose",
+      "byteScanMs": 11.342583340592682,
+      "openingFirstReadyMs": 40.674249990843236,
+      "legacyBuildMs": {
+        "0": 14.998416707385331
+      },
+      "resourceCalls": {
+        "css.0": 2,
+        "images.6": 1,
+        "html.0": 2,
+        "html.6": 2,
+        "images.0": 1,
+        "css.6": 2
+      },
+      "chapterCount": 41,
+      "resourceMs": {
+        "css.0": 5.5484166368842125,
+        "html.6": 0.8061249391175807,
+        "html.0": 0.3803333383984864,
+        "images.6": 4.297000006772578,
+        "images.0": 1.7825000104494393,
+        "css.6": 7.512999989558011
+      },
+      "sessionOpenMs": 11.538833321537822,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildCounts": {
+        "6": 1,
+        "0": 1
+      },
+      "cachedRequestMs": 0.039791688323020935,
+      "book": "hail-mary-prose",
+      "route": "legacy-paged",
+      "requestReturnMs": 198.7278750166297,
+      "contentUnits": 25016,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "byteScanMs": 11.259249993599951,
+      "resourceCalls": {},
+      "legacyBuildMs": {
+        "6": 134.48725000489503,
+        "0": 14.76183335762471
+      },
+      "chapterCount": 41,
+      "resourceMs": {},
+      "spine": 6,
+      "sessionOpenMs": 11.563916690647602,
+      "openingReturnMs": 17.68041664035991,
+      "chapterHTMLBytes": 33642,
+      "repetition": 1,
+      "firstReadyMs": 145.74887498747557,
+      "openingFirstReadyMs": 15.589958289638162,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "resourceMs": {
+        "html.10": 0.642875034827739,
+        "css.10": 644.7651666821912
+      },
+      "spine": 10,
+      "firstReadyMs": 1458.0682083615102,
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "contentUnits": 3,
+      "sessionOpenMs": 245.17762497998774,
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 645.7852916209958
+      },
+      "requestReturnMs": 1458.0682083615102,
+      "resourceCalls": {
+        "html.10": 1,
+        "css.10": 1
+      },
+      "cachedRequestMs": 0.0025416375137865543,
+      "repetition": 1,
+      "scannerProbeMs": 141.6967916302383,
+      "route": "auto-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 634
+        },
+        "epub.font.register": {
+          "count": 1,
+          "sumMs": 4
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "requestReturnMs": 641.527124971617,
+      "repetition": 1,
+      "spine": 10,
+      "chapterHTMLBytes": 10912,
+      "resourceCalls": {},
+      "sessionOpenMs": 236.4839999936521,
+      "book": "game-designer-fallback",
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "effectiveEngine": "legacy",
+      "chapterCount": 1192,
+      "route": "legacy-scroll",
+      "firstReadyMs": 641.527124971617,
+      "resourceMs": {},
+      "legacyBuildMs": {
+        "10": 636.9649166590534
+      },
+      "contentUnits": 3,
+      "cachedRequestMs": 0.0022082822397351265,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 152
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "openingEngine": "browser",
+      "sessionOpenMs": 247.346208372619,
+      "resourceCalls": {
+        "css.10": 1,
+        "html.0": 2,
+        "html.10": 1,
+        "images.0": 1,
+        "css.0": 2
+      },
+      "spine": 10,
+      "book": "game-designer-fallback",
+      "contentUnits": 2270,
+      "cachedRequestMs": 0.34304166911169887,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "legacyBuildMs": {
+        "0": 62.93549999827519,
+        "10": 693.846708338242
+      },
+      "scannerProbeMs": 141.6027499944903,
+      "chapterHTMLBytes": 10912,
+      "firstReadyMs": 1581.9515000330284,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "repetition": 1,
+      "openingReturnMs": 174.3037083069794,
+      "route": "auto-paged",
+      "requestReturnMs": 1582.360250002239,
+      "openingFirstReadyMs": 173.701333347708,
+      "byteScanMs": 10104.587499983609,
+      "resourceMs": {
+        "css.10": 716.8166666524485,
+        "html.0": 2.805124968290329,
+        "images.0": 96.97362501174212,
+        "css.0": 0.7232917123474181,
+        "html.10": 1.04750000173226
+      },
+      "chapterCount": 1192,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 691
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "legacyBuildMs": {
+        "0": 57.09412501892075,
+        "10": 695.5527917016298
+      },
+      "route": "legacy-paged",
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "openingFirstReadyMs": 58.278416690882295,
+      "resourceCalls": {},
+      "chapterCount": 1192,
+      "spine": 10,
+      "byteScanMs": 9670.007041713689,
+      "resourceMs": {},
+      "sessionOpenMs": 237.7335833152756,
+      "openingEngine": "legacy",
+      "repetition": 1,
+      "book": "game-designer-fallback",
+      "contentUnits": 2270,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 66.93999998969957,
+      "cachedRequestMs": 0.03608333645388484,
+      "chapterHTMLBytes": 10912,
+      "requestReturnMs": 702.1188749931753,
+      "firstReadyMs": 702.0102916867472,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 165
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "spine": 64,
+      "requestReturnMs": 4893.7569166882895,
+      "route": "auto-scroll",
+      "chapterHTMLBytes": 121736,
+      "contentUnits": 28099,
+      "legacyBuildCounts": {},
+      "firstReadyMs": 4893.7569166882895,
+      "repetition": 1,
+      "effectiveEngine": "browser",
+      "cachedRequestMs": 0.0035833800211548805,
+      "scannerProbeMs": 827.1489166654646,
+      "book": "guimi-long",
+      "legacyBuildMs": {},
+      "resourceCalls": {
+        "images.64": 1,
+        "html.64": 2,
+        "image.64": 1,
+        "css.64": 2
+      },
+      "chapterCount": 1594,
+      "resourceMs": {
+        "images.64": 2422.547249996569,
+        "html.64": 5.215250013861805,
+        "image.64": 52.621500042732805,
+        "css.64": 843.9800416817889
+      },
+      "sessionOpenMs": 432.58704169420525,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 640
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "chapterHTMLBytes": 121736,
+      "legacyBuildMs": {
+        "64": 3831.627791689243
+      },
+      "sessionOpenMs": 408.2157500088215,
+      "effectiveEngine": "legacy",
+      "repetition": 1,
+      "requestReturnMs": 4090.04108334193,
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "resourceCalls": {},
+      "chapterCount": 1594,
+      "contentUnits": 36,
+      "route": "legacy-scroll",
+      "cachedRequestMs": 0.0032082898542284966,
+      "firstReadyMs": 4090.04108334193,
+      "book": "guimi-long",
+      "resourceMs": {},
+      "spine": 64,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 347
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "openingEngine": "browser",
+      "sessionOpenMs": 404.8165417043492,
+      "resourceCalls": {
+        "images.0": 1,
+        "css.64": 2,
+        "html.0": 2,
+        "css.0": 2,
+        "images.64": 1,
+        "html.64": 2,
+        "image.64": 1
+      },
+      "spine": 64,
+      "book": "guimi-long",
+      "contentUnits": 28099,
+      "cachedRequestMs": 0.03187503898516297,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "legacyBuildMs": {
+        "0": 69.9768332997337
+      },
+      "scannerProbeMs": 848.6031666980125,
+      "chapterHTMLBytes": 121736,
+      "firstReadyMs": 5475.926333339885,
+      "repetition": 1,
+      "effectiveEngine": "browser",
+      "openingReturnMs": 157.49750001123175,
+      "route": "auto-paged",
+      "requestReturnMs": 5491.529625025578,
+      "openingFirstReadyMs": 156.82587499031797,
+      "byteScanMs": 14129.46345837554,
+      "resourceMs": {
+        "html.0": 1.0891666752286255,
+        "css.64": 952.1098749828525,
+        "css.0": 0.8402083185501397,
+        "image.64": 57.71470832405612,
+        "images.0": 68.73283331515267,
+        "html.64": 5.127416690811515,
+        "images.64": 2639.8956250050105
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 730
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildCounts": {
+        "0": 1,
+        "64": 1
+      },
+      "cachedRequestMs": 0.06512500112876296,
+      "book": "guimi-long",
+      "route": "legacy-paged",
+      "requestReturnMs": 4764.7669583093375,
+      "contentUnits": 29112,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "byteScanMs": 13598.384249955416,
+      "resourceCalls": {},
+      "legacyBuildMs": {
+        "0": 69.51900001149625,
+        "64": 4411.697416682728
+      },
+      "chapterCount": 1594,
+      "resourceMs": {},
+      "spine": 64,
+      "sessionOpenMs": 409.4946666737087,
+      "openingReturnMs": 83.32974999211729,
+      "chapterHTMLBytes": 121736,
+      "firstReadyMs": 4447.241166664753,
+      "repetition": 1,
+      "openingFirstReadyMs": 70.67458337405697,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 397
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "legacyBuildMs": {
+        "0": 66.8505416251719,
+        "69": 722.3492916673422
+      },
+      "route": "legacy-paged",
+      "legacyBuildCounts": {
+        "69": 1,
+        "0": 1
+      },
+      "openingFirstReadyMs": 68.12762498157099,
+      "resourceCalls": {},
+      "chapterCount": 1881,
+      "spine": 69,
+      "byteScanMs": 16934.940541628748,
+      "resourceMs": {},
+      "sessionOpenMs": 372.0481666387059,
+      "openingEngine": "legacy",
+      "repetition": 2,
+      "book": "quanzhi-prose",
+      "contentUnits": 4103,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 83.11704162042588,
+      "cachedRequestMs": 0.03412499791011214,
+      "chapterHTMLBytes": 13962,
+      "requestReturnMs": 731.7040000343695,
+      "firstReadyMs": 731.5625416813418,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 147
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "0": 66.8674583430402
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "openingReturnMs": 153.46025000326335,
+      "byteScanMs": 16939.05816669576,
+      "resourceMs": {
+        "css.69": 524.4091665954329,
+        "images.0": 65.13104162877426,
+        "css.0": 0.9480000589974225,
+        "html.0": 0.9509583469480276,
+        "images.69": 286.41699999570847,
+        "html.69": 4.808791738469154
+      },
+      "firstReadyMs": 944.4060000241734,
+      "sessionOpenMs": 383.7866249959916,
+      "cachedRequestMs": 0.024708337150514126,
+      "resourceCalls": {
+        "css.69": 2,
+        "images.0": 1,
+        "css.0": 2,
+        "html.0": 2,
+        "images.69": 1,
+        "html.69": 2
+      },
+      "scannerProbeMs": 56.35770835215226,
+      "chapterHTMLBytes": 13962,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 152.6681249961257,
+      "spine": 69,
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1881,
+      "requestReturnMs": 946.1423333850689,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 281
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "69": 642.9857500479557
+      },
+      "effectiveEngine": "legacy",
+      "contentUnits": 4,
+      "resourceMs": {},
+      "resourceCalls": {},
+      "sessionOpenMs": 367.63012496521696,
+      "firstReadyMs": 649.3003749637865,
+      "cachedRequestMs": 0.00241666566580534,
+      "chapterHTMLBytes": 13962,
+      "route": "legacy-scroll",
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "spine": 69,
+      "repetition": 2,
+      "chapterCount": 1881,
+      "requestReturnMs": 649.3003749637865,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 124
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {},
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "resourceMs": {
+        "images.69": 237.99962498014793,
+        "css.69": 455.9649999719113,
+        "html.69": 3.78304161131382
+      },
+      "firstReadyMs": 795.7135000033304,
+      "sessionOpenMs": 373.18437499925494,
+      "cachedRequestMs": 0.002874992787837982,
+      "resourceCalls": {
+        "images.69": 1,
+        "css.69": 2,
+        "html.69": 2
+      },
+      "scannerProbeMs": 57.36054171575233,
+      "chapterHTMLBytes": 13962,
+      "route": "auto-scroll",
+      "legacyBuildCounts": {},
+      "spine": 69,
+      "repetition": 2,
+      "chapterCount": 1881,
+      "requestReturnMs": 795.7135000033304,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 243
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "openingEngine": "legacy",
+      "route": "legacy-paged",
+      "book": "guimi-prose",
+      "resourceMs": {},
+      "firstReadyMs": 451.23516663443297,
+      "chapterCount": 1594,
+      "resourceCalls": {},
+      "sessionOpenMs": 432.9068750375882,
+      "requestReturnMs": 451.3802499859594,
+      "spine": 80,
+      "openingReturnMs": 82.92233338579535,
+      "cachedRequestMs": 0.06216665497049689,
+      "legacyBuildCounts": {
+        "0": 1,
+        "80": 1
+      },
+      "byteScanMs": 12667.778999952134,
+      "repetition": 2,
+      "openingFirstReadyMs": 72.44645833270624,
+      "chapterHTMLBytes": 10917,
+      "legacyBuildMs": {
+        "0": 71.49983337149024,
+        "80": 444.3442916381173
+      },
+      "contentUnits": 3251,
+      "effectiveEngine": "legacy",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 65
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "scannerProbeMs": 40.83912499481812,
+      "resourceMs": {
+        "images.80": 129.46408335119486,
+        "html.0": 1.067041652277112,
+        "images.0": 68.22604167973623,
+        "html.80": 5.215124925598502,
+        "css.0": 0.8152500377036631,
+        "css.80": 935.3147916845046
+      },
+      "firstReadyMs": 1160.4752916609868,
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "contentUnits": 3173,
+      "cachedRequestMs": 0.03187498077750206,
+      "spine": 80,
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "route": "auto-paged",
+      "effectiveEngine": "browser",
+      "book": "guimi-prose",
+      "resourceCalls": {
+        "html.0": 2,
+        "images.80": 1,
+        "html.80": 2,
+        "images.0": 1,
+        "css.0": 2,
+        "css.80": 2
+      },
+      "byteScanMs": 12855.722291686106,
+      "openingEngine": "browser",
+      "sessionOpenMs": 412.0112083037384,
+      "openingReturnMs": 157.38329163286835,
+      "requestReturnMs": 1161.9440833455883,
+      "openingFirstReadyMs": 156.75083332462236,
+      "legacyBuildMs": {
+        "0": 68.77554167294875
+      },
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 731
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildMs": {
+        "80": 396.6702916659415
+      },
+      "spine": 80,
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "resourceCalls": {},
+      "sessionOpenMs": 406.3470833352767,
+      "repetition": 2,
+      "book": "guimi-prose",
+      "resourceMs": {},
+      "contentUnits": 4,
+      "cachedRequestMs": 0.002500019036233425,
+      "effectiveEngine": "legacy",
+      "chapterHTMLBytes": 10917,
+      "requestReturnMs": 401.5325832879171,
+      "firstReadyMs": 401.5325832879171,
+      "route": "legacy-scroll",
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 59
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "effectiveEngine": "browser",
+      "cachedRequestMs": 0.00220834044739604,
+      "spine": 80,
+      "repetition": 2,
+      "route": "auto-scroll",
+      "legacyBuildCounts": {},
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "resourceMs": {
+        "images.80": 112.57062503136694,
+        "css.80": 820.0602500000969,
+        "html.80": 4.823458264581859
+      },
+      "contentUnits": 3173,
+      "legacyBuildMs": {},
+      "sessionOpenMs": 405.3637500037439,
+      "scannerProbeMs": 39.69712497200817,
+      "requestReturnMs": 1008.2933750236407,
+      "book": "guimi-prose",
+      "resourceCalls": {
+        "images.80": 1,
+        "css.80": 2,
+        "html.80": 2
+      },
+      "firstReadyMs": 1008.2933750236407,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 637
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "requestReturnMs": 198.0805416824296,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 17.489458376076072,
+      "legacyBuildMs": {
+        "0": 14.90199996624142,
+        "6": 133.95679165842012
+      },
+      "chapterCount": 41,
+      "book": "hail-mary-prose",
+      "openingFirstReadyMs": 15.66445833304897,
+      "resourceCalls": {},
+      "cachedRequestMs": 0.0459583243355155,
+      "contentUnits": 25016,
+      "byteScanMs": 10.977541620377451,
+      "openingEngine": "legacy",
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1,
+        "6": 1
+      },
+      "resourceMs": {},
+      "sessionOpenMs": 12.33225001487881,
+      "firstReadyMs": 145.39474999764934,
+      "route": "legacy-paged",
+      "spine": 6,
+      "chapterHTMLBytes": 33642,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "openingReturnMs": 40.51550000440329,
+      "legacyBuildMs": {
+        "0": 15.010875009465963
+      },
+      "byteScanMs": 11.757333297282457,
+      "spine": 6,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceCalls": {
+        "images.0": 1,
+        "images.6": 1,
+        "css.0": 2,
+        "html.0": 2,
+        "html.6": 2,
+        "css.6": 2
+      },
+      "sessionOpenMs": 12.30566669255495,
+      "repetition": 2,
+      "book": "hail-mary-prose",
+      "resourceMs": {
+        "images.0": 1.7639583093114197,
+        "css.0": 5.564916704315692,
+        "images.6": 4.241208313032985,
+        "html.0": 0.384374987334013,
+        "html.6": 0.7444583461619914,
+        "css.6": 7.279583311174065
+      },
+      "scannerProbeMs": 125.84545835852623,
+      "cachedRequestMs": 0.02804165706038475,
+      "contentUnits": 24820,
+      "effectiveEngine": "browser",
+      "openingFirstReadyMs": 40.46720830956474,
+      "firstReadyMs": 280.4828750086017,
+      "route": "auto-paged",
+      "requestReturnMs": 282.3804166982882,
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "openingEngine": "browser",
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "spine": 6,
+      "effectiveEngine": "legacy",
+      "route": "legacy-scroll",
+      "cachedRequestMs": 0.0020416919142007828,
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "resourceMs": {},
+      "contentUnits": 8,
+      "legacyBuildMs": {
+        "6": 139.30787495337427
+      },
+      "sessionOpenMs": 11.548541660886258,
+      "requestReturnMs": 185.2927083382383,
+      "book": "hail-mary-prose",
+      "resourceCalls": {},
+      "firstReadyMs": 185.2927083382383,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildMs": {},
+      "legacyBuildCounts": {},
+      "spine": 6,
+      "resourceCalls": {
+        "html.6": 2,
+        "css.6": 2,
+        "images.6": 1
+      },
+      "sessionOpenMs": 11.307958338875324,
+      "repetition": 2,
+      "book": "hail-mary-prose",
+      "resourceMs": {
+        "html.6": 0.7856250158511102,
+        "css.6": 7.698625035118312,
+        "images.6": 4.142208315897733
+      },
+      "scannerProbeMs": 125.66345831146464,
+      "cachedRequestMs": 0.0019583385437726974,
+      "contentUnits": 24820,
+      "effectiveEngine": "browser",
+      "chapterHTMLBytes": 33642,
+      "firstReadyMs": 238.81000000983477,
+      "route": "auto-scroll",
+      "requestReturnMs": 238.81000000983477,
+      "chapterCount": 41,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "resourceMs": {},
+      "effectiveEngine": "legacy",
+      "book": "game-designer-fallback",
+      "cachedRequestMs": 0.03225001273676753,
+      "requestReturnMs": 715.7178749912418,
+      "contentUnits": 2270,
+      "openingReturnMs": 66.57299998914823,
+      "byteScanMs": 9595.615875034127,
+      "firstReadyMs": 715.6107083428651,
+      "openingFirstReadyMs": 58.106291689909995,
+      "chapterCount": 1192,
+      "route": "legacy-paged",
+      "openingEngine": "legacy",
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "sessionOpenMs": 239.00170833803713,
+      "resourceCalls": {},
+      "spine": 10,
+      "chapterHTMLBytes": 10912,
+      "legacyBuildMs": {
+        "0": 57.22079169936478,
+        "10": 709.0675000217743
+      },
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 176
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "0": 56.47375003900379,
+        "10": 694.6966249961406
+      },
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "contentUnits": 2270,
+      "openingReturnMs": 125.71441667387262,
+      "byteScanMs": 9623.105541686527,
+      "resourceMs": {
+        "css.0": 0.6809583283029497,
+        "html.10": 0.5365416291169822,
+        "html.0": 2.1053333184681833,
+        "css.10": 682.2067916509695,
+        "images.0": 54.04479167191312
+      },
+      "firstReadyMs": 1542.824375035707,
+      "sessionOpenMs": 231.1983749968931,
+      "cachedRequestMs": 0.3031250089406967,
+      "resourceCalls": {
+        "css.0": 2,
+        "html.10": 1,
+        "html.0": 2,
+        "css.10": 1,
+        "images.0": 1
+      },
+      "scannerProbeMs": 136.99750002706423,
+      "chapterHTMLBytes": 10912,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 125.2507499884814,
+      "spine": 10,
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "chapterCount": 1192,
+      "requestReturnMs": 1543.2170000276528,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 684
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "resourceMs": {},
+      "spine": 10,
+      "firstReadyMs": 629.1421249625273,
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "effectiveEngine": "legacy",
+      "contentUnits": 3,
+      "sessionOpenMs": 233.1668749684468,
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 624.7585833771154
+      },
+      "requestReturnMs": 629.1421249625273,
+      "resourceCalls": {},
+      "repetition": 2,
+      "cachedRequestMs": 0.0021666637621819973,
+      "route": "legacy-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 151
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "requestReturnMs": 1376.0550416773185,
+      "spine": 10,
+      "route": "auto-scroll",
+      "chapterHTMLBytes": 10912,
+      "contentUnits": 3,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "firstReadyMs": 1376.0550416773185,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "repetition": 2,
+      "cachedRequestMs": 0.0022916938178241253,
+      "scannerProbeMs": 137.081999971997,
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 622.3987083067186
+      },
+      "resourceCalls": {
+        "css.10": 1,
+        "html.10": 1
+      },
+      "chapterCount": 1192,
+      "resourceMs": {
+        "css.10": 612.031708296854,
+        "html.10": 0.5587083287537098
+      },
+      "sessionOpenMs": 233.3218333660625,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 608
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "byteScanMs": 13398.05558329681,
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "repetition": 2,
+      "cachedRequestMs": 0.05533336661756039,
+      "contentUnits": 29112,
+      "resourceCalls": {},
+      "sessionOpenMs": 408.88366667786613,
+      "firstReadyMs": 4472.835250024218,
+      "openingFirstReadyMs": 75.51533333025873,
+      "requestReturnMs": 4773.711750051007,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 82.02500001061708,
+      "legacyBuildCounts": {
+        "0": 1,
+        "64": 1
+      },
+      "book": "guimi-long",
+      "resourceMs": {},
+      "openingEngine": "legacy",
+      "route": "legacy-paged",
+      "legacyBuildMs": {
+        "0": 74.5706667075865,
+        "64": 4438.6691667023115
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 395
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "scannerProbeMs": 845.7382916240022,
+      "resourceMs": {
+        "images.64": 2657.2354583186097,
+        "html.0": 1.0384999914094806,
+        "images.0": 68.2667083456181,
+        "html.64": 5.1141667063347995,
+        "image.64": 56.37529166415334,
+        "css.0": 0.8340832428075373,
+        "css.64": 952.7490416658111
+      },
+      "firstReadyMs": 5462.468416662887,
+      "chapterHTMLBytes": 121736,
+      "chapterCount": 1594,
+      "contentUnits": 28099,
+      "cachedRequestMs": 0.03845832543447614,
+      "spine": 64,
+      "repetition": 2,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "route": "auto-paged",
+      "effectiveEngine": "browser",
+      "book": "guimi-long",
+      "resourceCalls": {
+        "images.64": 1,
+        "html.0": 2,
+        "images.0": 1,
+        "html.64": 2,
+        "image.64": 1,
+        "css.0": 2,
+        "css.64": 2
+      },
+      "byteScanMs": 14083.251541655045,
+      "openingEngine": "browser",
+      "openingFirstReadyMs": 157.3935000342317,
+      "openingReturnMs": 158.0212083645165,
+      "requestReturnMs": 5475.610374996904,
+      "sessionOpenMs": 409.5054583158344,
+      "legacyBuildMs": {
+        "0": 69.81783336959779
+      },
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 732
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "repetition": 2,
+      "book": "guimi-long",
+      "chapterCount": 1594,
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "effectiveEngine": "legacy",
+      "sessionOpenMs": 412.94704168103635,
+      "resourceCalls": {},
+      "firstReadyMs": 4299.6114999987185,
+      "chapterHTMLBytes": 121736,
+      "cachedRequestMs": 0.005208305083215237,
+      "route": "legacy-scroll",
+      "requestReturnMs": 4299.6114999987185,
+      "resourceMs": {},
+      "contentUnits": 36,
+      "legacyBuildMs": {
+        "64": 4031.205333361868
+      },
+      "spine": 64,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 386
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "legacyBuildMs": {},
+      "repetition": 2,
+      "contentUnits": 28099,
+      "book": "guimi-long",
+      "chapterCount": 1594,
+      "legacyBuildCounts": {},
+      "effectiveEngine": "browser",
+      "resourceMs": {
+        "image.64": 70.55787497665733,
+        "html.64": 5.22216665558517,
+        "css.64": 861.5492916433141,
+        "images.64": 2388.50808335701
+      },
+      "scannerProbeMs": 834.25158332102,
+      "chapterHTMLBytes": 121736,
+      "resourceCalls": {
+        "image.64": 1,
+        "html.64": 2,
+        "css.64": 2,
+        "images.64": 1
+      },
+      "sessionOpenMs": 430.1492916420102,
+      "firstReadyMs": 4975.043458340224,
+      "spine": 64,
+      "requestReturnMs": 4975.043458340224,
+      "route": "auto-scroll",
+      "cachedRequestMs": 0.003999972250312567,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 657
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildMs": {},
+      "repetition": 3,
+      "contentUnits": 4031,
+      "book": "quanzhi-prose",
+      "chapterCount": 1881,
+      "legacyBuildCounts": {},
+      "effectiveEngine": "browser",
+      "resourceMs": {
+        "html.69": 3.8869166746735573,
+        "images.69": 240.18112500198185,
+        "css.69": 459.0244583087042
+      },
+      "scannerProbeMs": 55.62754167476669,
+      "chapterHTMLBytes": 13962,
+      "resourceCalls": {
+        "html.69": 2,
+        "images.69": 1,
+        "css.69": 2
+      },
+      "sessionOpenMs": 364.0374167007394,
+      "firstReadyMs": 799.8249583761208,
+      "spine": 69,
+      "requestReturnMs": 799.8249583761208,
+      "route": "auto-scroll",
+      "cachedRequestMs": 0.0022500171326100826,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 240
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "effectiveEngine": "legacy",
+      "route": "legacy-scroll",
+      "repetition": 3,
+      "spine": 69,
+      "cachedRequestMs": 0.002583314199000597,
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "resourceMs": {},
+      "contentUnits": 4,
+      "legacyBuildMs": {
+        "69": 670.2239166479558
+      },
+      "sessionOpenMs": 378.1939166947268,
+      "requestReturnMs": 676.6573750064708,
+      "book": "quanzhi-prose",
+      "resourceCalls": {},
+      "firstReadyMs": 676.6573750064708,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 124
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "scannerProbeMs": 57.358000020030886,
+      "resourceMs": {
+        "html.69": 18.52374995360151,
+        "css.69": 519.529249984771,
+        "css.0": 0.9223333327099681,
+        "images.69": 286.3614583038725,
+        "html.0": 0.9414166561327875,
+        "images.0": 64.62187500437722
+      },
+      "firstReadyMs": 948.1191249797121,
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "contentUnits": 4031,
+      "cachedRequestMs": 0.025708286557346582,
+      "spine": 69,
+      "repetition": 3,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "route": "auto-paged",
+      "book": "quanzhi-prose",
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "html.69": 2,
+        "css.69": 2,
+        "css.0": 2,
+        "images.69": 1,
+        "html.0": 2,
+        "images.0": 1
+      },
+      "byteScanMs": 16771.918916667346,
+      "openingEngine": "browser",
+      "sessionOpenMs": 359.84295833623037,
+      "requestReturnMs": 949.8666666913778,
+      "openingReturnMs": 152.7920833323151,
+      "openingFirstReadyMs": 152.07841666415334,
+      "legacyBuildMs": {
+        "0": 69.82008332852274
+      },
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 278
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildMs": {
+        "0": 66.34466664399952,
+        "69": 721.8169583356939
+      },
+      "repetition": 3,
+      "contentUnits": 4103,
+      "book": "quanzhi-prose",
+      "openingEngine": "legacy",
+      "openingReturnMs": 82.30374997947365,
+      "chapterCount": 1881,
+      "legacyBuildCounts": {
+        "0": 1,
+        "69": 1
+      },
+      "byteScanMs": 16662.454125005752,
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "chapterHTMLBytes": 13962,
+      "resourceCalls": {},
+      "sessionOpenMs": 363.2741250330582,
+      "firstReadyMs": 730.8077499619685,
+      "spine": 69,
+      "cachedRequestMs": 0.040708284359425306,
+      "requestReturnMs": 730.9219166636467,
+      "route": "legacy-paged",
+      "openingFirstReadyMs": 67.4532083212398,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 145
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "spine": 80,
+      "cachedRequestMs": 0.002583314199000597,
+      "scannerProbeMs": 40.45520833460614,
+      "book": "guimi-prose",
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "css.80": 2,
+        "images.80": 1,
+        "html.80": 2
+      },
+      "chapterCount": 1594,
+      "repetition": 3,
+      "legacyBuildMs": {},
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "css.80": 829.885125043802,
+        "images.80": 119.46212500333786,
+        "html.80": 5.220708320848644
+      },
+      "sessionOpenMs": 413.44454168574885,
+      "route": "auto-scroll",
+      "contentUnits": 3173,
+      "firstReadyMs": 1026.4834166155197,
+      "requestReturnMs": 1026.4834166155197,
+      "chapterHTMLBytes": 10917,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 645
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "sessionOpenMs": 412.7427083440125,
+      "resourceCalls": {},
+      "spine": 80,
+      "book": "guimi-prose",
+      "contentUnits": 4,
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "legacyBuildMs": {
+        "80": 384.56329167820513
+      },
+      "cachedRequestMs": 0.00220834044739604,
+      "chapterHTMLBytes": 10917,
+      "repetition": 3,
+      "effectiveEngine": "legacy",
+      "firstReadyMs": 389.3870416795835,
+      "route": "legacy-scroll",
+      "requestReturnMs": 389.3870416795835,
+      "resourceMs": {},
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 56
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "book": "guimi-prose",
+      "legacyBuildMs": {
+        "0": 72.1599166863598
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 3173,
+      "openingReturnMs": 159.514874976594,
+      "byteScanMs": 12866.291708312929,
+      "resourceMs": {
+        "images.80": 130.1195416599512,
+        "css.0": 0.8431666065007448,
+        "images.0": 71.01229164982215,
+        "html.80": 5.379750044085085,
+        "css.80": 935.8113749767654,
+        "html.0": 1.060625072568655
+      },
+      "firstReadyMs": 1161.8328749900684,
+      "sessionOpenMs": 417.16837498825043,
+      "cachedRequestMs": 0.026666675694286823,
+      "resourceCalls": {
+        "images.80": 1,
+        "css.0": 2,
+        "html.80": 2,
+        "images.0": 1,
+        "css.80": 2,
+        "html.0": 2
+      },
+      "scannerProbeMs": 45.86887499317527,
+      "chapterHTMLBytes": 10917,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 158.85795833310112,
+      "spine": 80,
+      "repetition": 3,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1594,
+      "requestReturnMs": 1163.2335416506976,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 731
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "repetition": 3,
+      "book": "guimi-prose",
+      "openingReturnMs": 84.18983331648633,
+      "legacyBuildCounts": {
+        "0": 1,
+        "80": 1
+      },
+      "chapterCount": 1594,
+      "openingFirstReadyMs": 72.62691663345322,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "sessionOpenMs": 417.4778333399445,
+      "resourceCalls": {},
+      "firstReadyMs": 478.3832500106655,
+      "byteScanMs": 13033.376000006683,
+      "cachedRequestMs": 0.045124965254217386,
+      "chapterHTMLBytes": 10917,
+      "route": "legacy-paged",
+      "requestReturnMs": 478.57795836171135,
+      "resourceMs": {},
+      "contentUnits": 3251,
+      "legacyBuildMs": {
+        "0": 71.6435833601281,
+        "80": 470.55633331183344
+      },
+      "spine": 80,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 65
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "effectiveEngine": "browser",
+      "route": "auto-scroll",
+      "repetition": 3,
+      "cachedRequestMs": 0.0021666637621819973,
+      "spine": 6,
+      "legacyBuildCounts": {},
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "resourceMs": {
+        "images.6": 6.431374989915639,
+        "html.6": 1.0850000544451177,
+        "css.6": 8.081208390649408
+      },
+      "contentUnits": 24820,
+      "legacyBuildMs": {},
+      "sessionOpenMs": 13.341833371669054,
+      "scannerProbeMs": 128.40666668489575,
+      "requestReturnMs": 245.09762501111254,
+      "book": "hail-mary-prose",
+      "resourceCalls": {
+        "images.6": 1,
+        "html.6": 2,
+        "css.6": 2
+      },
+      "firstReadyMs": 245.09762501111254,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "resourceMs": {},
+      "spine": 6,
+      "firstReadyMs": 187.68729170551524,
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "effectiveEngine": "legacy",
+      "contentUnits": 8,
+      "sessionOpenMs": 11.613749957177788,
+      "book": "hail-mary-prose",
+      "legacyBuildMs": {
+        "6": 140.98866668064147
+      },
+      "requestReturnMs": 187.68729170551524,
+      "resourceCalls": {},
+      "cachedRequestMs": 0.0025833724066615105,
+      "repetition": 3,
+      "route": "legacy-scroll",
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "cachedRequestMs": 0.02875004429370165,
+      "effectiveEngine": "browser",
+      "repetition": 3,
+      "openingReturnMs": 40.79954168992117,
+      "route": "auto-paged",
+      "firstReadyMs": 284.0446666814387,
+      "resourceCalls": {
+        "html.0": 2,
+        "css.6": 2,
+        "css.0": 2,
+        "images.0": 1,
+        "html.6": 2,
+        "images.6": 1
+      },
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "byteScanMs": 11.015750002115965,
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "resourceMs": {
+        "css.6": 7.313958369195461,
+        "images.6": 4.300499975215644,
+        "css.0": 5.523583386093378,
+        "images.0": 1.7888749716803432,
+        "html.6": 0.8687917143106461,
+        "html.0": 0.39033329812809825
+      },
+      "contentUnits": 24820,
+      "legacyBuildMs": {
+        "0": 14.666499977465719
+      },
+      "sessionOpenMs": 11.41141663538292,
+      "openingFirstReadyMs": 40.745875041466206,
+      "scannerProbeMs": 133.5552916279994,
+      "requestReturnMs": 286.0153333749622,
+      "book": "hail-mary-prose",
+      "openingEngine": "browser",
+      "spine": 6,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "resourceMs": {},
+      "effectiveEngine": "legacy",
+      "book": "hail-mary-prose",
+      "cachedRequestMs": 0.048666668590158224,
+      "requestReturnMs": 224.2459167027846,
+      "contentUnits": 25016,
+      "openingReturnMs": 29.5952083542943,
+      "byteScanMs": 22.793999989517033,
+      "firstReadyMs": 168.62529166974127,
+      "openingFirstReadyMs": 27.536500012502074,
+      "chapterCount": 41,
+      "route": "legacy-paged",
+      "repetition": 3,
+      "openingEngine": "legacy",
+      "legacyBuildCounts": {
+        "0": 1,
+        "6": 1
+      },
+      "sessionOpenMs": 11.847958317957819,
+      "resourceCalls": {},
+      "spine": 6,
+      "chapterHTMLBytes": 33642,
+      "legacyBuildMs": {
+        "0": 14.743416686542332,
+        "6": 156.40862501459196
+      },
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "requestReturnMs": 1407.7284166705795,
+      "spine": 10,
+      "route": "auto-scroll",
+      "chapterHTMLBytes": 10912,
+      "contentUnits": 3,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "firstReadyMs": 1407.7284166705795,
+      "repetition": 3,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "cachedRequestMs": 0.004124944098293781,
+      "scannerProbeMs": 143.89066665899009,
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 634.0478750062175
+      },
+      "resourceCalls": {
+        "css.10": 1,
+        "html.10": 1
+      },
+      "chapterCount": 1192,
+      "resourceMs": {
+        "css.10": 621.8812916777097,
+        "html.10": 0.6221249932423234
+      },
+      "sessionOpenMs": 271.74825000111014,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 618
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "resourceMs": {},
+      "firstReadyMs": 653.9825416402891,
+      "contentUnits": 3,
+      "cachedRequestMs": 0.00241666566580534,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "spine": 10,
+      "repetition": 3,
+      "route": "legacy-scroll",
+      "effectiveEngine": "legacy",
+      "resourceCalls": {},
+      "book": "game-designer-fallback",
+      "sessionOpenMs": 234.676958352793,
+      "requestReturnMs": 653.9825416402891,
+      "chapterHTMLBytes": 10912,
+      "legacyBuildMs": {
+        "10": 649.4960833224468
+      },
+      "chapterCount": 1192,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 157
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "repetition": 3,
+      "book": "game-designer-fallback",
+      "openingReturnMs": 149.05391668435186,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "chapterCount": 1192,
+      "openingFirstReadyMs": 148.5628333175555,
+      "scannerProbeMs": 137.2928749769926,
+      "openingEngine": "browser",
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "sessionOpenMs": 235.47254165168852,
+      "resourceCalls": {
+        "css.10": 1,
+        "css.0": 2,
+        "images.0": 1,
+        "html.0": 2,
+        "html.10": 1
+      },
+      "firstReadyMs": 1646.282458328642,
+      "byteScanMs": 10041.423874965403,
+      "cachedRequestMs": 0.3255416522733867,
+      "chapterHTMLBytes": 10912,
+      "route": "auto-paged",
+      "requestReturnMs": 1646.6860833461396,
+      "resourceMs": {
+        "css.0": 0.7329583168029785,
+        "css.10": 723.9743333193474,
+        "images.0": 58.23804170358926,
+        "html.0": 2.474375069141388,
+        "html.10": 0.589958333875984
+      },
+      "contentUnits": 2270,
+      "legacyBuildMs": {
+        "0": 73.74341663671657,
+        "10": 750.4631666233763
+      },
+      "spine": 10,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 751
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "legacyBuildMs": {
+        "10": 702.545124979224,
+        "0": 57.50616668956354
+      },
+      "route": "legacy-paged",
+      "legacyBuildCounts": {
+        "10": 1,
+        "0": 1
+      },
+      "openingFirstReadyMs": 58.508749993052334,
+      "resourceCalls": {},
+      "chapterCount": 1192,
+      "spine": 10,
+      "byteScanMs": 9558.066375029739,
+      "resourceMs": {},
+      "sessionOpenMs": 241.86725000618026,
+      "openingEngine": "legacy",
+      "repetition": 3,
+      "book": "game-designer-fallback",
+      "contentUnits": 2270,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 66.84112502261996,
+      "cachedRequestMs": 0.0315000070258975,
+      "chapterHTMLBytes": 10912,
+      "requestReturnMs": 709.1225416515954,
+      "firstReadyMs": 709.0118749765679,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 167
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "requestReturnMs": 5039.211875002366,
+      "repetition": 3,
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "resourceCalls": {
+        "image.64": 1,
+        "images.64": 1,
+        "css.64": 2,
+        "html.64": 2
+      },
+      "scannerProbeMs": 898.9669166621752,
+      "sessionOpenMs": 422.59266664041206,
+      "book": "guimi-long",
+      "legacyBuildCounts": {},
+      "effectiveEngine": "browser",
+      "chapterCount": 1594,
+      "route": "auto-scroll",
+      "firstReadyMs": 5039.211875002366,
+      "resourceMs": {
+        "image.64": 52.7789166662842,
+        "images.64": 2480.4024166660383,
+        "html.64": 5.466208327561617,
+        "css.64": 850.8386667235754
+      },
+      "legacyBuildMs": {},
+      "contentUnits": 28099,
+      "cachedRequestMs": 0.0027500209398567677,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 647
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "repetition": 3,
+      "cachedRequestMs": 0.004333327524363995,
+      "contentUnits": 36,
+      "resourceCalls": {},
+      "sessionOpenMs": 439.25366667099297,
+      "firstReadyMs": 4239.813458290882,
+      "requestReturnMs": 4239.813458290882,
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "book": "guimi-long",
+      "route": "legacy-scroll",
+      "legacyBuildMs": {
+        "64": 3974.4198749540374
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 347
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "book": "guimi-long",
+      "legacyBuildMs": {
+        "0": 74.12116666091606
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 28099,
+      "openingReturnMs": 160.88062501512468,
+      "byteScanMs": 14582.17895834241,
+      "resourceMs": {
+        "images.64": 2706.180041655898,
+        "css.0": 2.2374166874215007,
+        "css.64": 963.5448333574459,
+        "html.0": 1.2657500337809324,
+        "html.64": 5.229416652582586,
+        "images.0": 69.00745833991095,
+        "image.64": 56.775499950163066
+      },
+      "firstReadyMs": 5555.374708317686,
+      "sessionOpenMs": 460.6724583427422,
+      "cachedRequestMs": 0.034541706554591656,
+      "resourceCalls": {
+        "images.64": 1,
+        "html.64": 2,
+        "images.0": 1,
+        "html.0": 2,
+        "css.0": 2,
+        "css.64": 2,
+        "image.64": 1
+      },
+      "scannerProbeMs": 855.937999964226,
+      "chapterHTMLBytes": 121736,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 160.24320834549144,
+      "spine": 64,
+      "repetition": 3,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1594,
+      "requestReturnMs": 5569.275416666642,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 739
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "repetition": 3,
+      "openingReturnMs": 84.76470835739747,
+      "book": "guimi-long",
+      "legacyBuildCounts": {
+        "0": 1,
+        "64": 1
+      },
+      "chapterCount": 1594,
+      "openingFirstReadyMs": 72.23266665823758,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "sessionOpenMs": 411.1398333334364,
+      "resourceCalls": {},
+      "firstReadyMs": 4491.388500027824,
+      "byteScanMs": 13447.14699999895,
+      "cachedRequestMs": 0.06162503268569708,
+      "chapterHTMLBytes": 121736,
+      "route": "legacy-paged",
+      "requestReturnMs": 4798.492791713215,
+      "resourceMs": {},
+      "contentUnits": 29112,
+      "legacyBuildMs": {
+        "0": 70.1143333571963,
+        "64": 4456.394958368037
+      },
+      "spine": 64,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 397
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "legacyBuildCounts": {
+        "0": 1,
+        "69": 1
+      },
+      "cachedRequestMs": 0.041208346374332905,
+      "book": "quanzhi-prose",
+      "route": "legacy-paged",
+      "requestReturnMs": 736.9878750178032,
+      "contentUnits": 4103,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "byteScanMs": 16900.254249980208,
+      "resourceCalls": {},
+      "legacyBuildMs": {
+        "0": 68.52787500247359,
+        "69": 727.7371250092983
+      },
+      "chapterCount": 1881,
+      "resourceMs": {},
+      "spine": 69,
+      "sessionOpenMs": 378.847666666843,
+      "openingReturnMs": 83.66866665892303,
+      "chapterHTMLBytes": 13962,
+      "repetition": 4,
+      "firstReadyMs": 736.8471249938011,
+      "openingFirstReadyMs": 69.6324166492559,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 145
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "0": 66.38049997854978
+      },
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "openingReturnMs": 152.88370830239728,
+      "byteScanMs": 17181.184666696936,
+      "resourceMs": {
+        "html.69": 3.9956249529495835,
+        "css.0": 0.9337499504908919,
+        "html.0": 0.9356666705571115,
+        "css.69": 531.4525417052209,
+        "images.0": 64.38770837849006,
+        "images.69": 289.42750004353
+      },
+      "firstReadyMs": 947.8335833409801,
+      "sessionOpenMs": 368.34908335004,
+      "cachedRequestMs": 0.02600002335384488,
+      "resourceCalls": {
+        "html.69": 2,
+        "css.0": 2,
+        "html.0": 2,
+        "css.69": 2,
+        "images.0": 1,
+        "images.69": 1
+      },
+      "scannerProbeMs": 56.70429166639224,
+      "chapterHTMLBytes": 13962,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 152.10349997505546,
+      "spine": 69,
+      "repetition": 4,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 1881,
+      "requestReturnMs": 949.557583371643,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 284
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {
+        "69": 632.8535416978411
+      },
+      "effectiveEngine": "legacy",
+      "contentUnits": 4,
+      "resourceMs": {},
+      "firstReadyMs": 638.9957916690037,
+      "sessionOpenMs": 368.43429162399843,
+      "resourceCalls": {},
+      "cachedRequestMs": 0.0029583461582660675,
+      "chapterHTMLBytes": 13962,
+      "route": "legacy-scroll",
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "spine": 69,
+      "repetition": 4,
+      "chapterCount": 1881,
+      "requestReturnMs": 638.9957916690037,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 125
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "quanzhi-prose",
+      "legacyBuildMs": {},
+      "effectiveEngine": "browser",
+      "contentUnits": 4031,
+      "resourceMs": {
+        "css.69": 461.34270838228986,
+        "images.69": 240.68062502192333,
+        "html.69": 3.8009583367966115
+      },
+      "resourceCalls": {
+        "css.69": 2,
+        "images.69": 1,
+        "html.69": 2
+      },
+      "sessionOpenMs": 367.60741664329544,
+      "firstReadyMs": 803.6532083642669,
+      "cachedRequestMs": 0.0029166112653911114,
+      "scannerProbeMs": 56.35683337459341,
+      "chapterHTMLBytes": 13962,
+      "route": "auto-scroll",
+      "legacyBuildCounts": {},
+      "spine": 69,
+      "repetition": 4,
+      "chapterCount": 1881,
+      "requestReturnMs": 803.6532083642669,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 242
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildMs": {
+        "0": 72.22720835125074,
+        "80": 449.32474999222904
+      },
+      "repetition": 4,
+      "contentUnits": 3251,
+      "book": "guimi-prose",
+      "openingEngine": "legacy",
+      "openingReturnMs": 82.64999999664724,
+      "chapterCount": 1594,
+      "legacyBuildCounts": {
+        "0": 1,
+        "80": 1
+      },
+      "byteScanMs": 13077.483958331868,
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "chapterHTMLBytes": 10917,
+      "resourceCalls": {},
+      "sessionOpenMs": 445.748416648712,
+      "spine": 80,
+      "firstReadyMs": 456.1939166742377,
+      "requestReturnMs": 456.3094166223891,
+      "cachedRequestMs": 0.042625004425644875,
+      "route": "legacy-paged",
+      "openingFirstReadyMs": 73.29412503167987,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 67
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "spine": 80,
+      "cachedRequestMs": 0.03141671186313033,
+      "scannerProbeMs": 40.51129170693457,
+      "book": "guimi-prose",
+      "contentUnits": 3173,
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "html.0": 2,
+        "images.0": 1,
+        "html.80": 2,
+        "css.80": 2,
+        "images.80": 1,
+        "css.0": 2
+      },
+      "openingReturnMs": 157.02079166658223,
+      "openingEngine": "browser",
+      "byteScanMs": 13175.626916694455,
+      "chapterCount": 1594,
+      "repetition": 4,
+      "legacyBuildMs": {
+        "0": 71.73545833211392
+      },
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceMs": {
+        "images.80": 130.96645835321397,
+        "images.0": 67.93395831482485,
+        "html.80": 5.328624974936247,
+        "css.80": 942.3045417061076,
+        "html.0": 1.080708287190646,
+        "css.0": 0.8507499587722123
+      },
+      "openingFirstReadyMs": 156.3322083093226,
+      "sessionOpenMs": 424.44283328950405,
+      "route": "auto-paged",
+      "requestReturnMs": 1172.0470000291243,
+      "firstReadyMs": 1170.1653333730064,
+      "chapterHTMLBytes": 10917,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 739
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildMs": {
+        "80": 400.2794999978505
+      },
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "spine": 80,
+      "resourceCalls": {},
+      "sessionOpenMs": 423.3552083023824,
+      "repetition": 4,
+      "book": "guimi-prose",
+      "resourceMs": {},
+      "contentUnits": 4,
+      "cachedRequestMs": 0.0027916976250708103,
+      "effectiveEngine": "legacy",
+      "chapterHTMLBytes": 10917,
+      "requestReturnMs": 405.2077916567214,
+      "firstReadyMs": 405.2077916567214,
+      "route": "legacy-scroll",
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 58
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "html.80": 5.217249970883131,
+        "images.80": 116.8139583314769,
+        "css.80": 843.8858750741929
+      },
+      "spine": 80,
+      "firstReadyMs": 1038.4547083522193,
+      "chapterHTMLBytes": 10917,
+      "chapterCount": 1594,
+      "effectiveEngine": "browser",
+      "contentUnits": 3173,
+      "sessionOpenMs": 444.7941250400618,
+      "book": "guimi-prose",
+      "legacyBuildMs": {},
+      "requestReturnMs": 1038.4547083522193,
+      "resourceCalls": {
+        "html.80": 2,
+        "images.80": 1,
+        "css.80": 2
+      },
+      "cachedRequestMs": 0.002749962732195854,
+      "repetition": 4,
+      "scannerProbeMs": 40.05404171766713,
+      "route": "auto-scroll",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 659
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "legacyBuildMs": {
+        "0": 15.188458375632763,
+        "6": 135.03791665425524
+      },
+      "repetition": 4,
+      "contentUnits": 25016,
+      "book": "hail-mary-prose",
+      "openingReturnMs": 20.274000009521842,
+      "openingEngine": "legacy",
+      "chapterCount": 41,
+      "legacyBuildCounts": {
+        "0": 1,
+        "6": 1
+      },
+      "byteScanMs": 13.816791644785553,
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "chapterHTMLBytes": 33642,
+      "resourceCalls": {},
+      "sessionOpenMs": 15.397916664369404,
+      "firstReadyMs": 146.29645831882954,
+      "spine": 6,
+      "requestReturnMs": 198.36799998302013,
+      "route": "legacy-paged",
+      "cachedRequestMs": 0.03620836650952697,
+      "openingFirstReadyMs": 18.662000016774982,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "repetition": 4,
+      "book": "hail-mary-prose",
+      "openingReturnMs": 40.536208311095834,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "chapterCount": 41,
+      "openingFirstReadyMs": 40.48620833782479,
+      "scannerProbeMs": 135.35095832776278,
+      "openingEngine": "browser",
+      "effectiveEngine": "browser",
+      "sessionOpenMs": 11.858666664920747,
+      "resourceCalls": {
+        "html.6": 2,
+        "html.0": 2,
+        "images.6": 1,
+        "css.0": 2,
+        "css.6": 2,
+        "images.0": 1
+      },
+      "firstReadyMs": 295.223958324641,
+      "byteScanMs": 11.052958318032324,
+      "cachedRequestMs": 0.0327499583363533,
+      "chapterHTMLBytes": 33642,
+      "route": "auto-paged",
+      "requestReturnMs": 297.1372083411552,
+      "resourceMs": {
+        "html.6": 0.8895416394807398,
+        "html.0": 0.3948332741856575,
+        "images.6": 4.58141666604206,
+        "css.0": 5.530124995857477,
+        "css.6": 7.44554161792621,
+        "images.0": 1.7845833208411932
+      },
+      "contentUnits": 24820,
+      "legacyBuildMs": {
+        "0": 15.033999981824309
+      },
+      "spine": 6,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "spine": 6,
+      "requestReturnMs": 189.78941667592153,
+      "route": "legacy-scroll",
+      "chapterHTMLBytes": 33642,
+      "contentUnits": 8,
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "firstReadyMs": 189.78941667592153,
+      "effectiveEngine": "legacy",
+      "repetition": 4,
+      "cachedRequestMs": 0.002833374310284853,
+      "book": "hail-mary-prose",
+      "legacyBuildMs": {
+        "6": 142.89495832053944
+      },
+      "resourceCalls": {},
+      "chapterCount": 41,
+      "resourceMs": {},
+      "sessionOpenMs": 11.649125022813678,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "effectiveEngine": "browser",
+      "route": "auto-scroll",
+      "repetition": 4,
+      "cachedRequestMs": 0.002916669473052025,
+      "spine": 6,
+      "legacyBuildCounts": {},
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "resourceMs": {
+        "css.6": 8.000000030733645,
+        "images.6": 4.305583366658539,
+        "html.6": 0.8512083441019058
+      },
+      "contentUnits": 24820,
+      "legacyBuildMs": {},
+      "sessionOpenMs": 11.590208334382623,
+      "scannerProbeMs": 131.68841670267284,
+      "requestReturnMs": 245.17650000052527,
+      "book": "hail-mary-prose",
+      "resourceCalls": {
+        "html.6": 2,
+        "images.6": 1,
+        "css.6": 2
+      },
+      "firstReadyMs": 245.17650000052527,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "route": "legacy-paged",
+      "requestReturnMs": 724.8631250113249,
+      "openingReturnMs": 66.5451250388287,
+      "spine": 10,
+      "chapterHTMLBytes": 10912,
+      "contentUnits": 2270,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "firstReadyMs": 724.74579163827,
+      "repetition": 4,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "cachedRequestMs": 0.03887497587129474,
+      "book": "game-designer-fallback",
+      "byteScanMs": 9764.542625052854,
+      "openingFirstReadyMs": 59.527958335820585,
+      "legacyBuildMs": {
+        "0": 58.59191669151187,
+        "10": 717.9826250066981
+      },
+      "resourceCalls": {},
+      "chapterCount": 1192,
+      "resourceMs": {},
+      "sessionOpenMs": 252.69995833514258,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 176
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "0": 58.93104168353602,
+        "10": 709.68704164261
+      },
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "contentUnits": 2270,
+      "openingReturnMs": 129.0709583554417,
+      "byteScanMs": 9668.474041682202,
+      "resourceMs": {
+        "css.10": 694.5179166505113,
+        "images.0": 56.64929171325639,
+        "html.0": 2.2235416690818965,
+        "css.0": 0.7464583613909781,
+        "html.10": 0.5795416655018926
+      },
+      "firstReadyMs": 1573.2879166607745,
+      "sessionOpenMs": 234.51645829482004,
+      "cachedRequestMs": 0.3137500025331974,
+      "resourceCalls": {
+        "css.10": 1,
+        "images.0": 1,
+        "html.0": 2,
+        "css.0": 2,
+        "html.10": 1
+      },
+      "scannerProbeMs": 142.52429164480418,
+      "chapterHTMLBytes": 10912,
+      "route": "auto-paged",
+      "openingFirstReadyMs": 128.5850833519362,
+      "spine": 10,
+      "repetition": 4,
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "chapterCount": 1192,
+      "requestReturnMs": 1573.7027083523571,
+      "openingEngine": "browser",
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 694
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "route": "legacy-scroll",
+      "requestReturnMs": 641.904333315324,
+      "spine": 10,
+      "chapterHTMLBytes": 10912,
+      "contentUnits": 3,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "firstReadyMs": 641.904333315324,
+      "effectiveEngine": "legacy",
+      "repetition": 4,
+      "cachedRequestMs": 0.002374988980591297,
+      "book": "game-designer-fallback",
+      "legacyBuildMs": {
+        "10": 637.370791635476
+      },
+      "resourceCalls": {},
+      "chapterCount": 1192,
+      "resourceMs": {},
+      "sessionOpenMs": 234.78704161243513,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 152
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "sessionOpenMs": 236.42679170006886,
+      "resourceCalls": {
+        "html.10": 1,
+        "css.10": 1
+      },
+      "spine": 10,
+      "book": "game-designer-fallback",
+      "contentUnits": 3,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "legacyBuildMs": {
+        "10": 629.002749978099
+      },
+      "cachedRequestMs": 0.002583314199000597,
+      "scannerProbeMs": 138.66941665764898,
+      "chapterHTMLBytes": 10912,
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "repetition": 4,
+      "firstReadyMs": 1396.9791667186655,
+      "route": "auto-scroll",
+      "requestReturnMs": 1396.9791667186655,
+      "resourceMs": {
+        "html.10": 0.5975000094622374,
+        "css.10": 620.6237082951702
+      },
+      "chapterCount": 1192,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 613
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "byteScanMs": 13468.704458326101,
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "repetition": 4,
+      "cachedRequestMs": 0.05841668462380767,
+      "contentUnits": 29112,
+      "resourceCalls": {},
+      "sessionOpenMs": 435.3881249553524,
+      "openingFirstReadyMs": 73.00654170103371,
+      "firstReadyMs": 4582.594458363019,
+      "requestReturnMs": 4892.789125035051,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 83.41433334862813,
+      "legacyBuildCounts": {
+        "64": 1,
+        "0": 1
+      },
+      "book": "guimi-long",
+      "resourceMs": {},
+      "openingEngine": "legacy",
+      "route": "legacy-paged",
+      "legacyBuildMs": {
+        "64": 4545.82804167876,
+        "0": 71.90400001127273
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 403
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "spine": 64,
+      "openingReturnMs": 187.60999996447936,
+      "route": "auto-paged",
+      "requestReturnMs": 5656.5509583451785,
+      "chapterHTMLBytes": 121736,
+      "contentUnits": 28099,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "firstReadyMs": 5642.303541710135,
+      "repetition": 4,
+      "openingEngine": "browser",
+      "effectiveEngine": "browser",
+      "cachedRequestMs": 0.04437501775100827,
+      "scannerProbeMs": 845.8448333549313,
+      "book": "guimi-long",
+      "byteScanMs": 14450.233250041492,
+      "openingFirstReadyMs": 186.9817499537021,
+      "legacyBuildMs": {
+        "0": 89.02520837727934
+      },
+      "resourceCalls": {
+        "image.64": 1,
+        "css.64": 2,
+        "css.0": 2,
+        "images.64": 1,
+        "html.64": 2,
+        "images.0": 1,
+        "html.0": 2
+      },
+      "chapterCount": 1594,
+      "resourceMs": {
+        "image.64": 57.493666652590036,
+        "css.0": 1.364583382382989,
+        "css.64": 1053.9565000217408,
+        "images.64": 2677.4937916197814,
+        "html.64": 5.116166605148464,
+        "images.0": 81.0476666665636,
+        "html.0": 1.811916648875922
+      },
+      "sessionOpenMs": 427.4278750526719,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 800
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "repetition": 4,
+      "book": "guimi-long",
+      "chapterCount": 1594,
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "effectiveEngine": "legacy",
+      "resourceCalls": {},
+      "sessionOpenMs": 429.4239583541639,
+      "firstReadyMs": 4267.556458362378,
+      "chapterHTMLBytes": 121736,
+      "cachedRequestMs": 0.004166678991168737,
+      "route": "legacy-scroll",
+      "requestReturnMs": 4267.556458362378,
+      "resourceMs": {},
+      "contentUnits": 36,
+      "legacyBuildMs": {
+        "64": 3969.11891666241
+      },
+      "spine": 64,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 372
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "spine": 64,
+      "cachedRequestMs": 0.002916669473052025,
+      "scannerProbeMs": 848.3903750311583,
+      "book": "guimi-long",
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "images.64": 1,
+        "image.64": 1,
+        "html.64": 2,
+        "css.64": 2
+      },
+      "chapterCount": 1594,
+      "repetition": 4,
+      "legacyBuildMs": {},
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "images.64": 2358.200416667387,
+        "image.64": 50.09350000182167,
+        "html.64": 5.227124958764762,
+        "css.64": 914.4185833865777
+      },
+      "sessionOpenMs": 441.1134999827482,
+      "route": "auto-scroll",
+      "contentUnits": 28099,
+      "requestReturnMs": 5076.827708340716,
+      "firstReadyMs": 5076.827708340716,
+      "chapterHTMLBytes": 121736,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 669
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "spine": 69,
+      "cachedRequestMs": 0.0023333122953772545,
+      "scannerProbeMs": 55.74691668152809,
+      "book": "quanzhi-prose",
+      "effectiveEngine": "browser",
+      "resourceCalls": {
+        "images.69": 1,
+        "html.69": 2,
+        "css.69": 2
+      },
+      "chapterCount": 1881,
+      "legacyBuildMs": {},
+      "repetition": 5,
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "images.69": 247.90512502659112,
+        "html.69": 4.000458342488855,
+        "css.69": 459.4684583717026
+      },
+      "sessionOpenMs": 364.3832083325833,
+      "route": "auto-scroll",
+      "contentUnits": 4031,
+      "requestReturnMs": 807.928416703362,
+      "firstReadyMs": 807.928416703362,
+      "chapterHTMLBytes": 13962,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 242
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "spine": 69,
+      "cachedRequestMs": 0.0022916938178241253,
+      "book": "quanzhi-prose",
+      "effectiveEngine": "legacy",
+      "resourceCalls": {},
+      "chapterCount": 1881,
+      "legacyBuildMs": {
+        "69": 630.8596250019036
+      },
+      "repetition": 5,
+      "legacyBuildCounts": {
+        "69": 1
+      },
+      "resourceMs": {},
+      "sessionOpenMs": 371.1477083270438,
+      "route": "legacy-scroll",
+      "contentUnits": 4,
+      "requestReturnMs": 637.1985416626558,
+      "firstReadyMs": 637.1985416626558,
+      "chapterHTMLBytes": 13962,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 124
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "effectiveEngine": "browser",
+      "spine": 69,
+      "cachedRequestMs": 0.027999980375170708,
+      "firstReadyMs": 966.604791698046,
+      "repetition": 5,
+      "route": "auto-paged",
+      "resourceCalls": {
+        "html.0": 2,
+        "css.0": 2,
+        "images.69": 1,
+        "css.69": 2,
+        "html.69": 2,
+        "images.0": 1
+      },
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "byteScanMs": 17499.980874999892,
+      "chapterHTMLBytes": 13962,
+      "chapterCount": 1881,
+      "resourceMs": {
+        "html.0": 0.9901666780933738,
+        "css.0": 0.9607499814592302,
+        "images.69": 287.7720416872762,
+        "html.69": 4.590124997776002,
+        "images.0": 64.5293333218433,
+        "css.69": 542.2083750017919
+      },
+      "contentUnits": 4031,
+      "legacyBuildMs": {
+        "0": 69.61624999530613
+      },
+      "sessionOpenMs": 371.32658337941393,
+      "openingFirstReadyMs": 152.55837503354996,
+      "scannerProbeMs": 60.52749999798834,
+      "openingEngine": "browser",
+      "book": "quanzhi-prose",
+      "openingReturnMs": 153.3262916491367,
+      "requestReturnMs": 968.4285833500326,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 4,
+          "sumMs": 293
+        }
+      },
+      "registeredFaceLogCount": 4
+    },
+    {
+      "legacyBuildCounts": {
+        "0": 1,
+        "69": 1
+      },
+      "cachedRequestMs": 0.04704162711277604,
+      "book": "quanzhi-prose",
+      "route": "legacy-paged",
+      "requestReturnMs": 729.2767916806042,
+      "contentUnits": 4103,
+      "openingEngine": "legacy",
+      "effectiveEngine": "legacy",
+      "byteScanMs": 16846.493541670498,
+      "resourceCalls": {},
+      "legacyBuildMs": {
+        "0": 66.33737502852455,
+        "69": 720.1990417088382
+      },
+      "chapterCount": 1881,
+      "resourceMs": {},
+      "spine": 69,
+      "sessionOpenMs": 367.80399997951463,
+      "openingReturnMs": 83.0773749621585,
+      "chapterHTMLBytes": 13962,
+      "firstReadyMs": 729.1483333683573,
+      "repetition": 5,
+      "openingFirstReadyMs": 67.35412497073412,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 2,
+          "sumMs": 146
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "sessionOpenMs": 417.9113749996759,
+      "resourceCalls": {
+        "html.80": 2,
+        "css.80": 2,
+        "images.80": 1
+      },
+      "spine": 80,
+      "book": "guimi-prose",
+      "contentUnits": 3173,
+      "legacyBuildCounts": {},
+      "legacyBuildMs": {},
+      "cachedRequestMs": 0.002291635610163212,
+      "scannerProbeMs": 39.69200002029538,
+      "chapterHTMLBytes": 10917,
+      "effectiveEngine": "browser",
+      "repetition": 5,
+      "firstReadyMs": 1009.861666650977,
+      "route": "auto-scroll",
+      "requestReturnMs": 1009.861666650977,
+      "resourceMs": {
+        "css.80": 817.0812500175089,
+        "html.80": 5.114583240356296,
+        "images.80": 116.96629162179306
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 634
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "resourceMs": {},
+      "firstReadyMs": 386.1433332785964,
+      "contentUnits": 4,
+      "cachedRequestMs": 0.002291635610163212,
+      "legacyBuildCounts": {
+        "80": 1
+      },
+      "repetition": 5,
+      "spine": 80,
+      "route": "legacy-scroll",
+      "effectiveEngine": "legacy",
+      "resourceCalls": {},
+      "book": "guimi-prose",
+      "sessionOpenMs": 415.9632917144336,
+      "requestReturnMs": 386.1433332785964,
+      "chapterHTMLBytes": 10917,
+      "legacyBuildMs": {
+        "80": 381.2982916715555
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 54
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "spine": 80,
+      "route": "auto-paged",
+      "openingReturnMs": 157.75066666537896,
+      "requestReturnMs": 1145.708708325401,
+      "chapterHTMLBytes": 10917,
+      "contentUnits": 3173,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "firstReadyMs": 1144.2096250248142,
+      "effectiveEngine": "browser",
+      "openingEngine": "browser",
+      "repetition": 5,
+      "cachedRequestMs": 0.02924998989328742,
+      "scannerProbeMs": 40.901375003159046,
+      "book": "guimi-prose",
+      "byteScanMs": 12981.511874997523,
+      "openingFirstReadyMs": 157.07683330401778,
+      "legacyBuildMs": {
+        "0": 71.67049997951835
+      },
+      "resourceCalls": {
+        "css.80": 2,
+        "html.80": 2,
+        "html.0": 2,
+        "images.80": 1,
+        "css.0": 2,
+        "images.0": 1
+      },
+      "chapterCount": 1594,
+      "resourceMs": {
+        "css.80": 921.1034167092294,
+        "html.0": 1.0486666578799486,
+        "html.80": 5.250958260148764,
+        "css.0": 0.8510416955687106,
+        "images.0": 68.74066666932777,
+        "images.80": 127.8652916662395
+      },
+      "sessionOpenMs": 407.90874999947846,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 717
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "sessionOpenMs": 409.0565833612345,
+      "legacyBuildMs": {
+        "0": 71.44562498433515,
+        "80": 437.3899166821502
+      },
+      "byteScanMs": 13007.66108330572,
+      "resourceMs": {},
+      "spine": 80,
+      "chapterHTMLBytes": 10917,
+      "openingEngine": "legacy",
+      "openingFirstReadyMs": 72.45541666634381,
+      "cachedRequestMs": 0.03908330108970404,
+      "openingReturnMs": 83.9855833328329,
+      "contentUnits": 3251,
+      "resourceCalls": {},
+      "book": "guimi-prose",
+      "chapterCount": 1594,
+      "route": "legacy-paged",
+      "requestReturnMs": 444.3937499891035,
+      "legacyBuildCounts": {
+        "0": 1,
+        "80": 1
+      },
+      "firstReadyMs": 444.2607083474286,
+      "effectiveEngine": "legacy",
+      "repetition": 5,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 1,
+          "sumMs": 63
+        }
+      },
+      "registeredFaceLogCount": 1
+    },
+    {
+      "legacyBuildCounts": {},
+      "resourceMs": {
+        "css.6": 8.135874988511205,
+        "images.6": 4.680666665080935,
+        "html.6": 1.1737083550542593
+      },
+      "spine": 6,
+      "firstReadyMs": 255.68612501956522,
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "effectiveEngine": "browser",
+      "contentUnits": 24820,
+      "sessionOpenMs": 13.122625008691102,
+      "book": "hail-mary-prose",
+      "legacyBuildMs": {},
+      "requestReturnMs": 255.68612501956522,
+      "resourceCalls": {
+        "css.6": 2,
+        "images.6": 1,
+        "html.6": 2
+      },
+      "repetition": 5,
+      "cachedRequestMs": 0.0026249908842146397,
+      "scannerProbeMs": 128.4311666386202,
+      "route": "auto-scroll",
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "spine": 6,
+      "cachedRequestMs": 0.002333370503038168,
+      "book": "hail-mary-prose",
+      "effectiveEngine": "legacy",
+      "resourceCalls": {},
+      "chapterCount": 41,
+      "legacyBuildMs": {
+        "6": 141.93691668333486
+      },
+      "repetition": 5,
+      "legacyBuildCounts": {
+        "6": 1
+      },
+      "resourceMs": {},
+      "sessionOpenMs": 11.960000032559037,
+      "route": "legacy-scroll",
+      "contentUnits": 8,
+      "firstReadyMs": 188.45704168779776,
+      "requestReturnMs": 188.45704168779776,
+      "chapterHTMLBytes": 33642,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "openingFirstReadyMs": 57.1268749772571,
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "resourceMs": {
+        "css.0": 5.3957083146087825,
+        "html.0": 0.38124993443489075,
+        "images.6": 4.209583334159106,
+        "images.0": 1.7556249513290823,
+        "html.6": 0.8254999993368983,
+        "css.6": 7.255083357449621
+      },
+      "spine": 6,
+      "firstReadyMs": 284.1939166537486,
+      "chapterHTMLBytes": 33642,
+      "chapterCount": 41,
+      "effectiveEngine": "browser",
+      "byteScanMs": 11.286749970167875,
+      "contentUnits": 24820,
+      "openingReturnMs": 57.17866664053872,
+      "sessionOpenMs": 11.691250023432076,
+      "book": "hail-mary-prose",
+      "legacyBuildMs": {
+        "0": 16.850791638717055
+      },
+      "requestReturnMs": 286.1541250022128,
+      "resourceCalls": {
+        "css.0": 2,
+        "html.0": 2,
+        "images.0": 1,
+        "html.6": 2,
+        "images.6": 1,
+        "css.6": 2
+      },
+      "cachedRequestMs": 0.02658338053151965,
+      "repetition": 5,
+      "scannerProbeMs": 126.43445836147293,
+      "route": "auto-paged",
+      "openingEngine": "browser",
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "legacyBuildMs": {
+        "0": 14.824666664935648,
+        "6": 137.74170831311494
+      },
+      "repetition": 5,
+      "contentUnits": 25016,
+      "book": "hail-mary-prose",
+      "openingEngine": "legacy",
+      "openingReturnMs": 17.62200001394376,
+      "chapterCount": 41,
+      "legacyBuildCounts": {
+        "6": 1,
+        "0": 1
+      },
+      "byteScanMs": 11.331666610203683,
+      "effectiveEngine": "legacy",
+      "resourceMs": {},
+      "chapterHTMLBytes": 33642,
+      "resourceCalls": {},
+      "sessionOpenMs": 11.51316671166569,
+      "firstReadyMs": 149.66062497114763,
+      "spine": 6,
+      "requestReturnMs": 204.29037499707192,
+      "route": "legacy-paged",
+      "cachedRequestMs": 0.04395836731418967,
+      "openingFirstReadyMs": 15.624166640918702,
+      "capturedFontSpans": {},
+      "registeredFaceLogCount": 0
+    },
+    {
+      "spine": 10,
+      "cachedRequestMs": 0.0028750509954988956,
+      "scannerProbeMs": 139.56204167334363,
+      "book": "game-designer-fallback",
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "resourceCalls": {
+        "css.10": 1,
+        "html.10": 1
+      },
+      "chapterCount": 1192,
+      "repetition": 5,
+      "legacyBuildMs": {
+        "10": 629.3499583844095
+      },
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "resourceMs": {
+        "html.10": 0.5932916537858546,
+        "css.10": 629.9007499474101
+      },
+      "sessionOpenMs": 242.6745833363384,
+      "route": "auto-scroll",
+      "contentUnits": 3,
+      "requestReturnMs": 1403.506374976132,
+      "firstReadyMs": 1403.506374976132,
+      "chapterHTMLBytes": 10912,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 616
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "sessionOpenMs": 235.06924998946488,
+      "resourceCalls": {},
+      "spine": 10,
+      "book": "game-designer-fallback",
+      "contentUnits": 3,
+      "legacyBuildCounts": {
+        "10": 1
+      },
+      "legacyBuildMs": {
+        "10": 647.1477916929871
+      },
+      "cachedRequestMs": 0.002374988980591297,
+      "chapterHTMLBytes": 10912,
+      "effectiveEngine": "legacy",
+      "repetition": 5,
+      "firstReadyMs": 651.6278749913909,
+      "route": "legacy-scroll",
+      "requestReturnMs": 651.6278749913909,
+      "resourceMs": {},
+      "chapterCount": 1192,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 155
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "effectiveEngine": "legacy: capability positioned,unknown-block-display,flex-grid",
+      "route": "auto-paged",
+      "repetition": 5,
+      "cachedRequestMs": 0.32483332324773073,
+      "spine": 10,
+      "openingReturnMs": 127.56458332296461,
+      "resourceCalls": {
+        "css.10": 1,
+        "html.0": 2,
+        "html.10": 1,
+        "css.0": 2,
+        "images.0": 1
+      },
+      "legacyBuildCounts": {
+        "0": 1,
+        "10": 1
+      },
+      "byteScanMs": 9621.162166644353,
+      "chapterHTMLBytes": 10912,
+      "chapterCount": 1192,
+      "resourceMs": {
+        "css.10": 696.2305000051856,
+        "html.0": 2.116625022608787,
+        "css.0": 0.6877916748635471,
+        "html.10": 0.5210833041928709,
+        "images.0": 55.054208321962506
+      },
+      "contentUnits": 2270,
+      "legacyBuildMs": {
+        "0": 57.96320835361257,
+        "10": 728.0013333074749
+      },
+      "sessionOpenMs": 234.73916662624106,
+      "openingFirstReadyMs": 127.11629166733474,
+      "scannerProbeMs": 139.03529167873785,
+      "requestReturnMs": 1592.222374980338,
+      "openingEngine": "browser",
+      "book": "game-designer-fallback",
+      "firstReadyMs": 1591.8038749950938,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 12,
+          "sumMs": 698
+        }
+      },
+      "registeredFaceLogCount": 10
+    },
+    {
+      "openingEngine": "legacy",
+      "sessionOpenMs": 232.7859583310783,
+      "resourceCalls": {},
+      "spine": 10,
+      "book": "game-designer-fallback",
+      "contentUnits": 2270,
+      "cachedRequestMs": 0.03504165215417743,
+      "legacyBuildCounts": {
+        "10": 1,
+        "0": 1
+      },
+      "legacyBuildMs": {
+        "10": 693.2085833395831,
+        "0": 56.3397083315067
+      },
+      "chapterHTMLBytes": 10912,
+      "firstReadyMs": 699.883499997668,
+      "repetition": 5,
+      "effectiveEngine": "legacy",
+      "openingReturnMs": 66.59887498244643,
+      "route": "legacy-paged",
+      "requestReturnMs": 700.0008333125152,
+      "openingFirstReadyMs": 57.2565000038594,
+      "byteScanMs": 9555.584583373275,
+      "resourceMs": {},
+      "chapterCount": 1192,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 3,
+          "sumMs": 163
+        }
+      },
+      "registeredFaceLogCount": 2
+    },
+    {
+      "book": "guimi-long",
+      "legacyBuildMs": {},
+      "effectiveEngine": "browser",
+      "contentUnits": 28099,
+      "resourceMs": {
+        "css.64": 871.8928333255462,
+        "html.64": 5.368041689507663,
+        "images.64": 2453.114874952007,
+        "image.64": 52.43712500669062
+      },
+      "resourceCalls": {
+        "css.64": 2,
+        "images.64": 1,
+        "html.64": 2,
+        "image.64": 1
+      },
+      "firstReadyMs": 4967.903874989133,
+      "cachedRequestMs": 0.0039583537727594376,
+      "sessionOpenMs": 413.3861666196026,
+      "scannerProbeMs": 849.0187083370984,
+      "chapterHTMLBytes": 121736,
+      "route": "auto-scroll",
+      "legacyBuildCounts": {},
+      "spine": 64,
+      "repetition": 5,
+      "chapterCount": 1594,
+      "requestReturnMs": 4967.903874989133,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 674
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "repetition": 5,
+      "cachedRequestMs": 0.003958295565098524,
+      "contentUnits": 36,
+      "resourceCalls": {},
+      "sessionOpenMs": 420.55008333409205,
+      "firstReadyMs": 4214.393416652456,
+      "requestReturnMs": 4214.393416652456,
+      "effectiveEngine": "legacy",
+      "legacyBuildCounts": {
+        "64": 1
+      },
+      "resourceMs": {},
+      "book": "guimi-long",
+      "route": "legacy-scroll",
+      "legacyBuildMs": {
+        "64": 3942.7322083502077
+      },
+      "chapterCount": 1594,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 345
+        }
+      },
+      "registeredFaceLogCount": 6
+    },
+    {
+      "openingReturnMs": 158.07570837205276,
+      "requestReturnMs": 5539.132250007242,
+      "repetition": 5,
+      "spine": 64,
+      "chapterHTMLBytes": 121736,
+      "resourceCalls": {
+        "images.64": 1,
+        "html.0": 2,
+        "images.0": 1,
+        "html.64": 2,
+        "image.64": 1,
+        "css.0": 2,
+        "css.64": 2
+      },
+      "scannerProbeMs": 838.310208346229,
+      "sessionOpenMs": 427.49991663731635,
+      "book": "guimi-long",
+      "legacyBuildCounts": {
+        "0": 1
+      },
+      "openingEngine": "browser",
+      "effectiveEngine": "browser",
+      "openingFirstReadyMs": 157.38179167965427,
+      "route": "auto-paged",
+      "chapterCount": 1594,
+      "firstReadyMs": 5525.758125004359,
+      "resourceMs": {
+        "images.64": 2680.8594166650437,
+        "html.0": 1.0942916851490736,
+        "images.0": 69.14212502306327,
+        "html.64": 5.164666625205427,
+        "image.64": 57.28662497131154,
+        "css.0": 0.8406250271946192,
+        "css.64": 954.3296250049025
+      },
+      "legacyBuildMs": {
+        "0": 74.41050000488758
+      },
+      "contentUnits": 28099,
+      "cachedRequestMs": 0.0312916818074882,
+      "byteScanMs": 14200.361041701399,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 11,
+          "sumMs": 733
+        }
+      },
+      "registeredFaceLogCount": 11
+    },
+    {
+      "book": "guimi-long",
+      "cachedRequestMs": 0.06154167931526899,
+      "openingEngine": "legacy",
+      "legacyBuildMs": {
+        "64": 4576.602916640695,
+        "0": 70.48137503443286
+      },
+      "openingFirstReadyMs": 71.52404164662585,
+      "repetition": 5,
+      "chapterCount": 1594,
+      "requestReturnMs": 4912.028458318673,
+      "contentUnits": 29112,
+      "effectiveEngine": "legacy",
+      "byteScanMs": 13467.460666666739,
+      "resourceMs": {},
+      "openingReturnMs": 84.04699998209253,
+      "route": "legacy-paged",
+      "sessionOpenMs": 423.2975416816771,
+      "resourceCalls": {},
+      "chapterHTMLBytes": 121736,
+      "firstReadyMs": 4610.968416673131,
+      "legacyBuildCounts": {
+        "64": 1,
+        "0": 1
+      },
+      "spine": 64,
+      "capturedFontSpans": {
+        "epub.font.fetch": {
+          "count": 6,
+          "sumMs": 403
+        }
+      },
+      "registeredFaceLogCount": 6
+    }
+  ]
+}

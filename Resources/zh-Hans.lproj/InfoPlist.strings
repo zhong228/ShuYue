@@ -1,0 +1,10 @@
+/* UTTypeDescription for the app's .yuedustyle reader-style package (Info.plist
+   UTExportedTypeDeclarations). Shown as the file's kind in the Files app. */
+"MoYue Reader Style" = "阅读样式";
+
+/* UTTypeDescription for exported diagnostic and book-source debug log files. */
+"MoYue Log File" = "阅读日志文件";
+
+"NSLocalNetworkUsageDescription" = "用于连接局域网书库、接收 Calibre 发送的书籍，以及使用本地语音服务。";
+
+"NSPhotoLibraryAddUsageDescription" = "用于将书封及阅读分享图片保存到相册。";

@@ -1,0 +1,641 @@
+import {randomUUID} from "node:crypto";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+
+import {
+  AppStoreServerAPIClient,
+  Environment,
+  JWSTransactionDecodedPayload,
+  SignedDataVerifier,
+} from "@apple/app-store-server-library";
+import {getApps, initializeApp} from "firebase-admin/app";
+import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onRequest} from "firebase-functions/v2/https";
+import {logger} from "firebase-functions";
+import {onDocumentWritten} from "firebase-functions/v2/firestore";
+import {onSchedule} from "firebase-functions/v2/scheduler";
+import {verifyCurrentLifetimeMembership} from "./testFlightMembershipPolicy.js";
+import {shouldApplyTransaction} from "./transactionUpdatePolicy.js";
+import {defineSecret} from "firebase-functions/params";
+
+import {AppStoreConnectClient} from "./appStoreConnect.js";
+import {
+  assertBindingOwner,
+  assertTransactionCanBind,
+  bindingGrantsEntitlement,
+  entitlementGrantsTestFlight,
+  environmentName,
+  productionEnvironment,
+  sandboxEnvironment,
+  transactionIsActive,
+} from "./entitlementPolicy.js";
+import {
+  decideTestFlightProRequest,
+  normalizeTestFlightEmail,
+} from "./testflightRequestPolicy.js";
+
+if (getApps().length === 0) {
+  initializeApp();
+}
+
+const region = "asia-east1";
+const bundleId = "com.zhong228.shuyue";
+const appAppleId = 6772972358;
+const db = getFirestore();
+
+const rootPem = readFileSync(resolve(__dirname, "../certs/apple-root-ca.pem"), "utf8");
+const rootCertificates = rootPem
+  .match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)
+  ?.map((certificate) => Buffer.from(certificate));
+
+if (rootCertificates === undefined || rootCertificates.length === 0) {
+  throw new Error("Apple root certificates are missing");
+}
+
+const verifiers = new Map<Environment, SignedDataVerifier>([
+  [Environment.PRODUCTION, new SignedDataVerifier(
+    rootCertificates,
+    true,
+    Environment.PRODUCTION,
+    bundleId,
+    appAppleId
+  )],
+  [Environment.SANDBOX, new SignedDataVerifier(
+    rootCertificates,
+    true,
+    Environment.SANDBOX,
+    bundleId
+  )],
+]);
+
+interface AccountTokenDocument {
+  token: string;
+}
+
+interface PurchaseBindingDocument {
+  uid: string;
+  appAccountToken: string;
+  originalTransactionId: string;
+  transactionId: string;
+  productId: string;
+  active: boolean;
+  environment: string;
+  signedDate?: number;
+  purchaseDate: Timestamp | null;
+  expiresAt: Timestamp | null;
+  revocationDate: Timestamp | null;
+  updatedAt: FieldValue;
+}
+
+interface TestFlightRequestDocument {
+  uid?: string;
+  email: string;
+  status: string;
+  createdAt: FieldValue;
+  updatedAt?: FieldValue;
+}
+
+interface TestFlightProRequestDocument {
+  uid: string;
+  email: string;
+  status: string;
+  createdAt: FieldValue;
+  updatedAt?: FieldValue;
+}
+
+const testFlightGroupNameSecret = defineSecret("APP_STORE_CONNECT_GROUP_NAME");
+const appStoreIssuerIdSecret = defineSecret("APP_STORE_CONNECT_ISSUER_ID");
+const appStoreKeyIdSecret = defineSecret("APP_STORE_CONNECT_KEY_ID");
+const appStorePrivateKeySecret = defineSecret("APP_STORE_CONNECT_PRIVATE_KEY");
+const appStoreConnectSecrets = [
+  appStoreIssuerIdSecret,
+  appStoreKeyIdSecret,
+  appStorePrivateKeySecret,
+  testFlightGroupNameSecret,
+];
+// App Store Server API requires an In-App Purchase key, separate from ASC's key.
+const serverIssuerId = defineSecret("APP_STORE_SERVER_ISSUER_ID");
+const serverKeyId = defineSecret("APP_STORE_SERVER_KEY_ID");
+const serverPrivateKey = defineSecret("APP_STORE_SERVER_PRIVATE_KEY");
+const serverSecrets = [serverIssuerId, serverKeyId, serverPrivateKey];
+const membershipSecrets = [...serverSecrets, ...appStoreConnectSecrets];
+
+function connectClient(): AppStoreConnectClient {
+  return new AppStoreConnectClient({
+    credentials: {
+      issuerId: appStoreIssuerIdSecret.value(), keyId: appStoreKeyIdSecret.value(),
+      privateKeyBase64: appStorePrivateKeySecret.value(),
+    },
+    appId: String(appAppleId),
+    groupName: testFlightGroupNameSecret.value() || defaultTestFlightGroupName,
+  });
+}
+
+async function latestProductionTransaction(id: string): Promise<JWSTransactionDecodedPayload> {
+  const client = new AppStoreServerAPIClient(
+    Buffer.from(serverPrivateKey.value(), "base64").toString("utf8"),
+    serverKeyId.value(), serverIssuerId.value(), bundleId, Environment.PRODUCTION
+  );
+  const result = await client.getTransactionInfo(id);
+  if (!result.signedTransactionInfo) throw new Error("Apple returned no signed transaction");
+  const transaction = await verifiers.get(Environment.PRODUCTION)!
+    .verifyAndDecodeTransaction(result.signedTransactionInfo);
+  if (transaction.transactionId !== id) throw new Error("Apple transaction identity mismatch");
+  return transaction;
+}
+
+/** Atomic ordering prevents old notifications/client JWS from restoring a refund. */
+async function storeBinding(data: PurchaseBindingDocument, freshFromApple = false): Promise<void> {
+  const reference = db.collection("purchaseBindings").doc(data.originalTransactionId);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const existing = snapshot.data() as PurchaseBindingDocument | undefined;
+    try {
+      assertBindingOwner(existing?.uid, data.uid);
+    } catch (error) {
+      throw new HttpsError("already-exists", (error as Error).message);
+    }
+    if (existing && existing.environment !== data.environment) throw new Error("Environment mismatch");
+    // A current Apple API answer can migrate a legacy record with no signedDate.
+    if (shouldApplyTransaction(existing, data, freshFromApple)) {
+      transaction.set(reference, data, {merge: true});
+    }
+  });
+}
+
+async function revokeManagedTestFlightAccess(uid: string): Promise<void> {
+  const ownerRef = db.collection("testflightProRequests").doc(uid);
+  const owner = (await ownerRef.get()).data() as TestFlightProRequestDocument | undefined;
+  if (!owner) return;
+  await ownerRef.update({status: "revocationPending", updatedAt: FieldValue.serverTimestamp()});
+  // Failure propagates: Firestore retries the event and the hourly audit also
+  // retries pending removals. Never report removal before Apple's 204 response.
+  await connectClient().revokeAppAccess(owner.email);
+  const batch = db.batch();
+  const status = {status: "revoked", updatedAt: FieldValue.serverTimestamp()};
+  batch.update(ownerRef, status);
+  batch.set(db.collection("testflightRequests").doc(owner.email), status, {merge: true});
+  await batch.commit();
+}
+
+async function hasCurrentLifetimePro(uid: string): Promise<boolean> {
+  return verifyCurrentLifetimeMembership(async () => {
+    const snapshot = await db.collection("purchaseBindings").where("uid", "==", uid).get();
+    return snapshot.docs.map(doc => doc.data() as PurchaseBindingDocument);
+  }, async binding => {
+    const current = await latestProductionTransaction(binding.transactionId);
+    assertTransactionCanBind(current, binding.appAccountToken);
+    if (current.originalTransactionId !== binding.originalTransactionId) throw new Error("Purchase identity mismatch");
+    await storeBinding(bindingData(current, uid, binding.appAccountToken), true);
+  });
+}
+
+export const verifyTestFlightAccess = onCall({region, secrets: serverSecrets}, async request => {
+  const uid = requireUid(request.auth);
+  return {allowed: await hasCurrentLifetimePro(uid)};
+});
+
+// Refund processing runs independently of the client and survives ASC outages.
+export const reconcileTestFlightMembership = onDocumentWritten({
+  document: "purchaseBindings/{id}", region, retry: true, secrets: appStoreConnectSecrets,
+}, async event => {
+  const uid = event.data?.after.data()?.uid ?? event.data?.before.data()?.uid;
+  if (typeof uid !== "string") return;
+  await recomputeEntitlement(uid);
+  const snapshot = await db.collection("purchaseBindings").where("uid", "==", uid).get();
+  const entitlement = summariseEnvironment(snapshot.docs.map(doc => doc.data() as PurchaseBindingDocument), productionEnvironment);
+  if (!entitlementGrantsTestFlight(entitlement.isProActive, entitlement.productIds)) {
+    await revokeManagedTestFlightAccess(uid);
+  }
+});
+
+// Reconciles existing members and missed Apple notifications, not just new refunds.
+export const auditTestFlightMembership = onSchedule({
+  schedule: "every 60 minutes", region, secrets: membershipSecrets, timeoutSeconds: 540,
+}, async () => {
+  const progress = db.collection("testflightAuditState").doc("cursor");
+  let cursor = (await progress.get()).data()?.lastUID as string | undefined;
+  const deadline = Date.now() + 420_000;
+  let failed = false;
+  for (;;) {
+    let query = db.collection("testflightProRequests").orderBy("__name__").limit(100);
+    if (cursor) query = query.startAfter(cursor);
+    const page = await query.get();
+    if (page.empty) {
+      await progress.set({lastUID: null});
+      break;
+    }
+    for (const doc of page.docs) {
+      if (doc.data().status === "revoked") continue;
+      try {
+        if (!await hasCurrentLifetimePro(doc.id)) await revokeManagedTestFlightAccess(doc.id);
+      } catch (error) {
+        failed = true;
+        logger.error("TestFlight membership audit failed", {uid: doc.id, error});
+      }
+    }
+    cursor = page.docs[page.docs.length - 1].id;
+    // Bounded runs resume the scan instead of starving later tester accounts.
+    await progress.set({lastUID: cursor});
+    if (Date.now() >= deadline) break;
+  }
+  if (failed) throw new Error("Some TestFlight memberships could not be reconciled");
+});
+
+/// Beta group created automatically if the configured group does not exist.
+const defaultTestFlightGroupName = "Yuedu 測試版";
+
+function requireUid(
+  auth: {uid: string} | undefined,
+  message = "Sign in before linking a purchase."
+): string {
+  if (auth === undefined) {
+    throw new HttpsError("unauthenticated", message);
+  }
+  return auth.uid;
+}
+
+/**
+ * Authorises a TestFlight request: a lifetime purchase made with real money.
+ *
+ * Reads `purchaseBindings` rather than the `entitlements/{uid}` projection.
+ * The projection is rewritten wholesale by `recomputeEntitlement`, so its
+ * `productIds` field only exists for accounts touched since that field was
+ * added; going to the source keeps one code path instead of a
+ * missing-field branch.
+ *
+ * Production only. A Sandbox lifetime binding costs a TestFlight tester
+ * nothing, so honouring it would let one free purchase mint the very seat
+ * being guarded.
+ */
+async function requireLifetimePro(uid: string): Promise<void> {
+  if (!await hasCurrentLifetimePro(uid)) {
+    throw new HttpsError(
+      "permission-denied",
+      "A lifetime Pro purchase is required to request TestFlight access."
+    );
+  }
+}
+
+function requireString(value: unknown, field: string, maxLength: number): string {
+  if (typeof value !== "string" || value.length === 0 || value.length > maxLength) {
+    throw new HttpsError("invalid-argument", `Invalid ${field}.`);
+  }
+  return value;
+}
+
+function environmentFromJWS(jws: string): Environment {
+  const components = jws.split(".");
+  if (components.length !== 3) {
+    throw new HttpsError("invalid-argument", "Invalid signed transaction.");
+  }
+
+  try {
+    // This decode only selects the verifier. Trust begins after signature verification below.
+    const payload = JSON.parse(Buffer.from(components[1], "base64url").toString("utf8"));
+    const environment = environmentName(payload);
+    if (environment === Environment.PRODUCTION) return Environment.PRODUCTION;
+    if (environment === Environment.SANDBOX) return Environment.SANDBOX;
+    if (environment === Environment.XCODE || environment === Environment.LOCAL_TESTING) {
+      // Local StoreKit Configuration transactions (Xcode scheme with a
+      // .storekit file) are signed with local certificates and can never be
+      // verified or bound. Real transactions only appear in TestFlight or
+      // App Store builds, where the environment is Sandbox or Production.
+      throw new HttpsError(
+        "invalid-argument",
+        "Local Xcode StoreKit configuration transactions cannot be bound. Test with TestFlight or the App Store sandbox."
+      );
+    }
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    logger.warn("Unable to decode transaction environment", error);
+  }
+  throw new HttpsError("invalid-argument", "Unsupported transaction environment.");
+}
+
+async function verifyTransaction(jws: string): Promise<JWSTransactionDecodedPayload> {
+  const environment = environmentFromJWS(jws);
+  const verifier = verifiers.get(environment);
+  if (verifier === undefined) {
+    throw new HttpsError("failed-precondition", "Transaction verifier is unavailable.");
+  }
+  try {
+    return await verifier.verifyAndDecodeTransaction(jws);
+  } catch (error) {
+    logger.warn("Apple transaction verification failed", error);
+    throw new HttpsError("permission-denied", "Apple could not verify this purchase.");
+  }
+}
+
+function timestamp(milliseconds: number | undefined): Timestamp | null {
+  return milliseconds === undefined ? null : Timestamp.fromMillis(milliseconds);
+}
+
+function bindingData(
+  transaction: JWSTransactionDecodedPayload,
+  uid: string,
+  accountToken: string
+): PurchaseBindingDocument {
+  const originalTransactionId = requireString(
+    transaction.originalTransactionId,
+    "original transaction identifier",
+    128
+  );
+  const transactionId = requireString(transaction.transactionId, "transaction identifier", 128);
+  const productId = requireString(transaction.productId, "product identifier", 160);
+
+  return {
+    uid,
+    appAccountToken: accountToken,
+    originalTransactionId,
+    transactionId,
+    productId,
+    active: transactionIsActive(transaction),
+    environment: String(transaction.environment),
+    ...(transaction.signedDate !== undefined ? {signedDate: transaction.signedDate} : {}),
+    purchaseDate: timestamp(transaction.purchaseDate),
+    expiresAt: timestamp(transaction.expiresDate),
+    revocationDate: timestamp(transaction.revocationDate),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
+interface EnvironmentEntitlement {
+  isProActive: boolean;
+  productIds: string[];
+  expiresAt: Timestamp | null;
+}
+
+function summariseEnvironment(
+  bindings: PurchaseBindingDocument[],
+  environment: string
+): EnvironmentEntitlement {
+  const active = bindings.filter((binding) => bindingGrantsEntitlement(binding, environment));
+  const productIds = [...new Set(active.map((binding) => binding.productId))].sort();
+  const expirationDates = active
+    .map((binding) => binding.expiresAt?.toMillis())
+    .filter((value): value is number => value !== undefined);
+  const hasLifetime = active.some((binding) => binding.expiresAt === null);
+  return {
+    isProActive: active.length > 0,
+    productIds,
+    expiresAt: hasLifetime || expirationDates.length === 0 ?
+      null :
+      Timestamp.fromMillis(Math.max(...expirationDates)),
+  };
+}
+
+/**
+ * Recomputes both entitlements for a UID and returns the one belonging to
+ * `responseEnvironment` — the environment the caller's own purchase came from.
+ *
+ * The two are stored side by side rather than merged. A TestFlight (Sandbox)
+ * purchase is free, so counting it towards the App Store entitlement handed out
+ * Pro for nothing, and a Sandbox lifetime binding carries `expiresAt: null` so
+ * it never aged out either. Keeping them separate lets a tester buy and unlock
+ * TestFlight while the App Store build reads only `isProActive`.
+ */
+async function recomputeEntitlement(
+  uid: string,
+  responseEnvironment: string = productionEnvironment
+): Promise<Record<string, unknown>> {
+  const snapshot = await db.collection("purchaseBindings").where("uid", "==", uid).get();
+  const bindings = snapshot.docs.map((document) => document.data() as PurchaseBindingDocument);
+  const production = summariseEnvironment(bindings, productionEnvironment);
+  const sandbox = summariseEnvironment(bindings, sandboxEnvironment);
+  await db.collection("entitlements").doc(uid).set({
+    isProActive: production.isProActive,
+    productIds: production.productIds,
+    expiresAt: production.expiresAt,
+    sandboxIsProActive: sandbox.isProActive,
+    sandboxProductIds: sandbox.productIds,
+    sandboxExpiresAt: sandbox.expiresAt,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  const response = responseEnvironment === sandboxEnvironment ? sandbox : production;
+  return {
+    isProActive: response.isProActive,
+    productIds: response.productIds,
+    expiresAtMilliseconds: response.expiresAt?.toMillis() ?? null,
+    environment: responseEnvironment,
+  };
+}
+
+async function stableAccountToken(uid: string): Promise<string> {
+  const reference = db.collection("accountTokens").doc(uid);
+  return db.runTransaction(async (firestoreTransaction) => {
+    const snapshot = await firestoreTransaction.get(reference);
+    const existing = snapshot.data() as AccountTokenDocument | undefined;
+    if (existing?.token !== undefined) return existing.token;
+
+    const token = randomUUID();
+    firestoreTransaction.create(reference, {
+      token,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return token;
+  });
+}
+
+async function bindVerifiedTransaction(
+  uid: string,
+  accountToken: string,
+  transaction: JWSTransactionDecodedPayload
+): Promise<Record<string, unknown>> {
+  try {
+    assertTransactionCanBind(transaction, accountToken);
+  } catch (error) {
+    throw new HttpsError("failed-precondition", (error as Error).message);
+  }
+
+  const data = bindingData(transaction, uid, accountToken);
+  try {
+    await storeBinding(data, data.environment === productionEnvironment);
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("failed-precondition", (error as Error).message);
+  }
+  // Answer with the entitlement for the environment this purchase came from, so
+  // a TestFlight buyer is told they now have Pro rather than reading the App
+  // Store entitlement they legitimately don't have.
+  return recomputeEntitlement(uid, data.environment);
+}
+
+export const getSubscriptionAccountToken = onCall({region}, async (request) => {
+  const uid = requireUid(request.auth);
+  return {token: await stableAccountToken(uid)};
+});
+
+export const bindSubscriptionPurchase = onCall({region, secrets: serverSecrets}, async (request) => {
+  const uid = requireUid(request.auth);
+  const signedTransaction = requireString(request.data?.signedTransaction, "signed transaction", 100_000);
+  const accountToken = await stableAccountToken(uid);
+  let transaction = await verifyTransaction(signedTransaction);
+  if (transaction.environment === productionEnvironment) {
+    transaction = await latestProductionTransaction(requireString(transaction.transactionId, "transaction identifier", 128));
+  }
+  return bindVerifiedTransaction(uid, accountToken, transaction);
+});
+
+export const deleteSubscriptionAccountData = onCall({region, secrets: appStoreConnectSecrets}, async (request) => {
+  const uid = requireUid(request.auth);
+  await revokeManagedTestFlightAccess(uid);
+  const bindings = await db.collection("purchaseBindings").where("uid", "==", uid).get();
+  const batch = db.batch();
+  bindings.docs.forEach((document) => batch.delete(document.ref));
+  batch.delete(db.collection("entitlements").doc(uid));
+  batch.delete(db.collection("accountTokens").doc(uid));
+  await batch.commit();
+  return {deleted: true};
+});
+
+/// Adds the tester to the App Store Connect beta group so Apple sends the
+/// invite email. Never throws: misconfiguration or API failure must not fail
+/// the callable — the one-time request stays recorded in Firestore with a
+/// "failed" status for the developer to resolve manually. The existing-tester
+/// result is kept distinct so the client can explain that no new Apple invite
+/// was created.
+type TestFlightInviteStatus = "invited" | "alreadyInTestFlight" | "failed";
+
+async function inviteTestFlightTester(email: string): Promise<TestFlightInviteStatus> {
+  try {
+    const client = new AppStoreConnectClient({
+      credentials: {
+        issuerId: appStoreIssuerIdSecret.value(),
+        keyId: appStoreKeyIdSecret.value(),
+        privateKeyBase64: appStorePrivateKeySecret.value(),
+      },
+      appId: String(appAppleId),
+      groupName: testFlightGroupNameSecret.value() ?? defaultTestFlightGroupName,
+    });
+    const {testerId, groupId, testerAlreadyExisted} = await client.invite(email);
+    logger.info(`TestFlight invite requested: email ${email} tester ${testerId} group ${groupId}`);
+    return testerAlreadyExisted ? "alreadyInTestFlight" : "invited";
+  } catch (error) {
+    logger.error(`TestFlight invite failed for ${email}`, error);
+    return "failed";
+  }
+}
+
+export const requestTestFlightAccess = onCall(
+  {region, secrets: membershipSecrets},
+  async (request) => {
+    const uid = requireUid(
+      request.auth,
+      "Sign in with a lifetime Pro account before requesting TestFlight access."
+    );
+    await requireLifetimePro(uid);
+
+    const email = normalizeTestFlightEmail(request.data?.email);
+    if (email === null) {
+      throw new HttpsError("invalid-argument", "Invalid email address.");
+    }
+
+    // Claim both the Pro account's one-time slot and the normalized address in
+    // one transaction. This prevents two concurrent requests from the same Pro
+    // account (or two accounts using the same address) from both being invited.
+    const reference = db.collection("testflightRequests").doc(email);
+    const ownerReference = db.collection("testflightProRequests").doc(uid);
+    const data: TestFlightRequestDocument = {
+      uid,
+      email,
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
+    };
+    const ownerData: TestFlightProRequestDocument = {
+      uid,
+      email,
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
+    };
+    const claim = await db.runTransaction(async (transaction) => {
+      const ownerSnapshot = await transaction.get(ownerReference);
+      const snapshot = await transaction.get(reference);
+      const owner = ownerSnapshot.data() as TestFlightProRequestDocument | undefined;
+      const existing = snapshot.data() as TestFlightRequestDocument | undefined;
+
+      const ownerDecision = decideTestFlightProRequest(owner?.email, email);
+      if (ownerDecision === "alreadySubmitted") {
+        // A refund reversal or a new real purchase may restore the same seat.
+        // Never grant a second email/slot for this account.
+        if (owner?.status === "revoked" && existing?.uid === uid) {
+          const update = {status: "pending", updatedAt: FieldValue.serverTimestamp()};
+          transaction.update(ownerReference, update);
+          transaction.update(reference, update);
+          return {accepted: true, status: "pending"};
+        }
+        return {accepted: false, status: owner?.status ?? existing?.status ?? "pending"};
+      }
+      if (ownerDecision === "differentEmail") {
+        throw new HttpsError(
+          "already-exists",
+          "Each Pro account can request TestFlight access only once."
+        );
+      }
+      if (snapshot.exists) {
+        return {accepted: false, status: existing?.status ?? "pending"};
+      }
+      transaction.create(ownerReference, ownerData);
+      transaction.create(reference, data);
+      return {accepted: true, status: "pending"};
+    });
+    if (!claim.accepted) {
+      return {alreadySubmitted: true, status: claim.status};
+    }
+
+    const status = await inviteTestFlightTester(email);
+    // Refund may have arrived while Apple's invitation was in flight.
+    if (!await hasCurrentLifetimePro(uid)) {
+      await revokeManagedTestFlightAccess(uid);
+      throw new HttpsError("permission-denied", "Lifetime membership is no longer active.");
+    }
+    const update = {status, updatedAt: FieldValue.serverTimestamp()};
+    const batch = db.batch();
+    batch.update(reference, update);
+    batch.update(ownerReference, update);
+    await batch.commit();
+    return {alreadySubmitted: false, status};
+  }
+);
+
+export const appStoreServerNotifications = onRequest({region}, async (request, response) => {
+  if (request.method !== "POST") {
+    response.sendStatus(405);
+    return;
+  }
+
+  try {
+    const signedPayload = requireString(request.body?.signedPayload, "signed payload", 200_000);
+    const environment = environmentFromJWS(signedPayload);
+    const verifier = verifiers.get(environment);
+    if (verifier === undefined) throw new Error("Missing verifier");
+    const notification = await verifier.verifyAndDecodeNotification(signedPayload);
+    const signedTransaction = notification.data?.signedTransactionInfo;
+    if (signedTransaction === undefined) {
+      response.sendStatus(204);
+      return;
+    }
+
+    const transaction = await verifier.verifyAndDecodeTransaction(signedTransaction);
+    const originalTransactionId = transaction.originalTransactionId;
+    if (originalTransactionId === undefined) {
+      response.sendStatus(204);
+      return;
+    }
+    const reference = db.collection("purchaseBindings").doc(originalTransactionId);
+    const snapshot = await reference.get();
+    const existing = snapshot.data() as PurchaseBindingDocument | undefined;
+    if (existing === undefined) {
+      response.sendStatus(204);
+      return;
+    }
+
+    await storeBinding(bindingData(transaction, existing.uid, existing.appAccountToken));
+    await recomputeEntitlement(existing.uid);
+    response.sendStatus(204);
+  } catch (error) {
+    logger.error("App Store notification processing failed", error);
+    response.sendStatus(500);
+  }
+});

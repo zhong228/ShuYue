@@ -1,0 +1,2997 @@
+import AVKit
+import CoreText
+import os
+import SwiftUI
+import UIKit
+import YueduCoreText
+import YueduCoreTextTypography
+import Accessibility
+
+/// Where a page finds a bitmap of exactly what it would draw, rendered ahead of
+/// time — nil until one is.
+typealias PrerenderedPageSource = @MainActor () -> UIImage?
+
+/// Single-page CoreText rendering view.
+/// `draw(_:)` paints the page line by line (supporting CJK justified alignment);
+/// `display(_:)` puts it on screen, from a bitmap drawn ahead of time when the
+/// engine has one, otherwise by running `draw(_:)` there and then.
+final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate,
+    AXCustomContentProvider {
+
+    /// `AXCustomContentProvider` storage. Carries 頁眉／頁腳 — see
+    /// `refreshBarAccessibilityContent`.
+    var accessibilityCustomContent: [AXCustomContent]! = []
+
+    private static let emphasisEditMenuIdentifier = NSString(string: "CoreTextPageView.emphasis")
+
+    nonisolated static func frameForRendering(
+        layout: CoreTextPaginator.ChapterLayout,
+        pageIndex: Int
+    ) -> CTFrame {
+        if layout.pageArtifacts.indices.contains(pageIndex) {
+            return layout.pageArtifacts[pageIndex].frame
+        }
+
+        // Compatibility trigger: hand-constructed ChapterLayout values in
+        // tests may omit artifacts. Delete this branch when pageArtifacts
+        // becomes a required initializer argument for every layout.
+        let range = layout.pageRanges[pageIndex]
+        let contentPathRect = CoreTextPaginator.coreTextContentPathRect(
+            renderSize: layout.renderSize,
+            contentInsets: layout.contentInsets,
+            fontSize: layout.fontSize,
+            writingMode: layout.writingMode
+        )
+        let path = CoreTextPaginator.framePath(
+            contentPathRect: contentPathRect,
+            floatNotch: layout.pageFloatNotches[pageIndex]
+        )
+        return CoreTextPaginator.makeFrame(
+            framesetter: layout.framesetter,
+            range: range,
+            path: path,
+            writingMode: layout.writingMode
+        )
+    }
+
+    private struct InteractionContext {
+        let frame: CTFrame
+        let lines: [CTLine]
+        let origins: [CGPoint]
+        let contentPathRect: CGRect
+        let layoutSize: CGSize
+        let scaleX: CGFloat
+        let scaleY: CGFloat
+        let writingMode: ReaderWritingMode
+    }
+
+    private var layout: CoreTextPaginator.ChapterLayout?
+    private var localPageIndex: Int = 0
+    /// Where to find exactly what `draw(_:)` would paint for the configured page
+    /// and bars, drawn off the main thread (`CoreTextPageEngine.prefetchPageImages`).
+    /// Asked each time the page is displayed, not only when it was built: UIKit
+    /// builds a neighbouring page the moment a turn lands, often before that page's
+    /// render has finished. Dropped the moment the page or its bars change.
+    private var prerenderedPage: PrerenderedPageSource?
+    private static let displaySignposter = OSSignposter(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.zhong228.shuyue",
+        category: "ReaderPerformance"
+    )
+    private let interactor = TextSelectionInteractor()
+    private let playbackOverlay = InteractionOverlayView()
+    private let interactionOverlay = InteractionOverlayView()
+    private var playbackHighlight: ReaderPlaybackHighlight?
+    /// Annotations in the layout's laid-out text, which is what drawing and hit-testing use.
+    /// The same as `sourceAnnotations` unless 整章翻譯 spliced translations into the chapter.
+    private var textAnnotations: [CoreTextTextAnnotation] = []
+    /// The annotations as the reader stores them, by id: what a request about an existing
+    /// annotation must name, whatever pieces a translation split it into on screen.
+    private var sourceAnnotations: [UUID: CoreTextTextAnnotation] = [:]
+    private var annotationOverlays: [LayerKey: InteractionOverlayView] = [:]
+    private let noteMarkerOverlay = NoteMarkerOverlayView()
+    /// 已縮放到 view 座標的筆記圓圈，供 `handleTap` 命中判定用。
+    private var noteMarkerHitTargets: [(annotationID: UUID, rect: CGRect)] = []
+    private var lastOverlayBounds: CGRect = .zero
+    private var latestEditMenuSourcePoint: CGPoint?
+
+    private func annotationOverlay(for layer: CoreTextAnnotationRenderer.Layer) -> InteractionOverlayView {
+        let key = LayerKey(style: layer.style, color: layer.color)
+        if let existing = annotationOverlays[key] { return existing }
+        let overlay = InteractionOverlayView()
+        overlay.frame = bounds
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.showsHandles = false
+        addSubview(overlay)
+        annotationOverlays[key] = overlay
+        return overlay
+    }
+    private var activeDragHandle: TextSelectionHandle?
+    private var activeDragEndpoint: TextSelectionEndpoint?
+    private lazy var linkTapGesture: UITapGestureRecognizer = {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        return tap
+    }()
+    private lazy var longPressGesture: UILongPressGestureRecognizer = {
+        let gesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        gesture.minimumPressDuration = 0.25
+        return gesture
+    }()
+    private lazy var selectionHandlePanGesture: UIPanGestureRecognizer = {
+        let gesture = UIPanGestureRecognizer(target: self, action: #selector(handleSelectionHandlePan(_:)))
+        gesture.cancelsTouchesInView = true
+        gesture.delegate = self
+        return gesture
+    }()
+
+    var onInternalLinkTap: ((String) -> Void)?
+    var onImageAttachmentTap: ((CoreTextPaginator.RenderedAttachment) -> Void)?
+    /// Tapped a duokan footnote marker: `(note text, marker rect in this view's coords)`. The host
+    /// controller anchors an arrow popover to the rect.
+    var onFootnoteTap: ((String, CGRect) -> Void)?
+
+    private lazy var editMenuInteraction: UIEditMenuInteraction = {
+        let interaction = UIEditMenuInteraction(delegate: self)
+        return interaction
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = true
+        backgroundColor = .systemBackground
+        addInteraction(editMenuInteraction)
+        playbackOverlay.frame = bounds
+        playbackOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        playbackOverlay.fillColor = UIColor.systemYellow.withAlphaComponent(0.28)
+        playbackOverlay.showsHandles = false
+        interactionOverlay.frame = bounds
+        interactionOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        interactionOverlay.fillColor = UIColor.systemYellow.withAlphaComponent(0.30)
+        interactionOverlay.handleColor = UIColor(red: 0.63, green: 0.40, blue: 0.00, alpha: 1.0)
+        noteMarkerOverlay.frame = bounds
+        noteMarkerOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(playbackOverlay)
+        // 圓圈必須疊在所有標註層之上，否則會被同一段的螢光筆填色蓋掉。
+        addSubview(noteMarkerOverlay)
+        addSubview(interactionOverlay)
+        addSubview(bookmarkRibbonView)
+
+        addGestureRecognizer(linkTapGesture)
+        addGestureRecognizer(longPressGesture)
+        addGestureRecognizer(selectionHandlePanGesture)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) not used")
+    }
+
+    /// Sets the chapter layout and page index to render, automatically triggering a redraw.
+    /// - Parameter prerenderedPage: where to find this very page, drawn with the bars
+    ///   this view has; what it returns is used instead of drawing the page again.
+    func configure(
+        layout: CoreTextPaginator.ChapterLayout,
+        pageIndex: Int,
+        fallbackBackgroundColor: UIColor = .systemBackground,
+        prerenderedPage: PrerenderedPageSource? = nil
+    ) {
+        // The single point where content is bound to a view, so the single place that can
+        // say what this page is *about* to draw. A position guard being green does not
+        // mean the right text is on screen: the view holds a **copy** of the layout, so a
+        // re-pagination leaves it drawing the old content at a position everyone now
+        // agrees on — "位置對但畫錯", which no guard in this app can currently see.
+        //
+        // Cross-reference the character range here against the `⟐ layoutGeneration` lines
+        // in the same log and a stale draw is identifiable. It is not *detectable*: that
+        // needs a generation stamp on `ChapterLayout` itself, which is a change to a
+        // widely constructed struct and is deliberately not in this pass.
+        let range = pageIndex < layout.pageRanges.count
+            ? "chars=\(layout.pageRanges[pageIndex].location)+\(layout.pageRanges[pageIndex].length)"
+            : "chars=OUT_OF_RANGE"
+        AppLogger.render(
+            "[RenderTrace] pageView.configure spine=\(layout.spineIndex) local=\(pageIndex)"
+                + " \(range) pages=\(layout.pageRanges.count) len=\(layout.attributedString.length)"
+        )
+        pendingAISelection = nil
+        self.layout = layout
+        self.localPageIndex = pageIndex
+        self.prerenderedPage = prerenderedPage
+        if !sourceAnnotations.isEmpty {
+            textAnnotations = sourceAnnotations.values.flatMap { $0.displayed(in: layout) }
+        }
+        clearSelection()
+        backgroundColor = layout.attributedString.length > 0
+            ? layout.backgroundColor
+            : fallbackBackgroundColor
+        setNeedsDisplay()
+        updatePlaybackHighlightOverlay()
+        refreshAccessibility()
+    }
+
+    func setPlaybackHighlight(_ highlight: ReaderPlaybackHighlight?) {
+        playbackHighlight = highlight
+        updatePlaybackHighlightOverlay()
+    }
+
+    func setTextAnnotations(_ annotations: [CoreTextTextAnnotation]) {
+        sourceAnnotations = Dictionary(annotations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        textAnnotations = layout.map { layout in annotations.flatMap { $0.displayed(in: layout) } } ?? annotations
+        updateAnnotationOverlay()
+    }
+
+    /// The stored range a request about `range` must name: an existing annotation's own
+    /// range, or the book text a selection covers. Nil when the selection takes in a
+    /// translation, which is not the book's text to highlight or note.
+    private func bookRange(_ range: NSRange, annotationID: UUID? = nil) -> NSRange? {
+        if let annotationID, let stored = sourceAnnotations[annotationID] { return stored.range }
+        guard let layout else { return range }
+        return layout.sourceRange(forDisplay: range)
+    }
+
+    /// Whether the current selection covers any translated text.
+    private var selectionTouchesTranslation: Bool {
+        guard let layout, let range = interactor.selectionManager.selectedRange else { return false }
+        return layout.isTranslation(range)
+    }
+
+    // MARK: - Accessibility
+
+    /// CoreText draws straight into `draw(_:)`, so without this the page is an empty
+    /// `UIView` to VoiceOver: nothing to focus, and the reader's tap-zone recognizer
+    /// (centre tap → menu) never fires because VoiceOver swallows the touch. Reported
+    /// by a blind user who had to switch VoiceOver off to reach the reading toolbar.
+    /// The page reads as one element carrying the whole page's text, mirroring how
+    /// the tap zones behave: activate → menu, accessibility scroll → page turn.
+
+    /// Routes VoiceOver-originated reader commands. Set by the paged/scroll host,
+    /// which owns the same tap-zone routing these mirror.
+    var onAccessibilityAction: ((TouchAction) -> Void)?
+
+    /// RTL books (including vertical CJK) flip the physical page order, so a
+    /// VoiceOver "scroll right" has to advance rather than go back.
+    var accessibilityUsesRTLPageOrder = false {
+        didSet {
+            guard accessibilityUsesRTLPageOrder != oldValue else { return }
+            refreshAccessibility()
+        }
+    }
+
+    /// Plain text of the page currently drawn.
+    var accessibilityPageText: String {
+        guard let layout, localPageIndex < layout.pageRanges.count else { return "" }
+        let pageRange = layout.pageRanges[localPageIndex]
+        let clamped = NSIntersectionRange(
+            NSRange(location: pageRange.location, length: pageRange.length),
+            NSRange(location: 0, length: layout.attributedString.length)
+        )
+        guard clamped.length > 0 else { return "" }
+        return layout.attributedString.attributedSubstring(from: clamped).string
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 頁眉／頁腳 as rotor-reachable custom content rather than extra stops.
+    ///
+    /// The bars are drawn into the page now, so there is no view for VoiceOver to
+    /// land on — and the page is a single element whose label is the page text.
+    /// Custom content keeps the bars available without putting two more swipes
+    /// between the reader and the words, which is the same reason the bars were
+    /// one stop each rather than one per field when they were a SwiftUI overlay.
+    private func refreshBarAccessibilityContent() {
+        var entries: [AXCustomContent] = []
+        if let header = pageBars?.header, !header.accessibilityValue.isEmpty {
+            entries.append(
+                AXCustomContent(
+                    label: localized(ReaderBar.header.titleKey),
+                    value: header.accessibilityValue
+                )
+            )
+        }
+        if let footer = pageBars?.footer, !footer.accessibilityValue.isEmpty {
+            entries.append(
+                AXCustomContent(
+                    label: localized(ReaderBar.footer.titleKey),
+                    value: footer.accessibilityValue
+                )
+            )
+        }
+        accessibilityCustomContent = entries
+    }
+
+    private func refreshAccessibility() {
+        isAccessibilityElement = true
+        accessibilityTraits = .staticText
+        accessibilityLabel = accessibilityPageText
+        refreshBarAccessibilityContent()
+        accessibilityHint = localized("點兩下展開閱讀工具，三指左右滑動翻頁")
+        accessibilityCustomActions = [
+            accessibilityAction(named: localized("下一頁"), action: .nextPage),
+            accessibilityAction(named: localized("上一頁"), action: .prevPage),
+            accessibilityAction(named: localized("選單"), action: .toggleMenu),
+            accessibilityAction(named: localized("目錄"), action: .tableOfContents),
+        ]
+    }
+
+    private func accessibilityAction(
+        named name: String,
+        action: TouchAction
+    ) -> UIAccessibilityCustomAction {
+        UIAccessibilityCustomAction(name: name) { [weak self] _ in
+            guard let handler = self?.onAccessibilityAction else { return false }
+            handler(action)
+            return true
+        }
+    }
+
+    override func accessibilityActivate() -> Bool {
+        guard let onAccessibilityAction else { return false }
+        onAccessibilityAction(.toggleMenu)
+        return true
+    }
+
+    override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
+        guard let onAccessibilityAction else { return false }
+        let action: TouchAction
+        switch direction {
+        case .left, .up:
+            action = accessibilityUsesRTLPageOrder ? .prevPage : .nextPage
+        case .right, .down:
+            action = accessibilityUsesRTLPageOrder ? .nextPage : .prevPage
+        default:
+            return false
+        }
+        onAccessibilityAction(action)
+        return true
+    }
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        guard interactor.selectedTextForCopy?.isEmpty == false else { return false }
+        return action == #selector(copy(_:))
+            || (action == #selector(underlineSelection(_:)) && !selectionTouchesTranslation)
+    }
+
+    func editMenuInteraction(
+        _ interaction: UIEditMenuInteraction,
+        menuFor configuration: UIEditMenuConfiguration,
+        suggestedActions: [UIMenuElement]
+    ) -> UIMenu? {
+        guard interactor.selectedTextForCopy?.isEmpty == false else { return nil }
+        let existingAnnotation = interactor.tappedAnnotation
+        let colorActions = AnnotationColor.allCases.map { color in
+            UIAction(
+                title: emphasisColorName(for: color),
+                image: emphasisColorImage(for: color),
+                state: existingAnnotation?.style == .highlight && existingAnnotation?.color == color ? .on : .off,
+                handler: { [weak self] _ in
+                    guard let self else { return }
+                    if self.interactor.tappedAnnotation != nil {
+                        self.updateTappedAnnotation(style: .highlight, color: color)
+                    } else {
+                        self.toggleUnderlineSelection(removesExistingUnderline: false, style: .highlight, color: color)
+                    }
+                    self.clearSelection()
+                }
+            )
+        }
+
+        let noteMenuTitleIsEdit = (existingAnnotation ?? annotationCoveringSelection())
+            .flatMap(\.note)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty == false
+        let removesExistingUnderline = existingAnnotation == nil && selectedRangeHasExactUnderline()
+        let underlineAction = UIAction(
+            title: localized(removesExistingUnderline ? "解除下劃線" : "下劃線"),
+            image: UIImage(systemName: "underline"),
+            state: existingAnnotation?.style == .underline || removesExistingUnderline ? .on : .off,
+            handler: { [weak self] _ in
+                guard let self else { return }
+                if let existing = self.interactor.tappedAnnotation {
+                    self.updateTappedAnnotation(style: .underline, color: existing.color)
+                } else {
+                    self.toggleUnderlineSelection(removesExistingUnderline: self.selectedRangeHasExactUnderline())
+                }
+                self.clearSelection()
+            }
+        )
+
+        if configuration.identifier as? NSString == Self.emphasisEditMenuIdentifier {
+            return UIMenu(children: colorActions + [underlineAction])
+        }
+
+        // AI items only with Pro (`ReaderPremiumVisibilityPolicy.showsAISelectionActions`).
+        let premium = ReaderPremiumVisibilityPolicy(isProActive: SubscriptionStore.shared.isProActive)
+        // A translation is not the book's text: nothing can be highlighted, noted or turned
+        // into a replace rule there, and the assistant has no place in the book to cite.
+        if selectionTouchesTranslation {
+            let text = interactor.selectedTextForCopy ?? ""
+            let lookup = premium.showsAISelectionActions && AIWordLookup.isCandidate(text)
+            return UIMenu(children: suggestedActions + (lookup ? [aiSelectionAction(.lookup)] : []))
+        }
+
+        var actions = suggestedActions
+        if interactor.tappedAnnotation != nil {
+            actions.append(UIAction(
+                title: localized("刪除標註"),
+                image: UIImage(systemName: "trash"),
+                attributes: .destructive,
+                handler: { [weak self] _ in
+                    self?.deleteTappedAnnotation()
+                }
+            ))
+        }
+        actions.append(UIAction(
+            title: localized("替換"),
+            image: UIImage(systemName: "eraser"),
+            handler: { [weak self] _ in
+                self?.requestReplaceRule()
+            }
+        ))
+        actions.append(UIAction(
+            title: localized("重點"),
+            image: UIImage(systemName: "highlighter"),
+            handler: { [weak self] _ in
+                self?.presentEmphasisEditMenu()
+            }
+        ))
+        // 沒訂閱時項目照樣留著，只換成鎖頭：點下去 ReaderView 會開付費牆。
+        // 「這一點該開編輯頁還是付費牆」的判斷只有 ReaderView 那一處，這裡純顯示。
+        let canEditNote = premium.allowsParagraphNoteEditing
+        actions.append(UIAction(
+            title: localized(noteMenuTitleIsEdit ? "編輯筆記" : "筆記"),
+            image: UIImage(systemName: canEditNote ? "note.text" : "lock.fill"),
+            handler: { [weak self] _ in
+                self?.requestNoteEdit()
+            }
+        ))
+
+        if premium.showsAISelectionActions {
+            for action in AIReadingAction.selectionMenu(for: interactor.selectedTextForCopy ?? "") {
+                actions.append(aiSelectionAction(action))
+            }
+        }
+        return UIMenu(children: actions)
+    }
+
+    private func aiSelectionAction(_ action: AIReadingAction) -> UIAction {
+        UIAction(title: action.title, image: UIImage(systemName: "sparkles")) { [weak self] _ in
+            guard let self, let layout, let range = interactor.selectionManager.selectedRange,
+                  range.location >= 0, NSMaxRange(range) <= layout.attributedString.length else { return }
+            let displayed = layout.attributedString.string
+            let stored = bookRange(range)
+            let request = CoreTextAISelectionRequest(spineIndex: layout.spineIndex, range: stored ?? range,
+                text: (displayed as NSString).substring(with: range), action: action,
+                context: AIWordLookup.context(in: displayed, range: range), isTranslation: stored == nil)
+            pendingAISelection = request
+            editMenuInteraction.dismissMenu()
+        }
+    }
+
+    private var pendingAISelection: CoreTextAISelectionRequest?
+
+    func editMenuInteraction(_ interaction: UIEditMenuInteraction, willDismissMenuFor configuration: UIEditMenuConfiguration,
+                             animator: any UIEditMenuInteractionAnimating) {
+        animator.addCompletion { [weak self] in
+            guard let self, let request = pendingAISelection else { return }
+            pendingAISelection = nil
+            clearSelection()
+            NotificationCenter.default.post(name: .coreTextAISelectionRequested, object: self, userInfo: ["request": request])
+        }
+    }
+
+    private func presentSelectionEditMenu(at sourcePoint: CGPoint) {
+        latestEditMenuSourcePoint = sourcePoint
+        editMenuInteraction.presentEditMenu(with: UIEditMenuConfiguration(
+            identifier: nil,
+            sourcePoint: sourcePoint
+        ))
+    }
+
+    private func presentEmphasisEditMenu() {
+        let sourcePoint = latestEditMenuSourcePoint ?? CGPoint(x: bounds.midX, y: bounds.midY)
+        editMenuInteraction.dismissMenu()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self else { return }
+            self.editMenuInteraction.presentEditMenu(with: UIEditMenuConfiguration(
+                identifier: Self.emphasisEditMenuIdentifier,
+                sourcePoint: sourcePoint
+            ))
+        }
+    }
+
+    private func emphasisColorName(for color: AnnotationColor) -> String {
+        switch color {
+        case .yellow: return localized("黃色")
+        case .green: return localized("綠色")
+        case .blue: return localized("藍色")
+        case .pink: return localized("粉色")
+        case .orange: return localized("橙色")
+        }
+    }
+
+    private func emphasisColorImage(for color: AnnotationColor) -> UIImage? {
+        let size = CGSize(width: 22, height: 22)
+        let swatchRect = CGRect(x: 3, y: 3, width: 16, height: 16)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let path = UIBezierPath(roundedRect: swatchRect, cornerRadius: 3)
+            color.uiColor.setFill()
+            path.fill()
+            UIColor.separator.withAlphaComponent(0.6).setStroke()
+            path.lineWidth = 1
+            path.stroke()
+        }.withRenderingMode(.alwaysOriginal)
+    }
+
+    override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        configureTapPriority()
+    }
+
+    /// 標註/播放/選取 overlay 的 rects 是依 bounds 計算的。正文會在 bounds 變動時
+    /// 自動 draw(rect:) 重畫，但 overlay 不會，所以這裡在 bounds 改變時重算它們，
+    /// 避免旋轉進橫屏雙頁跨頁後高亮/標註用舊 bounds 的位置而錯位。
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        bookmarkRibbonView.frame = ReaderBookmarkRibbon.frame(in: bounds)
+        guard bounds != lastOverlayBounds else { return }
+        lastOverlayBounds = bounds
+        updateAnnotationOverlay()
+        updatePlaybackHighlightOverlay()
+        if let context = makeInteractionContext() {
+            updateSelectionOverlay(with: context)
+        }
+    }
+
+    /// 頁眉／頁腳 for *this* page.
+    ///
+    /// Held on the view rather than folded into `ChapterLayout` because it changes
+    /// on a different clock: the clock field ticks every minute and the battery
+    /// whenever it moves, neither of which should invalidate a pagination.
+    var pageBars: ReaderPageBars? {
+        didSet {
+            bookmarkRibbonView.setBookmarked(pageBars?.isBookmarked ?? false, animated: true)
+            // The ribbon is a view on the live page, so a bookmark coming or going
+            // costs no redraw of the text.
+            guard pageBars?.removingBookmarkRibbon() != oldValue?.removingBookmarkRibbon() else { return }
+            prerenderedPage = nil
+            setNeedsDisplay()
+            refreshBarAccessibilityContent()
+        }
+    }
+
+    /// The live page's ribbon; snapshots draw theirs through `pageBars`.
+    private let bookmarkRibbonView = ReaderBookmarkRibbonView()
+
+    func beginInteractiveBookmarkRibbon() {
+        bookmarkRibbonView.beginInteractive()
+    }
+
+    func setInteractiveBookmarkRibbonReveal(_ reveal: CGFloat) {
+        bookmarkRibbonView.setInteractiveReveal(reveal)
+    }
+
+    func endInteractiveBookmarkRibbon(isBookmarked: Bool) {
+        bookmarkRibbonView.endInteractive(isBookmarked: isBookmarked)
+    }
+
+    /// Puts the page on screen as the layer's contents.
+    ///
+    /// When the engine drew this page ahead of time, the bitmap goes straight in and
+    /// nothing is drawn here: a turn's first frame no longer waits on 10–55ms of
+    /// CoreText work on the main thread. Otherwise `draw(_:)` paints it now, as it
+    /// always did. An offscreen `layer.render(in:)` composites only what this has
+    /// already put in the layer, so render a page that was never on screen after
+    /// `layer.displayIfNeeded()`.
+    ///
+    /// `override` only because Swift mirrors `CALayerDelegate` onto `UIView`; UIKit
+    /// does not implement `displayLayer:`, so there is no `super` to call.
+    override func display(_ layer: CALayer) {
+        let size = bounds.size
+        guard let layout, localPageIndex < layout.pageRanges.count,
+              size.width > 0, size.height > 0 else {
+            layer.contents = nil
+            return
+        }
+        let scale = contentScaleFactor
+        let image: UIImage
+        let signpostID = Self.displaySignposter.makeSignpostID()
+        let prerendered = prerenderedPage?()
+        if let prerendered, prerendered.size == size, prerendered.scale == scale {
+            Self.displaySignposter.emitEvent("PageDisplay", id: signpostID, "source=prerendered")
+            image = prerendered
+        } else {
+            let reason = prerenderedPage == nil ? "noSource" : (prerendered == nil ? "notReady" : "mismatch")
+            let interval = Self.displaySignposter.beginInterval(
+                "PageDisplay", id: signpostID,
+                "source=drawn reason=\(reason, privacy: .public) size=\(Int(size.width))x\(Int(size.height))"
+            )
+            let format = UIGraphicsImageRendererFormat.preferred()
+            format.scale = scale
+            image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+                draw(CGRect(origin: .zero, size: size))
+            }
+            Self.displaySignposter.endInterval("PageDisplay", interval)
+        }
+        UIView.performWithoutAnimation {
+            layer.contents = image.cgImage
+        }
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard
+            let layout,
+            localPageIndex < layout.pageRanges.count,
+            let ctx = UIGraphicsGetCurrentContext()
+        else { return }
+
+        Self.renderPage(
+            layout: layout,
+            pageIndex: localPageIndex,
+            in: ctx,
+            bounds: bounds,
+            // `bookmarkRibbonView` shows the ribbon here — see `ReaderBookmarkRibbon`.
+            bars: pageBars?.removingBookmarkRibbon()
+        )
+    }
+
+    /// - Parameter bars: 頁眉／頁腳 drawn as part of the page.
+    ///   Everything that shows a page goes through here — the live view, curl
+    ///   back-pages, cover-transition snapshots, the auto-read reveal image — so
+    ///   drawing the bars here is what makes them turn with the page in every
+    ///   animation. A UIKit subview on the page controller would have been visible
+    ///   only on the first of those four.
+    nonisolated static func renderPage(
+        layout: CoreTextPaginator.ChapterLayout,
+        pageIndex: Int,
+        in ctx: CGContext,
+        bounds: CGRect,
+        bars: ReaderPageBars? = nil
+    ) {
+        guard pageIndex < layout.pageRanges.count else { return }
+
+        let renderTrace = ReaderPerfTrace.begin(
+            .renderPage,
+            metadata: ReaderPerfMetadata(
+                spineIndex: layout.spineIndex,
+                characterCount: layout.pageRanges[pageIndex].length,
+                pageCount: layout.pageRanges.count,
+                writingMode: String(describing: layout.writingMode),
+                executor: Thread.isMainThread ? "main" : "background"
+            )
+        )
+        defer { ReaderPerfTrace.end(renderTrace) }
+
+        let layoutSize = CGSize(
+            width: max(1, layout.renderSize.width),
+            height: max(1, layout.renderSize.height)
+        )
+        let canonicalBounds = CGRect(origin: .zero, size: layoutSize)
+        let scaleX = bounds.width / layoutSize.width
+        let scaleY = bounds.height / layoutSize.height
+
+        ctx.saveGState()
+        ctx.translateBy(x: bounds.minX, y: bounds.minY)
+        ctx.scaleBy(x: scaleX, y: scaleY)
+        // Both text and image-only EPUB pages carry the configured bars. Keeping
+        // this at the shared exit also covers curl/cover snapshot rendering.
+        defer {
+            bars?.draw(in: canonicalBounds, context: ctx)
+            ctx.restoreGState()
+        }
+
+        ctx.setFillColor(layout.backgroundColor.cgColor)
+        ctx.fill(canonicalBounds)
+
+        if let backgroundImage = layout.readerBackgroundImage ?? layout.pageBackgroundImage {
+            drawPageBackground(backgroundImage, in: canonicalBounds)
+        }
+
+        if layout.pageKinds[pageIndex] == .image {
+            for attachment in layout.blockAttachments[pageIndex] ?? [] {
+                attachment.image.draw(in: attachment.rect, blendMode: .normal, alpha: attachment.opacity)
+            }
+            return
+        }
+
+        // Phase 1: CG geometry operations (background colors, borders) — coordinate-system independent
+        let pageBlockRenderables = layout.blockRenderables[pageIndex] ?? []
+        drawBlockRenderables(
+            pageBlockRenderables,
+            writingMode: layout.writingMode,
+            in: ctx,
+            boundsHeight: layoutSize.height
+        )
+
+        ctx.textMatrix = .identity
+        ctx.translateBy(x: 0, y: layoutSize.height)
+        ctx.scaleBy(x: 1.0, y: -1.0)
+
+        let contentPathRect = CoreTextPaginator.coreTextContentPathRect(
+            renderSize: layoutSize,
+            contentInsets: layout.contentInsets,
+            fontSize: layout.fontSize,
+            writingMode: layout.writingMode
+        )
+        let frame = Self.frameForRendering(layout: layout, pageIndex: pageIndex)
+
+        // Collect ranges that will be redrawn by drawBlockRenderableText so drawLines can skip them.
+        let suppressedRanges = pageBlockRenderables
+            .flatMap { $0.suppressesSourceText ? $0.sourceRanges : [] }
+        // ── Phase 2: text rendering ──────────────────────────────────────
+        // Vertical (vertical-rl): CTFrameDraw handles glyph rotation
+        // and right-to-left column progression automatically.
+        // Horizontal: line-by-line drawing with CJK justification,
+        // paragraph gap distribution, and HR divider lines.
+        if layout.writingMode.isVertical {
+            RegexHighlightDecorationRenderer.drawVertical(
+                frame: frame,
+                attributedString: layout.attributedString,
+                contentOffset: CGPoint(x: contentPathRect.minX, y: contentPathRect.minY),
+                layoutHeight: layoutSize.height,
+                writingMode: layout.writingMode,
+                suppressedRanges: suppressedRanges,
+                context: ctx
+            )
+            drawVerticalFrame(
+                frame,
+                contentOffset: CGPoint(x: contentPathRect.minX, y: contentPathRect.minY),
+                suppressedRanges: suppressedRanges,
+                in: ctx
+            )
+        } else {
+            drawHorizontalFrame(
+                frame,
+                contentPathRect: contentPathRect,
+                isLastPage: pageIndex == layout.pageRanges.count - 1,
+                attributedString: layout.attributedString,
+                suppressedRanges: suppressedRanges,
+                // Decoration rects are anchored to the unshifted line origins — bottom
+                // justification would move the text out from under its boxes.
+                bottomJustified: (layout.blockRenderables[pageIndex] ?? []).isEmpty,
+                in: ctx
+            )
+        }
+
+        // Phase 3: after flip-back, draw all images using UIImage.draw()
+        // UIImage.draw() requires the standard UIKit environment (origin top-left, Y downward)
+        ctx.scaleBy(x: 1.0, y: -1.0)
+        ctx.translateBy(x: 0, y: -layoutSize.height)
+
+        // 3a. Inline annotations (span.small notes). The main frame only
+        // reserves their space through CTRunDelegate placeholders.
+        let pageAnnotations = layout.inlineAnnotations[pageIndex] ?? []
+        let pageInlineImages = layout.inlineAttachments[pageIndex] ?? []
+        if !pageAnnotations.isEmpty || !pageInlineImages.isEmpty {
+            CoreTextPaginator.debugVerticalLog("EPUBFLOW pageView.drawOverlays page=\(pageIndex) inlineAnnotations=\(pageAnnotations.count) inlineImages=\(pageInlineImages.count)")
+        }
+        drawInlineAnnotations(pageAnnotations)
+        if let cells = layout.combinedUprightCells[pageIndex] {
+            Self.drawCombinedUpright(cells, from: layout.attributedString, in: ctx)
+        }
+
+        // 3b. Block attachments (block images without blockRenderStyle)
+        Self.drawAttachments(layout.blockAttachments[pageIndex] ?? [])
+
+        // 3c. Inline attachments (inline images)
+        for attachment in pageInlineImages {
+            attachment.image.draw(in: attachment.rect, blendMode: .normal, alpha: attachment.opacity)
+        }
+
+        // 3d. Block images (decorative images with blockRenderStyle, e.g. watermarks)
+        for item in pageBlockRenderables {
+            if let attachment = item.imageAttachment {
+                attachment.image.draw(in: attachment.rect, blendMode: .normal, alpha: attachment.opacity)
+            }
+        }
+
+        // 3e. Explicit block text (page/card-level geometry text, independent of the main text frame)
+        for item in pageBlockRenderables {
+            guard let text = item.attributedText else { continue }
+            let style = item.style
+            drawBlockRenderableText(
+                text,
+                in: item.rect,
+                paddingTop: style.paddingTop,
+                paddingLeft: style.paddingLeft,
+                paddingBottom: style.paddingBottom,
+                paddingRight: style.paddingRight,
+                boundsHeight: layoutSize.height,
+                context: ctx
+            )
+        }
+
+    }
+
+    nonisolated static func drawAttachments(_ attachments: [CoreTextPaginator.RenderedAttachment]) {
+        for attachment in attachments {
+            attachment.image.draw(in: attachment.rect, blendMode: .normal, alpha: attachment.opacity)
+        }
+    }
+
+    /// Draws authored 縦中横 cells, in UIKit coordinates, from the laid-out string: each
+    /// cell's text horizontal and centred in its em square (`CombinedUpright.line`).
+    nonisolated static func drawCombinedUpright(
+        _ cells: [CoreTextPaginator.RenderedCombinedUpright],
+        from attributedString: NSAttributedString,
+        in ctx: CGContext
+    ) {
+        for cell in cells where NSMaxRange(cell.range) <= attributedString.length {
+            let line = CombinedUpright.line(attributedString.attributedSubstring(from: cell.range), em: cell.em)
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            let width = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, nil))
+            ctx.saveGState()
+            ctx.textMatrix = .identity
+            ctx.translateBy(x: cell.uiRect.midX - width / 2,
+                            y: cell.uiRect.minY + (cell.em + ascent - descent) / 2)
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.textPosition = .zero
+            CTLineDraw(line, ctx)
+            ctx.restoreGState()
+        }
+    }
+
+    nonisolated static func drawInlineAnnotations(
+        _ annotations: [CoreTextPaginator.RenderedInlineAnnotation]
+    ) {
+        guard !annotations.isEmpty else { return }
+        CoreTextPaginator.debugVerticalLog("EPUBFLOW drawInlineAnnotations count=\(annotations.count)")
+        for (index, annotation) in annotations.enumerated() where annotation.attributedString.length > 0 {
+            CoreTextPaginator.debugVerticalLog("EPUBFLOW drawInlineAnnotation[\(index)] uiRect=\(annotation.uiRect) len=\(annotation.attributedString.length) text=\"\(inlineAnnotationDebugPreview(annotation.attributedString.string, limit: 80))\"")
+            drawInlineAnnotationContent(annotation.attributedString, in: annotation.uiRect)
+        }
+    }
+
+    private nonisolated static func drawInlineAnnotationContent(
+        _ attributedString: NSAttributedString,
+        in rect: CGRect
+    ) {
+        let items = inlineAnnotationItems(from: attributedString)
+        guard !items.isEmpty else { return }
+        CoreTextPaginator.debugVerticalLog("EPUBFLOW drawInlineAnnotationContent rect=\(rect) itemCount=\(items.count) centerX=\(rect.midX) topY=\(rect.minY) maxY=\(rect.maxY)")
+        drawInlineAnnotationColumn(items, centerX: rect.midX, topY: rect.minY, maxY: rect.maxY)
+    }
+
+    private struct InlineAnnotationItem {
+        enum Content {
+            case image(UIImage, CGSize, CGFloat)
+            case text(NSAttributedString)
+        }
+
+        let content: Content
+        let advance: CGFloat
+    }
+
+    private nonisolated static func inlineAnnotationItems(from attributedString: NSAttributedString) -> [InlineAnnotationItem] {
+        let delegateKey = NSAttributedString.Key(kCTRunDelegateAttributeName as String)
+        let nsString = attributedString.string as NSString
+        var result: [InlineAnnotationItem] = []
+        var index = 0
+
+        while index < attributedString.length {
+            var effectiveRange = NSRange(location: 0, length: 0)
+            if let delegate = attributedString.attribute(delegateKey, at: index, effectiveRange: &effectiveRange) {
+                let ctDelegate = delegate as! CTRunDelegate
+                let ptr = CTRunDelegateGetRefCon(ctDelegate)
+                let info = Unmanaged<ImageRunInfo>.fromOpaque(ptr).takeUnretainedValue()
+                if let image = info.image {
+                    result.append(InlineAnnotationItem(
+                        content: .image(image, CGSize(width: info.drawWidth, height: info.drawHeight), info.opacity),
+                        advance: max(1, info.width)
+                    ))
+                }
+                index = max(index + 1, effectiveRange.location + effectiveRange.length)
+                continue
+            }
+
+            let characterRange = nsString.rangeOfComposedCharacterSequence(at: index)
+            let char = NSMutableAttributedString(attributedString: attributedString.attributedSubstring(from: characterRange))
+            if !char.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                result.append(InlineAnnotationItem(
+                    content: .text(char),
+                    advance: verticalAnnotationAdvance(for: char)
+                ))
+            }
+            index = characterRange.location + characterRange.length
+        }
+
+        return result
+    }
+
+    private nonisolated static func drawInlineAnnotationColumn(
+        _ items: [InlineAnnotationItem],
+        centerX: CGFloat,
+        topY: CGFloat,
+        maxY: CGFloat
+    ) {
+        var cursorY = topY
+        for item in items where cursorY < maxY {
+            switch item.content {
+            case .image(let image, let size, let opacity):
+                let y = cursorY + max(0, (item.advance - size.height) / 2)
+                let imageRect = CGRect(
+                    x: centerX - size.width / 2,
+                    y: y,
+                    width: size.width,
+                    height: size.height
+                )
+                image.draw(in: imageRect, blendMode: .normal, alpha: opacity)
+            case .text(let text):
+                let drawAdvance = verticalAnnotationAdvance(for: text)
+                let drawRect = CGRect(
+                    x: centerX - drawAdvance / 2,
+                    y: cursorY,
+                    width: drawAdvance,
+                    height: drawAdvance
+                )
+                centeredInlineAnnotationText(text).draw(with: drawRect, options: [.usesLineFragmentOrigin], context: nil)
+            }
+            cursorY += item.advance
+        }
+    }
+
+    private nonisolated static func verticalAnnotationAdvance(for attributedString: NSAttributedString) -> CGFloat {
+        RunDelegateProvider.inlineAnnotationTextAdvance(for: attributedString)
+    }
+
+    private nonisolated static func centeredInlineAnnotationText(_ attributedString: NSAttributedString) -> NSAttributedString {
+        guard attributedString.length > 0 else { return attributedString }
+        let mutable = NSMutableAttributedString(attributedString: RunDelegateProvider.sanitizedInlineAnnotationString(attributedString))
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        mutable.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: mutable.length))
+        return mutable
+    }
+
+    private nonisolated static func inlineAnnotationDebugPreview(_ text: String, limit: Int) -> String {
+        let normalized = text
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\u{2029}", with: "\\u2029")
+            .replacingOccurrences(of: "\u{FFFC}", with: "OBJ")
+            .replacingOccurrences(of: "\u{3000}", with: "IDEOSPACE")
+        return String(normalized.prefix(limit))
+    }
+
+    /// Draws all text lines of a CTFrame line-by-line, applying CTLineCreateJustifiedLine for justified non-last lines.
+    /// Shared between draw(_ rect:) and CoreTextPageEngine.generateSnapshot().
+    /// The CTM must already be configured for the CoreText coordinate system (y-axis flipped upward) before calling.
+    /// - Parameters:
+    ///   - contentMinX: Left edge of the content area (CoreText coordinates), used for drawing HR line start points
+    ///   - contentMinY: Bottom of the content area (CoreText coordinates), used for calculating last-page remaining space
+    ///   - isLastPage: Whether this is the last page of the chapter; last pages do not apply vertical justification
+    // MARK: - Phase 2a: Vertical text rendering
+
+    /// Draw a CTFrame in vertical-rl mode.
+    /// CoreText handles glyph rotation and RTL column progression internally.
+    nonisolated static func drawVerticalFrame(
+        _ frame: CTFrame,
+        contentOffset: CGPoint,
+        suppressedRanges: [NSRange],
+        in ctx: CGContext
+    ) {
+        // 縦中横 cells keep their characters in the frame; only they take the context's
+        // fill colour, so a clear fill hides them, and `drawCombinedUpright` draws them
+        // horizontally afterwards.
+        ctx.saveGState()
+        defer { ctx.restoreGState() }
+        ctx.setFillColor(UIColor.clear.cgColor)
+        guard !suppressedRanges.isEmpty else {
+            CTFrameDraw(frame, ctx)
+            return
+        }
+        let lines = CTFrameGetLines(frame) as! [CTLine]
+        var origins = [CGPoint](repeating: .zero, count: lines.count)
+        CTFrameGetLineOrigins(frame, CFRangeMake(0, lines.count), &origins)
+        for (index, line) in lines.enumerated() {
+            let range = CTLineGetStringRange(line)
+            let nsRange = NSRange(location: range.location, length: max(0, range.length))
+            guard !suppressedRanges.contains(where: {
+                NSIntersectionRange($0, nsRange).length > 0
+            }) else { continue }
+            ctx.textPosition = CGPoint(
+                x: contentOffset.x + origins[index].x,
+                y: contentOffset.y + origins[index].y
+            )
+            CTLineDraw(line, ctx)
+        }
+    }
+
+    // MARK: - Phase 2b: Horizontal text rendering
+
+    /// Draw a CTFrame in horizontal mode: line-by-line with CJK justification,
+    /// paragraph gap distribution, and HR divider lines.
+    private nonisolated static func drawHorizontalFrame(
+        _ frame: CTFrame,
+        contentPathRect: CGRect,
+        isLastPage: Bool,
+        attributedString: NSAttributedString,
+        suppressedRanges: [NSRange],
+        bottomJustified: Bool,
+        in ctx: CGContext
+    ) {
+        CoreTextHorizontalLineDrawer.drawLines(
+            of: frame,
+            contentWidth: contentPathRect.width,
+            contentMinX: contentPathRect.minX,
+            contentMinY: contentPathRect.minY,
+            isLastPage: isLastPage,
+            attrStr: attributedString,
+            suppressedRanges: suppressedRanges,
+            hrDividerKey: HTMLAttributedStringBuilder.hrDividerAttribute,
+            bottomJustified: bottomJustified,
+            in: ctx
+        )
+    }
+
+    // isCJKDominant moved to CoreTextHorizontalLineDrawer
+
+    nonisolated static func drawBlockRenderables(
+        _ renderables: [CoreTextPaginator.RenderedBlockRenderable],
+        writingMode: ReaderWritingMode = .horizontal,
+        in ctx: CGContext,
+        boundsHeight: CGFloat
+    ) {
+        for item in renderables {
+            if let plan = item.chapterTitlePlan {
+                ChapterTitleCanvasPainter.draw(
+                    plan,
+                    in: item.rect,
+                    writingMode: writingMode,
+                    context: ctx
+                )
+                continue
+            }
+            let s = item.style
+            ctx.saveGState()
+            let borderRect = CGRect(
+                x: item.rect.minX - s.borderLeftWidth - s.paddingLeft,
+                y: item.rect.minY - s.borderTopWidth - s.paddingTop,
+                width: item.rect.width + s.borderLeftWidth + s.borderRightWidth + s.paddingLeft + s.paddingRight,
+                height: item.rect.height + s.borderTopWidth + s.borderBottomWidth + s.paddingTop + s.paddingBottom
+            )
+
+
+            let radius = min(s.borderRadius, min(borderRect.width, borderRect.height) / 2)
+            let hasBorder = s.borderTopWidth > 0 || s.borderBottomWidth > 0 || s.borderLeftWidth > 0 || s.borderRightWidth > 0
+            if radius > 0 {
+                let path = UIBezierPath(roundedRect: borderRect, cornerRadius: radius)
+                if let fillColor = s.backgroundFillColor {
+                    ctx.setFillColor(fillColor.cgColor)
+                    ctx.addPath(path.cgPath)
+                    ctx.fillPath()
+                }
+                if let backgroundImage = s.backgroundImage {
+                    drawBoxBackgroundImage(backgroundImage, in: ctx, rect: borderRect, radius: radius)
+                }
+                if hasBorder {
+                    if let borderColor = s.borderTopColor ?? s.borderLeftColor ?? s.borderRightColor ?? s.borderBottomColor {
+                        ctx.setStrokeColor(borderColor.cgColor)
+                    } else {
+                        ctx.setStrokeColor(UIColor.label.cgColor)
+                    }
+                    ctx.setLineWidth(s.borderTopWidth > 0 ? s.borderTopWidth : (s.borderBottomWidth > 0 ? s.borderBottomWidth : (s.borderLeftWidth > 0 ? s.borderLeftWidth : s.borderRightWidth)))
+                    ctx.addPath(path.cgPath)
+                    ctx.strokePath()
+                }
+            } else {
+                if let fillColor = s.backgroundFillColor {
+                    ctx.setFillColor(fillColor.cgColor)
+                    ctx.fill(borderRect)
+                }
+                if let backgroundImage = s.backgroundImage {
+                    drawBoxBackgroundImage(backgroundImage, in: ctx, rect: borderRect, radius: 0)
+                }
+                if s.borderTopWidth > 0 {
+                    let lineW = s.borderTopWidth
+                    let y = borderRect.minY + lineW / 2
+                    ctx.setStrokeColor((s.borderTopColor ?? .label).cgColor)
+                    ctx.setLineWidth(lineW)
+                    let (bx, bw) = borderXAndWidth(for: item, borderRect: borderRect)
+                    ctx.move(to: CGPoint(x: bx, y: y))
+                    ctx.addLine(to: CGPoint(x: bx + bw, y: y))
+                    ctx.strokePath()
+                }
+                if s.borderBottomWidth > 0 {
+                    let lineW = s.borderBottomWidth
+                    let y = borderRect.maxY - lineW / 2
+                    ctx.setStrokeColor((s.borderBottomColor ?? .label).cgColor)
+                    ctx.setLineWidth(lineW)
+                    let (bx, bw) = borderXAndWidth(for: item, borderRect: borderRect)
+                    ctx.move(to: CGPoint(x: bx, y: y))
+                    ctx.addLine(to: CGPoint(x: bx + bw, y: y))
+                    ctx.strokePath()
+                }
+                if s.borderLeftWidth > 0 {
+                    let lineW = s.borderLeftWidth
+                    let x = borderRect.minX + lineW / 2
+                    ctx.setStrokeColor((s.borderLeftColor ?? .label).cgColor)
+                    ctx.setLineWidth(lineW)
+                    ctx.move(to: CGPoint(x: x, y: borderRect.minY))
+                    ctx.addLine(to: CGPoint(x: x, y: borderRect.maxY))
+                    ctx.strokePath()
+                }
+                if s.borderRightWidth > 0 {
+                    let lineW = s.borderRightWidth
+                    let x = borderRect.maxX - lineW / 2
+                    ctx.setStrokeColor((s.borderRightColor ?? .label).cgColor)
+                    ctx.setLineWidth(lineW)
+                    ctx.move(to: CGPoint(x: x, y: borderRect.minY))
+                    ctx.addLine(to: CGPoint(x: x, y: borderRect.maxY))
+                    ctx.strokePath()
+                }
+            }
+            // Block images are drawn uniformly in Phase 3 (after flip-back) using UIImage.draw()
+            ctx.restoreGState()
+        }
+    }
+
+    /// Draws a block's CSS `background-image` inside its decoration box: fixed-size centered
+    /// (`background-size: 3em 3em; background-position: center`, duokan section-number frames),
+    /// stretched (`100% 100%` / `cover` frame borders), or tiled (`background-repeat: repeat`
+    /// textures). Runs in Phase 1, after the fill and before the border stroke — behind the text.
+    private nonisolated static func drawBoxBackgroundImage(
+        _ backgroundImage: HTMLAttributedStringBuilder.BlockRenderStyle.BackgroundImage,
+        in ctx: CGContext,
+        rect: CGRect,
+        radius: CGFloat
+    ) {
+        guard let image = backgroundImage.image, rect.width > 0.5, rect.height > 0.5 else { return }
+        ctx.saveGState()
+        if radius > 0 {
+            ctx.addPath(UIBezierPath(roundedRect: rect, cornerRadius: radius).cgPath)
+            ctx.clip()
+        } else {
+            ctx.clip(to: rect)
+        }
+        UIGraphicsPushContext(ctx)
+        if backgroundImage.repeats {
+            let tile = backgroundImage.size ?? image.size
+            if tile.width > 0.5, tile.height > 0.5 {
+                var y = rect.minY
+                while y < rect.maxY {
+                    var x = rect.minX
+                    while x < rect.maxX {
+                        image.draw(in: CGRect(x: x, y: y, width: tile.width, height: tile.height))
+                        x += tile.width
+                    }
+                    y += tile.height
+                }
+            }
+        } else if backgroundImage.stretches || backgroundImage.size == nil {
+            image.draw(in: rect)
+        } else if let size = backgroundImage.size {
+            let drawSize = CGSize(
+                width: min(size.width, rect.width),
+                height: min(size.height, rect.height)
+            )
+            image.draw(in: CGRect(
+                x: rect.minX + (rect.width - drawSize.width) / 2,
+                y: rect.minY + (rect.height - drawSize.height) / 2,
+                width: drawSize.width,
+                height: drawSize.height
+            ))
+        }
+        UIGraphicsPopContext()
+        ctx.restoreGState()
+    }
+
+    // Calculates the starting x and width for border rendering based on style.width and textAlign
+    private nonisolated static func borderXAndWidth(for item: CoreTextPaginator.RenderedBlockRenderable, borderRect: CGRect? = nil) -> (CGFloat, CGFloat) {
+        let rect = borderRect ?? item.rect
+        let style = item.style
+        guard let constrainedWidth = style.width else {
+            return (rect.minX, rect.width)
+        }
+        let bw = min(constrainedWidth, rect.width)
+        let bx: CGFloat
+        switch style.textAlign {
+        case .center:
+            bx = rect.minX + max(0, (rect.width - bw) / 2)
+        case .right:
+            bx = rect.minX + max(0, rect.width - bw)
+        default:
+            bx = rect.minX
+        }
+        return (bx, bw)
+    }
+
+    nonisolated static func drawBlockRenderableText(
+        _ text: NSAttributedString,
+        in rect: CGRect,
+        paddingTop: CGFloat,
+        paddingLeft: CGFloat,
+        paddingBottom: CGFloat,
+        paddingRight: CGFloat,
+        boundsHeight: CGFloat,
+        context ctx: CGContext
+    ) {
+        let contentRect = CGRect(
+            x: rect.minX + paddingLeft,
+            y: rect.minY + paddingTop,
+            width: max(1, rect.width - paddingLeft - paddingRight),
+            height: max(1, rect.height - paddingTop - paddingBottom)
+        )
+        let framesetter = CoreTextFramesetterFactory.make(for: text)
+        let suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(
+            framesetter,
+            CFRange(location: 0, length: text.length),
+            nil,
+            CGSize(width: contentRect.width, height: .greatestFiniteMagnitude),
+            nil
+        )
+        let measuredHeight = ceil(suggestedSize.height)
+        let drawRect = CGRect(
+            x: contentRect.minX,
+            y: contentRect.minY + max(0, (contentRect.height - measuredHeight) / 2),
+            width: contentRect.width,
+            height: min(contentRect.height, measuredHeight)
+        )
+        let coreTextRect = CGRect(
+            x: drawRect.minX,
+            y: boundsHeight - drawRect.maxY,
+            width: drawRect.width,
+            height: drawRect.height
+        )
+        let path = CGPath(rect: coreTextRect, transform: nil)
+        let frame = CTFramesetterCreateFrame(
+            framesetter,
+            CFRange(location: 0, length: text.length),
+            path,
+            nil
+        )
+
+        ctx.saveGState()
+        ctx.textMatrix = .identity
+        ctx.translateBy(x: 0, y: boundsHeight)
+        ctx.scaleBy(x: 1, y: -1)
+        CTFrameDraw(frame, ctx)
+        ctx.restoreGState()
+    }
+
+    nonisolated static func drawPageBackground(_ image: UIImage, in bounds: CGRect) {
+        let drawRect = backgroundImageRect(for: image.size, in: bounds)
+        image.draw(in: drawRect)
+    }
+
+    nonisolated static func backgroundImageRect(for imageSize: CGSize, in bounds: CGRect) -> CGRect {
+        guard imageSize.width > 0, imageSize.height > 0, bounds.width > 0, bounds.height > 0 else {
+            return bounds
+        }
+        let ratio = max(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let size = CGSize(width: imageSize.width * ratio, height: imageSize.height * ratio)
+        return CGRect(
+            x: bounds.minX + (bounds.width - size.width) / 2,
+            y: bounds.minY + (bounds.height - size.height) / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
+    @objc override func copy(_ sender: Any?) {
+        guard let text = interactor.selectedTextForCopy, !text.isEmpty else { return }
+        UIPasteboard.general.string = text
+    }
+
+    @objc private func underlineSelection(_ sender: Any?) {
+        toggleUnderlineSelection(removesExistingUnderline: selectedRangeHasExactUnderline())
+    }
+
+    private func requestReplaceRule() {
+        guard let selectedText = interactor.selectedTextForCopy, !selectedText.isEmpty else { return }
+        NotificationCenter.default.post(
+            name: .coreTextReplaceSelectionRequested,
+            object: self,
+            userInfo: ["request": CoreTextReplaceSelectionRequest(selectedText: selectedText)]
+        )
+        clearSelection()
+    }
+
+    private func toggleUnderlineSelection(removesExistingUnderline: Bool, style: AnnotationStyle = .underline, color: AnnotationColor = .yellow) {
+        guard let layout,
+              let range = interactor.selectionManager.selectedRange,
+              range.length > 0,
+              range.location >= 0,
+              range.location + range.length <= layout.attributedString.length
+        else { return }
+        guard let stored = bookRange(range) else { return }
+        let excerpt = interactor.selectedTextForCopy ?? interactor.selectionManager.selectedText(in: layout.attributedString) ?? ""
+        if removesExistingUnderline {
+            let (remaining, _) = AnnotationStore.removeExact(
+                spineIndex: layout.spineIndex,
+                range: range,
+                from: textAnnotations
+            )
+            textAnnotations = remaining
+        } else {
+            let newAnnotation = CoreTextTextAnnotation(
+                spineIndex: layout.spineIndex,
+                range: range,
+                style: style,
+                color: color
+            )
+            let (merged, _) = AnnotationStore.merge(newAnnotation, into: textAnnotations)
+            textAnnotations = merged
+        }
+        updateAnnotationOverlay()
+        NotificationCenter.default.post(
+            name: .coreTextUnderlineSelectionRequested,
+            object: self,
+            userInfo: [
+                "request": CoreTextUnderlineSelectionRequest(
+                    position: CoreTextReadingPosition(
+                        spineIndex: layout.spineIndex,
+                        charOffset: stored.location
+                    ),
+                    length: stored.length,
+                    excerpt: excerpt.trimmingCharacters(in: .whitespacesAndNewlines),
+                    removesExistingUnderline: removesExistingUnderline,
+                    style: style,
+                    color: color
+                )
+            ]
+        )
+    }
+
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended,
+              let layout,
+              localPageIndex < layout.pageRanges.count
+        else {
+            return
+        }
+
+        handleTap(at: gesture.location(in: self))
+    }
+
+    private func handleTap(at point: CGPoint) {
+        guard let layout,
+              localPageIndex < layout.pageRanges.count
+        else { return }
+
+        // 筆記圓圈排在最前面：它畫在正文之上，落在它上面的點擊就是要開筆記，
+        // 不該再往下走連結／圖片／選字那幾條路。
+        if !interactor.selectionManager.hasSelection, requestNoteEditFromMarker(at: point) {
+            return
+        }
+
+        if interactor.selectionManager.hasSelection {
+            // If tap is on the existing selection, keep it and show menu again
+            if let context = makeInteractionContext(),
+               let index = stringIndex(at: point, in: context),
+               let selRange = interactor.selectionManager.selectedRange,
+               index >= selRange.location,
+               index < selRange.location + selRange.length {
+                interactor.selectedTextForCopy = interactor.selectionManager.selectedText(in: layout.attributedString)
+                interactor.tappedAnnotation = AnnotationStore.annotationAt(
+                    spineIndex: layout.spineIndex,
+                    charOffset: index,
+                    in: textAnnotations,
+                    tolerance: 3
+                )
+                becomeFirstResponder()
+                presentSelectionEditMenu(at: point)
+                return
+            }
+            clearSelection()
+            return
+        }
+
+        if let attachment = imageAttachment(at: point) {
+            // A *linked* inline image (e.g. a duokan footnote marker `<a href="#note"><img/></a>`)
+            // must follow its link, not open the image viewer. The attachment already carries the
+            // resolved `linkHref`, so trust it directly — a 1em footnote glyph is too small to
+            // reliably reverse-map a tap point back to its placeholder character.
+            let renderPoint = pointInRenderCoordinates(point, layout: layout)
+            if let target = attachment.linkTarget(at: renderPoint), !target.href.isEmpty {
+                let href = target.href
+                // Duokan footnote → anchored popover at the marker (not a page jump / bottom sheet).
+                if let note = FootnoteStore.text(spineIndex: layout.spineIndex, href: href) {
+                    onFootnoteTap?(note, viewRect(forRenderRect: target.rect))
+                    return
+                }
+                // 段評 comment badge → the attachment handler (which opens the review sheet).
+                // Internal-link navigation must not swallow it: the online paged reader's link
+                // handler doesn't understand review hrefs, so the tap would die there.
+                if ReaderHTMLUtilities.reviewTarget(fromHref: href) != nil {
+                    onImageAttachmentTap?(attachment)
+                    return
+                }
+                onInternalLinkTap?(href)
+                return
+            }
+            // Rasterized tables are interaction surfaces, not standalone illustrations. A tap
+            // outside a table link must not open a full-screen preview of the table bitmap.
+            if attachment.allowsPreview {
+                onImageAttachmentTap?(attachment)
+            }
+            return
+        }
+
+        guard let context = makeInteractionContext(),
+              let index = stringIndex(at: point, in: context)
+        else {
+            return
+        }
+
+        // Hit-test existing annotation first
+        if let annotation = AnnotationStore.annotationAt(
+            spineIndex: layout.spineIndex,
+            charOffset: index,
+            in: textAnnotations,
+            tolerance: 3
+        ) {
+            interactor.tappedAnnotation = annotation
+            interactor.selectionManager.setSelection(range: annotation.range, maxLength: layout.attributedString.length)
+            updateSelectionOverlay(with: context)
+            interactor.selectedTextForCopy = interactor.selectionManager.selectedText(in: layout.attributedString)
+            becomeFirstResponder()
+            presentSelectionEditMenu(at: point)
+            return
+        }
+
+        // Fall through to link detection
+        guard let href = HTMLAttributedStringBuilder.linkHref(at: index, in: layout.attributedString) else {
+            return
+        }
+
+        // A footnote whose marker is TEXT (a numeral, not the 多看 icon image)
+        // gets the same anchored popover as the image marker above. It used to
+        // fall through to `onInternalLinkTap`, which routed it up to the reader
+        // as a bottom sheet — two presentations for one concept.
+        if let note = FootnoteStore.text(spineIndex: layout.spineIndex, href: href) {
+            onFootnoteTap?(note, Self.tapAnchorRect(around: point))
+            return
+        }
+
+        onInternalLinkTap?(href)
+    }
+
+    /// A small box around the tap point, for anchoring a popover when the
+    /// marker's own rect is not to hand. Same 12pt convention the scroll
+    /// reader's `footnoteAnchor(at:)` uses, so the arrow lands identically.
+    static func tapAnchorRect(around point: CGPoint) -> CGRect {
+        let size: CGFloat = 12
+        return CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
+    }
+
+    /// Test seam for exercising the same tap path used by the gesture recognizer.
+    func debugHandleTap(at point: CGPoint) {
+        handleTap(at: point)
+    }
+
+    private func pointInRenderCoordinates(
+        _ point: CGPoint,
+        layout: CoreTextPaginator.ChapterLayout
+    ) -> CGPoint {
+        guard bounds.width > 0, bounds.height > 0 else { return point }
+        return CGPoint(
+            x: (point.x - bounds.minX) * layout.renderSize.width / bounds.width,
+            y: (point.y - bounds.minY) * layout.renderSize.height / bounds.height
+        )
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard gestureRecognizer === linkTapGesture else { return true }
+        return shouldHandleTap(at: touch.location(in: self))
+    }
+
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === selectionHandlePanGesture {
+            return interactor.selectionManager.hasSelection
+                && nearestHandle(to: selectionHandlePanGesture.location(in: self)) != nil
+        }
+        return true
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard let layout,
+              localPageIndex < layout.pageRanges.count,
+              let context = makeInteractionContext(),
+              let index = stringIndex(at: gesture.location(in: self), in: context)
+        else {
+            if gesture.state == .cancelled || gesture.state == .failed {
+                clearSelection()
+            }
+            return
+        }
+
+        switch gesture.state {
+        case .began:
+            let paragraphRange = defaultSelectionRange(around: index, in: layout.attributedString)
+            // Snap selection to nearby annotations
+            let snappedRange = AnnotationStore.expandedSelectionRange(
+                spineIndex: layout.spineIndex,
+                start: paragraphRange.location,
+                end: paragraphRange.location + paragraphRange.length,
+                in: textAnnotations,
+                tolerance: 2
+            )
+            // If selection is fully inside an existing annotation, mark it for edit
+            interactor.tappedAnnotation = AnnotationStore.annotationFullyContaining(
+                spineIndex: layout.spineIndex,
+                range: snappedRange,
+                in: textAnnotations
+            )
+            interactor.selectionManager.setSelection(range: snappedRange, maxLength: layout.attributedString.length)
+            updateSelectionOverlay(with: context)
+        case .ended:
+            updateSelectionOverlay(with: context)
+            guard interactor.selectionManager.hasSelection else { return }
+            interactor.selectedTextForCopy = interactor.selectionManager.selectedText(in: layout.attributedString)
+            // If no tapped annotation found yet, check if selection is on an annotation
+            if interactor.tappedAnnotation == nil, let selRange = interactor.selectionManager.selectedRange {
+                interactor.tappedAnnotation = AnnotationStore.annotationAt(
+                    spineIndex: layout.spineIndex,
+                    charOffset: selRange.location,
+                    in: textAnnotations,
+                    tolerance: 0
+                )
+            }
+            becomeFirstResponder()
+            let point = gesture.location(in: self)
+            presentSelectionEditMenu(at: point)
+        case .cancelled, .failed:
+            clearSelection()
+        default:
+            break
+        }
+    }
+
+    @objc private func handleSelectionHandlePan(_ gesture: UIPanGestureRecognizer) {
+        guard interactor.selectionManager.hasSelection,
+              let layout,
+              localPageIndex < layout.pageRanges.count,
+              let context = makeInteractionContext()
+        else {
+            activeDragHandle = nil
+            activeDragEndpoint = nil
+            return
+        }
+
+        let point = gesture.location(in: self)
+        switch gesture.state {
+        case .began:
+            activeDragHandle = nearestHandle(to: point)
+            activeDragEndpoint = activeDragHandle.flatMap {
+                interactor.selectionManager.endpoint(for: $0)
+            }
+        case .changed:
+            guard let activeDragEndpoint,
+                  let index = stringIndex(at: point, in: context) else { return }
+            interactor.selectionManager.updateSelection(
+                activeDragEndpoint,
+                to: index,
+                maxLength: layout.attributedString.length
+            )
+            // Snap to annotation boundaries
+            if let selRange = interactor.selectionManager.selectedRange {
+                let snapped = AnnotationStore.expandedSelectionRange(
+                    spineIndex: layout.spineIndex,
+                    start: selRange.location,
+                    end: selRange.location + selRange.length,
+                    in: textAnnotations,
+                    tolerance: 3
+                )
+                if snapped != selRange,
+                   let anchor = interactor.selectionManager.anchorIndex,
+                   let focus = interactor.selectionManager.focusIndex {
+                    let activeEndpointIsVisualStart = switch activeDragEndpoint {
+                    case .anchor: anchor <= focus
+                    case .focus: focus <= anchor
+                    }
+                    interactor.selectionManager.setSelection(range: snapped, maxLength: layout.attributedString.length)
+                    // setSelection normalizes anchor/focus. Keep the gesture attached to
+                    // the same visual boundary after annotation snapping replaces the range.
+                    self.activeDragEndpoint = activeEndpointIsVisualStart ? .anchor : .focus
+                }
+            }
+            updateSelectionOverlay(with: context)
+            interactor.selectedTextForCopy = interactor.selectionManager.selectedText(in: layout.attributedString)
+        case .ended:
+            interactor.selectedTextForCopy = interactor.selectionManager.selectedText(in: layout.attributedString)
+            if let selRange = interactor.selectionManager.selectedRange {
+                interactor.tappedAnnotation = AnnotationStore.annotationFullyContaining(
+                    spineIndex: layout.spineIndex,
+                    range: selRange,
+                    in: textAnnotations
+                )
+            }
+            becomeFirstResponder()
+            presentSelectionEditMenu(at: point)
+            activeDragHandle = nil
+            activeDragEndpoint = nil
+        case .cancelled, .failed:
+            activeDragHandle = nil
+            activeDragEndpoint = nil
+        default:
+            break
+        }
+    }
+
+    private func configureTapPriority() {
+        var current: UIView? = superview
+        while let view = current {
+            for recognizer in view.gestureRecognizers ?? [] {
+                guard recognizer !== linkTapGesture,
+                      recognizer is UITapGestureRecognizer
+                else { continue }
+                recognizer.require(toFail: linkTapGesture)
+            }
+            current = view.superview
+        }
+    }
+
+    /// Whether this touch belongs to the page's own content.
+    ///
+    /// Returning `false` drops the touch through to the reader's tap zones — page turn or
+    /// menu. So a wrong `false` here does not look like a tap bug, it looks like "the page
+    /// turned when I tapped my note". Nothing recorded which branch decided, which made
+    /// that class of report unanswerable; `trace`, because it fires on every tap and its
+    /// value is being in the flight recorder when someone says the tap did the wrong thing.
+    private func shouldHandleTap(at point: CGPoint) -> Bool {
+        func decide(_ verdict: Bool, _ because: String) -> Bool {
+            AppLogger.render("[TapTrace] shouldHandleTap=\(verdict) because=\(because)")
+            return verdict
+        }
+
+        if interactor.selectionManager.hasSelection {
+            return decide(true, "hasSelection")
+        }
+
+        // 這是 linkTapGesture 收不收這個觸控的閘門，回 false 就整個落到閱讀器的
+        // 點擊區（翻頁／選單）。筆記圓圈既不是連結也不是圖片，不在這裡宣告就永遠點不到。
+        if noteMarkerHitTargets.contains(where: { $0.rect.contains(point) }) {
+            return decide(true, "noteMarker")
+        }
+
+        if imageAttachment(at: point) != nil {
+            return decide(true, "imageAttachment")
+        }
+
+        guard let layout,
+              localPageIndex < layout.pageRanges.count,
+              let context = makeInteractionContext(),
+              let index = stringIndex(at: point, in: context),
+              HTMLAttributedStringBuilder.linkHref(at: index, in: layout.attributedString) != nil
+        else {
+            // Names which precondition failed, because "no link here" and "no layout at
+            // all" send the touch to the same place while meaning completely different
+            // things about the state of the reader.
+            let because: String
+            if layout == nil { because = "noLayout" }
+            else if localPageIndex >= (layout?.pageRanges.count ?? 0) { because = "pageOutOfRange" }
+            else if makeInteractionContext() == nil { because = "noInteractionContext" }
+            else if stringIndex(at: point, in: makeInteractionContext()!) == nil { because = "noCharacterAtPoint" }
+            else { because = "notALink" }
+            return decide(false, because)
+        }
+        return true
+    }
+
+    /// Converts an attachment rect (in the layout's render coordinate space) to this view's
+    /// coordinate space, so a popover can be anchored to an on-screen marker.
+    func viewRect(forRenderRect rect: CGRect) -> CGRect {
+        guard let layout, layout.renderSize.width > 0, layout.renderSize.height > 0 else { return rect }
+        let scaleX = bounds.width / layout.renderSize.width
+        let scaleY = bounds.height / layout.renderSize.height
+        return CGRect(
+            x: bounds.minX + rect.minX * scaleX,
+            y: bounds.minY + rect.minY * scaleY,
+            width: rect.width * scaleX,
+            height: rect.height * scaleY
+        )
+    }
+
+    private func imageAttachment(at point: CGPoint) -> CoreTextPaginator.RenderedAttachment? {
+        guard let layout,
+              localPageIndex < layout.pageRanges.count,
+              layout.renderSize.width > 0,
+              layout.renderSize.height > 0
+        else {
+            return nil
+        }
+
+        let scaleX = bounds.width / layout.renderSize.width
+        let scaleY = bounds.height / layout.renderSize.height
+        let attachments = (layout.inlineAttachments[localPageIndex] ?? [])
+            + (layout.blockAttachments[localPageIndex] ?? [])
+            + (layout.blockRenderables[localPageIndex] ?? []).compactMap(\.imageAttachment)
+
+        return attachments.first { attachment in
+            let rect = CGRect(
+                x: bounds.minX + attachment.rect.minX * scaleX,
+                y: bounds.minY + attachment.rect.minY * scaleY,
+                width: attachment.rect.width * scaleX,
+                height: attachment.rect.height * scaleY
+            )
+            return rect.insetBy(dx: -8, dy: -8).contains(point)
+        }
+    }
+
+    private func clearSelection() {
+        interactor.selectionManager.clear()
+        interactor.selectedTextForCopy = nil
+        interactor.tappedAnnotation = nil
+        activeDragHandle = nil
+        activeDragEndpoint = nil
+        interactionOverlay.clearSelection()
+        editMenuInteraction.dismissMenu()
+    }
+
+    private func defaultSelectionRange(around index: Int, in attributedString: NSAttributedString) -> NSRange {
+        guard attributedString.length > 0 else { return NSRange(location: 0, length: 0) }
+        let nsString = attributedString.string as NSString
+        var range = nsString.paragraphRange(for: NSRange(location: min(max(index, 0), attributedString.length - 1), length: 0))
+        // `character(at:)` returns a single UTF-16 code unit; for an emoji or non-BMP glyph
+        // that is a lone surrogate half (0xD800–0xDFFF), which `UnicodeScalar(_:)` maps to nil.
+        // A surrogate half is never whitespace, so treat a failed conversion as "stop trimming"
+        // rather than force-unwrapping into a crash.
+        while range.length > 0 {
+            let first = nsString.character(at: range.location)
+            guard let scalar = UnicodeScalar(first),
+                  CharacterSet.whitespacesAndNewlines.contains(scalar) else { break }
+            range.location += 1
+            range.length -= 1
+        }
+        while range.length > 0 {
+            let lastIndex = range.location + range.length - 1
+            let last = nsString.character(at: lastIndex)
+            guard let scalar = UnicodeScalar(last),
+                  CharacterSet.whitespacesAndNewlines.contains(scalar) else { break }
+            range.length -= 1
+        }
+        if range.length > 0 { return range }
+        return NSRange(location: min(max(index, 0), attributedString.length - 1), length: 1)
+    }
+
+    private func nearestHandle(to point: CGPoint) -> TextSelectionHandle? {
+        let hitRadius: CGFloat = 36
+        let start = interactionOverlay.startHandlePoint
+        let end = interactionOverlay.endHandlePoint
+        let startDistance = start.map { hypot($0.x - point.x, $0.y - point.y) } ?? .greatestFiniteMagnitude
+        let endDistance = end.map { hypot($0.x - point.x, $0.y - point.y) } ?? .greatestFiniteMagnitude
+        let best = min(startDistance, endDistance)
+        guard best <= hitRadius else { return nil }
+        return startDistance <= endDistance ? .start : .end
+    }
+
+    private func makeInteractionContext() -> InteractionContext? {
+        guard let layout,
+              localPageIndex < layout.pageRanges.count,
+              bounds.width > 0,
+              bounds.height > 0
+        else {
+            return nil
+        }
+
+        let layoutSize = CGSize(
+            width: max(1, layout.renderSize.width),
+            height: max(1, layout.renderSize.height)
+        )
+        let contentPathRect = CoreTextPaginator.coreTextContentPathRect(
+            renderSize: layoutSize,
+            contentInsets: layout.contentInsets,
+            fontSize: layout.fontSize,
+            writingMode: layout.writingMode
+        )
+        let frame = Self.frameForRendering(layout: layout, pageIndex: localPageIndex)
+        let lines = CTFrameGetLines(frame) as! [CTLine]
+        let origins: [CGPoint]
+        if layout.pageArtifacts.indices.contains(localPageIndex) {
+            origins = layout.pageArtifacts[localPageIndex].lineOrigins
+        } else {
+            var fallbackOrigins = [CGPoint](repeating: .zero, count: lines.count)
+            CTFrameGetLineOrigins(frame, CFRangeMake(0, lines.count), &fallbackOrigins)
+            origins = fallbackOrigins
+        }
+
+        return InteractionContext(
+            frame: frame,
+            lines: lines,
+            origins: origins,
+            contentPathRect: contentPathRect,
+            layoutSize: layoutSize,
+            scaleX: bounds.width / layoutSize.width,
+            scaleY: bounds.height / layoutSize.height,
+            writingMode: layout.writingMode
+        )
+    }
+
+    private func stringIndex(at point: CGPoint, in context: InteractionContext) -> Int? {
+        let canonical = CGPoint(
+            x: (point.x - bounds.minX) / context.scaleX,
+            y: (point.y - bounds.minY) / context.scaleY
+        )
+        if context.writingMode.isVertical {
+            return verticalStringIndex(atCanonicalPoint: canonical, in: context)
+        }
+        let coreY = context.layoutSize.height - canonical.y
+        guard let lineIdx = nearestLineIndex(for: coreY, in: context) else { return nil }
+
+        let line = context.lines[lineIdx]
+        let lineOrigin = context.origins[lineIdx]
+        let lineX = context.contentPathRect.minX + lineOrigin.x
+
+        // Check horizontal bounds: tap must be within the line's actual typographic width.
+        // CTLineGetStringIndexForPosition returns the nearest character even for taps far to the right,
+        // which makes blank space trigger links and blocks page-turning.
+        var lineAscent: CGFloat = 0
+        var lineDescent: CGFloat = 0
+        var lineLeading: CGFloat = 0
+        let lineWidth = CGFloat(CTLineGetTypographicBounds(line, &lineAscent, &lineDescent, &lineLeading))
+        let textEndX = lineX + lineWidth
+        // Allow small fudge for touch precision, but not the entire right margin
+        let tapTolerance: CGFloat = 10
+        guard canonical.x >= lineX - tapTolerance,
+              canonical.x <= textEndX + tapTolerance
+        else {
+            return nil
+        }
+
+        let relativeX = canonical.x - lineX
+        let index = GlyphBoundary.index(line, at: max(0, relativeX))
+        if index != kCFNotFound {
+            return max(0, index)
+        }
+
+        let range = CTLineGetStringRange(line)
+        guard range.length > 0 else { return nil }
+        if relativeX <= 0 {
+            return max(0, range.location)
+        }
+        return max(0, range.location + range.length - 1)
+    }
+
+    private func verticalStringIndex(atCanonicalPoint point: CGPoint, in context: InteractionContext) -> Int? {
+        guard let lineIdx = nearestVerticalLineIndex(forCanonicalX: point.x, in: context) else { return nil }
+        let line = context.lines[lineIdx]
+        let lineOrigin = context.origins[lineIdx]
+
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        let lineAdvance = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, nil))
+        let baselineX = context.contentPathRect.minX + lineOrigin.x
+        let x1 = baselineX - descent
+        let x2 = baselineX + ascent
+        let minX = min(x1, x2)
+        let maxX = max(x1, x2)
+        let tapTolerance: CGFloat = 10
+        guard point.x >= minX - tapTolerance,
+              point.x <= maxX + tapTolerance
+        else {
+            return nil
+        }
+
+        let lineTopY = context.layoutSize.height - (context.contentPathRect.minY + lineOrigin.y)
+        let relativeAdvance = point.y - lineTopY
+        guard relativeAdvance >= -tapTolerance,
+              relativeAdvance <= lineAdvance + tapTolerance
+        else {
+            return nil
+        }
+
+        let index = GlyphBoundary.index(line, at: max(0, min(lineAdvance, relativeAdvance)))
+        if index != kCFNotFound {
+            return max(0, index)
+        }
+
+        let range = CTLineGetStringRange(line)
+        guard range.length > 0 else { return nil }
+        if relativeAdvance <= 0 {
+            return max(0, range.location)
+        }
+        return max(0, range.location + range.length - 1)
+    }
+
+    private func nearestLineIndex(for coreY: CGFloat, in context: InteractionContext) -> Int? {
+        guard !context.lines.isEmpty else { return nil }
+
+        var bestIndex = 0
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+
+        for idx in context.lines.indices {
+            let line = context.lines[idx]
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            _ = CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+            let baselineY = context.contentPathRect.minY + context.origins[idx].y
+            let minY = baselineY - descent
+            let maxY = baselineY + ascent
+
+            if coreY >= minY && coreY <= maxY {
+                return idx
+            }
+
+            let distance: CGFloat
+            if coreY < minY {
+                distance = minY - coreY
+            } else {
+                distance = coreY - maxY
+            }
+
+            if distance < bestDistance {
+                bestDistance = distance
+                bestIndex = idx
+            }
+        }
+
+        return bestIndex
+    }
+
+    private func nearestVerticalLineIndex(forCanonicalX x: CGFloat, in context: InteractionContext) -> Int? {
+        guard !context.lines.isEmpty else { return nil }
+
+        var bestIndex: Int?
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+        let tapTolerance: CGFloat = 10
+
+        for idx in context.lines.indices {
+            let line = context.lines[idx]
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            _ = CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+            let baselineX = context.contentPathRect.minX + context.origins[idx].x
+            let x1 = baselineX - descent
+            let x2 = baselineX + ascent
+            let minX = min(x1, x2)
+            let maxX = max(x1, x2)
+
+            if x >= minX && x <= maxX {
+                return idx
+            }
+
+            let distance = x < minX ? minX - x : x - maxX
+            if distance < bestDistance {
+                bestDistance = distance
+                bestIndex = idx
+            }
+        }
+
+        guard bestDistance <= tapTolerance else { return nil }
+        return bestIndex
+    }
+
+    private func updateSelectionOverlay(with context: InteractionContext) {
+        guard let range = interactor.selectionManager.selectedRange,
+              range.length > 0
+        else {
+            interactionOverlay.clearSelection()
+            return
+        }
+
+        let rects = selectionRects(for: range, in: context)
+        #if DEBUG
+        AppLogger.render("[ANNOT-DIAG] SELECTION range=\(range) rects=\(rects)")
+        #endif
+        interactionOverlay.selectionRects = rects
+        interactionOverlay.startHandlePoint = rects.first.map { CGPoint(x: $0.minX, y: $0.minY) }
+        interactionOverlay.endHandlePoint = rects.last.map { CGPoint(x: $0.maxX, y: $0.maxY) }
+    }
+
+    private func updateAnnotationOverlay() {
+        guard let layout,
+              localPageIndex < layout.pageRanges.count,
+              let context = makeInteractionContext()
+        else {
+            for overlay in annotationOverlays.values {
+                overlay.clearSelection()
+                overlay.isHidden = true
+            }
+            noteMarkerOverlay.markers = []
+            noteMarkerHitTargets = []
+            return
+        }
+        let pageCFRange = layout.pageRanges[localPageIndex]
+        let pageRange = NSRange(location: pageCFRange.location, length: pageCFRange.length)
+
+        let layers = CoreTextAnnotationRenderer.render(
+            annotations: textAnnotations,
+            spineIndex: layout.spineIndex,
+            pageCharRange: pageRange,
+            lines: context.lines,
+            lineOrigins: context.origins,
+            contentOffset: CGPoint(x: context.contentPathRect.minX, y: context.contentPathRect.minY),
+            layoutHeight: context.layoutSize.height,
+            writingMode: context.writingMode
+        )
+
+        #if DEBUG
+        let annRanges = textAnnotations.filter { $0.spineIndex == layout.spineIndex }.map { $0.range }
+        AppLogger.render("[ANNOT-DIAG] ANNOTATION pageRange=\(pageRange) annRanges=\(annRanges) layerRects=\(layers.map { $0.rects })")
+        #endif
+
+        // Scale rects to view coordinates
+        let scaledLayers = layers.map { layer -> CoreTextAnnotationRenderer.Layer in
+            let scaledRects = layer.rects.map { rect in
+                CGRect(
+                    x: rect.minX * context.scaleX + bounds.minX,
+                    y: rect.minY * context.scaleY + bounds.minY,
+                    width: rect.width * context.scaleX,
+                    height: rect.height * context.scaleY
+                )
+            }
+            return CoreTextAnnotationRenderer.Layer(rects: scaledRects, style: layer.style, color: layer.color)
+        }
+
+        // Update or create overlay for each layer
+        var activeKeys = Set<LayerKey>()
+        for layer in scaledLayers {
+            let key = LayerKey(style: layer.style, color: layer.color)
+            activeKeys.insert(key)
+            let overlay = annotationOverlay(for: layer)
+            overlay.frame = bounds
+            overlay.apply(layer: layer, isVertical: layout.writingMode.isVertical)
+        }
+
+        // Hide unused overlays
+        for (key, overlay) in annotationOverlays where !activeKeys.contains(key) {
+            overlay.isHidden = true
+            overlay.clearSelection()
+        }
+
+        updateNoteMarkerOverlay(pageRange: pageRange, context: context)
+    }
+
+    private func updateNoteMarkerOverlay(pageRange: NSRange, context: InteractionContext) {
+        guard let layout else { return }
+        let markers = CoreTextAnnotationRenderer.noteMarkers(
+            annotations: textAnnotations,
+            spineIndex: layout.spineIndex,
+            pageCharRange: pageRange,
+            lines: context.lines,
+            lineOrigins: context.origins,
+            contentOffset: CGPoint(x: context.contentPathRect.minX, y: context.contentPathRect.minY),
+            layoutHeight: context.layoutSize.height,
+            writingMode: context.writingMode
+        )
+
+        let scaled = markers.map { marker in
+            CoreTextAnnotationRenderer.NoteMarker(
+                annotationID: marker.annotationID,
+                badgeRect: viewRect(forRenderRect: marker.badgeRect)
+            )
+        }
+
+        noteMarkerOverlay.frame = bounds
+        noteMarkerOverlay.markers = scaled
+        // 標註 overlay 是後來才 addSubview 的，會蓋在圓圈上面；每次更新後把圓圈拉回最上層。
+        bringSubviewToFront(noteMarkerOverlay)
+        noteMarkerHitTargets = scaled.map {
+            ($0.annotationID, NoteMarkerGeometry.tapRect(for: $0.badgeRect))
+        }
+    }
+
+    // MARK: - 筆記
+
+    /// 點在筆記圓圈上 → 開該標註的筆記編輯頁。回傳是否吃掉了這次點擊。
+    private func requestNoteEditFromMarker(at point: CGPoint) -> Bool {
+        guard !noteMarkerHitTargets.isEmpty else { return false }
+        guard let hit = noteMarkerHitTargets.first(where: { $0.rect.contains(point) }),
+              let annotation = textAnnotations.first(where: { $0.id == hit.annotationID })
+        else { return false }
+        postNoteEditRequest(for: annotation)
+        return true
+    }
+
+    /// 選字選單的「筆記」。已有標註就編輯它的筆記；純選取則把選取範圍送出去，
+    /// 由閱讀器補上預設標註後再開編輯頁。
+    private func requestNoteEdit() {
+        if let annotation = interactor.tappedAnnotation
+            ?? annotationCoveringSelection() {
+            postNoteEditRequest(for: annotation)
+            clearSelection()
+            return
+        }
+
+        guard let layout,
+              let range = interactor.selectionManager.selectedRange,
+              range.length > 0,
+              range.location >= 0,
+              range.location + range.length <= layout.attributedString.length
+        else { return }
+
+        guard let stored = bookRange(range) else { return }
+        let excerpt = interactor.selectedTextForCopy
+            ?? interactor.selectionManager.selectedText(in: layout.attributedString)
+            ?? ""
+        NotificationCenter.default.post(
+            name: .coreTextNoteEditRequested,
+            object: self,
+            userInfo: [
+                "request": CoreTextNoteEditRequest(
+                    position: CoreTextReadingPosition(
+                        spineIndex: layout.spineIndex,
+                        charOffset: stored.location
+                    ),
+                    length: stored.length,
+                    excerpt: excerpt.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            ]
+        )
+        clearSelection()
+    }
+
+    private func annotationCoveringSelection() -> CoreTextTextAnnotation? {
+        guard let layout,
+              let range = interactor.selectionManager.selectedRange,
+              range.length > 0
+        else { return nil }
+        return AnnotationStore.annotationFullyContaining(
+            spineIndex: layout.spineIndex,
+            range: range,
+            in: textAnnotations
+        )
+    }
+
+    private func postNoteEditRequest(for annotation: CoreTextTextAnnotation) {
+        guard let stored = bookRange(annotation.range, annotationID: annotation.id) else { return }
+        NotificationCenter.default.post(
+            name: .coreTextNoteEditRequested,
+            object: self,
+            userInfo: [
+                "request": CoreTextNoteEditRequest(
+                    position: CoreTextReadingPosition(
+                        spineIndex: annotation.spineIndex,
+                        charOffset: stored.location
+                    ),
+                    length: stored.length,
+                    excerpt: annotationExcerpt(annotation),
+                    existingNote: annotation.note ?? "",
+                    style: annotation.style,
+                    color: annotation.color
+                )
+            ]
+        )
+    }
+
+    private func annotationExcerpt(_ annotation: CoreTextTextAnnotation) -> String {
+        guard let layout else { return "" }
+        let clamped = NSIntersectionRange(
+            annotation.range,
+            NSRange(location: 0, length: layout.attributedString.length)
+        )
+        guard clamped.length > 0 else { return "" }
+        return layout.attributedString
+            .attributedSubstring(from: clamped)
+            .string
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func selectedRangeHasExactUnderline() -> Bool {
+        guard let layout,
+              let range = interactor.selectionManager.selectedRange,
+              range.length > 0
+        else { return false }
+        return textAnnotations.contains {
+            $0.spineIndex == layout.spineIndex && NSEqualRanges($0.range, range)
+        }
+    }
+
+    private func deleteTappedAnnotation() {
+        guard let annotation = interactor.tappedAnnotation,
+              let stored = bookRange(annotation.range, annotationID: annotation.id) else { return }
+
+        // 這段寫過筆記：刪掉標註等於一併丟掉筆記，必須先讓使用者選。引擎層沒有 alert，
+        // 所以只送請求，實際刪除由閱讀器在使用者回答後執行。
+        if let note = annotation.note,
+           !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            NotificationCenter.default.post(
+                name: .coreTextNoteDeleteRequested,
+                object: self,
+                userInfo: [
+                    "request": CoreTextNoteDeleteRequest(
+                        position: CoreTextReadingPosition(
+                            spineIndex: annotation.spineIndex,
+                            charOffset: stored.location
+                        ),
+                        length: stored.length,
+                        excerpt: annotationExcerpt(annotation),
+                        note: note,
+                        style: annotation.style,
+                        color: annotation.color
+                    )
+                ]
+            )
+            clearSelection()
+            return
+        }
+
+        textAnnotations.removeAll { $0.id == annotation.id }
+        updateAnnotationOverlay()
+        NotificationCenter.default.post(
+            name: .coreTextUnderlineSelectionRequested,
+            object: self,
+            userInfo: [
+                "request": CoreTextUnderlineSelectionRequest(
+                    position: CoreTextReadingPosition(
+                        spineIndex: annotation.spineIndex,
+                        charOffset: stored.location
+                    ),
+                    length: stored.length,
+                    excerpt: interactor.selectedTextForCopy ?? "",
+                    removesExistingUnderline: true,
+                    style: annotation.style,
+                    color: annotation.color
+                )
+            ]
+        )
+        clearSelection()
+    }
+
+    /// Recolours / restyles the tapped annotation in one pass. The old layer is
+    /// removed before merging the new one, otherwise both layers coexist and the
+    /// change looks like it had no effect.
+    private func updateTappedAnnotation(style: AnnotationStyle, color: AnnotationColor) {
+        guard var annotation = interactor.tappedAnnotation,
+              layout != nil,
+              let context = makeInteractionContext()
+        else { return }
+        annotation.style = style
+        annotation.color = color
+        let withoutOld = AnnotationStore.remove(annotationID: annotation.id, from: textAnnotations)
+        let (merged, _) = AnnotationStore.merge(annotation, into: withoutOld)
+        textAnnotations = merged
+        interactor.tappedAnnotation = textAnnotations.first { $0.spineIndex == annotation.spineIndex && $0.range == annotation.range }
+        updateAnnotationOverlay()
+        updateSelectionOverlay(with: context)
+        notifyAnnotationChange()
+    }
+
+    private func notifyAnnotationChange() {
+        guard let annotation = interactor.tappedAnnotation,
+              let stored = bookRange(annotation.range, annotationID: annotation.id) else { return }
+        NotificationCenter.default.post(
+            name: .coreTextUnderlineSelectionRequested,
+            object: self,
+            userInfo: [
+                "request": CoreTextUnderlineSelectionRequest(
+                    position: CoreTextReadingPosition(
+                        spineIndex: annotation.spineIndex,
+                        charOffset: stored.location
+                    ),
+                    length: stored.length,
+                    excerpt: interactor.selectedTextForCopy ?? "",
+                    removesExistingUnderline: false,
+                    style: annotation.style,
+                    color: annotation.color
+                )
+            ]
+        )
+    }
+
+    private func updatePlaybackHighlightOverlay() {
+        let s = GlobalSettings.shared
+        guard s.ttsHighlightEnabled else {
+            playbackOverlay.clearSelection()
+            playbackOverlay.boxStyle = nil
+            playbackOverlay.boxColor = nil
+            playbackOverlay.fillColor = .clear
+            playbackOverlay.isHidden = true
+            return
+        }
+        guard let layout,
+              let playbackHighlight,
+              localPageIndex < layout.pageRanges.count
+        else {
+            playbackOverlay.clearSelection()
+            playbackOverlay.isHidden = false
+            return
+        }
+
+        let pageCFRange = layout.pageRanges[localPageIndex]
+        let pageRange = NSRange(location: pageCFRange.location, length: pageCFRange.length)
+        guard pageRange.location >= 0,
+              pageRange.length > 0,
+              pageRange.location + pageRange.length <= layout.attributedString.length
+        else {
+            playbackOverlay.clearSelection()
+            playbackOverlay.isHidden = false
+            return
+        }
+
+        // Searched in chapter coordinates, restricted to this page, so the offset the
+        // reader derived from the narration unit can pick between repeated lines.
+        guard let found = playbackHighlight.displayed(in: layout).occurrence(
+            in: layout.attributedString.string as NSString,
+            searchRange: pageRange,
+            chapterIndex: layout.spineIndex
+        ) else {
+            playbackOverlay.clearSelection()
+            playbackOverlay.isHidden = false
+            return
+        }
+
+        guard let context = makeInteractionContext() else {
+            playbackOverlay.clearSelection()
+            playbackOverlay.isHidden = false
+            return
+        }
+        let rects = selectionRects(for: found, in: context)
+        Self.applyTTSPlaybackStyle(to: playbackOverlay)
+        playbackOverlay.selectionRects = rects
+        playbackOverlay.startHandlePoint = nil
+        playbackOverlay.endHandlePoint = nil
+    }
+
+    /// Reads the TTS-highlight GlobalSettings and configures an overlay's fill/box style,
+    /// or clears + hides it when the TTS highlight is disabled.
+    static func applyTTSPlaybackStyle(to overlay: InteractionOverlayView) {
+        let s = GlobalSettings.shared
+        guard s.ttsHighlightEnabled else {
+            overlay.boxStyle = nil
+            overlay.boxColor = nil
+            overlay.fillColor = .clear
+            overlay.isHidden = true
+            return
+        }
+        overlay.isHidden = false
+        if s.ttsHighlightBoxEnabled {
+            overlay.boxStyle = CoreTextDialogueBox.Style(rawValue: s.ttsHighlightBoxStyleRaw) ?? .gradientPill
+            overlay.boxColor = GlobalSettings.uiColor(rgbHex: s.ttsHighlightBoxColorHex)
+            overlay.fillColor = GlobalSettings.uiColor(rgbHex: s.ttsHighlightColorHex).withAlphaComponent(0.28)
+        } else {
+            overlay.boxStyle = nil
+            overlay.boxColor = nil
+            overlay.fillColor = GlobalSettings.uiColor(rgbHex: s.ttsHighlightColorHex).withAlphaComponent(0.28)
+        }
+    }
+
+    private func selectionRects(for range: NSRange, in context: InteractionContext) -> [CGRect] {
+        let rects = CoreTextAnnotationRenderer.rects(
+            forRange: range,
+            lines: context.lines,
+            lineOrigins: context.origins,
+            contentOffset: CGPoint(x: context.contentPathRect.minX, y: context.contentPathRect.minY),
+            layoutHeight: context.layoutSize.height,
+            writingMode: context.writingMode
+        )
+        return rects.map { rect in
+            CGRect(
+                x: rect.minX * context.scaleX + bounds.minX,
+                y: rect.minY * context.scaleY + bounds.minY,
+                width: rect.width * context.scaleX,
+                height: rect.height * context.scaleY
+            )
+        }
+    }
+
+    #if DEBUG
+    func debugStringIndex(at point: CGPoint) -> Int? {
+        guard let context = makeInteractionContext() else { return nil }
+        return stringIndex(at: point, in: context)
+    }
+
+    func debugSelectionRects(for range: NSRange) -> [CGRect] {
+        guard let context = makeInteractionContext() else { return [] }
+        return selectionRects(for: range, in: context)
+    }
+    #endif
+
+}
+
+/// Single-page ViewController wrapping CoreTextPageView, for use with UIPageViewController.
+final class CoreTextPageViewController: UIViewController, ReaderBookmarkRibbonHosting {
+    private let pageView = CoreTextPageView()
+    private(set) var globalPageIndex: Int = 0
+    private(set) var coreTextReadingPosition: CoreTextReadingPosition?
+    /// Composite engines have their own page sequence. Rebase presentation
+    /// identity only; the displayed local page and source position stay intact.
+    func rebaseGlobalPageIndex(to index: Int) { globalPageIndex = index }
+    var onInternalLinkTap: ((String) -> Void)? {
+        didSet {
+            if isViewLoaded {
+                pageView.onInternalLinkTap = onInternalLinkTap
+            }
+        }
+    }
+    /// VoiceOver-originated reader commands (menu, page turn, TOC) — see
+    /// `CoreTextPageView.onAccessibilityAction`.
+    var onAccessibilityAction: ((TouchAction) -> Void)? {
+        didSet {
+            if isViewLoaded {
+                pageView.onAccessibilityAction = onAccessibilityAction
+            }
+        }
+    }
+    var accessibilityUsesRTLPageOrder = false {
+        didSet {
+            if isViewLoaded {
+                pageView.accessibilityUsesRTLPageOrder = accessibilityUsesRTLPageOrder
+            }
+        }
+    }
+
+    /// 頁眉／頁腳 for the page this controller shows. Settable after `configure`
+    /// so a clock tick or a battery change can refresh the bars without touching
+    /// the layout.
+    var pageBars: ReaderPageBars? {
+        didSet {
+            if isViewLoaded {
+                pageView.pageBars = pageBars
+            }
+        }
+    }
+
+    private var pendingLayout: CoreTextPaginator.ChapterLayout?
+    private var pendingLocalPage: Int = 0
+    private var pendingPrerenderedPage: PrerenderedPageSource?
+    private var pendingFallbackColor: UIColor = .systemBackground
+    private var pendingPlaybackHighlight: ReaderPlaybackHighlight?
+    private var pendingTextAnnotations: [CoreTextTextAnnotation] = []
+
+    /// The layout/page this controller is currently showing, retained so inline video views can be
+    /// (re)positioned and re-bound to their live players whenever the page is rebuilt.
+    private var currentLayout: CoreTextPaginator.ChapterLayout?
+    private var currentLocalPage: Int = 0
+    /// Embedded inline video player views for the current page, keyed by media source href.
+    private var inlineVideoControllers: [String: AVPlayerViewController] = [:]
+
+    func configure(
+        layout: CoreTextPaginator.ChapterLayout,
+        localPage: Int,
+        globalPage: Int,
+        readingPosition: CoreTextReadingPosition? = nil,
+        fallbackBackgroundColor: UIColor = .systemBackground,
+        prerenderedPage: PrerenderedPageSource? = nil
+    ) {
+        self.globalPageIndex = globalPage
+        self.coreTextReadingPosition = readingPosition
+        self.pendingFallbackColor = fallbackBackgroundColor
+        self.currentLayout = layout
+        self.currentLocalPage = localPage
+        if isViewLoaded {
+            pageView.onInternalLinkTap = onInternalLinkTap
+            pageView.onAccessibilityAction = onAccessibilityAction
+            pageView.accessibilityUsesRTLPageOrder = accessibilityUsesRTLPageOrder
+            pageView.pageBars = pageBars
+            installImageTapHandler()
+            pageView.configure(
+                layout: layout,
+                pageIndex: localPage,
+                fallbackBackgroundColor: fallbackBackgroundColor,
+                prerenderedPage: prerenderedPage
+            )
+            pageView.setTextAnnotations(pendingTextAnnotations)
+            pageView.setPlaybackHighlight(pendingPlaybackHighlight)
+            syncInlineVideos()
+        } else {
+            pendingLayout = layout
+            pendingLocalPage = localPage
+            pendingPrerenderedPage = prerenderedPage
+        }
+    }
+
+    func setPlaybackHighlight(_ highlight: ReaderPlaybackHighlight?) {
+        pendingPlaybackHighlight = highlight
+        guard isViewLoaded else { return }
+        pageView.setPlaybackHighlight(highlight)
+    }
+
+    // MARK: ReaderBookmarkRibbonHosting
+
+    func beginInteractiveBookmarkRibbon() {
+        pageView.beginInteractiveBookmarkRibbon()
+    }
+
+    func setInteractiveBookmarkRibbonReveal(_ reveal: CGFloat) {
+        pageView.setInteractiveBookmarkRibbonReveal(reveal)
+    }
+
+    func endInteractiveBookmarkRibbon(isBookmarked: Bool) {
+        pageView.endInteractiveBookmarkRibbon(isBookmarked: isBookmarked)
+    }
+
+    func setTextAnnotations(_ annotations: [CoreTextTextAnnotation]) {
+        pendingTextAnnotations = annotations
+        guard isViewLoaded else { return }
+        pageView.setTextAnnotations(annotations)
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        pageView.frame = view.bounds
+        pageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        pageView.onInternalLinkTap = onInternalLinkTap
+        pageView.onAccessibilityAction = onAccessibilityAction
+        pageView.accessibilityUsesRTLPageOrder = accessibilityUsesRTLPageOrder
+        installImageTapHandler()
+        pageView.pageBars = pageBars
+        view.addSubview(pageView)
+        if let layout = pendingLayout {
+            pageView.configure(
+                layout: layout,
+                pageIndex: pendingLocalPage,
+                fallbackBackgroundColor: pendingFallbackColor,
+                prerenderedPage: pendingPrerenderedPage
+            )
+            pageView.setTextAnnotations(pendingTextAnnotations)
+            pageView.setPlaybackHighlight(pendingPlaybackHighlight)
+            pendingLayout = nil
+            pendingPrerenderedPage = nil
+            syncInlineVideos()
+        }
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Keep embedded inline video views aligned with their (bounds-relative) attachment rects.
+        repositionInlineVideos()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Move VoiceOver to the page that just became visible; otherwise a page turn
+        // leaves focus on the previous (now offscreen) page and reads nothing.
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .screenChanged, argument: pageView)
+    }
+
+    private func installImageTapHandler() {
+        pageView.onFootnoteTap = { [weak self] text, sourceRect in
+            self?.presentFootnotePopover(text: text, sourceRect: sourceRect)
+        }
+        pageView.onImageAttachmentTap = { [weak self] attachment in
+            guard let self else { return }
+            if let media = attachment.mediaAttachment {
+                if media.kind == .video {
+                    // Inline, native, background-continuing playback — see syncInlineVideos.
+                    self.startInlineVideo(media: media)
+                } else {
+                    self.presentEPUBMedia(media)
+                }
+            } else if let href = attachment.linkHref,
+               let target = ReaderHTMLUtilities.reviewTarget(fromHref: href) {
+                self.presentReviewSheet(target: target)
+            } else {
+                self.presentImagePreview(for: attachment)
+            }
+        }
+    }
+
+    // MARK: - Inline video
+
+    /// Video attachments on the current page, paired with their on-page rect.
+    private func currentVideoAttachments() -> [(media: EPUBMediaAttachment, rect: CGRect)] {
+        guard let layout = currentLayout else { return [] }
+        let attachments = (layout.inlineAttachments[currentLocalPage] ?? [])
+            + (layout.blockAttachments[currentLocalPage] ?? [])
+        return attachments.compactMap { attachment in
+            guard let media = attachment.mediaAttachment, media.kind == .video else { return nil }
+            return (media, attachment.rect)
+        }
+    }
+
+    /// Reconciles embedded inline video views with the videos on the current page. A live player is only
+    /// embedded once the user has started it (`EPUBVideoPlaybackManager.isActive`); until then the page
+    /// shows the drawn poster placeholder and a tap starts playback. Views for videos no longer on this
+    /// page are removed, but their players are left running in the manager (background audio across pages).
+    private func syncInlineVideos() {
+        let videos = currentVideoAttachments()
+        let activeKeys = Set(videos.map(\.media.sourceHref))
+        for (key, controller) in inlineVideoControllers where !activeKeys.contains(key) {
+            detachVideoController(key: key, controller: controller)
+        }
+        for video in videos where EPUBVideoPlaybackManager.shared.isActive(video.media) {
+            embedInlineVideo(media: video.media, rect: video.rect)
+        }
+    }
+
+    private func startInlineVideo(media: EPUBMediaAttachment) {
+        guard let rect = currentVideoAttachments().first(where: { $0.media.sourceHref == media.sourceHref })?.rect else { return }
+        embedInlineVideo(media: media, rect: rect)
+    }
+
+    private func embedInlineVideo(media: EPUBMediaAttachment, rect: CGRect) {
+        if let existing = inlineVideoControllers[media.sourceHref] {
+            existing.view.frame = rect
+            return
+        }
+        let controller = AVPlayerViewController()
+        controller.view.frame = rect
+        controller.view.backgroundColor = .black
+        controller.videoGravity = .resizeAspect
+        controller.allowsPictureInPicturePlayback = true
+        addChild(controller)
+        view.addSubview(controller.view)
+        controller.didMove(toParent: self)
+        inlineVideoControllers[media.sourceHref] = controller
+
+        // Bind the persistent player (resolving/extracting the URL on first use) and start playing. On a
+        // page revisit the manager already holds a live, playing player, so the picture resumes in sync.
+        let startedFresh = !EPUBVideoPlaybackManager.shared.isActive(media)
+        Task { @MainActor [weak self, weak controller] in
+            guard let player = await EPUBVideoPlaybackManager.shared.player(for: media) else {
+                if let self, let controller { self.detachVideoController(key: media.sourceHref, controller: controller) }
+                return
+            }
+            controller?.player = player
+            if startedFresh { player.play() }
+        }
+    }
+
+    private func repositionInlineVideos() {
+        for video in currentVideoAttachments() {
+            inlineVideoControllers[video.media.sourceHref]?.view.frame = video.rect
+        }
+    }
+
+    private func detachVideoController(key: String, controller: AVPlayerViewController) {
+        // Detach the view only — the AVPlayer stays alive in EPUBVideoPlaybackManager so audio keeps
+        // playing after the page scrolls away.
+        controller.willMove(toParent: nil)
+        controller.view.removeFromSuperview()
+        controller.removeFromParent()
+        controller.player = nil
+        inlineVideoControllers[key] = nil
+    }
+
+    private func presentEPUBMedia(_ media: EPUBMediaAttachment) {
+        let controller = UIHostingController(rootView: EPUBMediaPlayerView(media: media))
+        // Play in a contained sheet rather than forcing fullscreen. AVKit's own expand control
+        // (top-left arrows) still lets the user enlarge to fullscreen on demand.
+        controller.modalPresentationStyle = .pageSheet
+        if let sheet = controller.sheetPresentationController {
+            sheet.detents = media.kind == .video ? [.medium(), .large()] : [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(controller, animated: true)
+    }
+
+    private func presentImagePreview(for attachment: CoreTextPaginator.RenderedAttachment) {
+        let controller = CoreTextImagePreviewController(attachment: attachment)
+        controller.modalPresentationStyle = .fullScreen
+        present(controller, animated: true)
+    }
+
+    /// Presents a duokan footnote as an arrow popover anchored to its marker (multi-看 style),
+    /// keeping the reader in place instead of jumping to the chapter tail.
+    private func presentFootnotePopover(text: String, sourceRect: CGRect) {
+        FootnotePopoverHost.present(
+            text: text,
+            from: self,
+            sourceView: pageView,
+            sourceRect: sourceRect
+        )
+    }
+
+    /// Presents the book source's paragraph-review (段評) web page in a bottom sheet.
+    ///
+    /// Some sources don't publish a review URL — they publish a jsLib call that builds one at tap
+    /// time (同人小说网 signs it with the user's shared token). Those resolve through the source's
+    /// runtime first; the failure is reported rather than swallowed, because a bubble that does
+    /// nothing when tapped is indistinguishable from a broken reader.
+    private func presentReviewSheet(target: ReaderHTMLUtilities.ReviewTarget) {
+        guard !target.requiresSourceJS else {
+            Task { @MainActor in
+                do {
+                    let resolved = try await LegadoReviewActionRunner.shared.resolve(target)
+                    self.presentReviewSheet(target: resolved)
+                } catch {
+                    self.presentReviewFailure(error)
+                }
+            }
+            return
+        }
+        weak var weakHost: UIViewController?
+        let view = LegadoReviewBrowserView(target: target) { _ in
+            weakHost?.dismiss(animated: true)
+        }
+        let host = UIHostingController(rootView: view)
+        weakHost = host
+        if let sheet = host.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(host, animated: true)
+    }
+
+    private func presentReviewFailure(_ error: Error) {
+        let alert = UIAlertController(
+            title: localized("段評"),
+            message: error.localizedDescription,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: localized("好"), style: .default))
+        present(alert, animated: true)
+    }
+}
+
+extension CoreTextPageViewController: PageIndexProviding {}
+
+final class CoreTextImagePreviewController: UIViewController, UIScrollViewDelegate {
+    private let attachment: CoreTextPaginator.RenderedAttachment
+    private let scrollView = UIScrollView()
+    private let imageView = UIImageView()
+
+    init(attachment: CoreTextPaginator.RenderedAttachment) {
+        self.attachment = attachment
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationCapturesStatusBarAppearance = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var prefersStatusBarHidden: Bool { true }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+
+        scrollView.frame = view.bounds
+        scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scrollView.delegate = self
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = 5
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
+        view.addSubview(scrollView)
+
+        imageView.image = attachment.image
+        imageView.contentMode = .scaleAspectFit
+        imageView.isAccessibilityElement = true
+        imageView.accessibilityLabel = attachment.alt ?? attachment.sourceHref ?? "Image"
+        scrollView.addSubview(imageView)
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        closeButton.tintColor = .white
+        closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.45)
+        closeButton.layer.cornerRadius = 18
+        closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+        view.addSubview(closeButton)
+
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            closeButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 36),
+            closeButton.heightAnchor.constraint(equalToConstant: 36),
+        ])
+
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutImageView()
+    }
+
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        imageView
+    }
+
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        centerImageView()
+    }
+
+    private func layoutImageView() {
+        let boundsSize = scrollView.bounds.size
+        guard boundsSize.width > 0, boundsSize.height > 0 else { return }
+        let imageSize = attachment.image.size
+        let scale = min(
+            boundsSize.width / max(imageSize.width, 1),
+            boundsSize.height / max(imageSize.height, 1)
+        )
+        let fittedSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        imageView.frame = CGRect(origin: .zero, size: fittedSize)
+        scrollView.contentSize = fittedSize
+        centerImageView()
+    }
+
+    private func centerImageView() {
+        let boundsSize = scrollView.bounds.size
+        let frame = imageView.frame
+        let x = max((boundsSize.width - frame.width) / 2, 0)
+        let y = max((boundsSize.height - frame.height) / 2, 0)
+        imageView.center = CGPoint(
+            x: frame.width / 2 + x,
+            y: frame.height / 2 + y
+        )
+    }
+
+    @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+        if scrollView.zoomScale > scrollView.minimumZoomScale {
+            scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+            return
+        }
+
+        let point = recognizer.location(in: imageView)
+        let zoomScale = min(scrollView.maximumZoomScale, 2.5)
+        let width = scrollView.bounds.width / zoomScale
+        let height = scrollView.bounds.height / zoomScale
+        let rect = CGRect(
+            x: point.x - width / 2,
+            y: point.y - height / 2,
+            width: width,
+            height: height
+        )
+        scrollView.zoom(to: rect, animated: true)
+    }
+
+    @objc private func close() {
+        dismiss(animated: true)
+    }
+}
+extension CoreTextPageViewController: CoreTextReadingPositionProviding {}
+
+/// Mirrored back of the same logical page for UIKit's double-sided curl.
+final class PageBackViewController: UIViewController {
+    let virtualIndex: Int
+    let logicalPageIndex: Int
+    let globalPageIndex: Int
+    let coreTextReadingPosition: CoreTextReadingPosition?
+
+    private let pageBackgroundColor: UIColor
+    private let renderedPageImage: UIImage?
+    private let imageView = UIImageView()
+
+    init(
+        virtualIndex: Int,
+        logicalPageIndex: Int,
+        globalPageIndex: Int,
+        backgroundColor: UIColor,
+        renderedPageImage: UIImage?,
+        readingPosition: CoreTextReadingPosition? = nil
+    ) {
+        self.virtualIndex = virtualIndex
+        self.logicalPageIndex = logicalPageIndex
+        self.globalPageIndex = globalPageIndex
+        self.coreTextReadingPosition = readingPosition
+        self.pageBackgroundColor = backgroundColor
+        self.renderedPageImage = renderedPageImage
+        super.init(nibName: nil, bundle: nil)
+        view.backgroundColor = backgroundColor
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) not used")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = pageBackgroundColor
+        view.isOpaque = true
+
+        if let renderedPageImage {
+            imageView.image = renderedPageImage
+            imageView.contentMode = .scaleToFill
+            imageView.clipsToBounds = true
+            imageView.frame = view.bounds
+            imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            imageView.transform = CGAffineTransform(scaleX: -1, y: 1)
+            view.addSubview(imageView)
+        }
+
+        view.accessibilityElementsHidden = true
+    }
+}
+
+extension PageBackViewController: PageIndexProviding {}
+extension PageBackViewController: CoreTextReadingPositionProviding {}
+
+/// Placeholder ViewController shown when a chapter's layout has not yet been computed (displays chapter title + loading indicator).
+final class PlaceholderPageViewController: UIViewController {
+    private let titleLabel = UILabel()
+    private let spinner = UIActivityIndicatorView(style: .medium)
+    private(set) var globalPageIndex: Int
+    private(set) var coreTextReadingPosition: CoreTextReadingPosition?
+    func rebaseGlobalPageIndex(to index: Int) { globalPageIndex = index }
+    /// VoiceOver-originated reader commands — see `configureAccessibility`.
+    var onAccessibilityAction: ((TouchAction) -> Void)?
+
+    private let themeBackgroundColor: UIColor
+    private let themeTextColor: UIColor
+    /// The reader background artwork, when one is set. A laid-out page draws it
+    /// itself (`CoreTextPageView.draw`), so without it here the 載入中 page was the
+    /// one surface in the book still painted a flat colour.
+    private let readerBackgroundImage: UIImage?
+
+    init(
+        chapterTitle: String = "",
+        globalPage: Int = 0,
+        readingPosition: CoreTextReadingPosition? = nil,
+        themeBackgroundColor: UIColor = .systemBackground,
+        themeTextColor: UIColor = .label,
+        readerBackgroundImage: UIImage? = nil
+    ) {
+        self.globalPageIndex = globalPage
+        self.coreTextReadingPosition = readingPosition
+        self.themeBackgroundColor = themeBackgroundColor
+        self.themeTextColor = themeTextColor
+        self.readerBackgroundImage = readerBackgroundImage
+        super.init(nibName: nil, bundle: nil)
+        titleLabel.text = chapterTitle
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) not used")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = themeBackgroundColor
+        installBackgroundImageIfNeeded()
+
+        titleLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        titleLabel.textColor = themeTextColor.withAlphaComponent(0.5)
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        spinner.color = themeTextColor.withAlphaComponent(0.6)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(titleLabel)
+        view.addSubview(spinner)
+
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            titleLabel.topAnchor.constraint(equalTo: spinner.bottomAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+        ])
+        spinner.startAnimating()
+        configureAccessibility()
+    }
+
+    /// Aspect-fill and centred, matching `CoreTextPageView.backgroundImageRect`
+    /// exactly so the artwork does not jump when the real page replaces this one.
+    private func installBackgroundImageIfNeeded() {
+        guard let readerBackgroundImage else { return }
+        let imageView = UIImageView(image: readerBackgroundImage)
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isAccessibilityElement = false
+        view.addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            imageView.topAnchor.constraint(equalTo: view.topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+    }
+
+    /// Read as one element so VoiceOver announces "<chapter> 載入中…" instead of
+    /// landing on a silent spinner, and keep the reader commands reachable — a
+    /// blind user must not be stranded on a loading page with no way back to the
+    /// toolbar. Mirrors `CoreTextPageView`'s accessibility contract.
+    private func configureAccessibility() {
+        view.isAccessibilityElement = true
+        view.accessibilityTraits = .staticText
+        let title = titleLabel.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let loading = localized("載入中…")
+        view.accessibilityLabel = title.isEmpty ? loading : "\(title)，\(loading)"
+        view.accessibilityHint = localized("點兩下展開閱讀工具，三指左右滑動翻頁")
+        view.accessibilityCustomActions = [
+            accessibilityAction(named: localized("選單"), action: .toggleMenu),
+            accessibilityAction(named: localized("目錄"), action: .tableOfContents),
+        ]
+    }
+
+    private func accessibilityAction(
+        named name: String,
+        action: TouchAction
+    ) -> UIAccessibilityCustomAction {
+        UIAccessibilityCustomAction(name: name) { [weak self] _ in
+            guard let handler = self?.onAccessibilityAction else { return false }
+            handler(action)
+            return true
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .screenChanged, argument: view)
+    }
+}
+
+extension PlaceholderPageViewController: PageIndexProviding {}
+extension PlaceholderPageViewController: CoreTextReadingPositionProviding {}

@@ -1,0 +1,305 @@
+import YueduCoreText
+import SwiftUI
+import UIKit
+
+extension ReaderView {
+
+    // MARK: - Continuous reading (all text sources)
+    @ViewBuilder
+    var scrollBody: some View {
+        if let scrollEngine = epubRenderer.scrollEngine {
+            let initialPos = computeScrollInitialPosition()
+            CoreTextScrollHostView(
+                engine: scrollEngine,
+                axis: scrollAxis,
+                horizontalInset: effectivePageMarginH,
+                verticalInset: scrollAxis.isHorizontalRTL
+                    ? ReaderLayoutMetrics.topInset(safeTop: effectiveReaderSafeTop)
+                    : readerConfig.pageMarginV,
+                bottomMargin: scrollAxis.isHorizontalRTL
+                    ? ReaderLayoutMetrics.bottomInset(
+                        safeBottom: 0,
+                        footerBottomPadding: readerConfig.footerBottomPadding,
+                        footerTextGap: readerConfig.footerTextGap
+                      )
+                    : 0,
+                barInsets: scrollAxis.isHorizontalRTL ? .zero : readerScrollBarInsets,
+                autoScrollHandle: autoScrollHandle,
+                backgroundColor: readerScrollBackgroundColor,
+                initialChapter: initialPos.chapter,
+                initialCharOffset: initialPos.charOffset,
+                navigationRequest: scrollNavigationRequest,
+                playbackHighlight: activePlaybackHighlight,
+                textAnnotations: coreTextTextAnnotations,
+                visibleRefreshCommit: epubRenderer.pendingVisibleRefreshCommit,
+                onVisibleRefreshFinished: { transactionID, outcome in
+                    epubRenderer.finishVisibleRefresh(
+                        transactionID: transactionID,
+                        outcome: outcome
+                    )
+                },
+                onTap: { toggleReaderChrome() },
+                onUserScrollBegan: { hideReaderChromeForPageTurn() },
+                onProgressCommit: { position in
+                    guard ReaderProgressSyncPolicy.canPublishIndexPosition(
+                        isTXT: book?.resolvedPipelineKind == .txt, indexReady: txtIndexReady
+                    ) else { return }
+                    if pendingScrollJumpTarget != nil { pendingScrollJumpTarget = nil }
+                    let change: ReaderChapterPresentationState.Change?
+                    if usesSessionLocalScrollProgress {
+                        change = chapterPresentation.commitScrollChapter(position.spineIndex,
+                            controlsVisible: showBars || showTOC || showTTSPanel || showAIAssistantPanel)
+                    } else {
+                        change = nil
+                        scrollVisibleChapter = position.spineIndex
+                        currentChapterIndex = position.spineIndex
+                    }
+                    moveReaderSession(to: position, source: .scrollCommit)
+                    if change?.any == true { handleReaderPositionChangedForTTS() }
+                    if change?.visible == true, let session = activePublicationSession {
+                        Task { await backgroundAudioCoordinator.update(session: session, chapterIndex: position.spineIndex) }
+                    }
+                    // Persist progress on every settled gesture as before. Only
+                    // broad UI invalidation is omitted; bars observe the session.
+                    let pct = epubRenderer.engine?.totalProgress(forSpine: position.spineIndex, charOffset: position.charOffset) ?? 0
+                    store.updatePosition(bookId: bookId, position: pct,
+                                         notifyLibraryViews: !usesSessionLocalScrollProgress)
+                },
+                onInternalLinkTap: { href in
+                    if let target = ReaderHTMLUtilities.reviewTarget(fromHref: href) {
+                        // Sources that build their review URL in jsLib (同人小说网) resolve through
+                        // their own runtime first; `reviewTarget` only ever holds a real URL.
+                        guard target.requiresSourceJS else {
+                            reviewTarget = target
+                            return
+                        }
+                        Task { @MainActor in
+                            reviewTarget = try? await LegadoReviewActionRunner.shared.resolve(target)
+                        }
+                        return
+                    }
+                    // Footnotes never reach here: `CoreTextCollectionScrollViewController`
+                    // intercepts them at the tap and presents the anchored popover,
+                    // where the marker's rect is known.
+                    Task {
+                        guard let targetPage = await epubRenderer.resolveInternalLink(href, fromSpineIndex: currentChapterIndex),
+                              let pagedEngine = epubRenderer.engine else { return }
+                        let (spine, charOffset) = pagedEngine.charOffset(forPage: targetPage)
+                        await MainActor.run {
+                            let position = CoreTextReadingPosition(spineIndex: spine, charOffset: charOffset)
+                            moveReaderSession(
+                                to: position,
+                                source: .internalLink,
+                                pageIndex: targetPage,
+                                totalPages: pagedEngine.totalPages
+                            )
+                            currentChapterIndex = spine
+                            scrollVisibleChapter = spine
+                            pendingScrollJumpTarget = position
+                            requestScrollNavigation(to: position)
+                        }
+                    }
+                },
+                onChapterContentRequired: { chapterIndex in
+                    ensureChapterReady(chapterIndex: chapterIndex)
+                },
+            )
+            .id(ObjectIdentifier(scrollEngine))
+            .background(readerSurfaceBackground)
+            .ignoresSafeArea()
+        } else {
+            legacyScrollBody
+        }
+    }
+
+    func requestScrollNavigation(to position: CoreTextReadingPosition) {
+        scrollNavigationVersion &+= 1
+        scrollNavigationRequest = ReaderScrollNavigationRequest(
+            version: scrollNavigationVersion,
+            position: position
+        )
+    }
+
+    var usesSessionLocalScrollProgress: Bool {
+        ReaderProgressSyncPolicy.usesSessionLocalScrollProgress(
+            isScrollMode: effectiveScrollMode,
+            axis: scrollAxis, hasScrollEngine: epubRenderer.scrollEngine != nil
+        )
+    }
+
+    /// The session owns the canonical character position in every rendering mode.
+    /// A pending target is used only before that session has been constructed.
+    func computeScrollInitialPosition() -> (chapter: Int, charOffset: Int) {
+        if let position = readerSessionCoordinator?.state.location.coreTextPosition {
+            return (position.spineIndex, position.charOffset)
+        }
+        if let target = pendingScrollJumpTarget {
+            return (target.spineIndex, target.charOffset)
+        }
+        return (max(0, currentChapterIndex), 0)
+    }
+
+    var effectiveWritingMode: ReaderWritingMode {
+        guard isVerticalEPUB || book?.allowsVerticalWritingMode == true else {
+            return .horizontal
+        }
+        return isVerticalEPUB ? .verticalRTL : settings.readerWritingMode
+    }
+
+    var effectiveScrollMode: Bool {
+        settings.scrollMode
+    }
+
+    var scrollAxis: CoreTextScrollAxis {
+        effectiveWritingMode.isVertical ? .horizontalRTL : .vertical
+    }
+
+    var legacyScrollBody: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(chapters.enumerated()), id: \.offset) { ci, chapter in
+                        // Chapter title honours the reader's 章節標題樣式 (font /
+                        // weight / visibility) instead of a hardcoded serif bold,
+                        // matching the CoreText paths. The Group keeps the scroll
+                        // anchor alive even when the title itself is hidden —
+                        // `proxy.scrollTo("chapter_\(ci)")` targets this id.
+                        Group {
+                            if readerConfig.chapterTitleStyle.visible {
+                                Text(chapter.title.converted(to: settings.textConversion))
+                                    .font(Font(UserReaderFontResolver.titleFont(
+                                        size: readerConfig.chapterTitleStyle.size,
+                                        weight: readerConfig.chapterTitleStyle.weight,
+                                        postScriptName: readerConfig.chapterTitleStyle.nameFontName()
+                                    )))
+                                    .foregroundColor(readerTheme.textColor)
+                                    .padding(.top, 80)
+                                    .padding(.horizontal, 24)
+                                    .padding(.bottom, 20)
+                            }
+                        }
+                        .id("chapter_\(ci)")
+                        .onAppear { scrollVisibleChapter = ci }
+
+                        if chapter.content.isEmpty && book?.isOnline == true {
+                            VStack(spacing: 16) {
+                                ProgressView()
+                                Text(localized("載入章節中…"))
+                                    .font(DSFont.fixed(size: fontSize - 2, design: .serif))
+                                    .foregroundColor(readerTheme.textColor.opacity(0.6))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                            .onAppear { ensureChapterReady(chapterIndex: ci) }
+                        } else {
+                            let cleaned = chapter.content
+                            let paragraphs = cleaned.converted(to: settings.textConversion)
+                                .components(separatedBy: "\n").filter { !$0.isEmpty }
+                            ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, para in
+                                Text(para)
+                                    .font(DSFont.fixed(size: fontSize, design: .serif))
+                                    .foregroundColor(readerTheme.textColor)
+                                    .kerning(readerConfig.letterSpacing)
+                                    .lineSpacing(readerConfig.lineSpacing)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 24)
+                                    .padding(.bottom, readerConfig.paragraphSpacing)
+                            }
+                            Color.clear.frame(height: max(0, 48 - readerConfig.paragraphSpacing)).clipped()
+                        }
+
+                        Divider()
+                            .padding(.horizontal, 24)
+                            .opacity(0.25)
+                    }
+                    Color.clear.frame(height: 80)
+                }
+            }
+            .softScrollEdges()
+            .onAppear {
+                if scrollVisibleChapter > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        proxy.scrollTo("chapter_\(scrollVisibleChapter)", anchor: .top)
+                    }
+                }
+            }
+        }
+        .background(readerSurfaceBackground)
+        .contentShape(Rectangle())
+        .onTapGesture { toggleReaderChrome() }
+    }
+
+    func goToPrevPage() {
+        guard currentPage > 0 else { return }
+        autoReader.resetReveal()
+        issuePageTurn(to: previousReaderPage(before: currentPage))
+    }
+
+    /// 自動閱讀's page advance: instant, and it reports the end of the book so the
+    /// mode can end itself.
+    @discardableResult
+    func advanceAutoReadPage() -> Bool {
+        let maxPage: Int
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            maxPage = engine.totalPages - 1
+        } else {
+            maxPage = allPages.count - 1
+        }
+        guard currentPage < maxPage else { return false }
+        issuePageTurn(to: nextReaderPage(after: currentPage, maxPage: maxPage), animated: false)
+        return true
+    }
+
+    func goToNextPage() {
+        let maxPage: Int
+        if let engine = epubRenderer.engine, usesCoreTextEPUB {
+            maxPage = engine.totalPages - 1
+        } else {
+            maxPage = allPages.count - 1
+        }
+        guard currentPage < maxPage else { return }
+        autoReader.resetReveal()
+        issuePageTurn(to: nextReaderPage(after: currentPage, maxPage: maxPage))
+    }
+
+    /// Phase-2 intent channel: page turns are explicit one-shot commands consumed
+    /// by the paged executor (see ReaderPageTurnCommand). `currentPage` is still
+    /// written immediately — as display state and as the accumulation baseline for
+    /// rapid-tap bursts — but the executor no longer treats binding drift as an
+    /// instruction, so this write can never trigger a correction transition.
+    ///
+    /// The command carries the turn's absolute position (`(spineIndex, charOffset)`)
+    /// alongside the page index it was computed against. Page indices only exist
+    /// inside one pagination; resolving the turn against live layout at execution
+    /// time keeps it anchored to content across renumbering (CLAUDE.md: positions
+    /// are (spineIndex, charOffset), never a global page index).
+    /// - Parameter animated: overrides the reader's own page-turn animation.
+    ///   自動閱讀 passes `false`: its curtain *is* the animation, and running the
+    ///   reader's 仿真／覆蓋／滑動 underneath it would be two transitions at once —
+    ///   legado bypasses its `PageDelegate` for the same reason.
+    func issuePageTurn(to targetPage: Int, animated: Bool? = nil) {
+        currentPage = targetPage
+        pageTurnVersion &+= 1
+        pageTurnCommand = ReaderPageTurnCommand(
+            target: targetPage,
+            targetPosition: resolvedTargetPosition(forPage: targetPage),
+            animated: animated ?? (effectivePageTurnStyle != .none),
+            version: pageTurnVersion
+        )
+    }
+
+    /// Resolves a page index to its absolute position. `nil` when the engine
+    /// isn't ready or the chapter has no layout yet — the executor then falls
+    /// back to the raw page index, matching the pre-position behavior while a
+    /// chapter is still paginating.
+    private func resolvedTargetPosition(forPage page: Int) -> CoreTextReadingPosition? {
+        guard let engine = epubRenderer.engine else { return nil }
+        let clamped = max(0, min(page, max(engine.totalPages - 1, 0)))
+        let (spineIndex, charOffset) = engine.charOffset(forPage: clamped)
+        guard engine.chapterPagination(forSpine: spineIndex, charOffset: charOffset) != nil else {
+            return nil
+        }
+        return CoreTextReadingPosition(spineIndex: spineIndex, charOffset: charOffset)
+    }
+
+}
