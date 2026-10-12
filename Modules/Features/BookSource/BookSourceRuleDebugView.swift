@@ -42,7 +42,7 @@ struct BookSourceRuleDebugView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                .background(Color(.systemGray6))
+                .background(DSColor.neutralControlFill)
                 .onChange(of: selectedTab) { _, _ in engine.clear() }
 
                 // Input area
@@ -72,7 +72,7 @@ struct BookSourceRuleDebugView: View {
                             engine.clear()
                         } label: {
                             Label(localized("清空"), systemImage: "trash")
-                                .foregroundColor(.red)
+                                .foregroundColor(DSColor.destructive)
                         }
                         .buttonStyle(.bordered)
 
@@ -86,7 +86,7 @@ struct BookSourceRuleDebugView: View {
                                     .padding(.horizontal, 12)
                             } else {
                                 Label(localized("執行"), systemImage: "play.fill")
-                                    .foregroundColor(.white)
+                                    .foregroundColor(DSColor.textOnAccent)
                                     .padding(.horizontal, 12)
                             }
                         }
@@ -96,7 +96,7 @@ struct BookSourceRuleDebugView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)
-                .background(Color(.systemGray6))
+                .background(DSColor.neutralControlFill)
 
                 Divider()
 
@@ -194,7 +194,7 @@ private struct DebugLogRow: View {
                     .padding(.leading, 28)
                     .padding(.vertical, 4)
                     .padding(.horizontal, 8)
-                    .background(Color(.systemGray6))
+                    .background(DSColor.neutralControlFill)
                     .cornerRadius(6)
             }
 

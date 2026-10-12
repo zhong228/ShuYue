@@ -83,14 +83,14 @@ struct SourceValidationListHeader: View {
                 title: localized("已啟用"),
                 value: "\(counts.enabled)",
                 total: counts.total,
-                tint: Color.indigo
+                tint: DSColor.appAccent
             )
             statTile(
                 icon: "safari.fill",
                 title: localized("支持發現"),
                 value: "\(counts.discover)",
                 total: nil,
-                tint: Color.orange
+                tint: DSColor.appAccentDark
             )
         }
         .padding(.horizontal, DSSpacing.md)
@@ -127,7 +127,7 @@ struct SourceValidationListHeader: View {
         .background(
             RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                 .fill(DSColor.surface)
-                .shadow(color: Color.black.opacity(0.03), radius: 3, x: 0, y: 1)
+                .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
@@ -168,12 +168,12 @@ struct SourceValidationListHeader: View {
                 Text(grouped ? localized("分組") : localized("列表"))
                     .font(DSFont.fixed(size: 12, weight: .medium))
             }
-            .foregroundColor(grouped ? Color.indigo : DSColor.textSecondary)
+            .foregroundColor(grouped ? DSColor.appAccent : DSColor.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(grouped ? Color.indigo.opacity(0.12) : DSColor.neutralControlFill)
+                    .fill(grouped ? DSColor.appAccent.opacity(0.12) : DSColor.neutralControlFill)
             )
             .contentShape(Rectangle())
             .accessibilityHidden(true)

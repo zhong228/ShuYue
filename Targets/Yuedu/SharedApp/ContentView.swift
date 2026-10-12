@@ -106,56 +106,7 @@ struct ContentView: View {
         // it here is side-effect free as far as invalidation goes.
         AppearanceThemePreset.activeAppThemes = resolvedAppThemes
         GlobalAppTypography.activate(postScriptName: drawnGlobalFont, boldText: isBoldTextOn)
-        return tabView
-        .environment(\.rootTabBarVisibility, rootTabBar)
-        // The tab bar shows on the selected tab's root page only, where it sits at the
-        // bottom (`RootTabBarVisibility`).
-        .onChange(of: selectedRootTab, initial: true) { _, tab in
-            rootTabBar.setSelectedTab(tab.rawValue)
-            // 外觀主題's 淺色／深色 preview is for 外觀主題; another tab is not previewing.
-            gs.endAppearanceSlotPreview()
-        }
-        .onChange(of: isTabBarAtBottom, initial: true) { _, atBottom in
-            rootTabBar.setHidesOverCoveredRoot(atBottom)
-        }
-        // Classic (默認) = the app's original look: no tint override at all.
-        .tint(appearanceTheme?.accentColor)
-        .accentColor(appearanceTheme?.accentColor)
-        .preferredColorScheme(preferredAppearanceColorScheme)
-        // While 單獨設定深色主題 is on, the appearance on screen picks whose theme is worn.
-        // Not in the background, where the light／dark is the app-switcher snapshots';
-        // the scene coming back hands over the appearance it comes back to.
-        .onChange(of: effectiveColorScheme, initial: true) { _, scheme in
-            gs.noteAppearanceOnScreen(scheme, in: scenePhase)
-        }
-        .onChange(of: scenePhase) { _, phase in
-            gs.noteAppearanceOnScreen(effectiveColorScheme, in: phase)
-        }
-        .font(DSFont.body)
-        .overlay {
-            // App-wide audiobook mini-player: controls the long-lived audiobook session
-            // from any tab. Naturally hidden while a full-screen reader/player is presented.
-            // No reader toolbar here, so allow dragging down to just above the tab bar.
-            NowPlayingMiniPlayer(placement: .global, minBottomClearance: 90)
-        }
-        .iPadAdaptiveRootTabStyle()
-        .rootTabBarMinimizeStyle()
-        .background {
-            ImportedBookPresentation(
-                request: importDrainer.lastOutcome == nil ? importDrainer.readerRequest : nil,
-                store: store,
-                subscriptionStore: subscriptionStore,
-                didPresent: importDrainer.didPresentReader(requestID:),
-                customizationRequest: importDrainer.lastOutcome == nil ? importDrainer.customizationRequest : nil,
-                didPresentCustomization: importDrainer.didPresentCustomization(requestID:),
-                readCustomization: { [importDrainer] document in
-                    try await importDrainer.trackingCustomizationRead {
-                        try await SharedCustomizationImportService.load(document)
-                    }
-                }
-            )
-            .frame(width: 0, height: 0)
-        }
+        return rootChrome
         .sheet(
             item: Binding(
                 get: {
@@ -276,6 +227,67 @@ struct ContentView: View {
         .onChange(of: resolvedAppThemes, initial: true) { _, themes in
             AppThemesTrait.apply(themes)
         }
+    }
+
+    /// The root tab chrome: the tab bar plus the theming, appearance and global-chrome
+    /// modifiers that sit on it directly. Split out of `body` so the compiler can
+    /// type-check each link of the chain (a single over-long `body` expression had
+    /// grown past what Swift's type checker can resolve in reasonable time in CI).
+    private var rootChrome: some View {
+        tabView
+            .environment(\.rootTabBarVisibility, rootTabBar)
+            // 书悦的空态“浏览书城”等入口从这里编程切换根 Tab。
+            .environment(\.rootTabSelection, $selectedRootTab)
+            // The tab bar shows on the selected tab's root page only, where it sits at the
+            // bottom (`RootTabBarVisibility`).
+            .onChange(of: selectedRootTab, initial: true) { _, tab in
+                rootTabBar.setSelectedTab(tab.rawValue)
+                // 外觀主題's 淺色／深色 preview is for 外觀主題; another tab is not previewing.
+                gs.endAppearanceSlotPreview()
+            }
+            .onChange(of: isTabBarAtBottom, initial: true) { _, atBottom in
+                rootTabBar.setHidesOverCoveredRoot(atBottom)
+            }
+            // Classic (默認) wears 书悦's own 朱砂红 accent instead of system blue, so the
+            // very first screen is unmistakably distinct from 墨悦; a picked appearance
+            // theme still overrides both tint and accent with its own palette.
+            .tint(appearanceTheme?.accentColor ?? DSColor.appAccent)
+            .accentColor(appearanceTheme?.accentColor ?? DSColor.appAccent)
+            .preferredColorScheme(preferredAppearanceColorScheme)
+            // While 單獨設定深色主題 is on, the appearance on screen picks whose theme is worn.
+            // Not in the background, where the light／dark is the app-switcher snapshots';
+            // the scene coming back hands over the appearance it comes back to.
+            .onChange(of: effectiveColorScheme, initial: true) { _, scheme in
+                gs.noteAppearanceOnScreen(scheme, in: scenePhase)
+            }
+            .onChange(of: scenePhase) { _, phase in
+                gs.noteAppearanceOnScreen(effectiveColorScheme, in: phase)
+            }
+            .font(DSFont.body)
+            .overlay {
+                // App-wide audiobook mini-player: controls the long-lived audiobook session
+                // from any tab. Naturally hidden while a full-screen reader/player is presented.
+                // No reader toolbar here, so allow dragging down to just above the tab bar.
+                NowPlayingMiniPlayer(placement: .global, minBottomClearance: 90)
+            }
+            .iPadAdaptiveRootTabStyle()
+            .rootTabBarMinimizeStyle()
+            .background {
+                ImportedBookPresentation(
+                    request: importDrainer.lastOutcome == nil ? importDrainer.readerRequest : nil,
+                    store: store,
+                    subscriptionStore: subscriptionStore,
+                    didPresent: importDrainer.didPresentReader(requestID:),
+                    customizationRequest: importDrainer.lastOutcome == nil ? importDrainer.customizationRequest : nil,
+                    didPresentCustomization: importDrainer.didPresentCustomization(requestID:),
+                    readCustomization: { [importDrainer] document in
+                        try await importDrainer.trackingCustomizationRead {
+                            try await SharedCustomizationImportService.load(document)
+                        }
+                    }
+                )
+                .frame(width: 0, height: 0)
+            }
     }
 
     private static func sharedImportMessage(for outcome: SharedImportQueueDrainer.Outcome) -> String {
@@ -440,8 +452,8 @@ struct ContentView: View {
 /// Retints scrollable Form/List surfaces to the active app theme by hiding the
 /// system background and painting the themed page color behind — plus, when the
 /// user configured a page background (Pro), the per-scope gradient/image layer.
-/// The default palette resolves to the system grouped background, so default users
-/// keep the same appearance while the view structure stays stable across updates.
+/// With no theme the backdrop is the 书悦 brand paper (light warm, dark ink), so
+/// the default surfaces already read as 书悦「暖书卷」rather than system gray.
 private struct ThemedSurfaceBackground: ViewModifier {
     let scope: AppearancePageBackgroundScope
     let isProActive: Bool

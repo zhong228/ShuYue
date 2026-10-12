@@ -12,7 +12,7 @@ enum RootTabBarScrollBehavior {
     case fadesTitle
     /// The whole bar, title and buttons together, slides away as the page scrolls down and
     /// comes back as it scrolls up; a search field under the bar rises to the top in its
-    /// place — Apple Music's tabs — 探索, RSS, 設定, 搜索. This is iOS 27's own bar
+    /// place — Apple Music's tabs — 發現, 訂閱, 設置, 搜索. This is iOS 27's own bar
     /// minimization (`toolbarMinimizationBehavior`). iOS 17–26 have no bar minimization:
     /// there the title fades as with `fadesTitle`, and the buttons and the search field
     /// stay — so these pages carry the scroll anchor too.
@@ -20,7 +20,7 @@ enum RootTabBarScrollBehavior {
 }
 
 extension View {
-    /// The title of a tab's root page — 書架, 探索, RSS 訂閱, 設定, 搜索: large and bold at
+    /// The title of a tab's root page — 書架, 發現, 訂閱, 設置, 搜索: large and bold at
     /// the leading end of the navigation bar, on the row with the page's buttons, as
     /// Apple Music heads its tabs; `behavior` says what the bar does as the page scrolls.
     ///
@@ -219,7 +219,9 @@ private struct RootTabTitleText: View {
 
         var body: some View {
             Text(title)
-                .font(DSFont.largeTitle.weight(.bold))
+                // 书悦品牌：tab 根页面大标题改衬线（New York），与墨悦无衬线大标题区隔，
+                // 呼应"暖书卷"的书卷气质。
+                .font(GlobalAppTypography.font(.largeTitle, weight: .bold, systemDesign: .serif))
                 .foregroundStyle(DSColor.textPrimary)
                 .lineLimit(1)
                 .fixedSize()

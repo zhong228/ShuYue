@@ -107,7 +107,7 @@ struct RuleEditorSheet: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
-        .background(Color(.systemGray6))
+        .background(DSColor.neutralControlFill)
         .accessibilityLabel(localized("規則插入"))
     }
 

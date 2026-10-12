@@ -93,6 +93,8 @@ private enum BookshelfImportPresentationRoute: Hashable {
     case webDAV
     case opds
     case calibre
+    /// 从书源添加：送到书源检索页，用户搜索后把在线书加入书架。
+    case bookSearch
 }
 
 private extension View {
@@ -115,6 +117,7 @@ struct HomeView: View {
     @EnvironmentObject var store: BookStore
     @Environment(\.appDependencies) private var appDependencies
     @Environment(\.rootTabBarVisibility) private var rootTabBarVisibility
+    @Environment(\.rootTabSelection) private var rootTabSelection
     @ObservedObject private var gs = GlobalSettings.shared
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -127,6 +130,8 @@ struct HomeView: View {
     @State private var showLegacyImportChooser = false
     @State private var legacyImportSequence =
         DismissalSequencedPresentation<BookshelfImportPresentationRoute>()
+    /// 从书源添加：悬浮加号的第五个入口，推入书源检索页。
+    @State private var showSourceSearch = false
     @State private var editingBook: ReadingBook? = nil
     @State private var bookToDelete: ReadingBook? = nil
     @State private var selectedOnlineBookDetail: OnlineBook? = nil
@@ -440,8 +445,31 @@ struct HomeView: View {
             }
             .themedAppSurface(for: .bookshelf)
             .animation(DSAnimation.standard, value: store.books.isEmpty)
-            .rootTabTitle(localized("書坊"), onScroll: .fadesTitle)
+            .rootTabTitle(localized("書庫"), onScroll: .fadesTitle)
             .toolbar { shelfToolbar(addsBooks: true) }
+            // 书悦入口与墨悦不同：添加入口是右下角悬浮加号，多选操作条也悬浮在
+            // 书架内容之上，而不是系统导航栏/bottomBar。
+            .overlay(alignment: .bottomTrailing) {
+                if editMode != .active, !store.books.isEmpty {
+                    shelfFloatingAddButton
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .opacity.combined(with: .scale(scale: 0.9))
+                        )
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if editMode == .active {
+                    selectionFloatingBar
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .opacity.combined(with: .move(edge: .bottom))
+                        )
+                }
+            }
+            .animation(DSAnimation.standard, value: editMode)
             // In edit mode, hide the app tab bar so the contextual .bottomBar (delete / group / share)
             // takes its place — the system selection pattern used by Photos / Files.
             .hidesRootTabBar(editMode == .active)
@@ -457,6 +485,9 @@ struct HomeView: View {
             }
             .navigationDestination(item: $openedFolder) { group in
                 folderPage(group)
+            }
+            .navigationDestination(isPresented: $showSourceSearch) {
+                SearchView()
             }
             .onChange(of: openedFolder) { _, folder in
                 // 選取 on a group's page ends with the page.
@@ -478,27 +509,32 @@ struct HomeView: View {
             ) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
                     DismissalSequencedActionChooser(
-                        title: localized("添加書籍"),
+                        title: localized("添加圖書"),
                         actions: [
                             DismissalSequencedAction(
                                 route: .local,
-                                title: localized("從本地匯入"),
+                                title: localized("本地文件"),
                                 systemImage: "folder"
                             ),
                             DismissalSequencedAction(
                                 route: .webDAV,
-                                title: localized("WebDAV 書庫"),
+                                title: localized("WebDAV 书库"),
                                 systemImage: "externaldrive.connected.to.line.below"
                             ),
                             DismissalSequencedAction(
                                 route: .opds,
-                                title: localized("OPDS 書庫"),
+                                title: localized("OPDS 书库"),
                                 systemImage: "books.vertical"
                             ),
                             DismissalSequencedAction(
                                 route: .calibre,
-                                title: localized("Calibre 書庫"),
+                                title: localized("Calibre 书库"),
                                 systemImage: "server.rack"
+                            ),
+                            DismissalSequencedAction(
+                                route: .bookSearch,
+                                title: localized("从书源添加"),
+                                systemImage: "sparkle.magnifyingglass"
                             ),
                         ],
                         onSelect: { legacyImportSequence.select($0) }
@@ -642,53 +678,94 @@ struct HomeView: View {
             showOPDSImport = true
         case .calibre:
             showCalibreLibrary = true
+        case .bookSearch:
+            showSourceSearch = true
         }
     }
 
-    @ViewBuilder
-    private var addBookMenu: some View {
-        if MenuModalPresentationPolicy.requiresDismissalSequencedChooser {
-            Button {
-                legacyImportSequence.cancel()
-                showLegacyImportChooser = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(DSFont.toolbarIcon)
-            }
-            .accessibilityLabel(localized("添加書籍"))
-            .accessibilityIdentifier("home_add_book")
-        } else {
-            Menu {
-                Button {
-                    addSheetSessionID = UUID()
-                    showAddSheet = true
-                } label: {
-                    Label(localized("從本地匯入"), systemImage: "folder")
-                }
-                Button {
-                    showWebDAVImport = true
-                } label: {
-                    Label(localized("WebDAV 書庫"),
-                          systemImage: "externaldrive.connected.to.line.below")
-                }
-                Button {
-                    showOPDSImport = true
-                } label: {
-                    Label(localized("OPDS 書庫"), systemImage: "books.vertical")
-                }
-                Button {
-                    showCalibreLibrary = true
-                } label: {
-                    Label(localized("Calibre 書庫"), systemImage: "server.rack")
-                }
-            } label: {
-                Image(systemName: "plus")
-                    .font(DSFont.toolbarIcon)
-            }
-            .accessibilityLabel(localized("添加書籍"))
-            .accessibilityIdentifier("home_add_book")
-            .id("\(Locale.autoupdatingCurrent.identifier)_add_menu")
+    /// 书悦的添加入口：右下角一枚朱砂悬浮加号，点击弹出底部动作单
+    /// （添加图书 → 本地文件 / WebDAV / OPDS / Calibre / 从书源添加）。
+    /// 与墨悦右上角系统工具栏加号不同，也绕开了 iOS 17 菜单不能开 sheet 的限制：
+    /// 悬浮按钮自身是普通 Button，直接弹 `DismissalSequencedActionChooser`。
+    private var shelfFloatingAddButton: some View {
+        Button {
+            legacyImportSequence.cancel()
+            showLegacyImportChooser = true
+        } label: {
+            Image(systemName: "plus")
+                .font(DSFont.fixed(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 56, height: 56)
+                .background(DSColor.appAccent)
+                .clipShape(Circle())
+                .shadow(color: DSColor.appAccent.opacity(0.35), radius: 12, x: 0, y: 6)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(localized("添加圖書"))
+        .accessibilityIdentifier("home_add_book")
+        .accessibilityHint(localized("打開添加圖書動作單"))
+    }
+
+    /// 多选模式底部的悬浮操作条：移动书架 · 删除 · 分享，左侧全选。不占系统
+    /// bottomBar，悬浮在书架内容之上，编辑模式结束即消失。
+    private var selectionFloatingBar: some View {
+        HStack(spacing: 4) {
+            Button {
+                if isAllSelected {
+                    selectedBookIds = []
+                } else {
+                    selectedBookIds = Set(sortedFilteredBooks.map(\.id))
+                }
+            } label: {
+                Label(
+                    localized(isAllSelected ? "全不選" : "全選"),
+                    systemImage: isAllSelected ? "checkmark.circle.fill" : "checkmark.circle"
+                )
+                .font(DSFont.subheadline.weight(.medium))
+                .foregroundStyle(DSColor.textPrimary)
+            }
+            .disabled(sortedFilteredBooks.isEmpty)
+
+            Divider().frame(height: 20)
+
+            Button {
+                if !selectedBookIds.isEmpty { showAddToGroupSheet = true }
+            } label: {
+                Label(localized("移动到书架"), systemImage: "tray.and.arrow.up")
+                    .font(DSFont.subheadline.weight(.medium))
+                    .foregroundStyle(DSColor.textPrimary)
+            }
+            .disabled(selectedBookIds.isEmpty)
+
+            Button(role: .destructive) {
+                if !selectedBookIds.isEmpty { showBulkDeleteAlert = true }
+            } label: {
+                Label(localized("刪除"), systemImage: "trash")
+                    .font(DSFont.subheadline.weight(.medium))
+                    .foregroundStyle(DSColor.destructive)
+            }
+            .disabled(selectedBookIds.isEmpty)
+
+            ShareLink(items: selectedShareableURLs) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(DSFont.subheadline.weight(.medium))
+                    .foregroundStyle(DSColor.textPrimary)
+            }
+            .disabled(selectedShareableURLs.isEmpty)
+            .accessibilityLabel(localized("分享"))
+        }
+        .labelStyle(.titleAndIcon)
+        .controlSize(.regular)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
+        .overlay {
+            Capsule().stroke(DSColor.appAccentOutline, lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.16), radius: 12, x: 0, y: 6)
+        .padding(.horizontal, DSSpacing.lg)
+        .padding(.bottom, 12)
+        .accessibilityIdentifier("home_selection_bar")
     }
 
     /// Without Pro: marked, and opens the paywall. On iOS 17 a menu cannot open a sheet
@@ -704,7 +781,7 @@ struct HomeView: View {
             }
         } label: {
             // Two `Text`s: the second is the menu row's subtitle.
-            Text(localized("AI 整理書坊"))
+            Text(localized("智能歸類"))
             if locked {
                 Text(localized("需要 Pro"))
             }
@@ -717,7 +794,7 @@ struct HomeView: View {
             Button {
                 withAnimation(reduceMotion ? nil : DSAnimation.standard) { editMode = .active }
             } label: {
-                Label(localized("選取"), systemImage: "checkmark.circle")
+                Label(localized("多選"), systemImage: "checkmark.circle")
             }
             organizerMenuItem
 
@@ -728,14 +805,14 @@ struct HomeView: View {
             Button {
                 showScrapeView = true
             } label: {
-                Label(localized("刮削書坊封面"), systemImage: "sparkle.magnifyingglass")
+                Label(localized("補全書封"), systemImage: "sparkle.magnifyingglass")
             }
 
             Divider()
 
             Picker("", selection: $isGridMode) {
                 Label(localized("列表"), systemImage: "list.bullet").tag(false)
-                Label(localized("格狀"), systemImage: "square.grid.2x2").tag(true)
+                Label(localized("方格"), systemImage: "square.grid.2x2").tag(true)
             }
             .pickerStyle(.inline)
             .labelsHidden()
@@ -766,22 +843,12 @@ struct HomeView: View {
     @ToolbarContentBuilder
     private func shelfToolbar(addsBooks: Bool) -> some ToolbarContent {
         if editMode == .active {
-            // Select-all kept as its own pill via the prominent + clear-tint
-            // trick so it doesn't merge with the done button.
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    if isAllSelected {
-                        selectedBookIds = []
-                    } else {
-                        selectedBookIds = Set(sortedFilteredBooks.map(\.id))
-                    }
-                } label: {
-                    Text(localized(isAllSelected ? "全不選" : "全選"))
-                        .font(DSFont.subheadline.weight(.medium))
-                        .foregroundStyle(DSColor.textPrimary)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.clear)
+            // 已选计数带在左上角：多选模式的顶部信息，替代把全选塞进导航栏的做法。
+            ToolbarItem(placement: .navigationBarLeading) {
+                Text(localized("已选 ") + "\(selectedBookIds.count)")
+                    .font(DSFont.subheadline.weight(selectedBookIds.isEmpty ? .regular : .semibold))
+                    .foregroundStyle(selectedBookIds.isEmpty ? DSColor.textSecondary : DSColor.textPrimary)
+                    .accessibilityIdentifier("home_selection_count")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -793,57 +860,16 @@ struct HomeView: View {
                     Image(systemName: "checkmark")
                         .font(DSFont.toolbarIcon)
                 }
+                .accessibilityLabel(localized("完成"))
             }
-            // Native bottom toolbar: delete · add-to-group · share.
-            ToolbarItemGroup(placement: .bottomBar) {
-                Button(role: .destructive) {
-                    if !selectedBookIds.isEmpty { showBulkDeleteAlert = true }
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .tint(.red)
-                .disabled(selectedBookIds.isEmpty)
-                .accessibilityLabel(localized("刪除"))
-
-                Spacer()
-
-                Button {
-                    if !selectedBookIds.isEmpty { showAddToGroupSheet = true }
-                } label: {
-                    ToolbarTitleAndIconLabel(
-                        title: localized("加入分組"),
-                        systemImage: "text.badge.plus",
-                        width: DSLayout.bookshelfAddToGroupLabelWidth
-                    )
-                }
-                .disabled(selectedBookIds.isEmpty)
-                .accessibilityLabel(localized("加入分組"))
-                .accessibilityIdentifier("home_add_to_group")
-
-                Spacer()
-
-                ShareLink(items: selectedShareableURLs) {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .disabled(selectedShareableURLs.isEmpty)
-                .accessibilityLabel(localized("分享"))
-            }
+            // 批量操作不占系统 bottomBar：它画在内容之上的悬浮操作条里（selectionFloatingBar），
+            // 与墨悦的原生底部工具栏彻底区隔。
         } else {
-            // Two separate glass pills. A ToolbarSpacer (iOS 26+) breaks the
-            // auto-merge so the two menus sit in their own glass instead of
-            // fusing into one. Order swapped: options (…) leads, add (+) trails.
+            // The single toolbar button: 书悦 keeps only the options menu up here. The
+            // add button moved off the bar into the floating accent button at the shelf's
+            // lower right (`shelfFloatingAddButton`), where it opens the bottom action sheet.
             ToolbarItem(placement: .navigationBarTrailing) {
                 bookshelfOptionsMenu
-            }
-            if addsBooks {
-                #if compiler(>=6.2)
-                if #available(iOS 26.0, *) {
-                    ToolbarSpacer(.fixed, placement: .navigationBarTrailing)
-                }
-                #endif
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    addBookMenu
-                }
             }
         }
     }
@@ -880,54 +906,52 @@ struct HomeView: View {
         }
     }
 
-    /// The single control that picks the group the shelf shows. 閱讀 spreads the groups
-    /// in a row of chips and pages between them; MoYue folds the same choice into one
-    /// native menu, taking the whole shelf width for the books.
+    /// The single control that picks the group the shelf shows. 書悦 draws the choice
+    /// as its own horizontal pill bar — the selected group wears the 朱砂 brand fill,
+    /// the rest sit on paper cards — instead of 墨悦's one native menu.
     private func groupSwitcher(pages: [String]) -> some View {
-        HStack(spacing: DSSpacing.md) {
-            Menu {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DSSpacing.sm) {
                 ForEach(pages, id: \.self) { page in
+                    let isSelected = selectedGroup == page
                     Button {
                         withAnimation(reduceMotion ? nil : DSAnimation.standard) {
                             selectedGroup = page
                         }
                     } label: {
-                        if selectedGroup == page {
-                            Label(page.isEmpty ? localized("全部") : page,
-                                  systemImage: "checkmark")
-                        } else {
+                        HStack(spacing: 6) {
+                            Image(systemName: page.isEmpty ? "books.vertical.fill" : "folder.fill")
+                                .font(DSFont.caption2.weight(.semibold))
+                                .accessibilityHidden(true)
                             Text(page.isEmpty ? localized("全部") : page)
+                                .lineLimit(1)
                         }
+                        .font(DSFont.subheadline.weight(isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? DSColor.textOnAccent : DSColor.textSecondary)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: DSLayout.capsuleControlHeight)
+                        .background {
+                            Capsule().fill(isSelected ? DSColor.appAccent : DSColor.surface)
+                        }
+                        .overlay {
+                            Capsule().stroke(
+                                isSelected ? Color.clear : DSColor.appAccentOutline,
+                                lineWidth: 1
+                            )
+                        }
+                        .contentShape(Capsule())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                    .accessibilityLabel(localized("分組"))
+                    .accessibilityValue(page.isEmpty ? localized("全部") : page)
+                    .accessibilityIdentifier("home_group_pill_\(page.isEmpty ? "all" : page)")
                 }
-            } label: {
-                HStack(spacing: DSSpacing.xs) {
-                    Image(systemName: selectedGroup.isEmpty ? "square.grid.2x2" : "folder")
-                        .font(DSFont.caption.weight(.semibold))
-                        .accessibilityHidden(true)
-                    Text(selectedGroup.isEmpty ? localized("全部") : selectedGroup)
-                        .lineLimit(1)
-                        .layoutPriority(1)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(DSFont.caption2.weight(.semibold))
-                        .foregroundStyle(DSColor.textSecondary)
-                        .accessibilityHidden(true)
-                }
-                .font(DSFont.subheadline.weight(.semibold))
-                .foregroundStyle(DSColor.textPrimary)
-                .padding(.horizontal, DSSpacing.md)
-                .frame(minHeight: DSLayout.capsuleControlHeight)
-                .background { Capsule().fill(DSColor.surface) }
-                .contentShape(Capsule())
             }
-            .accessibilityIdentifier("home_group_menu")
-            .accessibilityLabel(localized("分組"))
-            .accessibilityValue(selectedGroup.isEmpty ? localized("全部") : selectedGroup)
-
-            Spacer(minLength: 0)
+            .padding(.horizontal, DSSpacing.lg)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, DSSpacing.lg)
-        .padding(.vertical, 6)
+        .accessibilityIdentifier("home_group_switcher")
     }
 
     /// One page as the shelf shows it, in a list or a grid. `isInView`: the page on screen,
@@ -955,6 +979,17 @@ struct HomeView: View {
         .toolbarTitleDisplayMode(.inline)
         .toolbar { shelfToolbar(addsBooks: false) }
         .hidesRootTabBar(editMode == .active)
+        .overlay(alignment: .bottom) {
+            if editMode == .active {
+                selectionFloatingBar
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .opacity.combined(with: .move(edge: .bottom))
+                    )
+            }
+        }
+        .animation(DSAnimation.standard, value: editMode)
     }
 
     // MARK: - Book List
@@ -994,7 +1029,8 @@ struct HomeView: View {
                             onDelete: { bookToDelete = book },
                             onShowDetail: canShowOnlineBookDetail(for: book)
                                 ? { showOnlineBookDetail(for: book) }
-                                : nil
+                                : nil,
+                            onLongPressSelection: { enterSelectionMode() }
                         )
                         .tag(book.id)
                     case .folder(let name, let books):
@@ -1110,7 +1146,8 @@ struct HomeView: View {
                             onDelete: { bookToDelete = book },
                             onShowDetail: canShowOnlineBookDetail(for: book)
                                 ? { showOnlineBookDetail(for: book) }
-                                : nil
+                                : nil,
+                            onLongPressSelection: { enterSelectionMode() }
                         )
                     case .folder(let name, let books):
                         BookshelfFolderGridCell(
@@ -1610,42 +1647,84 @@ struct EditBookSheet: View {
 // MARK: - Empty Bookshelf
 struct EmptyLibraryView: View {
     @Binding var showAdd: Bool
+    /// 书悦空态“浏览书城”按钮从这里编程切到书城 Tab。
+    @Environment(\.rootTabSelection) private var rootTabSelection
     @State private var appeared = false
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(DSColor.accent.opacity(0.1))
-                    .frame(width: 132, height: 132)
-                Circle()
-                    .stroke(DSColor.accent.opacity(0.18), lineWidth: 1)
-                    .frame(width: 132, height: 132)
-                Image(systemName: "book.closed.fill")
-                    .font(DSFont.fixed(size: 52))
-                    .foregroundStyle(DSColor.accent)
-            }
-            Text(localized("書坊還是空的"))
-                .font(DSFont.title2.weight(.bold))
-                .foregroundStyle(DSColor.textPrimary)
-            Text(localized("匯入 TXT 文件，或是輸入網址\n抓取網頁小說加入書架"))
-                .font(DSFont.subheadline).foregroundColor(DSColor.textSecondary).multilineTextAlignment(.center)
-            Button {
-                showAdd = true
-            } label: {
-                Label(localized("添加書籍"), systemImage: "plus")
-                    .font(DSFont.headline).foregroundColor(.white)
-                    .padding(.horizontal, DSSpacing.xxl).padding(.vertical, 14)
-                    .background(DSColor.accent).clipShape(Capsule())
-            }
-            NavigationLink {
-                SearchView()
-            } label: {
-                Label(localized("搜索書籍"), systemImage: "magnifyingglass")
-                    .font(DSFont.subheadline.weight(.medium))
+            VStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: DSRadius.xxxl, style: .continuous)
+                        .fill(DSColor.appAccentSoft)
+                        .frame(width: 128, height: 128)
+                    RoundedRectangle(cornerRadius: DSRadius.xxxl, style: .continuous)
+                        .stroke(DSColor.appAccentOutline, lineWidth: 1)
+                        .frame(width: 128, height: 128)
+                    Image(systemName: "books.vertical.fill")
+                        .font(DSFont.fixed(size: 44))
+                        .foregroundStyle(DSColor.appAccent)
+                    Circle()
+                        .fill(DSColor.appAccent)
+                        .frame(width: 26, height: 26)
+                        .overlay {
+                            Image(systemName: "plus")
+                                .font(DSFont.fixed(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .offset(x: 46, y: 46)
+                }
+                .accessibilityHidden(true)
+
+                Text(localized("書庫還是空的"))
+                    .font(DSFont.serifSectionTitle)
                     .foregroundStyle(DSColor.textPrimary)
+                Text(localized("匯入 TXT 文件，或是輸入網址\n抓取網頁小說加入書庫"))
+                    .font(DSFont.subheadline)
+                    .foregroundColor(DSColor.textSecondary)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.plain)
+
+            VStack(spacing: 12) {
+                Button {
+                    showAdd = true
+                } label: {
+                    Label(localized("導入本地"), systemImage: "folder.badge.plus")
+                        .font(DSFont.headline.weight(.semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 13)
+                        .background(DSColor.appAccent)
+                        .clipShape(Capsule())
+                        .shadow(color: DSColor.appAccent.opacity(0.28), radius: 8, x: 0, y: 4)
+                }
+                NavigationLink {
+                    SearchView()
+                } label: {
+                    Label(localized("從書源獲取"), systemImage: "sparkle.magnifyingglass")
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.appAccent)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
+                        .background {
+                            Capsule().stroke(DSColor.appAccentOutline, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                Button {
+                    rootTabSelection?.wrappedValue = .explore
+                } label: {
+                    Label(localized("瀏覽書城"), systemImage: "storefront")
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
+                        .background {
+                            Capsule().stroke(DSColor.textSecondary.opacity(0.45), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+            }
             Spacer()
         }
         .padding()
@@ -1666,6 +1745,9 @@ struct BookRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     var onShowDetail: (() -> Void)? = nil
+    /// 书悦手势：非编辑状态下长按行，进入多选。长按超时会取消 Button 的 tap，
+    /// 普通快速点击仍打开书。
+    var onLongPressSelection: (() -> Void)? = nil
 
     /// A row's cover. A group's folder in the list takes the same frame.
     static let coverSize = CGSize(width: 56, height: 84)
@@ -1690,6 +1772,9 @@ struct BookRow: View {
                     }
                     Button(localized("編輯書籍資訊")) { onEdit() }
                     Button(localized("刪除書籍"), role: .destructive) { onDelete() }
+                }
+                .onLongPressGesture(minimumDuration: 0.5) {
+                    onLongPressSelection?()
                 }
         }
     }
@@ -1732,6 +1817,14 @@ struct BookRow: View {
             RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                 .fill(DSColor.surface)
         }
+        .overlay(alignment: .leading) {
+            // 书悦的书卷饰条：行卡片左缘一条朱砂竖线，让列表行摆脱墨悦的纯色卡片。
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(DSColor.appAccent)
+                .frame(width: 3, height: 34)
+                .padding(.leading, 5)
+                .accessibilityHidden(true)
+        }
         .onChange(of: liveCoverFrame) { _, frame in
             if !frame.isEmpty { onCoverFrameChange?(frame) }
         }
@@ -1750,7 +1843,7 @@ struct BookRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(book.title)
-                    .font(DSFont.fixed(size: 16, weight: .semibold))
+                    .font(DSFont.fixed(size: 16, weight: .semibold, design: .serif))
                     .lineLimit(2)
                     .foregroundStyle(DSColor.textPrimary)
 
@@ -1799,7 +1892,7 @@ struct BookRow: View {
             .foregroundColor(DSColor.textOnAccent)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(DSColor.accent)
+            .background(DSColor.appAccent)
             .clipShape(Capsule())
             .accessibilityLabel(localized("有新章節"))
     }
@@ -1812,7 +1905,7 @@ struct BookRow: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
-                .background(Color(red: 0.03, green: 0.31, blue: 0.58))
+                .background(DSColor.appAccentDark)
                 .clipShape(Capsule())
         } else if book.currentPosition >= 0.99 {
             Text(localized("已讀完"))
@@ -1834,6 +1927,10 @@ struct BookRow: View {
             .frame(width: coverW, height: coverH)
             .clipShape(RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius))
             .shadow(color: .black.opacity(0.08), radius: 15, x: 0, y: 10)
+            .overlay {
+                RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius)
+                    .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+            }
             .overlay(alignment: .bottomTrailing) {
                 if book.resolvedPipelineKind == .audio { AudiobookCoverBadge(glyphSize: 7) }
             }
@@ -1892,6 +1989,8 @@ struct BookGridCell: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     var onShowDetail: (() -> Void)? = nil
+    /// 书悦手势：非编辑状态下长按封面，进入多选（同列表行）。
+    var onLongPressSelection: (() -> Void)? = nil
     @State private var liveCoverFrame: CGRect = .zero
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1923,7 +2022,7 @@ struct BookGridCell: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(DSColor.accent.opacity(0.85))
+                            .background(DSColor.appAccent.opacity(0.9))
                             .clipShape(Capsule())
                             .padding(6)
                     }
@@ -1935,7 +2034,7 @@ struct BookGridCell: View {
                             .foregroundColor(DSColor.textOnAccent)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(DSColor.accent)
+                            .background(DSColor.appAccent)
                             .clipShape(Capsule())
                             .padding(6)
                             .accessibilityLabel(localized("有新章節"))
@@ -2009,6 +2108,9 @@ struct BookGridCell: View {
                 Button(localized("刪除書籍"), role: .destructive) { onDelete() }
             }
         }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            if !isEditing { onLongPressSelection?() }
+        }
     }
 
     /// Opens the book, or while selecting, puts it in or out of the selection.
@@ -2038,7 +2140,11 @@ struct BookGridCell: View {
             )
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius))
-            .shadow(color: .black.opacity(0.18), radius: 4, x: 0, y: 2)
+            .shadow(color: DSColor.appAccent.opacity(0.16), radius: 5, x: 0, y: 3)
+            .overlay {
+                RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius)
+                    .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+            }
             .overlay(alignment: .bottomTrailing) {
                 // The selection mark takes this corner while selecting.
                 if book.resolvedPipelineKind == .audio && !isEditing {
@@ -2080,6 +2186,16 @@ private struct BookshelfFolderCover: View {
         .padding(inset)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSColor.surface)
+        .overlay(alignment: .bottomTrailing) {
+            // 角落一枚朱砂文件夹角标，一眼区分分组与单本书。
+            Image(systemName: "folder.fill")
+                .font(DSFont.fixed(size: 9, weight: .semibold))
+                .foregroundColor(DSColor.appAccent)
+                .padding(5)
+                .background(DSColor.appAccentSoft, in: Circle())
+                .padding(4)
+                .accessibilityHidden(true)
+        }
     }
 
     private func cover(_ index: Int, displaySize: CGSize) -> some View {
@@ -2154,6 +2270,13 @@ private struct BookshelfFolderRow: View {
         .background {
             RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                 .fill(DSColor.surface)
+        }
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(DSColor.appAccent)
+                .frame(width: 3, height: 34)
+                .padding(.leading, 5)
+                .accessibilityHidden(true)
         }
         .disabled(isSelecting)
         .accessibilityElement(children: .ignore)

@@ -112,7 +112,7 @@ struct ExploreHomeView: View {
             .scrollDismissesKeyboard(.immediately)
             .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
             .pageBackgroundToolbar(for: .explore)
-            .rootTabTitle(localized("发现"), onScroll: .minimizesBar)
+            .rootTabTitle(localized("書城"), onScroll: .minimizesBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsSettings = true } label: {
@@ -184,17 +184,34 @@ struct ExploreHomeView: View {
 
     private var heroBanner: some View {
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: DSRadius.xl)
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.6)],
+                        colors: [DSColor.appAccentDark, DSColor.appAccent],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .shadow(color: DSColor.appAccent.opacity(0.24), radius: 12, x: 0, y: 6)
+            // 书卷印章装饰：右上角一枚半透明白色书页纹理，替代墨悦纯色渐变的空背景。
+            GeometryReader { proxy in
+                VStack(alignment: .trailing, spacing: -4) {
+                    Text("书")
+                        .font(DSFont.fixed(size: 76, weight: .bold, design: .serif))
+                        .foregroundStyle(.white.opacity(0.16))
+                    Text("SHUYUE")
+                        .font(DSFont.fixed(size: 9, weight: .semibold))
+                        .tracking(3)
+                        .foregroundStyle(.white.opacity(0.22))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.top, 6)
+                .padding(.trailing, 14)
+                .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 Text(localized("发现好书"))
-                    .font(DSFont.title2.weight(.bold))
+                    .font(DSFont.fixed(size: 24, weight: .bold, design: .serif))
                     .foregroundStyle(.white)
                 Text(localized("探索无尽阅读世界"))
                     .font(DSFont.callout)
@@ -229,7 +246,7 @@ struct ExploreHomeView: View {
     private var quickAccessSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             Text(localized("推荐"))
-                .font(DSFont.title2.weight(.bold))
+                .font(DSFont.serifSectionTitle)
                 .foregroundStyle(DSColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -240,7 +257,7 @@ struct ExploreHomeView: View {
                                 icon: "doc.text",
                                 title: page.name,
                                 subtitle: localized("自定义页面"),
-                                color: .orange,
+                                color: DSColor.appAccent,
                                 action: { }
                             )
                         }
@@ -434,11 +451,13 @@ struct QuickAccessCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(color)
+                    .frame(width: 36, height: 36)
+                    .background(DSColor.appAccentSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 Spacer()
                 Text(title)
-                    .font(DSFont.callout.weight(.semibold))
+                    .font(DSFont.fixed(size: 15, weight: .semibold, design: .serif))
                     .foregroundStyle(DSColor.textPrimary)
                     .lineLimit(1)
                 Text(subtitle)
@@ -447,10 +466,14 @@ struct QuickAccessCard: View {
                     .lineLimit(1)
             }
             .padding(DSSpacing.md)
-            .frame(width: 140, height: 100)
+            .frame(width: 140, height: 108)
             .background(DSColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
-            .shadow(color: DSColor.shadow, radius: 4, x: 0, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                    .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+            }
+            .shadow(color: DSColor.appAccent.opacity(0.10), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(PlainButtonStyle())
     }

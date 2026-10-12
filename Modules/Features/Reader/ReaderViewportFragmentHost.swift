@@ -123,7 +123,7 @@ final class ReaderViewportFragmentHost: UIView {
         let y = best.baseline - best.documentBaseline + best.owner.documentY(for: best.offset)
         return TextAnchor(spine: best.owner.spineIndex, offset: best.offset, lineY: y)
     }
-    private static let signposter = OSSignposter(subsystem: Bundle.main.bundleIdentifier ?? "MoYue", category: "ReaderPerformance")
+    private static let signposter = OSSignposter(subsystem: Bundle.main.bundleIdentifier ?? "ShuYue", category: "ReaderPerformance")
 
     override init(frame: CGRect) {
         super.init(frame: frame)

@@ -5,30 +5,33 @@ import UIKit
 enum RootTabItem: String, CaseIterable, Codable, Hashable, Identifiable {
     case bookshelf
     case explore
+    case search
     case rss
     case settings
-    case search
 
     var id: String { rawValue }
 
+    /// Keys are authored in traditional Chinese like every other key in this app,
+    /// and each `.lproj` translates them; zh-Hans shows 书库/书城/检索/追更/我的.
     var titleKey: String {
         switch self {
-        case .bookshelf: return "书坊"
-        case .explore: return "发现"
-        case .rss: return "订阅"
-        case .settings: return "设定"
-        case .search: return "搜索"
+        case .bookshelf: return "書庫"
+        case .explore: return "書城"
+        case .search: return "檢索"
+        case .rss: return "追更"
+        case .settings: return "我的"
         }
     }
 
+    /// 书悦 Tab 图标与墨悦彻底区隔：闭合书卷(书库)/书铺立面(书城)/星芒放大镜(检索)/
+    /// 铃铛提醒(追更)/个人头像(我的)。均为 iOS 17 SF Symbols，与上游青绿系完全不同。
     var defaultSystemImage: String {
         switch self {
-        case .bookshelf: return "book.fill"
-        case .explore: return "safari.fill"
-        case .rss: return "newspaper.fill"
-        case .settings: return "gearshape.2.fill"
-        // No filled variant exists for the glass; this is the intended icon.
-        case .search: return "magnifyingglass"
+        case .bookshelf: return "book.closed.fill"
+        case .explore: return "storefront.fill"
+        case .search: return "sparkle.magnifyingglass"
+        case .rss: return "bell.badge.fill"
+        case .settings: return "person.crop.circle.fill"
         }
     }
 

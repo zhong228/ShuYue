@@ -124,9 +124,9 @@ struct BookSourceRow: View {
     let defaultGroupName: String
     let actions: BookSourceRowActions
 
-    /// A warm coral accent used only inside this management surface so the
-    /// screen no longer shares the same accent colour palette as the rest of the app.
-    private var rowAccent: Color { Color(red: 0.91, green: 0.36, blue: 0.31) }
+    /// Brand vermilion accent from the design tokens, re-used on this management surface so
+    /// the screen stays part of the same brand system as the rest of the app.
+    private var rowAccent: Color { DSColor.appAccent }
 
     @ViewBuilder
     var body: some View {
@@ -509,9 +509,9 @@ struct BookSourceGroupHeaderRow: View {
     let expanded: Bool
     let actions: BookSourceGroupActions
 
-    /// A deep coral accent so the group header reads as part of the same redesigned
-    /// surface but distinct from the source rows.
-    private var headerAccent: Color { Color(red: 0.85, green: 0.30, blue: 0.22) }
+    /// A slightly deeper brand tint so the group header reads as part of the same
+    /// redesigned surface but distinct from the source rows.
+    private var headerAccent: Color { DSColor.appAccentDark }
 
     var body: some View {
         HStack(spacing: DSSpacing.sm) {
@@ -640,7 +640,7 @@ struct BookSourceGroupHeaderRow: View {
 /// A small pill-shaped tag used inside the redesigned source row instead of plain parens.
 struct TagPill: View {
     let text: String
-    var accent: Color = Color.indigo
+    var accent: Color = DSColor.appAccent
     var body: some View {
         Text(text)
             .font(DSFont.fixed(size: 11, weight: .medium))
@@ -663,10 +663,10 @@ struct PinPill: View {
             Text(pin == .top ? localized("置頂") : localized("置底"))
                 .font(DSFont.fixed(size: 11, weight: .medium))
         }
-        .foregroundColor(.orange)
+        .foregroundColor(DSColor.appAccent)
         .padding(.horizontal, 8)
         .padding(.vertical, 2)
-        .background(Color.orange.opacity(0.12))
+        .background(DSColor.appAccent.opacity(0.12))
         .clipShape(Capsule())
     }
 }

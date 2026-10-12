@@ -51,7 +51,7 @@ Sync (WebDAV / iCloud / OPDS)
 
 ## Download
 
-**Latest release:** [ShuYue v1.0.0](https://github.com/zhong228/ShuYue/releases/tag/v1.0.0)
+**Latest release:** [ShuYue v1.1.0](https://github.com/zhong228/ShuYue/releases/download/v1.1.0/ShuYue-v1.1.0.ipa) (unsigned IPA)
 
 ## Build
 

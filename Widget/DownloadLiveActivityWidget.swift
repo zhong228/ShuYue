@@ -39,7 +39,7 @@ struct DownloadLiveActivityWidget: Widget {
                 Image(systemName: context.state.isPaused ? "pause.fill" : "arrow.down")
                     .accessibilityHidden(true)
             }
-            .keylineTint(.accentColor)
+            .keylineTint(.widgetAccent)
         }
     }
 }
@@ -136,13 +136,13 @@ private struct PauseButton: View {
                 // Comfortably tappable without dominating the row — it is one control beside
                 // a cover and two lines of text, not the subject of the activity.
                 .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.22), in: Circle())
+                .background(Color.widgetAccent.opacity(0.22), in: Circle())
                 .accessibilityHidden(true)
         }
         .frame(width: 44, height: 44)
         .contentShape(Circle())
         .buttonStyle(.plain)
-        .tint(.accentColor)
+        .tint(.widgetAccent)
         .accessibilityLabel(book.isPaused ? "繼續下載" : "暫停下載")
     }
 }
@@ -163,7 +163,7 @@ private struct DownloadDetails: View {
                 .lineLimit(1)
             ProgressView(value: state.fraction)
                 .progressViewStyle(.linear)
-                .tint(state.isPaused ? .secondary : .accentColor)
+                .tint(state.isPaused ? .secondary : .widgetAccent)
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

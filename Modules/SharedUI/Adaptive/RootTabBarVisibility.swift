@@ -80,6 +80,12 @@ private struct RootTabBarTabKey: EnvironmentKey {
     static let defaultValue: String? = nil
 }
 
+/// 书悦的可编程 Tab 切换通道：`ContentView` 把 `$selectedRootTab` 注入环境，
+/// 任意页面都能切换根 Tab（如空态“浏览书城”直达书城）。Nil outside the app's root.
+private struct RootTabSelectionKey: EnvironmentKey {
+    static let defaultValue: Binding<RootTabItem>? = nil
+}
+
 extension EnvironmentValues {
     /// Nil outside the app's root (previews, tests): the screen then only hides its own
     /// tab's bar, as before.
@@ -93,6 +99,13 @@ extension EnvironmentValues {
     var rootTabBarTab: String? {
         get { self[RootTabBarTabKey.self] }
         set { self[RootTabBarTabKey.self] = newValue }
+    }
+
+    /// A binding to the root tab selection, for a screen that needs to switch tabs
+    /// programmatically. Nil outside the app's root (previews, tests).
+    var rootTabSelection: Binding<RootTabItem>? {
+        get { self[RootTabSelectionKey.self] }
+        set { self[RootTabSelectionKey.self] = newValue }
     }
 }
 

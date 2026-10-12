@@ -87,10 +87,10 @@ private struct SearchPageTitle: ViewModifier {
 
     func body(content: Content) -> some View {
         if isTabRoot {
-            content.rootTabTitle(localized("搜索"), onScroll: .minimizesBar)
+            content.rootTabTitle(localized("檢索"), onScroll: .minimizesBar)
         } else {
             content
-                .navigationTitle(localized("搜索"))
+                .navigationTitle(localized("檢索"))
                 .toolbarTitleDisplayMode(.inline)
         }
     }
@@ -414,7 +414,7 @@ struct BookSearchView: View {
         } label: {
             Label(localized("載入更多"), systemImage: "arrow.down.circle")
                 .font(DSFont.subheadline)
-                .foregroundStyle(DSColor.accent)
+                .foregroundStyle(DSColor.appAccent)
                 .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
         }
     }
