@@ -377,6 +377,9 @@ class SearchAggregator: ObservableObject {
     /// (floating pause control). Results stay on screen and `resume()` continues
     /// over the sources that had not finished.
     @Published var isPaused = false
+    /// The source that is currently being asked, shown beside the progress ring
+    /// while a search runs. `nil` while idle.
+    @Published private(set) var currentSourceName: String?
     private(set) var progress: SearchProgress = SearchProgress()
 
     /// Search progress
@@ -519,6 +522,7 @@ class SearchAggregator: ObservableObject {
         successfulSourceIds = []
         exhaustedSourceIds = []
         isPaused = false
+        currentSourceName = nil
 
         currentQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         allSources = activeSources
@@ -769,6 +773,7 @@ class SearchAggregator: ObservableObject {
         searchTask?.cancel()
         requestResultsPublication(force: true, reason: "cancel")
         isSearching = false
+        currentSourceName = nil
         SourceHealthStore.shared.flush()
         isPaused = false
         logPublicationSummary(reason: "cancel")
@@ -801,6 +806,7 @@ class SearchAggregator: ObservableObject {
         publicationMetrics = ResultPublicationMetrics()
         isSearching = false
         isPaused = false
+        currentSourceName = nil
 
         requestResultsPublication(force: true, reason: "clear")
         SourceHealthStore.shared.flush()
@@ -879,6 +885,9 @@ class SearchAggregator: ObservableObject {
         results = publishedResults
         progress = internalProgress
         hasMoreResults = internalHasMoreResults
+        currentSourceName = allSources.first {
+            !completedSourceIds.contains($0.id)
+        }?.bookSourceName
         publicationGate.didPublish(at: now)
         publicationMetrics.publications += 1
         AppLogger.parse(

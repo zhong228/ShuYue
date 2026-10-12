@@ -2,44 +2,7 @@ import SwiftUI
 
 private typealias BookSearchResultRoute = SearchResultRoute<SearchBook>
 
-/// Navigation route for one frozen search-result snapshot.
-///
-/// Value-based navigation is deliberate. The closure form
-/// `NavigationLink { destination } label: { … }` builds its destination for every
-/// visible row on *every* list body evaluation. Before search-row presentation
-/// snapshots were introduced, that repeatedly ran audio/text inference over
-/// unbounded metadata such as full-page HTML intros. Value routing also keeps
-/// destination creation out of the streaming list's redraw path.
-///
-/// The discover page never had this: it routes through `.navigationDestination`,
-/// which resolves the destination once, on tap. The route retains that tapped
-/// snapshot so later `SearchAggregator` publications cannot replace the data
-/// under an active iOS 17 destination.
-
-/// Installs value routing for results where the native SwiftUI list pushes them by
-/// value (iOS 18 and later). The UIKit list iOS 17 uses has no `NavigationLink`, so its
-/// results go through the page's one item-based destination instead
-/// (`SearchPagePush.result`). Delete the iOS 17 branch together with the native iOS 17
-/// table when the deployment target reaches iOS 18.
-private struct SearchResultNavigationModifier<Destination: View>: ViewModifier {
-    let mode: SearchResultNavigationMode
-    let destination: (BookSearchResultRoute) -> Destination
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        switch mode {
-        case .selectedItem:
-            content
-        case .valueRoute:
-            content.navigationDestination(
-                for: BookSearchResultRoute.self,
-                destination: destination
-            )
-        }
-    }
-}
-
-/// Everything the search page pushes through its one item-based destination.
+/// Everything the 检索 page pushes through its one item-based destination.
 ///
 /// One destination, never one per kind. TestFlight build 5 gave 最近閱讀's reader a
 /// second `navigationDestination(item:)` beside the results' own, and on iOS 17 the
@@ -50,8 +13,7 @@ private struct SearchResultNavigationModifier<Destination: View>: ViewModifier {
 /// a result instead (Technotes/iOS17ReaderNavigationWatchdog.md). 最近閱讀's reader is
 /// no longer pushed at all — see `recentReaderRoute`.
 private enum SearchPagePush: Hashable {
-    /// A search result. Pushed this way on iOS 17 only; later systems push results by
-    /// value from the list's `NavigationLink`.
+    /// A search result, pushed from either a source rail's card or a group rail.
     case result(BookSearchResultRoute)
 }
 
@@ -81,7 +43,7 @@ private struct SearchResultDestination: View {
     }
 }
 
-/// 搜索's title: a tab root's at the root of its tab, `.inline` where it is pushed.
+/// 检索's title: a tab root's at the root of its tab, `.inline` where it is pushed.
 private struct SearchPageTitle: ViewModifier {
     let isTabRoot: Bool
 
@@ -96,7 +58,7 @@ private struct SearchPageTitle: ViewModifier {
     }
 }
 
-/// The results' scroll edge: a tab root's under the 搜索 tab's minimizing bar, the app's
+/// The results' scroll edge: a tab root's under the 检索 tab's minimizing bar, the app's
 /// soft edge where the page is pushed.
 private struct SearchResultsScrollEdges: ViewModifier {
     let isTabRoot: Bool
@@ -112,12 +74,15 @@ private struct SearchResultsScrollEdges: ViewModifier {
 
 // MARK: - Book Search View
 
+/// The 检索 page, rebuilt as a workbench: a resident rounded search field up top,
+/// the source scope as a row of selectable chips, per-source result groups under
+/// them, and the recents as a tag cloud and cover-card rail while idle.
 struct BookSearchView: View {
     var initialQuery: String = ""
     /// A scope for this search page only, never saved — Legado's 搜索 on one source
     /// (`searchScope.update(scope, save = false)`). `nil` uses the saved scope.
     var sessionScope: SearchSourceScope?
-    /// The 搜索 tab's own root, which carries a tab root's title; pushed from elsewhere,
+    /// The 检索 tab's own root, which carries a tab root's title; pushed from elsewhere,
     /// the page is `.inline` like any other.
     var isTabRoot = false
 
@@ -134,13 +99,13 @@ struct BookSearchView: View {
     @State private var query = ""
     @State private var errorMsg: String? = nil
     @State private var submittedQuery = ""
-    @State private var showsSourceScopeSheet = false
     @State private var needsSearchResubmission = false
     /// The session scope as the reader changes it on this page.
     @State private var editedSessionScope: SearchSourceScope?
-    /// What this page has pushed through its one item-based destination: a result on
-    /// iOS 17.
+    /// What this page has pushed through its one item-based destination.
     @State private var pushed: SearchPagePush?
+    /// Whether every source's rail shows all its books, or only the first four.
+    @State private var resultsAreExpanded = true
     /// A book opened from 最近閱讀, full screen over the search, as Apple Books opens a
     /// book from its search; closing it comes back to the list as it was left. 最近閱讀
     /// shows only while the search field is active, and pushed onto this stack the reader
@@ -165,21 +130,33 @@ struct BookSearchView: View {
         !submittedQuery.isEmpty && trimmedQuery == submittedQuery
     }
 
+    private var isSearchInProgress: Bool {
+        aggregator.isSearching || aggregator.isPaused
+    }
+
     var body: some View {
         AdaptiveContentContainer(maxWidth: DSLayout.readableExpandedWidth) {
             VStack(spacing: 0) {
-                // No rule under the scope row: as in Apple Books' search, the content
-                // starts below the controls, and on iOS 26 the list's soft scroll edge
-                // marks where it slides out of view.
-                if !enabledSources.isEmpty {
-                    sourceScopeBar
+                headerControls
+
+                if isSearchInProgress {
+                    SearchProgressControl(
+                        progress: aggregator.progress,
+                        currentSourceName: aggregator.currentSourceName,
+                        isPaused: aggregator.isPaused,
+                        onPause: { aggregator.pause() },
+                        onResume: { aggregator.resume() }
+                    )
+                    .padding(.horizontal, DSSpacing.lg)
+                    .padding(.vertical, DSSpacing.sm)
+                    .transition(.opacity)
                 }
 
                 ZStack {
                     if !aggregator.results.isEmpty {
                         resultList
                     } else if aggregator.isSearching {
-                        // Progress and the pause control sit in the scope row above.
+                        // Progress and the pause control live in the workbench above.
                         ProgressView(localized("搜索中…"))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .rootTabTitleScrollAnchor()
@@ -208,33 +185,15 @@ struct BookSearchView: View {
         .background(PageBackgroundView(scope: .search).ignoresSafeArea())
         .pageBackgroundToolbar(for: .search)
         .modifier(SearchPageTitle(isTabRoot: isTabRoot))
-        // Declared here, outside the lazy result containers, so the navigation
-        // stack can always see the active destination.
-        .modifier(
-            SearchResultNavigationModifier(
-                mode: .current,
-                destination: SearchResultDestination.init(route:)
-            )
-        )
-        // The page's only item-based destination (see `SearchPagePush`).
+        // The page's only item-based destination (see `SearchPagePush`). Every
+        // result card routes through here, on iOS 17 and 18 alike; the old
+        // split — value routing on iOS 18, item routing on iOS 17 — and its
+        // UIKit table are gone with the rework.
         .navigationDestination(item: $pushed, destination: SearchPagePushDestination.init(push:))
         .fullScreenCover(item: $recentReaderRoute) { route in
             BookReaderView(bookId: route.id)
                 .environmentObject(bookStore)
                 .environment(\.readerNavigator, nil)
-        }
-        // At the tab root on iOS 27 the field rises to the top as the bar slides away.
-        .searchable(
-            text: $query,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: localized("輸入書名或作者")
-        )
-        .sheet(isPresented: $showsSourceScopeSheet) {
-            SearchSourceScopeSheet(
-                enabledSources: enabledSources,
-                initialScope: activeScope,
-                onSave: applySearchSourceScope
-            )
         }
         .onSubmit(of: .search) { doSearch() }
         .onChange(of: query) { _, newValue in
@@ -265,8 +224,55 @@ struct BookSearchView: View {
         }
     }
 
-    // Shown when a search was paused before any result came back. The ring in the
-    // scope row above carries the search on.
+    // MARK: Header
+
+    /// The workbench's resident controls: the rounded search field and, beneath it,
+    /// the source chips that replaced the old scope dropdown.
+    private var headerControls: some View {
+        VStack(spacing: DSSpacing.sm) {
+            SearchQueryField(query: $query, onSearch: doSearch)
+                .padding(.horizontal, DSSpacing.lg)
+            if !enabledSources.isEmpty {
+                SearchSourceChipStrip(
+                    sources: enabledSources,
+                    scope: activeScope,
+                    onSelectAll: selectAllSources,
+                    onToggle: toggleSource
+                )
+            }
+        }
+        .padding(.top, DSSpacing.md)
+    }
+
+    // MARK: Result List
+
+    private var resultList: some View {
+        SearchGroupedResultsList(
+            sources: activeScope.resolvedSources(from: enabledSources),
+            results: aggregator.results,
+            isExpanded: resultsAreExpanded,
+            canLoadMore: canLoadMore,
+            onExpandToggle: {
+                withAnimation(reduceMotion ? nil : DSAnimation.standard) {
+                    resultsAreExpanded.toggle()
+                }
+            },
+            onLoadMore: { aggregator.loadMore() },
+            onOpen: { book in
+                pushed = .result(BookSearchResultRoute(id: book.id, snapshot: book))
+            }
+        )
+        .modifier(SearchResultsScrollEdges(isTabRoot: isTabRoot))
+    }
+
+    private var canLoadMore: Bool {
+        aggregator.hasMoreResults && !aggregator.isSearching && !aggregator.isPaused
+    }
+
+    // MARK: Empty State
+
+    /// Shown when a search was paused before any result came back. The workbench's
+    /// progress block above carries the search on.
     private var pausedPlaceholder: some View {
         ContentUnavailableView {
             UnavailableLabel(localized("已暫停"), systemImage: "pause.circle")
@@ -276,150 +282,6 @@ struct BookSearchView: View {
         }
     }
 
-    // MARK: Source Scope
-
-    /// The scope capsule, and at the other end, while a search runs or is paused, its
-    /// progress ring — the one pause / resume control on the page. Manual companion to
-    /// the network-settings auto-pause: tap to pause the in-flight search (battery,
-    /// traffic) and again to resume the sources not yet asked. Auto-pause lands in the
-    /// same paused state, so the same ring resumes an automatically paused search.
-    private var sourceScopeBar: some View {
-        HStack {
-            SearchSourceScopeCapsule(
-                title: sourceScopeSummary,
-                isCustom: activeScope.mode == .custom,
-                action: { showsSourceScopeSheet = true }
-            )
-            Spacer(minLength: DSSpacing.sm)
-            if isSearchInProgress {
-                SearchProgressControl(
-                    progress: aggregator.progress,
-                    isPaused: aggregator.isPaused,
-                    onPause: { aggregator.pause() },
-                    onResume: { aggregator.resume() }
-                )
-                .transition(.opacity)
-            }
-        }
-        .padding(.horizontal, DSSpacing.lg)
-        .padding(.vertical, DSSpacing.xs)
-        .animation(reduceMotion ? nil : DSAnimation.standard, value: isSearchInProgress)
-    }
-
-    private var isSearchInProgress: Bool {
-        aggregator.isSearching || aggregator.isPaused
-    }
-
-    private var sourceScopeSummary: String {
-        switch activeScope.mode {
-        case .all:
-            return localized("全部書源")
-        case .custom:
-            return String(
-                format: localized("已選 %d 個書源"),
-                activeScope.resolvedSources(from: enabledSources).count
-            )
-        }
-    }
-
-    // MARK: Result List
-    @ViewBuilder
-    private var resultList: some View {
-        if #available(iOS 18.0, *) {
-            modernResultList
-        } else {
-            iOS17ResultList
-        }
-    }
-
-    @available(iOS 18.0, *)
-    private var modernResultList: some View {
-        List {
-            ForEach(aggregator.results) { book in
-                resultLink(for: book)
-                .listRowInsets(EdgeInsets(
-                    top: 0,
-                    leading: DSLayout.searchListHorizontalInset,
-                    bottom: 0,
-                    trailing: DSLayout.searchListHorizontalInset
-                ))
-                .listRowBackground(Color.clear)
-                // No rule over the first result: the scope row above has none either.
-                .listRowSeparator(
-                    book.id == aggregator.results.first?.id ? .hidden : .automatic,
-                    edges: .top
-                )
-                .background {
-                    // The first result measures the list's scroll for the 搜索 tab's title.
-                    if book.id == aggregator.results.first?.id {
-                        Color.clear.rootTabTitleScrollAnchor()
-                    }
-                }
-            }
-
-            // 載入更多: fetch the next result page from every source that
-            // answered the last round and hasn't been exhausted yet.
-            if canLoadMore {
-                loadMoreButton
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-        }
-        .modifier(SearchResultsScrollEdges(isTabRoot: isTabRoot))
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        // Apple Books' result rows carry no disclosure chevron; the whole row opens the book.
-        .navigationLinkIndicatorVisibility(.hidden)
-    }
-
-    private var iOS17ResultList: some View {
-        IOS17SearchResultTable(
-            content: IOS17SearchResultTableContent(
-                rows: aggregator.results.map(IOS17SearchResultTableRow.init(searchBook:)),
-                showsLoadMore: canLoadMore
-            ),
-            onSelect: { id in
-                guard let book = aggregator.results.first(where: { $0.id == id }) else {
-                    // The row on screen is no longer among the results, so the tap opens
-                    // nothing; logged rather than dropped without a trace.
-                    AppLogger.error(
-                        "⟐ search tap found no result",
-                        context: ["id": id.uuidString, "results": aggregator.results.count]
-                    )
-                    return
-                }
-                pushed = .result(BookSearchResultRoute(id: id, snapshot: book))
-            },
-            onLoadMore: {
-                aggregator.loadMore()
-            }
-        )
-    }
-
-    private func resultLink(for book: SearchBook) -> some View {
-        NavigationLink(
-            value: BookSearchResultRoute(id: book.id, snapshot: book)
-        ) {
-            AggregatedResultRow(book: book)
-        }
-    }
-
-    private var canLoadMore: Bool {
-        aggregator.hasMoreResults && !aggregator.isSearching && !aggregator.isPaused
-    }
-
-    private var loadMoreButton: some View {
-        Button {
-            aggregator.loadMore()
-        } label: {
-            Label(localized("載入更多"), systemImage: "arrow.down.circle")
-                .font(DSFont.subheadline)
-                .foregroundStyle(DSColor.appAccent)
-                .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
-        }
-    }
-
-    // MARK: Empty State
     private var emptyResultView: some View {
         ContentUnavailableView {
             UnavailableLabel(
@@ -457,6 +319,7 @@ struct BookSearchView: View {
     }
 
     // MARK: Search Logic
+
     private func applySearchSourceScope(_ newScope: SearchSourceScope) {
         guard newScope != activeScope else { return }
         if sessionScope != nil {
@@ -467,6 +330,43 @@ struct BookSearchView: View {
         submittedQuery = ""
         needsSearchResubmission = !trimmedQuery.isEmpty
         aggregator.cancelAndClear()
+    }
+
+    /// 全部来源 chip: back to the whole enabled range.
+    private func selectAllSources() {
+        guard activeScope.mode != .all else { return }
+        applySearchSourceScope(.all)
+    }
+
+    /// One source chip toggles that source in the custom scope. Selecting every
+    /// enabled source — or unselecting the last one — folds back to 全部来源, so
+    /// the scope never lands on an empty custom set.
+    private func toggleSource(_ source: BookSource) {
+        let key = SearchSourceScope.sourceKey(for: source)
+        var selected: Set<String>
+        switch activeScope.mode {
+        case .all:
+            selected = [key]
+        case .custom:
+            selected = activeScope.selectedSourceURLs
+            if selected.contains(key) {
+                selected.remove(key)
+            } else {
+                selected.insert(key)
+            }
+        }
+        let significantKeys = Set(
+            enabledSources
+                .map(SearchSourceScope.sourceKey(for:))
+                .filter { !$0.isEmpty }
+        )
+        if selected.isEmpty || selected == significantKeys {
+            applySearchSourceScope(.all)
+        } else {
+            applySearchSourceScope(
+                SearchSourceScope(mode: .custom, selectedSourceURLs: selected)
+            )
+        }
     }
 
     private func doSearch() {
@@ -500,26 +400,6 @@ struct BookSearchView: View {
     }
 }
 
-// MARK: - Aggregated Result Row
-
-/// One search result as Apple Books lists one in its search (`SearchBookListRow`): the
-/// cover, the title with the grey 有聲書 tag on audiobooks, the author, and the kind and
-/// source count in grey — 「小說 · 3 源」. Mirrors `IOS17SearchResultTableCell`, which draws
-/// the same row in UIKit on iOS 17.
-struct AggregatedResultRow: View {
-    let book: SearchBook
-
-    var body: some View {
-        SearchBookListRow(content: SearchBookListRowContent(result: book)) {
-            BookCoverImage(
-                coverURL: book.coverUrl,
-                title: book.displayName,
-                author: book.author
-            )
-        }
-    }
-}
-
 // MARK: - OnlineBook Identifiable (for sheet item)
 extension OnlineBook: Hashable {
     static func == (lhs: OnlineBook, rhs: OnlineBook) -> Bool {
@@ -540,7 +420,7 @@ extension SearchBook: Hashable {
     }
 }
 
-#Preview("搜索") {
+#Preview("检索") {
     NavigationStack {
         BookSearchView()
             .environmentObject(BookStore())

@@ -7,6 +7,8 @@ enum RSSHomeActionRoute: Hashable, CaseIterable {
     case importLocal
     case exportJSON
     case settings
+    case refreshAll
+    case markAllRead
 }
 
 enum RSSSourceFilter: String, CaseIterable, Identifiable {
@@ -20,13 +22,13 @@ enum RSSSourceFilter: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all:
-            return localized("全部订阅源")
+            return localized("全部訂閱源")
         case .unread:
-            return localized("未读订阅")
+            return localized("未讀訂閱源")
         case .read:
-            return localized("已读订阅")
+            return localized("已讀訂閱源")
         case .favorite:
-            return localized("收藏订阅")
+            return localized("收藏訂閱源")
         }
     }
 
@@ -68,7 +70,12 @@ struct RSSListView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if !store.sources.isEmpty {
+                            rssDigestBar
+                            rssChannelBar
+                        }
+
                         if filteredSources.isEmpty {
                             sourcesEmptyState
                         } else {
@@ -86,9 +93,6 @@ struct RSSListView: View {
             .rootTabTitle(localized("追更"), onScroll: .minimizesBar)
             .pageBackgroundToolbar(for: .rss)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    rssFilterMenu
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     rssTopToolbarControl
                 }
@@ -117,11 +121,23 @@ struct RSSListView: View {
                                 systemImage: "doc.badge.arrow.up",
                                 isEnabled: !store.sources.isEmpty
                             ),
-            DismissalSequencedAction(
-                route: .settings,
-                title: localized("管理订阅源"),
-                systemImage: "gearshape"
-            ),
+                            DismissalSequencedAction(
+                                route: .refreshAll,
+                                title: localized("刷新訂閱"),
+                                systemImage: "arrow.clockwise",
+                                isEnabled: !store.sources.isEmpty && !isRefreshingAll
+                            ),
+                            DismissalSequencedAction(
+                                route: .markAllRead,
+                                title: localized("標記全部已讀"),
+                                systemImage: "checkmark.circle",
+                                isEnabled: store.totalUnreadCount() > 0
+                            ),
+                            DismissalSequencedAction(
+                                route: .settings,
+                                title: localized("管理訂閱源"),
+                                systemImage: "gearshape"
+                            ),
                         ],
                         onSelect: { legacyTopActionSequence.select($0) }
                     )
@@ -150,7 +166,7 @@ struct RSSListView: View {
             .sheet(item: $sourceInfoToShow) { source in
                 RSSSourceInfoSheet(source: source, store: store)
             }
-            .alert(localized("订阅源"), isPresented: $showImportResult) {
+            .alert(localized("訂閱源"), isPresented: $showImportResult) {
                 Button(localized("確定"), role: .cancel) {}
             } message: {
                 Text(importMessage)
@@ -173,18 +189,93 @@ struct RSSListView: View {
         }
     }
 
+    // MARK: - Follow Digest
+
+    /// 追更概览条：未读总量与订阅源总量一目了然，替代上游细碎的头部菜单。
+    private var rssDigestBar: some View {
+        HStack(spacing: DSSpacing.md) {
+            digestCell(
+                value: "\(store.totalUnreadCount())",
+                title: localized("所有未讀"),
+                systemImage: "circle.fill",
+                tint: DSColor.destructive
+            )
+            digestCell(
+                value: "\(store.sources.count)",
+                title: localized("訂閱源"),
+                systemImage: "dot.radiowaves.left.and.right",
+                tint: DSColor.appAccent
+            )
+        }
+    }
+
+    private func digestCell(value: String, title: String, systemImage: String, tint: Color) -> some View {
+        HStack(spacing: DSSpacing.sm) {
+            Image(systemName: systemImage)
+                .font(DSFont.fixed(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(DSFont.title3.weight(.bold))
+                    .foregroundStyle(DSColor.textPrimary)
+                    .monospacedDigit()
+                Text(title)
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(DSSpacing.md)
+        .frame(maxWidth: .infinity)
+        .background(DSColor.surface, in: RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Channel Bar
+
+    /// 追更频道胶囊行：全部/未读/已读/收藏四个频道内联切换，替代上游的工具栏筛选菜单。
+    private var rssChannelBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DSSpacing.sm) {
+                ForEach(RSSSourceFilter.allCases) { filter in
+                    DSChip(
+                        title: localized(filter.title),
+                        isSelected: sourceFilter == filter,
+                        minWidth: DSLayout.capsuleControlMinWidth,
+                        usesGlassSurface: false
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if sourceFilter != filter { sourceFilter = filter }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, DSSpacing.xs)
+        }
+        .scrollIndicators(.hidden)
+        .id("\(Locale.autoupdatingCurrent.identifier)_rss_source_filter_\(sourceFilter.rawValue)")
+    }
+
     // MARK: - Sources Grid
 
     private var sourcesEmptyState: some View {
         VStack(spacing: DSSpacing.md) {
             UnavailableLabel(
-                sourceFilter == .all ? localized("还没有订阅源") : localized("没有符合条件的订阅源"),
+                store.sources.isEmpty ? localized("沒有訂閱源") : localized("沒有符合條件的訂閱源"),
                 systemImage: sourceFilter.systemImage
             )
-            Text(localized("点击右上角菜单可以导入 Legado JSON 订阅源"))
-                .font(DSFont.footnote)
-                .foregroundStyle(DSColor.textSecondary)
-                .multilineTextAlignment(.center)
+            if store.sources.isEmpty {
+                Text(localized("點擊右上角「更多」即可匯入 Legado JSON 訂閱源"))
+                    .font(DSFont.footnote)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 80)
@@ -214,25 +305,7 @@ struct RSSListView: View {
                 NavigationLink {
                     RSSFeedView(source: source)
                 } label: {
-                    VStack(spacing: DSSpacing.sm) {
-                        RSSFaviconView(source: source, size: 48)
-                        Text(source.name)
-                            .font(DSFont.footnote.weight(.medium))
-                            .foregroundStyle(DSColor.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, DSSpacing.md)
-                    .background(DSColor.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                            .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
-                    }
-                    .shadow(color: DSColor.appAccent.opacity(0.08), radius: 6, x: 0, y: 3)
-                    .contentShape(Rectangle())
+                    sourceCard(for: source)
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -244,7 +317,7 @@ struct RSSListView: View {
                     Button(role: .destructive) {
                         deleteTarget = .source(source)
                     } label: {
-                        Label(localized("删除"), systemImage: "trash")
+                        Label(localized("刪除"), systemImage: "trash")
                     }
                     Menu {
                         let targets = store.sources.filter { $0.id != source.id }
@@ -256,7 +329,7 @@ struct RSSListView: View {
                             }
                         }
                     } label: {
-                        Label(localized("移动位置"), systemImage: "arrow.up.arrow.down")
+                        Label(localized("移動位置"), systemImage: "arrow.up.arrow.down")
                     }
                 }
                 .draggable(source.id)
@@ -271,6 +344,45 @@ struct RSSListView: View {
                 }
             }
         }
+    }
+
+    private func sourceCard(for source: RSSSource) -> some View {
+        let unreadCount = store.unreadCount(for: source.id)
+        let hasUnread = unreadCount > 0
+
+        return VStack(spacing: DSSpacing.sm) {
+            RSSFaviconView(source: source, size: 48)
+            Text(source.name)
+                .font(DSFont.footnote.weight(.medium))
+                .foregroundStyle(DSColor.textPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DSSpacing.md)
+        .background(DSColor.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .stroke(
+                    hasUnread ? DSColor.appAccent.opacity(0.55) : DSColor.appAccentOutline,
+                    lineWidth: hasUnread ? 1.0 : 0.6
+                )
+        }
+        .shadow(color: DSColor.appAccent.opacity(hasUnread ? 0.16 : 0.08), radius: 6, x: 0, y: 3)
+        .overlay(alignment: .topTrailing) {
+            if hasUnread {
+                Text("\(unreadCount)")
+                    .font(DSFont.caption2.weight(.bold))
+                    .foregroundStyle(DSColor.textOnAccent)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+.background(DSColor.destructive, in: Capsule())
+                    .padding(6)
+                }
+        }
+        .contentShape(Rectangle())
     }
 
     private func performDelete(_ target: RSSDeleteTarget) {
@@ -288,7 +400,7 @@ struct RSSListView: View {
             let data = try Data(contentsOf: url)
             let sources = try LegadoSourceJSONParser.parse(data: data)
             let addedSources = store.addSourcesReturningAdded(sources)
-            importMessage = String(format: localized("已匯入 %d 個订阅源"), addedSources.count)
+            importMessage = String(format: localized("已匯入 %d 個訂閱源"), addedSources.count)
             showImportResult = true
         } catch {
             importMessage = String(format: localized("Legado JSON 匯入失敗：%@"), error.localizedDescription)
@@ -309,9 +421,17 @@ struct RSSListView: View {
         } else {
             RSSHomeTopMenu(
                 hasSources: !store.sources.isEmpty,
+                isRefreshing: isRefreshingAll,
+                hasUnread: store.totalUnreadCount() > 0,
                 onImportURL: { showJSONURLSheet = true },
                 onImportLocal: { showDocumentPicker = true },
                 onExportJSON: { showJSONExporter = true },
+                onRefreshAll: {
+                    Task { await refreshAllSources() }
+                },
+                onMarkAllRead: {
+                    store.markAllRead(sourceID: nil, isRead: true)
+                },
                 onSettings: { showSettings = true }
             )
         }
@@ -328,45 +448,13 @@ struct RSSListView: View {
             showDocumentPicker = true
         case .exportJSON:
             showJSONExporter = true
+        case .refreshAll:
+            Task { await refreshAllSources() }
+        case .markAllRead:
+            store.markAllRead(sourceID: nil, isRead: true)
         case .settings:
             showSettings = true
         }
-    }
-
-    @ViewBuilder
-    private var rssFilterMenu: some View {
-        Menu {
-            Picker("", selection: $sourceFilter) {
-                ForEach(RSSSourceFilter.allCases) { filter in
-                    Label(filter.title, systemImage: filter.systemImage)
-                        .tag(filter)
-                }
-            }
-            .pickerStyle(.inline)
-            .labelsHidden()
-
-            Divider()
-
-            Button {
-                Task { await refreshAllSources() }
-            } label: {
-                Label(localized("刷新所有订阅"), systemImage: "arrow.clockwise")
-            }
-            .disabled(isRefreshingAll || store.sources.isEmpty)
-
-            Button {
-                store.markAllRead(sourceID: nil, isRead: true)
-            } label: {
-                Label(localized("一键全部已读"), systemImage: "checkmark.circle")
-            }
-            .disabled(store.totalUnreadCount() == 0)
-        } label: {
-            Image(systemName: "line.3.horizontal.decrease")
-                .font(DSFont.toolbarIcon)
-        }
-        .accessibilityLabel(localized("订阅筛选"))
-        .foregroundColor(DSColor.textPrimary)
-        .id("\(Locale.autoupdatingCurrent.identifier)_rss_source_filter_\(sourceFilter.rawValue)")
     }
 
     @MainActor
@@ -392,14 +480,14 @@ private enum RSSDeleteTarget: Identifiable {
     var title: String {
         switch self {
         case .source:
-            return localized("刪除订阅源")
+            return localized("刪除訂閱源")
         }
     }
 
     var message: String {
         switch self {
         case .source(let source):
-            return String(format: localized("確定要刪除「%@」订阅源嗎？"), source.name)
+            return String(format: localized("確定要刪除「%@」訂閱源嗎？"), source.name)
         }
     }
 
@@ -407,9 +495,13 @@ private enum RSSDeleteTarget: Identifiable {
 
 private struct RSSHomeTopMenu: View {
     let hasSources: Bool
+    let isRefreshing: Bool
+    let hasUnread: Bool
     let onImportURL: () -> Void
     let onImportLocal: () -> Void
     let onExportJSON: () -> Void
+    let onRefreshAll: () -> Void
+    let onMarkAllRead: () -> Void
     let onSettings: () -> Void
 
     var body: some View {
@@ -438,9 +530,25 @@ private struct RSSHomeTopMenu: View {
             Divider()
 
             Button {
+                onRefreshAll()
+            } label: {
+                Label(localized("刷新訂閱"), systemImage: "arrow.clockwise")
+            }
+            .disabled(!hasSources || isRefreshing)
+
+            Button {
+                onMarkAllRead()
+            } label: {
+                Label(localized("標記全部已讀"), systemImage: "checkmark.circle")
+            }
+            .disabled(!hasUnread)
+
+            Divider()
+
+            Button {
                 onSettings()
             } label: {
-                Label(localized("管理订阅源"), systemImage: "gearshape")
+                Label(localized("管理訂閱源"), systemImage: "gearshape")
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -492,7 +600,7 @@ private struct ImportLegadoJSONURLSheet: View {
                 }
                 .interfaceSectionSurface()
 
-                Section(header: Text(localized("常用订阅源倉庫")).foregroundStyle(DSColor.textSecondary)) {
+                Section(header: Text(localized("常用訂閱源倉庫")).foregroundStyle(DSColor.textSecondary)) {
                     Button {
                         urlString = "https://www.yckceo.com/yuedu/rss/json/id/193.json"
                     } label: {
@@ -557,7 +665,7 @@ private struct ImportLegadoJSONURLSheet: View {
     private func importFromURL() async {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let url = URL(string: trimmed) else {
-            message = "❌ \(localized("订阅源網址無效"))"
+            message = "❌ \(localized("訂閱源網址無效"))"
             showMessage = true
             return
         }
@@ -569,7 +677,7 @@ private struct ImportLegadoJSONURLSheet: View {
             let (data, _) = try await MediaSession.shared.data(from: url)
             let sources = try LegadoSourceJSONParser.parse(data: data)
             let addedCount = store.addSources(sources)
-            message = "\(localized("成功匯入")) \(addedCount) \(localized("個订阅源"))"
+            message = "\(localized("成功匯入")) \(addedCount) \(localized("個訂閱源"))"
             showMessage = true
         } catch {
             message = "❌ \(String(format: localized("Legado JSON 匯入失敗：%@"), error.localizedDescription))"
