@@ -144,7 +144,7 @@ private struct VerticalTOCColumn: View {
     }
 }
 
-private struct VerticalTOCView: View {
+struct VerticalTOCView: View {
     let chapters: [BookChapter]
     let currentIndex: Int
     let currentChapterID: UUID?
