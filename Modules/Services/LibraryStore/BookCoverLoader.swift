@@ -30,7 +30,7 @@ enum BookCoverLoader {
     /// footprint by ~5×.
     private static let maxCoverPixelSize = CoverPixelSize.standard.longEdge
 
-    /// 探索設定 › 封面並發數: at most this many covers downloading at once, anywhere in the
+    /// 书城设置 › 封面並發數: at most this many covers downloading at once, anywhere in the
     /// app; 0 — the default, and how it always was — sets no limit beyond URLSession's own.
     static let downloadLimitKey = "coverDownloadLimit"
     static var downloadLimit: Int { UserDefaults.standard.integer(forKey: downloadLimitKey) }

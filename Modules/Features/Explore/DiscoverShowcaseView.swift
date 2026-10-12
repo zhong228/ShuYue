@@ -16,6 +16,8 @@ struct DiscoverShowcaseView: View {
     /// When false, only the inner LazyVStack is returned for embedding inside another
     /// ScrollView (e.g. ExploreHomeView's unified scroll surface).
     var embedsScrollView: Bool = true
+    /// 书城频道过滤：只渲染匹配分类的段，nil（默认）渲染书源的全部分类。
+    var sectionFilter: ((DiscoverShowcaseSection) -> Bool)?
 
     /// Which categories are charts follows these words; read so a change redraws.
     @AppStorage(ExploreSettings.rankedKeywordsKey)
@@ -39,8 +41,10 @@ struct DiscoverShowcaseView: View {
                 loadingState
             } else if discover.sections.isEmpty {
                 DiscoverEmptyState(discover: discover)
+            } else if filteredSections.isEmpty {
+                DiscoverEmptyState(discover: discover)
             } else {
-                ForEach(discover.sections) { section in
+                ForEach(filteredSections) { section in
                     if section.style == .ranked {
                         if section.id == firstRankedSectionId {
                             DiscoverRankedSectionsCarousel(
@@ -88,8 +92,15 @@ struct DiscoverShowcaseView: View {
         .padding(.vertical, DSSpacing.xxl)
     }
 
+    /// The sections this renderer shows: every section by default, or only those
+    /// matching the 书城 channel's filter (精选 / 排行榜 / 新书 / 分类).
+    private var filteredSections: [DiscoverShowcaseSection] {
+        guard let sectionFilter else { return discover.sections }
+        return discover.sections.filter(sectionFilter)
+    }
+
     private var rankedSections: [DiscoverShowcaseSection] {
-        discover.sections.filter { $0.style == .ranked }
+        filteredSections.filter { $0.style == .ranked }
     }
 
     private var firstRankedSectionId: UUID? {
@@ -318,7 +329,7 @@ struct DiscoverSectionView: View {
     let onAppearLoad: () -> Void
     let onRetry: () -> Void
 
-    /// 探索設定's 橫滑展示數; 0 shows the whole first page.
+    /// 书城设置's 橫滑展示數; 0 shows the whole first page.
     @AppStorage(ExploreSettings.shelfBookCountKey)
     private var shelfBookCount = ExploreSettings.defaultShelfBookCount
 
@@ -417,7 +428,7 @@ private struct DiscoverChartColumn: View {
     /// height tracks only the columns built so far AND anything taller draws outside
     /// it: a full column next to an empty 「暫無發現內容」 one once rendered straight
     /// over the section below. Every column must therefore be the same height —
-    /// `prefix` and the reserved height stay driven by this one value — 探索設定's
+    /// `prefix` and the reserved height stay driven by this one value — 书城设置's
     /// 豎排展示數, the same for every column.
     @AppStorage(ExploreSettings.chartBookCountKey)
     private var reservedRows = ExploreSettings.defaultChartBookCount
@@ -827,7 +838,7 @@ struct DiscoverCategoryBookList: View {
 
 // MARK: - List layout
 
-/// A source's page as Legado lays it out (探索設定 › 書源頁佈局 › 列表): its filters and
+/// A source's page as Legado lays it out (书城设置 › 書源頁佈局 › 列表): its filters and
 /// page links, its categories as chips along the top, and the chosen category's books as
 /// a list of cards below.
 struct DiscoverListLayoutView: View {
@@ -838,6 +849,8 @@ struct DiscoverListLayoutView: View {
     /// whole layout feeds the surrounding ScrollView (探索's unified page), and the
     /// books list is embedded without its own scrolling as well.
     var embedsScrollView: Bool = true
+    /// 书城频道过滤：nil（默认）显示书源的全部分类；非 nil 只显示频道匹配的分类。
+    var sectionFilter: ((DiscoverShowcaseSection) -> Bool)?
 
     /// The chosen category, by the key that survives a reload; the first until one is chosen.
     @State private var selectedKey: String?
@@ -851,13 +864,19 @@ struct DiscoverListLayoutView: View {
         onOpenPage == nil ? [] : discover.pageItems
     }
 
-    init(discover: DiscoverViewModel, onOpenPage: ((String) -> Void)? = nil, embedsScrollView: Bool = true) {
+    private var filteredSections: [DiscoverShowcaseSection] {
+        guard let sectionFilter else { return discover.sections }
+        return discover.sections.filter(sectionFilter)
+    }
+
+    init(discover: DiscoverViewModel, onOpenPage: ((String) -> Void)? = nil, embedsScrollView: Bool = true, sectionFilter: ((DiscoverShowcaseSection) -> Bool)? = nil) {
         self.discover = discover
         self.onOpenPage = onOpenPage
         self.embedsScrollView = embedsScrollView
-        let initial = discover.sections.first
-        _selectedKey = State(initialValue: initial?.item.stableKey)
-        _selectedSection = State(initialValue: initial)
+        self.sectionFilter = sectionFilter
+        let visible = discover.sections.filter { sectionFilter?($0) ?? true }
+        _selectedKey = State(initialValue: visible.first?.item.stableKey)
+        _selectedSection = State(initialValue: visible.first)
     }
 
     var body: some View {
@@ -888,15 +907,16 @@ struct DiscoverListLayoutView: View {
     }
 
     private func selectSection(matching key: String?) {
-        selectedSection = discover.sections.first { $0.item.stableKey == key } ?? discover.sections.first
+        selectedSection = filteredSections.first { $0.item.stableKey == key } ?? filteredSections.first
     }
 
     private func handleSectionsChange(_ newSections: [DiscoverShowcaseSection]) {
+        let visible = newSections.filter { sectionFilter?($0) ?? true }
         if let key = selectedKey {
-            selectedSection = newSections.first { $0.item.stableKey == key } ?? newSections.first
+            selectedSection = visible.first { $0.item.stableKey == key } ?? visible.first
         } else {
-            selectedSection = newSections.first
-            selectedKey = newSections.first?.item.stableKey
+            selectedSection = visible.first
+            selectedKey = visible.first?.item.stableKey
         }
     }
 
@@ -910,7 +930,7 @@ struct DiscoverListLayoutView: View {
             )
             .padding(.top, DSSpacing.sm)
         }
-        if !discover.sections.isEmpty {
+        if !filteredSections.isEmpty {
             categoryChips
         }
         contentArea
@@ -961,7 +981,7 @@ struct DiscoverListLayoutView: View {
     private var categoryChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: DSSpacing.sm) {
-                ForEach(discover.sections) { section in
+                ForEach(filteredSections) { section in
                     DSChip(
                         title: section.title,
                         isSelected: section.id == selectedSectionID,

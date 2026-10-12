@@ -91,7 +91,7 @@ private struct CustomExploreShelfBlock: View {
     let onLoad: (UUID) -> Void
     let onRetry: (UUID) -> Void
 
-    /// 探索設定's 橫滑展示數; 0 shows the whole first page.
+    /// 书城设置's 橫滑展示數; 0 shows the whole first page.
     @AppStorage(ExploreSettings.shelfBookCountKey)
     private var shelfBookCount = ExploreSettings.defaultShelfBookCount
 

@@ -95,7 +95,7 @@ struct DiscoverBookDisplay: Identifiable {
 struct DiscoverShowcaseSection: Identifiable {
     let id: UUID
     let item: DiscoverCardItem
-    /// Read each time, so a change to 探索設定's chart keywords shows at once.
+    /// Read each time, so a change to 书城设置's chart keywords shows at once.
     var style: DiscoverSectionStyle { DiscoverViewModel.sectionStyle(for: item.title) }
     /// Cover request context, resolved once per reload. Rows used to re-derive
     /// it per render (a linear source scan + header-JSON parse each time).
@@ -621,7 +621,7 @@ final class DiscoverViewModel: ObservableObject {
     /// at once (LazyVStack renders multiple sections on first paint) can clobber
     /// that shared state. Sequential loading keeps each fetch deterministic.
     ///
-    /// 探索設定's 預加載數量 queues that many of the categories after it too, so they are
+    /// 书城设置's 預加載數量 queues that many of the categories after it too, so they are
     /// ready by the time they scroll into view. Still one at a time, so a larger number
     /// means a longer queue, never more requests at once. Preloading takes only
     /// categories never tried: a failed one waits for its own retry button.
@@ -795,7 +795,7 @@ final class DiscoverViewModel: ObservableObject {
 
     /// Section render style derived from the source's category title. The book
     /// source owns the categories; this only chooses a faithful presentation.
-    /// A category whose title holds any of 探索設定's chart keywords is a numbered chart;
+    /// A category whose title holds any of 书城设置's chart keywords is a numbered chart;
     /// every other one is a shelf of covers.
     nonisolated static func sectionStyle(for title: String) -> DiscoverSectionStyle {
         sectionStyle(for: title, rankedKeywords: ExploreSettings.rankedKeywords)

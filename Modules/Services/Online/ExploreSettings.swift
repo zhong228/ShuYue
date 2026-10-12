@@ -1,6 +1,6 @@
 import Foundation
 
-/// 探索設定 — what the 探索 page and its sources' pages show. Plain `UserDefaults` keys:
+/// 书城设置 — what the 探索 page and its sources' pages show. Plain `UserDefaults` keys:
 /// the views read them with `@AppStorage`, and discover loading reads them here, off the
 /// main actor where it has to.
 enum ExploreSettings {

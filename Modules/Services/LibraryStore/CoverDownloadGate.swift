@@ -1,6 +1,6 @@
 import Foundation
 
-/// Lets at most a given number of cover downloads run at once (探索設定 › 封面並發數);
+/// Lets at most a given number of cover downloads run at once (书城设置 › 封面並發數);
 /// the rest wait their turn, first come first served. A limit of 0 lets every download
 /// straight through, as covers always downloaded before the setting.
 actor CoverDownloadGate {
