@@ -445,6 +445,19 @@ struct ReaderView: View {
         usesReadableReaderWidth ? DSLayout.readableOverlayWidth : .infinity
     }
 
+    /// L6 左侧抽屉宽度：手机上占屏宽约 86%，大屏封顶 400pt。
+    private var readerDrawerWidth: CGFloat {
+        min(UIScreen.main.bounds.width * 0.86, 400)
+    }
+
+    /// 收起 L6 左侧抽屉（目录／书签共用一个抽屉，两个状态一起清掉）。
+    private func dismissReaderDrawer() {
+        withAnimation(DSAnimation.standard) {
+            showTOC = false
+            showBookmarkList = false
+        }
+    }
+
     var extraReaderHorizontalInset: CGFloat {
         ReaderReadableWidthPolicy.extraInset(
             pageWidth: currentReaderRenderSize.width,
@@ -1460,6 +1473,13 @@ struct ReaderView: View {
         return String(format: "%.2f%%", pct)
     }
 
+    /// L6 需求 77：页码反馈「第 x 章 · 已完成 xx%」，替代原来「4/12 · 25.60%」式样。
+    /// 底部控制岛（章节行 + statusLine）共用这一个字符串。
+    var readerPageStatusText: String {
+        let chapterLabel = String(format: localized("第 %d 章"), currentChapterIndex + 1)
+        return "\(chapterLabel) · \(localized("已完成")) \(totalProgressPercent)"
+    }
+
     /// Chapter page info.
     var chapterPageInfo: String {
         if book?.isOnline == true && readerViewModel.chapterState(for: currentChapterIndex) == .loading {
@@ -1579,11 +1599,9 @@ struct ReaderView: View {
                     appleBooksToolbarContent
                     modernToolbarContent
                 }
-                .toolbar(
-                    showsAppleBooksToolbars || showsModernToolbars ? .visible : .hidden,
-                    for: .navigationBar
-                )
-                .toolbar(showsAppleBooksBottomToolbar ? .visible : .hidden, for: .bottomBar)
+                // L6：chrome 一律走「极简悬浮控制」，不依赖任何系统 toolbar——
+                // 三套界面切换被移除，这里恒隐藏，不再随 appleBooks/modern 模式变化。
+                .toolbar(.hidden, for: .navigationBar, .bottomBar)
                 .toolbarBackground(.hidden, for: .navigationBar, .bottomBar)
         }
         .tint(readerTheme.textColor)
@@ -1873,14 +1891,6 @@ struct ReaderView: View {
                 .zIndex(45)
             }
             if showBars { readerChrome }
-            if showBars,
-               settings.appearanceReaderInterface == .appleBooks,
-               appleBooksActivePanel != nil {
-                appleBooksControls
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
-                    .zIndex(60)
-            }
             if showTTSJumpPrompt {
                 VStack {
                     Spacer()
@@ -2560,51 +2570,58 @@ struct ReaderView: View {
                 onlineBookDetailDestination(detail)
             }
         }
-        .sheet(isPresented: $showTOC) {
-            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
-                ReaderTOCView(
-                    chapters: chapters.map { chapter in
-                        var display = chapter
-                        display.title = chapter.title.converted(to: settings.textConversion)
-                        return display
-                    },
-                    bookTitle: book?.title ?? "",
-                    currentPage: currentPage,
-                    totalPages: renderedPageCount,
-                    tocLayoutMode: .from(writingMode: effectiveWritingMode),
-                    pageOffsets: tocPageOffsets,
-                    showsPageNumbers: book?.isOnline != true,
-                    currentIndex: currentChapterIndex,
-                    currentChapterID: currentTOCChapterID,
-                    onSelectChapter: { jumpToTOCEntry($0) },
-                    isPresented: $showTOC
-                )
-            }
-        }
-        .sheet(isPresented: $showBookmarkList) {
-            AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
-                ReaderBookmarkListView(
-                    bookTitle: book?.title ?? "",
-                    bookmarks: book?.bookmarks ?? [],
-                    pageNumber: { inChapterPageNumber(for: $0) },
-                    chapterTitle: { index in
-                        // 章節已經不在目錄裡（換源、目錄重抓）就回空字串，讓清單退回
-                        // 書籤存檔時的章名——`bookmarkChapterTitle` 最後一手會回「目前
-                        // 章節」，掛在別章的書籤上是錯的。
-                        guard chapters.indices.contains(index) else { return "" }
-                        return bookmarkChapterTitle(for: index).converted(to: settings.textConversion)
-                    },
-                    onSelect: { bm in
-                        showBookmarkList = false
-                        jumpToBookmark(bm)
-                    },
-                    onSelectChapter: { index in
-                        showBookmarkList = false
-                        jumpToChapter(index)
-                    },
-                    onDelete: { deleteBookmarkEntry($0) },
-                    isPresented: $showBookmarkList
-                )
+        // L6 需求 76：目录与书签改为左侧滑出抽屉（章节搜索／章节树／书签混排），
+        // 取代原来的两个 sheet 弹层。遮罩点按、抽屉内选择章/书签、关闭按钮
+        // 都通过 `dismissReaderDrawer()` 收起。
+        .overlay(alignment: .leading) {
+            if showTOC || showBookmarkList {
+                ZStack(alignment: .leading) {
+                    Color.black.opacity(0.32)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            dismissReaderDrawer()
+                        }
+
+                    ReaderLeftDrawerView(
+                        bookTitle: book?.title ?? "",
+                        chapters: chapters.map { chapter in
+                            var display = chapter
+                            display.title = chapter.title.converted(to: settings.textConversion)
+                            return display
+                        },
+                        currentPage: currentPage,
+                        totalPages: renderedPageCount,
+                        tocLayoutMode: .from(writingMode: effectiveWritingMode),
+                        pageOffsets: tocPageOffsets,
+                        showsPageNumbers: book?.isOnline != true,
+                        currentIndex: currentChapterIndex,
+                        currentChapterID: currentTOCChapterID,
+                        onSelectChapter: { jumpToTOCEntry($0) },
+                        bookmarks: book?.bookmarks ?? [],
+                        pageNumber: { inChapterPageNumber(for: $0) },
+                        chapterTitle: { index in
+                            // 章節已經不在目錄裡（換源、目錄重抓）就回空字串，讓清單退回
+                            // 書籤存檔時的章名——`bookmarkChapterTitle` 最後一手會回「目前
+                            // 章節」，掛在別章的書籤上是錯的。
+                            guard chapters.indices.contains(index) else { return "" }
+                            return bookmarkChapterTitle(for: index).converted(to: settings.textConversion)
+                        },
+                        onSelectBookmark: { jumpToBookmark($0) },
+                        onSelectBookmarkChapter: { jumpToChapter($0) },
+                        onDeleteBookmark: { deleteBookmarkEntry($0) },
+                        isPresented: Binding(
+                            get: { showTOC || showBookmarkList },
+                            set: { if !$0 { dismissReaderDrawer() } }
+                        ),
+                        initialSegment: showTOC ? .tree : .bookmarks
+                    )
+                    .frame(width: readerDrawerWidth)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                .transition(.opacity)
+                .zIndex(200)
+                .animation(DSAnimation.standard, value: showTOC || showBookmarkList)
             }
         }
         .sheet(

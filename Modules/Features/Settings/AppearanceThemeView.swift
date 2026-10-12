@@ -208,11 +208,7 @@ struct AppearanceThemeView: View {
             NavigationLink {
                 AppearanceReaderInterfaceView()
             } label: {
-                SettingsValueLabel(
-                    title: localized("閱讀界面"),
-                    systemImage: "menubar.rectangle",
-                    value: settings.appearanceReaderInterface.localizedTitle
-                )
+                SettingsRowLabel(localized("閱讀界面"), systemImage: "menubar.rectangle")
             }
             // In view without Pro too, locked (2026-09-27).
             rootTabRow
@@ -868,50 +864,15 @@ private struct AppearanceReaderInterfaceView: View {
     /// this page is never on screen for.
     private var previewTheme: ReaderTheme { ReaderTheme.loadPersisted() }
 
-    /// nil for Apple Books, which renders through system toolbars and has no surface
-    /// of its own to recolor — that is exactly when the 自定義 section is absent.
-    private var customizableInterface: ReaderChromeInterface? {
-        ReaderChromeInterface(settings.appearanceReaderInterface)
-    }
-
     private func palette(for interface: ReaderChromeInterface) -> ReaderChromePalette {
         ReaderChromePalette(interface: interface, theme: previewTheme, settings: settings)
     }
 
     var body: some View {
         Form {
-            Section {
-                Picker(selection: $settings.appearanceReaderInterface) {
-                    ForEach(AppearanceReaderInterface.allCases) { option in
-                        Text(option.localizedTitle)
-                            .font(DSFont.body)
-                            .tag(option)
-                            .foregroundStyle(DSColor.textPrimary)
-                    }
-                } label: {
-                    Text(localized("閱讀界面"))
-                        .font(DSFont.body)
-                        .foregroundStyle(DSColor.textPrimary)
-                }
-                .pickerStyle(.inline)
-                // The label repeated the page title one row further down. The section
-                // header carries the name now; VoiceOver still hears it because
-                // `accessibilityLabel` restates it on the control itself.
-                .labelsHidden()
-                .accessibilityLabel(localized("閱讀界面"))
-            } header: {
-                Text(localized("閱讀界面"))
-                    .font(DSFont.headline)
-                    .foregroundStyle(DSColor.textPrimary)
-            } footer: {
-                Text(localized("選擇閱讀界面的工具列與控制方式。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
-
-            if let interface = customizableInterface {
-                customizationSection(for: interface)
-            }
+            // ShuYue 只保留「极简悬浮控制」单套方案：点屏幕中央呼出顶部与底部
+            // 控制岛，不再提供 classic / modern / Apple Books 三套 chrome 切换。
+            customizationSection(for: .classic)
         }
         .softScrollEdges()
         .scrollContentBackground(.hidden)
@@ -956,9 +917,7 @@ private struct AppearanceReaderInterfaceView: View {
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
         } footer: {
-            Text(localized(interface == .classic
-                ? "頂部是返回／書籤那條，底部是進度條與工具列，中間四顆圓鈕是刷新／換源／下載／聽書。強調色用在進度條和「深色」的選中狀態。未調整的部分跟隨目前的閱讀主題。"
-                : "現代的頂欄是系統玻璃，只能改圖示顏色；底部是浮動面板，書卡是點封面圓圈之後那張。未調整的部分跟隨目前的閱讀主題。"))
+            Text(localized("点按屏幕中央呼出顶部与底部控制岛。顶部是返回／章节名／书签／搜索，右侧「更多」收纳刷新、换源、下载与网页打开；底部是进度滑条、上一章、下一章，以及目录、设置、听书、深色。未调整的部分跟随目前的阅读主题。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()

@@ -3615,3 +3615,35 @@
 "訂閱源" = "Sources";
 "移動位置" = "Move";
 "點擊右上角「更多」即可匯入 Legado JSON 訂閱源" = "Tap the More menu in the top-right corner to import Legado JSON sources";
+
+// ShuYue L6 reader redesign additions
+"阅读偏好" = "Reading Preferences";
+"版式" = "Layout";
+"视觉" = "Appearance";
+"习惯" = "Habits";
+"简繁切换" = "Traditional / Simplified";
+"排版细节" = "Typography Details";
+"眉脚与标题" = "Headers & Titles";
+"阅读装饰" = "Reading Decorations";
+"翻页习惯" = "Page-Turn Habits";
+"翻页方向" = "Turn Direction";
+"双侧翻页" = "Turn on Both Sides";
+"上滑离开" = "Swipe Up to Leave";
+"下拉加入书签" = "Pull Down to Bookmark";
+"触控区域" = "Touch Zones";
+"自动亮度" = "Auto Brightness";
+"亮度管理" = "Brightness";
+"导出偏好" = "Export Preferences";
+"导入偏好" = "Import Preferences";
+"偏好备份" = "Preferences Backup";
+"已完成" = "Completed";
+"上下边距同时是眉脚的容身空间，改动不会移动眉脚本身。" = "Top and bottom margins also give the headers room to sit; changing them doesn't move the headers themselves.";
+"正文与眉脚的间距在「排版细节」的上下边距调整。" = "The gap between the body text and the headers is adjusted in Typography Details’ top and bottom margins.";
+"包含排版细节、章节标题样式与正则高亮。导入也接受 legado 的 readConfig.json。" = "Includes typography details, chapter title styles, and regex highlighting. Imports also accept Legado’s readConfig.json.";
+"双侧翻页：点画面左右两侧都翻到下一页，中间仍呼出菜单。上滑离开与下拉加入书签都要滑过一半再松手。" = "Turn on Both Sides: tapping either edge turns to the next page; the middle still opens the menu. Both swipe up to leave and pull down to bookmark need to pass halfway before you release.";
+"点按屏幕中央呼出顶部与底部控制岛。顶部是返回／章节名／书签／搜索，右侧「更多」收纳刷新、换源、下载与网页打开；底部是进度滑条、上一章、下一章，以及目录、设置、听书、深色。未调整的部分跟随目前的阅读主题。" = "Tap the middle of the screen to bring up the top and bottom control islands. The top holds Back, Chapter Title, Bookmark and Search, with More on the right folding in Refresh, Change Source, Download and Open in Browser; the bottom holds the progress slider, Previous Chapter, Next Chapter, plus Contents, Settings, Listen and Dark. Everything left unset follows the current reading theme.";
+
+// ShuYue L6 writing direction
+"横排" = "Horizontal";
+"竖排" = "Vertical";
+"书写方向" = "Writing Direction";
