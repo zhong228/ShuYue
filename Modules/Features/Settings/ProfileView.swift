@@ -22,14 +22,14 @@ struct SettingsView: View {
     @State private var autoOpenDiagnostics = false
     #endif
     private let feedbackEmail = "172803068@qq.com"
-    private let sourceCodeURL = URL(string: "https://github.com/zhong228/MoYue/releases")
+    private let sourceCodeURL = URL(string: "https://github.com/zhong228/ShuYue/releases")
 
     private var feedbackMailURL: URL? {
         var components = URLComponents()
         components.scheme = "mailto"
         components.path = feedbackEmail
         components.queryItems = [
-            URLQueryItem(name: "subject", value: localized("MoYue app 反饋"))
+            URLQueryItem(name: "subject", value: localized("書悅 app 反饋"))
         ]
         return components.url
     }
@@ -40,7 +40,7 @@ struct SettingsView: View {
         // product name (YueduReader) and would leak the upstream brand into the UI.
         let appName = Bundle.main.localizedInfoDictionary?["CFBundleDisplayName"] as? String
             ?? Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
-            ?? "MoYue"
+            ?? "ShuYue"
         let template = localized("跟隨系統語言。可在「設定 → %@ → 語言」單獨設定")
         return String(format: template, appName)
     }
@@ -134,7 +134,7 @@ struct SettingsView: View {
                 Section(header: Text(localized("關於")).foregroundStyle(DSColor.textSecondary)) {
                     DSSettingsNavRow(
                         icon: "info.circle.fill",
-                        title: localized("關於 MoYue"),
+                        title: localized("關於 ShuYue"),
                         value: appVersion
                     ) {
                         AboutSupportView(
@@ -436,7 +436,7 @@ private struct AboutSupportView: View {
             .interfaceSectionSurface()
         }
         .softScrollEdges()
-        .navigationTitle(localized("關於 MoYue"))
+        .navigationTitle(localized("關於 ShuYue"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
     }

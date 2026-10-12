@@ -416,7 +416,7 @@
 "閱讀設定" = "Reading Settings";
 "閱讀進度" = "Progress";
 "關於" = "About";
-"關於 MoYue" = "About ShuYue";
+"關於 ShuYue" = "About ShuYue";
 "聯絡我們" = "Contact Us";
 "聯絡方式" = "Contact";
 "聯絡方式、版本資訊與政策協議" = "Contact, version, policies, and agreements";
@@ -588,7 +588,7 @@
 "Google 登入失敗" = "Google sign-in failed";
 "Apple 登入失敗" = "Apple sign-in failed";
 "Apple 使用者" = "Apple User";
-"MoYue app 反饋" = "ShuYue app Feedback";
+"書悅 app 反饋" = "ShuYue app Feedback";
 "已登入帳號" = "Signed in";
 "同步狀態待設定" = "Sync status not configured";
 "尚未登入帳號" = "Not signed in";
