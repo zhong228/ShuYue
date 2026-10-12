@@ -99,11 +99,7 @@ struct ReaderBottomControlBar: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.62))
-                            .background(Capsule().fill(.ultraThinMaterial))
-                    )
+                    .background(Capsule().fill(DSColor.appAccent))
                     .clipShape(Capsule())
                     .allowsHitTesting(false)
                     .transition(.opacity.animation(DSAnimation.fast))
@@ -292,7 +288,7 @@ struct ReaderBottomControlBar: View {
                         Text("\(count)")
                             .font(DSFont.fixed(size: 9, weight: .semibold))
                             .foregroundColor(.white).padding(.horizontal, 3).padding(.vertical, 1)
-                            .background(Capsule().fill(Color.orange.opacity(0.85)))
+                            .background(Capsule().fill(DSColor.appAccent))
                             .offset(x: 10, y: -4)
                     }
                 }

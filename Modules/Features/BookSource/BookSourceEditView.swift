@@ -54,7 +54,7 @@ struct BookSourceEditView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                .background(Color(.systemGray6))
+                .background(DSColor.neutralControlFill)
 
                 tabContent
             }

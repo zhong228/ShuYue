@@ -29,9 +29,16 @@ struct LaunchImageSplashOverlay: View {
 
     var body: some View {
         ZStack {
-            if visible, let image = currentImage {
-                splash(image)
-                    .transition(.opacity)
+            if visible {
+                if let image = currentImage {
+                    splash(image)
+                        .transition(.opacity)
+                } else {
+                    // 书悦品牌冷启动字标：无自定义启动图时默认展示，
+                    // 让打开 App 的第一屏与墨悦明显不同。
+                    brandSplash
+                        .transition(.opacity)
+                }
             }
         }
         .animation(DSAnimation.splashFade, value: visible)
@@ -41,8 +48,6 @@ struct LaunchImageSplashOverlay: View {
                 return
             }
             Self.hasPlayed = true
-
-            let hasImage = currentImage != nil
 
             // Wait for the entitlement gate to settle so we know whether to
             // hold the splash or dismiss fast. The image (if any) is already
@@ -60,16 +65,11 @@ struct LaunchImageSplashOverlay: View {
                 }
             }
 
-            guard hasImage else {
-                visible = false
-                return
-            }
-
+            // 品牌字标对所有人展示一次（非 Pro 也短暂显示后快速淡出），
+            // 自定义启动图仍按原先 Pro 权限控制停留时长。
             if subscriptionStore.hasAccess(.launchScreen) {
                 try? await Task.sleep(nanoseconds: holdDuration)
             } else {
-                // Non-Pro with an orphaned image: quick dismiss so the user
-                // isn't shown stale branding they can no longer configure.
                 try? await Task.sleep(nanoseconds: minimalHoldDuration)
             }
             visible = false
@@ -84,6 +84,26 @@ struct LaunchImageSplashOverlay: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipped()
                 .background(colorScheme == .dark ? Color.black : Color.white)
+        }
+        .ignoresSafeArea()
+    }
+
+    /// 书悦「暖书卷」冷启动字标：暖纸米底 + 朱砂红衬线字标。
+    private var brandSplash: some View {
+        ZStack {
+            (colorScheme == .dark ? DSColor.inkBackgroundDark : DSColor.paperBackgroundLight)
+                .ignoresSafeArea()
+            VStack(spacing: DSSpacing.md) {
+                Text("书悦")
+                    .font(.system(size: 56, weight: .bold, design: .serif))
+                    .foregroundStyle(DSColor.appAccent)
+                    .accessibilityHidden(true)
+                Text("SHUYUE")
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .tracking(6)
+                    .foregroundStyle(DSColor.appAccent.opacity(0.55))
+                    .accessibilityHidden(true)
+            }
         }
         .ignoresSafeArea()
     }

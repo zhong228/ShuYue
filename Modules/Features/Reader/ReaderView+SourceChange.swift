@@ -25,7 +25,7 @@ extension ReaderView {
                         Spacer()
                         Image(systemName: "checkmark")
                             .font(DSFont.body.weight(.semibold))
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(DSColor.appAccent)
                             // The tick is the visual form of 「使用中」; the `.isSelected`
                             // trait below says it, so leaving it focusable only got the
                             // symbol name read out.

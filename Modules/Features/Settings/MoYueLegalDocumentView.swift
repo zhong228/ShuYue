@@ -33,7 +33,7 @@ enum MoYueLegalDocument {
     private static let privacySections: [(heading: String, body: String)] = [
         (
             "一、概述",
-            "书悦（MoYue）是一款开源电子书与书源阅读应用。我们非常重视你的隐私。本政策说明书悦如何处理你的数据。你使用书悦即表示你阅读并理解本政策。"
+            "书悦（ShuYue）是一款开源电子书与书源阅读应用。我们非常重视你的隐私。本政策说明书悦如何处理你的数据。你使用书悦即表示你阅读并理解本政策。"
         ),
         (
             "二、我们收集哪些信息",
@@ -74,7 +74,7 @@ enum MoYueLegalDocument {
     private static let agreementSections: [(heading: String, body: String)] = [
         (
             "一、协议的接受",
-            "本协议是您与书悦（MoYue）之间关于使用本应用及服务的约定。您下载、安装或使用书悦，即表示您已阅读、理解并同意接受本协议的全部条款。"
+            "本协议是您与书悦（ShuYue）之间关于使用本应用及服务的约定。您下载、安装或使用书悦，即表示您已阅读、理解并同意接受本协议的全部条款。"
         ),
         (
             "二、许可与使用",

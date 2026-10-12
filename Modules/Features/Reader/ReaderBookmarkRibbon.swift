@@ -20,8 +20,10 @@ enum ReaderBookmarkRibbon {
     /// screen corner of a full-screen page shaves only the ribbon's top few points.
     static let trailingInset: CGFloat = 32
     static let notchDepth: CGFloat = 6
-    /// The top bar's filled bookmark is SwiftUI `.orange`, which is this colour.
-    static var color: UIColor { .systemOrange }
+    /// The top bar's filled bookmark and this ribbon share one brand colour —
+    /// the 書悅 vermilion `DSColor.appAccent`, kept in UIKit here because the
+    /// ribbon is drawn into Core Graphics page snapshots.
+    static var color: UIColor { UIColor(red: 0.725, green: 0.290, blue: 0.180, alpha: 1.0) }
 
     /// Where the ribbon hangs on a page with these bounds.
     static func frame(in pageBounds: CGRect) -> CGRect {

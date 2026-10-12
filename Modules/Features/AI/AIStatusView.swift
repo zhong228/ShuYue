@@ -78,7 +78,7 @@ struct AIStatusView: View {
         .themedAppSurface(for: .settings)
         .navigationTitle(localized("AI 狀態與診斷"))
         .toolbarTitleDisplayMode(.inline)
-        .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "MoYue-AI-diagnostics") { result in
+        .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "ShuYue-AI-diagnostics") { result in
             if case .failure = result { exportError = localized("診斷匯出失敗") }
         }
     }

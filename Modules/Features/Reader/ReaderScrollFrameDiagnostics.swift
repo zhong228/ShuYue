@@ -29,7 +29,7 @@ struct ReaderScrollFrameTimeline {
 
 @MainActor
 final class ReaderScrollFrameDiagnostics {
-    private static let signposter = OSSignposter(subsystem: Bundle.main.bundleIdentifier ?? "MoYue", category: "ReaderPerformance")
+    private static let signposter = OSSignposter(subsystem: Bundle.main.bundleIdentifier ?? "ShuYue", category: "ReaderPerformance")
     private var link: AnyObject?
     private var started: Double?
     private var timeline = ReaderScrollFrameTimeline()

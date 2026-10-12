@@ -77,7 +77,7 @@ final class ReaderFragmentRasterizer: @unchecked Sendable {
     }
 
     private static let signposter = OSSignposter(
-        subsystem: Bundle.main.bundleIdentifier ?? "MoYue", category: "ReaderPerformance")
+        subsystem: Bundle.main.bundleIdentifier ?? "ShuYue", category: "ReaderPerformance")
     private let queue = DispatchQueue(label: "com.yuedu.reader.fragment-raster", qos: .userInitiated)
     private let lock = NSLock()
     private var pending: [Pending] = []

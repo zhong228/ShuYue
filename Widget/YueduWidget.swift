@@ -1,6 +1,17 @@
 import WidgetKit
 import SwiftUI
 
+// MARK: - Brand Accent
+
+/// The widget extension syncs only `Widget/`, so it cannot reach `DSColor` in
+/// `Modules/SharedUI`. Re-declare the app's vermilion accent here so the home-screen
+/// progress widget and the download Live Activity stay on-brand instead of falling
+/// back to the system blue.
+extension Color {
+    /// Brand vermilion `#B94A2E`, matching `DSColor.appAccent` in the main app.
+    static let widgetAccent = Color(red: 0.725, green: 0.290, blue: 0.180)
+}
+
 // MARK: - Data Models
 
 struct BookProgress: Codable {
@@ -78,7 +89,7 @@ struct BookProgressWidgetView: View {
                 .padding(12)
                 .containerBackground(
                     LinearGradient(
-                        colors: [Color.accentColor.opacity(0.8), Color.black.opacity(0.6)],
+                        colors: [Color.widgetAccent.opacity(0.8), Color.black.opacity(0.6)],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ),
                     for: .widget

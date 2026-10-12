@@ -90,7 +90,7 @@
 "移除書架" = "Remove from Library";
 "動畫樣式" = "Animation Style";
 "匯入" = "Import";
-"匯入 TXT 文件，或是輸入網址\n抓取網頁小說加入書架" = "Import a TXT file, or enter a URL\nto fetch a web novel into your library";
+"匯入 TXT 文件，或是輸入網址\n抓取網頁小說加入書庫" = "Import a TXT file, or enter a URL\nto fetch a web novel into your library";
 "匯入中，請稍候…" = "Importing, please wait…";
 "匯入失敗：" = "Import failed: ";
 "匯入文件" = "Import File";
@@ -416,7 +416,7 @@
 "閱讀設定" = "Reading Settings";
 "閱讀進度" = "Progress";
 "關於" = "About";
-"關於 MoYue" = "About ShuYue";
+"關於 ShuYue" = "About ShuYue";
 "聯絡我們" = "Contact Us";
 "聯絡方式" = "Contact";
 "聯絡方式、版本資訊與政策協議" = "Contact, version, policies, and agreements";
@@ -588,7 +588,7 @@
 "Google 登入失敗" = "Google sign-in failed";
 "Apple 登入失敗" = "Apple sign-in failed";
 "Apple 使用者" = "Apple User";
-"MoYue app 反饋" = "ShuYue app Feedback";
+"書悅 app 反饋" = "ShuYue app Feedback";
 "已登入帳號" = "Signed in";
 "同步狀態待設定" = "Sync status not configured";
 "尚未登入帳號" = "Not signed in";
@@ -3542,9 +3542,11 @@
 
 "TXTEncodingUnsupported" = "Unable to reliably detect the TXT encoding. Save the file as UTF-8 and import it again.";
 "墨悅數據處理與隱私說明" = "ShuYue data handling and privacy";
+"書悅數據處理與隱私說明" = "ShuYue data handling and privacy";
 "使用規則、書源與第三方內容責任" = "Usage rules, book sources and third-party content responsibility";
 "使用書源與第三方來源前，請先閱讀相關條款。" = "Please read the relevant terms before using book sources and third-party sources.";
 "墨悅" = "ShuYue";
+"書悅" = "ShuYue";
 
 "伺服器回應錯誤（%d）" = "Server responded with status %d";
 "此頁面沒有找到可直接導入的書源 JSON，請在瀏覽器中打開後複製 .json 直鏈再導入（%d）" = "No importable book source JSON was found on this page (status %d). Open it in a browser and copy the direct .json link instead.";
@@ -3595,3 +3597,35 @@
 "成功 %d 本，失敗 %d 本。" = "%d succeeded, %d failed.";
 "匯入書籍後自動刮削封面" = "Auto-scrape covers after import";
 "開啟後，匯入本地書籍時會自動搜索並替無封面書籍套用網路封面。" = "When enabled, imported local books will automatically search for and apply online covers if none exists.";
+"書庫" = "Library";
+"書城" = "Bookstore";
+"檢索" = "Search";
+"追更" = "Follows";
+"我的" = "Me";
+"添加圖書" = "Add Book";
+"本地文件" = "Local Files";
+"WebDAV 书库" = "WebDAV Library";
+"OPDS 书库" = "OPDS Library";
+"Calibre 书库" = "Calibre Library";
+"从书源添加" = "Add from Source";
+"打開添加圖書動作單" = "Open Add Book Action Sheet";
+"移动到书架" = "Move to Shelf";
+"多選" = "Multi-select";
+"補全書封" = "Fill In Covers";
+"方格" = "Grid";
+"智能歸類" = "Smart Organize";
+"已选 " = "Selected ";
+"書庫還是空的" = "Your Library Is Empty";
+"发现好书" = "Discover Great Books";
+"探索无尽阅读世界" = "Explore the Endless World of Reading";
+"打开浏览器" = "Open Browser";
+"选择书源" = "Select a Source";
+"前往书源管理添加" = "Go to Source Manager";
+"推荐" = "Recommended";
+"自定义页面" = "Custom Page";
+"请选择上方书源" = "Please Select a Source Above";
+"應用診斷與問題回報" = "App Diagnostics & Feedback";
+"点击右上角菜单可以导入 Legado JSON 订阅源" = "Tap the menu in the top right to import a Legado JSON source";
+"導入本地" = "Import Local";
+"從書源獲取" = "Get from Source";
+"瀏覽書城" = "Browse Bookstore";

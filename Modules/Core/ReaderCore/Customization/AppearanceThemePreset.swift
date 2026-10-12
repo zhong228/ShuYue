@@ -486,11 +486,12 @@ struct AppearanceThemePreset: Identifiable, Hashable {
     /// "默認" — what the app looked like before appearance themes existed.
     /// Selecting it applies no tint override (see `ContentView`); the colors
     /// here only drive the preview tile and serve as a base for custom copies.
+    /// 书悦品牌化：accent 由墨悦青绿改为朱砂红（暖书卷方向），背景保持暖纸米。
     static let classic = AppearanceThemePreset(
         id: classicID, nameKey: "默認",
         displayName: nil,
         background: hex(0xF7F3EA), text: hex(0x2E2A25),
-        bar: hex(0xFDFBF5), accent: hex(0x2E6659), dialogue: hex(0xDFE9E1),
+        bar: hex(0xFDFBF5), accent: hex(0xB94A2E), dialogue: hex(0xDFE9E1),
         previewBackground: hex(0xFDFBF5),
         relativePreviewImagePath: nil, imagePaths: [],
         requiresPro: false, isImagePreset: false, isCustom: false

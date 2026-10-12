@@ -193,7 +193,7 @@ struct TTSPanelView: View {
                                     systemName: tts.playbackState == .playing ? "pause.circle.fill" : "play.circle.fill"
                                 )
                                 .font(DSFont.fixed(size: 52))
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(DSColor.appAccent)
                             }
                             .accessibilityIdentifier("tts_panel_play_pause")
                             .accessibilityLabel(localized(tts.playbackState == .playing ? "暫停" : "播放"))
@@ -426,7 +426,7 @@ struct TTSPanelView: View {
                                 Spacer()
                                 if index == controlChapterIndex {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(DSColor.appAccent)
                                 }
                             }
                         }

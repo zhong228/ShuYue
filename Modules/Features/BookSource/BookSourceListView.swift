@@ -483,7 +483,7 @@ struct BookSourceListView: View {
                             ProgressView().scaleEffect(0.8)
                             Text(localized("驗證中…"))
                                 .font(DSFont.caption)
-                                .foregroundColor(.white)
+                                .foregroundColor(DSColor.textOnAccent)
                         }
                         .padding(.horizontal, DSSpacing.lg)
                         .padding(.vertical, DSSpacing.sm)
@@ -782,7 +782,7 @@ struct BookSourceListView: View {
                     .font(DSFont.fixed(size: 18))
                     .foregroundColor(
                         model.isPageFullySelected
-                            ? Color.teal : Color(UIColor.systemGray3))
+                            ? DSColor.appAccent : DSColor.textTertiary)
                     .accessibilityHidden(true)
                     Text(localized("全選") + "(\(model.pageSelectedCount)/\(model.pageCount))")
                         .font(DSFont.fixed(size: 13))
@@ -803,7 +803,7 @@ struct BookSourceListView: View {
                     .font(DSFont.fixed(size: 13))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
-                    .background(Color(UIColor.systemGray5))
+                    .background(DSColor.neutralControlFill)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .foregroundStyle(DSColor.textPrimary)
             }
@@ -821,7 +821,7 @@ struct BookSourceListView: View {
                     .foregroundColor(model.selectedIDs.isEmpty ? .secondary : .red)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
-                    .background(Color(UIColor.systemGray5))
+                    .background(DSColor.neutralControlFill)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
@@ -989,7 +989,7 @@ struct BookSourceListView: View {
             Spacer()
             Image(systemName: "doc.text.magnifyingglass")
                 .font(DSFont.fixed(size: 64))
-                .foregroundStyle(Color.teal.opacity(0.45))
+                .foregroundStyle(DSColor.appAccent.opacity(0.45))
             Text(localized("尚無書源"))
                 .font(DSFont.title2.weight(.semibold))
                 .foregroundStyle(DSColor.textPrimary)
@@ -1000,9 +1000,9 @@ struct BookSourceListView: View {
                 showImport = true
             } label: {
                 Label(localized("匯入書源 JSON"), systemImage: "arrow.down.doc")
-                    .font(DSFont.headline).foregroundColor(.white)
+                    .font(DSFont.headline).foregroundColor(DSColor.textOnAccent)
                     .padding(.horizontal, 28).padding(.vertical, 13)
-                    .background(Color.teal).clipShape(Capsule())
+                    .background(DSColor.appAccent).clipShape(Capsule())
             }
             Spacer()
         }
@@ -1026,7 +1026,7 @@ struct BookSourceListView: View {
                 TextEditor(text: $importJSON)
                     .font(DSFont.fixed(size: 13, design: .monospaced))
                     .padding(8)
-                    .background(Color.secondary.opacity(0.15))
+                    .background(DSColor.neutralControlFill.opacity(0.6))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.horizontal)
                     .frame(maxHeight: 280)
@@ -1036,7 +1036,7 @@ struct BookSourceListView: View {
                 } label: {
                     Label(localized("從文件選取 .json"), systemImage: "doc.badge.plus")
                         .frame(maxWidth: .infinity).padding()
-                        .background(Color.secondary.opacity(0.15))
+                        .background(DSColor.neutralControlFill.opacity(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal)
                 }
