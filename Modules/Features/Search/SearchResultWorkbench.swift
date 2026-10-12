@@ -294,8 +294,8 @@ struct SearchGroupedResultsList: View {
         SearchQueryField(query: .constant("三體"), onSearch: {})
         SearchSourceChipStrip(
             sources: [
-                BookSource(id: UUID(), bookSourceName: "示例源"),
-                BookSource(id: UUID(), bookSourceName: "另一個源"),
+                BookSource(bookSourceUrl: "https://example.com/a", bookSourceName: "示例源"),
+                BookSource(bookSourceUrl: "https://example.com/b", bookSourceName: "另一個源"),
             ],
             scope: .all,
             onSelectAll: {},
