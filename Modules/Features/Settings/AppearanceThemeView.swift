@@ -88,8 +88,7 @@ struct AppearanceThemeView: View {
         // and the themes themselves. A theme no longer opens a page of its own. Every
         // row wears `SettingsRowLabel`, as 設定 and 閱讀設定 do.
         List {
-            themeSelectionSection
-            lightDarkSection
+            visionSection
             interfaceSection
             appearanceSection
             themeManagementSection
@@ -99,7 +98,7 @@ struct AppearanceThemeView: View {
         .scrollContentBackground(.hidden)
         .contentMargins(.bottom, DSSpacing.xxl * 2, for: .scrollContent)
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("外觀主題"))
+        .navigationTitle(localized("视觉主题"))
         .toolbarTitleDisplayMode(.inline)
         .tint(activeTheme.isClassic ? nil : activeTheme.accentColor)
         .sheet(item: $paywallFeature) { feature in
@@ -130,14 +129,35 @@ struct AppearanceThemeView: View {
         }
     }
 
-    private var themeSelectionSection: some View {
+    private var visionSection: some View {
         Section {
             themeSelectionCard
             if !subscriptionStore.hasAccess(.readerThemePacks) {
                 customizationRow
             }
+            Text(localized("切换偏好"))
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .textCase(nil)
+                .padding(.top, DSSpacing.xs)
+                .accessibilityAddTraits(.isHeader)
+            Toggle(isOn: appearanceFollowsSystemBinding) {
+                SettingsRowLabel(localized("跟随系统"), systemImage: "circle.lefthalf.filled")
+            }
+            Toggle(isOn: $settings.appearanceUsesSeparateDarkTheme) {
+                SettingsRowLabel(localized("单独设置深色主题"), systemImage: "moon")
+            }
+            Toggle(isOn: $settings.appearanceBindReaderTheme) {
+                SettingsRowLabel(localized("绑定阅读主题"), systemImage: "book")
+            }
+            if settings.appearanceBindReaderTheme {
+                boundReaderThemeRow(titleKey: "浅色阅读主题", systemImage: "sun.max", appearance: .light)
+                boundReaderThemeRow(titleKey: "深色阅读主题", systemImage: "moon.fill", appearance: .dark)
+                Text(localized("阅读器在浅色模式用浅色阅读主题，深色模式用深色阅读主题。要跟着装置的深浅色自动切换，在阅读器的「设置」面板开启「跟随装置深浅色」。"))
+                    .dsSectionFooter()
+            }
         } header: {
-            Text(localized("主題"))
+            Text(localized("视觉方案"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             if !subscriptionStore.hasAccess(.readerThemePacks) {
@@ -146,6 +166,7 @@ struct AppearanceThemeView: View {
             }
         }
         .interfaceSectionSurface()
+        .animation(reduceMotion ? nil : DSAnimation.standard, value: settings.appearanceBindReaderTheme)
     }
 
     /// A long press on a theme of the user's own: the tile pops up, and once it is up,
@@ -170,35 +191,8 @@ struct AppearanceThemeView: View {
         renameTarget = preset
     }
 
-    /// How the look follows the system's light and dark, and which reading background
-    /// each of the reader's two modes wears.
-    private var lightDarkSection: some View {
-        Section {
-            Toggle(isOn: appearanceFollowsSystemBinding) {
-                SettingsRowLabel(localized("跟隨系統"), systemImage: "circle.lefthalf.filled")
-            }
-            Toggle(isOn: $settings.appearanceUsesSeparateDarkTheme) {
-                SettingsRowLabel(localized("單獨設定深色主題"), systemImage: "moon")
-            }
-            Toggle(isOn: $settings.appearanceBindReaderTheme) {
-                SettingsRowLabel(localized("綁定閱讀主題"), systemImage: "book")
-            }
-            if settings.appearanceBindReaderTheme {
-                boundReaderThemeRow(titleKey: "淺色閱讀主題", systemImage: "sun.max", appearance: .light)
-                boundReaderThemeRow(titleKey: "深色閱讀主題", systemImage: "moon.fill", appearance: .dark)
-            }
-        } header: {
-            Text(localized("主題切換"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            if settings.appearanceBindReaderTheme {
-                Text(localized("閱讀器在淺色模式用淺色閱讀主題，深色模式用深色閱讀主題。要跟著裝置的深淺色自動切換，在閱讀器的「設置」面板開啟「跟隨裝置深淺色」。"))
-                    .dsSectionFooter()
-            }
-        }
-        .interfaceSectionSurface()
-        .animation(reduceMotion ? nil : DSAnimation.standard, value: settings.appearanceBindReaderTheme)
-    }
+    /// The look's light/dark preferences live in 视觉方案's 切换偏好 rows
+    /// alongside the theme grid (merged during the 我的/设置页 rebuild).
 
     /// What surrounds the content: the reader's chrome, the tab bar, the bookshelf grid
     /// and its covers, the launch screen. 每列欄數 and 預設封面 moved here from 設定's
@@ -208,7 +202,7 @@ struct AppearanceThemeView: View {
             NavigationLink {
                 AppearanceReaderInterfaceView()
             } label: {
-                SettingsRowLabel(localized("閱讀界面"), systemImage: "menubar.rectangle")
+                SettingsRowLabel(localized("阅读器样式"), systemImage: "menubar.rectangle")
             }
             // In view without Pro too, locked (2026-09-27).
             rootTabRow
@@ -218,17 +212,17 @@ struct AppearanceThemeView: View {
                         .tag(columnCount)
                 }
             } label: {
-                SettingsRowLabel(localized("每列欄數"), systemImage: "square.grid.3x3.fill")
+                SettingsRowLabel(localized("书库密度"), systemImage: "square.grid.3x3.fill")
             }
             .pickerStyle(.menu)
             NavigationLink {
                 DefaultCoverSettingsView()
             } label: {
-                SettingsRowLabel(localized("預設封面"), systemImage: "photo.stack.fill")
+                SettingsRowLabel(localized("默认书封"), systemImage: "photo.stack.fill")
             }
             launchImageRow
         } header: {
-            Text(localized("介面"))
+            Text(localized("界面"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -242,7 +236,7 @@ struct AppearanceThemeView: View {
                 AppearanceColorsAndFontView()
             } label: {
                 SettingsValueLabel(
-                    title: localized("顏色與字體"),
+                    title: localized("文字与配色"),
                     systemImage: "paintpalette",
                     value: settings.globalFontDisplayName
                 )
@@ -251,20 +245,20 @@ struct AppearanceThemeView: View {
                 NavigationLink {
                     AppearancePageBackgroundView()
                 } label: {
-                    SettingsRowLabel(localized("頁面背景"), systemImage: "photo.on.rectangle")
+                    SettingsRowLabel(localized("阅读壁纸"), systemImage: "photo.on.rectangle")
                 }
             } else {
-                SettingsLockedRow(title: localized("頁面背景"), systemImage: "photo.on.rectangle") {
+                SettingsLockedRow(title: localized("阅读壁纸"), systemImage: "photo.on.rectangle") {
                     paywallFeature = .readerThemePacks
                 }
             }
             NavigationLink {
                 AppearanceInterfaceEffectsView()
             } label: {
-                SettingsValueLabel(title: localized("界面效果"), systemImage: "sparkles", value: interfaceEffectsSummary)
+                SettingsValueLabel(title: localized("动效与质感"), systemImage: "sparkles", value: interfaceEffectsSummary)
             }
         } header: {
-            Text(localized("外觀"))
+            Text(localized("外观"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -281,7 +275,7 @@ struct AppearanceThemeView: View {
         Section {
             themeActionRows
         } header: {
-            Text(localized("主題管理"))
+            Text(localized("主题库"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             Text(localized("「導出主題」包含所有自訂主題、自帶主題的配色、頁面背景圖、Tab 圖示、啟動圖與閱讀背景。"))
@@ -568,13 +562,13 @@ struct AppearanceThemeView: View {
                 LaunchImageSettingsView()
             } label: {
                 SettingsValueLabel(
-                    title: localized("啟動圖"),
+                    title: localized("开屏画面"),
                     systemImage: "iphone",
                     value: localized(settings.launchImageEnabled ? "已開啟" : "已關閉")
                 )
             }
         } else {
-            SettingsLockedRow(title: localized("啟動圖"), systemImage: "iphone") {
+            SettingsLockedRow(title: localized("开屏画面"), systemImage: "iphone") {
                 paywallFeature = .launchScreen
             }
         }
@@ -586,10 +580,10 @@ struct AppearanceThemeView: View {
             NavigationLink {
                 RootTabCustomizationView()
             } label: {
-                SettingsRowLabel(localized("底部 Tab"), systemImage: "square.grid.2x2")
+                SettingsRowLabel(localized("导航栏"), systemImage: "square.grid.2x2")
             }
         } else {
-            SettingsLockedRow(title: localized("底部 Tab"), systemImage: "square.grid.2x2") {
+            SettingsLockedRow(title: localized("导航栏"), systemImage: "square.grid.2x2") {
                 paywallFeature = .bottomBarCustomization
             }
         }
@@ -606,7 +600,7 @@ struct AppearanceThemeView: View {
             item: themeExportPayload,
             preview: SharePreview(selectedTheme.localizedName)
         ) {
-            SettingsRowLabel(localized("導出主題"), systemImage: "square.and.arrow.up", role: .action)
+            SettingsRowLabel(localized("导出方案"), systemImage: "square.and.arrow.up", role: .action)
         }
         // 刪除主題's confirmation, on a row that is always there: the 刪除主題 row goes
         // with the theme, and an alert torn down by its own action can be left
@@ -630,7 +624,7 @@ struct AppearanceThemeView: View {
         Button {
             showThemeImporter = true
         } label: {
-            SettingsRowLabel(localized("導入主題"), systemImage: "square.and.arrow.down", role: .action)
+            SettingsRowLabel(localized("导入方案"), systemImage: "square.and.arrow.down", role: .action)
         }
         .fileImporter(
             isPresented: $showThemeImporter,
@@ -658,10 +652,10 @@ struct AppearanceThemeView: View {
             Button(role: .destructive) {
                 showResetAppearanceConfirm = true
             } label: {
-                SettingsRowLabel(localized("重置為默認"), systemImage: "arrow.counterclockwise", role: .destructive)
+                SettingsRowLabel(localized("恢复默认"), systemImage: "arrow.counterclockwise", role: .destructive)
             }
-            .alert(localized("重置為默認？"), isPresented: $showResetAppearanceConfirm) {
-                Button(localized("重置為默認"), role: .destructive) {
+            .alert(localized("恢复默认？"), isPresented: $showResetAppearanceConfirm) {
+                Button(localized("恢复默认"), role: .destructive) {
                     settings.resetAppearanceToDefault()
                 }
                 Button(localized("取消"), role: .cancel) {}
@@ -876,7 +870,7 @@ private struct AppearanceReaderInterfaceView: View {
         }
         .softScrollEdges()
         .scrollContentBackground(.hidden)
-        .navigationTitle(localized("閱讀界面"))
+        .navigationTitle(localized("阅读器样式"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
     }
@@ -895,7 +889,7 @@ private struct AppearanceReaderInterfaceView: View {
                 ReaderChromeIconSettingsView()
             } label: {
                 HStack {
-                    Text(localized("按鈕圖示"))
+                    Text(localized("阅读栏图标"))
                         .font(DSFont.body)
                         .foregroundStyle(DSColor.textPrimary)
                     Spacer(minLength: DSSpacing.md)

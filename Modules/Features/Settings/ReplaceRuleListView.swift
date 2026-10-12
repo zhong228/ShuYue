@@ -57,7 +57,7 @@ struct ReplaceRuleListView: View {
                     // Same fix as 書源管理 / 語音朗讀設定.
                 }
             }
-            .navigationTitle(localized("替換規則"))
+            .navigationTitle(localized("文字修正"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

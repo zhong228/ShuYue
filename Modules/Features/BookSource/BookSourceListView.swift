@@ -6,6 +6,7 @@ private enum BookSourceImportPresentationRoute: Hashable {
     case add
     case local
     case network
+    case paste
 }
 
 private enum BookSourceFileImportRoute: Hashable {
@@ -181,13 +182,13 @@ struct BookSourceListView: View {
                 }
             }
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
-            .navigationTitle(localized("書源管理"))
+            .navigationTitle(localized("书源工坊"))
             .toolbarTitleDisplayMode(.inline)
             .pageBackgroundToolbar(for: .settings)
             .searchable(
                 text: $model.searchText,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: localized("搜索書源")
+                prompt: localized("搜索书源")
             )
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -204,12 +205,12 @@ struct BookSourceListView: View {
                         Button {
                             enableAll()
                         } label: {
-                            Label(localized("全部啟用"), systemImage: "checkmark.circle")
+                            Label(localized("启用全部"), systemImage: "checkmark.circle")
                         }
                         Button {
                             disableAll()
                         } label: {
-                            Label(localized("全部停用"), systemImage: "xmark.circle")
+                            Label(localized("停用全部"), systemImage: "xmark.circle")
                         }
                         Divider()
                         Menu {
@@ -249,18 +250,18 @@ struct BookSourceListView: View {
                         Button {
                             presentCheckOptions()
                         } label: {
-                            Label(localized("書源驗證"), systemImage: "antenna.radiowaves.left.and.right")
+                            Label(localized("源健康检查"), systemImage: "antenna.radiowaves.left.and.right")
                         }
                         Divider()
                         Button {
                             showGroupByDomainConfirm = true
                         } label: {
-                            Label(localized("按域名分組"), systemImage: "globe")
+                            Label(localized("按地址归类"), systemImage: "globe")
                         }
                         Button {
                             pasteFromClipboard()
                         } label: {
-                            Label(localized("粘貼源"), systemImage: "doc.on.clipboard")
+                            Label(localized("粘贴配置"), systemImage: "doc.on.clipboard")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -278,18 +279,23 @@ struct BookSourceListView: View {
                         actions: [
                             DismissalSequencedAction(
                                 route: .add,
-                                title: localized("手動新增"),
+                                title: localized("手动填写"),
                                 systemImage: "square.and.pencil"
                             ),
                             DismissalSequencedAction(
                                 route: .local,
-                                title: localized("本地導入"),
+                                title: localized("文件导入"),
                                 systemImage: "doc.badge.plus"
                             ),
                             DismissalSequencedAction(
                                 route: .network,
-                                title: localized("網路導入"),
+                                title: localized("网络导入"),
                                 systemImage: "network"
+                            ),
+                            DismissalSequencedAction(
+                                route: .paste,
+                                title: localized("粘贴配置"),
+                                systemImage: "doc.on.clipboard"
                             ),
                         ],
                         onSelect: { legacyImportSequence.select($0) }
@@ -372,7 +378,7 @@ struct BookSourceListView: View {
             .sheet(item: $variableEditingSource) { src in
                 AdaptiveSheetContainer(maxWidth: DSLayout.readablePanelWidth) {
                     RuntimeVariableEditorView(
-                        title: localized("設置源變量"),
+                        title: localized("源参数"),
                         comment: SourceVariableEditing.comment(source: src),
                         initialValue: SourceVariableEditing.currentValue(for: src)
                     ) { newValue in
@@ -398,17 +404,17 @@ struct BookSourceListView: View {
                 BookSourceCheckView(checker: healthChecker)
             }
             .alert(
-                localized("按域名分組"),
+                localized("按地址归类"),
                 isPresented: $showGroupByDomainConfirm
             ) {
                 Button(localized("取消"), role: .cancel) {}
                 Button(localized("確定")) {
                     let changed = store.groupByDomain()
                     importSuccess =
-                        String(format: localized("已按域名分組 %d 個書源"), changed)
+                        String(format: localized("已按地址归类 %d 个书源"), changed)
                 }
             } message: {
-                Text(localized("按域名分組將覆蓋現有分組，確定繼續？"))
+                Text(localized("按地址归类将覆盖现有分组，确定继续？"))
             }
             .alert(localized("確認刪除"), isPresented: $showDeleteConfirm) {
                 Button(localized("取消"), role: .cancel) {}
@@ -531,18 +537,24 @@ struct BookSourceListView: View {
                 Button {
                     showAdd = true
                 } label: {
-                    Label(localized("手動新增"), systemImage: "square.and.pencil")
+                    Label(localized("手动填写"), systemImage: "square.and.pencil")
                 }
                 Divider()
                 Button {
                     showImport = true
                 } label: {
-                    Label(localized("本地導入"), systemImage: "doc.badge.plus")
+                    Label(localized("文件导入"), systemImage: "doc.badge.plus")
                 }
                 Button {
                     showNetworkImport = true
                 } label: {
-                    Label(localized("網路導入"), systemImage: "network")
+                    Label(localized("网络导入"), systemImage: "network")
+                }
+                Divider()
+                Button {
+                    pasteFromClipboard()
+                } label: {
+                    Label(localized("粘贴配置"), systemImage: "doc.on.clipboard")
                 }
             } label: {
                 Image(systemName: "plus")
@@ -562,6 +574,8 @@ struct BookSourceListView: View {
             showImport = true
         case .network:
             showNetworkImport = true
+        case .paste:
+            pasteFromClipboard()
         }
     }
 
@@ -846,7 +860,7 @@ struct BookSourceListView: View {
                 Button {
                     presentCheckOptions()
                 } label: {
-                    Label(localized("書源驗證"), systemImage: "antenna.radiowaves.left.and.right")
+                    Label(localized("源健康检查"), systemImage: "antenna.radiowaves.left.and.right")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -1200,7 +1214,7 @@ struct BookSourceListView: View {
 
                 Spacer()
             }
-            .navigationTitle(localized("網路導入"))
+            .navigationTitle(localized("网络导入"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -1366,7 +1380,7 @@ struct BookSourceListView: View {
     // MARK: - Utilities
     private var messageAlertTitle: String {
         if importError != nil { return localized("操作失敗") }
-        if checkToast != nil { return localized("書源驗證") }
+        if checkToast != nil { return localized("源健康检查") }
         return localized("完成")
     }
 }

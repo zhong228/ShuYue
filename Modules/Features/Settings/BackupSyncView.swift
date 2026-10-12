@@ -35,7 +35,7 @@ struct BackupSyncView: View {
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
-            .navigationTitle(localized("備份與同步"))
+            .navigationTitle(localized("云备份"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

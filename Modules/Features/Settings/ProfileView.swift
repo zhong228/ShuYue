@@ -18,6 +18,9 @@ struct SettingsView: View {
     @State private var showNetworkSettings = false
     @State private var showAISettings = false
     @State private var showAIPaywall = false
+    @State private var showAppearanceTheme = false
+    @State private var showDiagnostics = false
+    @State private var showAbout = false
     #if DEBUG
     @State private var autoOpenDiagnostics = false
     #endif
@@ -58,103 +61,84 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // ── Brand Header ──
-                Section {
-                    ShuYueBrandHeaderCard(appVersion: appVersion)
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    // ── Brand Header + quick feedback ──
+                    ShuYueBrandHeaderCard(appVersion: appVersion, feedbackURL: feedbackMailURL)
                         .rootTabTitleScrollAnchor()
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                }
-                .listSectionSeparator(.hidden)
 
-                // ── App Language ──
-                Section(header: Text(localized("App 語言")).foregroundStyle(DSColor.textSecondary)) {
-                    DSSettingsRow(
-                        icon: "globe",
-                        title: localized("語言"),
-                        action: {
+                    // ── 界面语言 ──
+                    profileGroup(title: localized("界面语言"), footer: appLanguageFooter) {
+                        DSSettingsCard(icon: "globe", title: localized("语言")) {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 openURL(url)
                             }
                         }
-                    )
-                    .rootTabTitleScrollAnchor()
-
-                    Text(appLanguageFooter)
-                        .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textSecondary)
-                        .padding(.top, DSSpacing.xs)
-                }
-
-                // ── Appearance ──
-                Section(header: Text(localized("外觀")).foregroundStyle(DSColor.textSecondary)) {
-                    DSSettingsNavRow(
-                        icon: "paintpalette.fill",
-                        title: localized("外觀主題"),
-                        value: appearanceThemeName
-                    ) {
-                        AppearanceThemeView()
                     }
-                }
 
-                // 書架顯示 (每列欄數, 預設封面) lives in 外觀主題's 介面 since 2026-09-29.
-
-                // ── Book Source Management ──
-                Section(header: Text(localized("書源管理")).foregroundStyle(DSColor.textSecondary)) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: DSSpacing.md), GridItem(.flexible(), spacing: DSSpacing.md)], spacing: DSSpacing.md) {
-                        DSSettingsCard(icon: "books.vertical.fill", title: localized("管理書源"), action: { showSourceList = true })
-                        DSSettingsCard(icon: "arrow.down.circle.fill", title: localized("下載管理"), detail: "\(downloadedBooksCount) \(localized("本"))", action: { showDownloadManager = true })
-                        DSSettingsCard(icon: "network", title: localized("網路設定"), action: { showNetworkSettings = true })
+                    // ── 外观与主题 ──
+                    profileGroup(title: localized("外观与主题")) {
+                        DSSettingsCard(
+                            icon: "paintpalette.fill",
+                            title: localized("视觉主题"),
+                            detail: appearanceThemeName
+                        ) {
+                            showAppearanceTheme = true
+                        }
                     }
-                }
 
-                // ── Reading Tools ──
-                Section(header: Text(localized("閱讀工具")).foregroundStyle(DSColor.textSecondary)) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: DSSpacing.md), GridItem(.flexible(), spacing: DSSpacing.md)], spacing: DSSpacing.md) {
-                        DSSettingsCard(icon: "waveform", title: localized("語音朗讀設定"), action: { showTTSSettings = true })
-                        DSSettingsCard(icon: "sparkles", title: localized("AI 助手設定"), detail: isAILocked ? localized("需要 Pro") : aiAssistantDetail, isLocked: isAILocked, action: {
+                    // ── 数据与书源 ──
+                    profileGroup(title: localized("数据与书源")) {
+                        DSSettingsCard(icon: "books.vertical.fill", title: localized("书源库"), action: { showSourceList = true })
+                        DSSettingsCard(icon: "arrow.down.circle.fill", title: localized("离线缓存"), detail: "\(downloadedBooksCount) \(localized("本"))", action: { showDownloadManager = true })
+                        DSSettingsCard(icon: "network", title: localized("网络连接"), action: { showNetworkSettings = true })
+                        DSSettingsCard(icon: "arrow.triangle.2.circlepath.icloud", title: localized("云备份"), detail: localized("iCloud、WebDAV"), action: { showBackupSync = true })
+                        DSSettingsCard(icon: "externaldrive.fill", title: localized("存储清理"), action: { showCacheManagement = true })
+                        DSSettingsCard(icon: "wifi", title: localized("局域传书"), action: { showLanServer = true })
+                        DSSettingsCard(icon: "arrow.down.doc.fill", title: localized("导入阅读器数据"), action: { showLegadoMigration = true })
+                    }
+
+                    // ── 阅读与声音 ──
+                    profileGroup(title: localized("阅读与声音")) {
+                        DSSettingsCard(icon: "waveform", title: localized("听书引擎"), action: { showTTSSettings = true })
+                        DSSettingsCard(icon: "sparkles", title: localized("智能伴读"), detail: isAILocked ? localized("需要 Pro") : aiAssistantDetail, isLocked: isAILocked, action: {
                             if isAILocked { showAIPaywall = true } else { showAISettings = true }
                         })
-                        DSSettingsCard(icon: "text.magnifyingglass", title: localized("替換規則"), action: { showReplaceRules = true })
+                        DSSettingsCard(icon: "text.magnifyingglass", title: localized("文字修正"), action: { showReplaceRules = true })
                     }
-                }
 
-                // ── Data Management ──
-                Section(header: Text(localized("資料管理")).foregroundStyle(DSColor.textSecondary)) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: DSSpacing.md), GridItem(.flexible(), spacing: DSSpacing.md)], spacing: DSSpacing.md) {
-                        DSSettingsCard(icon: "arrow.triangle.2.circlepath.icloud", title: localized("備份與同步"), detail: localized("iCloud、WebDAV"), action: { showBackupSync = true })
-                        DSSettingsCard(icon: "externaldrive.fill", title: localized("快取管理"), action: { showCacheManagement = true })
-                        DSSettingsCard(icon: "wifi", title: localized("局域網服務"), action: { showLanServer = true })
-                        DSSettingsCard(icon: "arrow.down.doc.fill", title: localized("Legado 資料遷移"), action: { showLegadoMigration = true })
+                    // ── 应用信息 ──
+                    profileGroup(title: localized("应用信息")) {
+                        DSSettingsCard(icon: "stethoscope", title: localized("帮助与诊断"), action: { showDiagnostics = true })
+                        DSSettingsCard(icon: "info.circle.fill", title: localized("关于书悦"), detail: appVersion, action: { showAbout = true })
                     }
                 }
-
-                // ── About ──
-                Section(header: Text(localized("關於")).foregroundStyle(DSColor.textSecondary)) {
-                    DSSettingsNavRow(
-                        icon: "info.circle.fill",
-                        title: localized("關於 ShuYue"),
-                        value: appVersion
-                    ) {
-                        AboutSupportView(
-                            appVersion: appVersion,
-                            feedbackEmail: feedbackEmail,
-                            feedbackMailURL: feedbackMailURL,
-                            sourceCodeURL: sourceCodeURL
-                        )
-                    }
-                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xl)
             }
-            .listStyle(.insetGrouped)
             .softScrollEdges()
             .themedAppSurface(for: .settings)
             .rootTabTitle(localized("我的"), onScroll: .minimizesBar)
-            // Back from 外觀主題: its 淺色／深色 preview ends here.
+            // Back from 外观主题: its 浅色／深色 preview ends here.
             .onAppear { gs.endAppearanceSlotPreview() }
             .navigationDestination(isPresented: pushedSourceListBinding) {
                 BookSourceListView(embedsNavigationStack: false)
                     .environmentObject(store)
+            }
+            .navigationDestination(isPresented: $showAppearanceTheme) {
+                AppearanceThemeView()
+            }
+            .navigationDestination(isPresented: $showDiagnostics) {
+                DiagnosticsView()
+            }
+            .navigationDestination(isPresented: $showAbout) {
+                AboutSupportView(
+                    appVersion: appVersion,
+                    feedbackEmail: feedbackEmail,
+                    feedbackMailURL: feedbackMailURL,
+                    sourceCodeURL: sourceCodeURL
+                )
             }
             #if DEBUG
             // Screenshot/driver hook: `-open-diagnostics` pushes 診斷與回報 straight
@@ -243,13 +227,49 @@ struct SettingsView: View {
     private var aiAssistantDetail: String {
         AIProviderStore.shared.hasConfiguredProfile ? localized("已啟用") : localized("未設定")
     }
+
+    /// 我的中心的「分组宫格」：小标题 + 两列功能卡片宫格，替代系统 List Section。
+    /// 每组的卡片数量不定，宫格自动换行；footer 用于语言说明等补充文案。
+    private func profileGroup<Content: View>(
+        title: String,
+        footer: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            Text(title)
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.sm)
+                .padding(.top, DSSpacing.xs)
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: DSSpacing.md),
+                    GridItem(.flexible(), spacing: DSSpacing.md)
+                ],
+                spacing: DSSpacing.md
+            ) {
+                content()
+            }
+
+            if let footer {
+                Text(footer)
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, DSSpacing.sm)
+            }
+        }
+    }
 }
 
 /// 书悦's brand card, first row of 設定: the app icon, name, a one-line promise and
 /// the build. A visual identity 閱讀 never had — the page can no longer be mistaken
 /// for the upstream app's settings from its first row.
 private struct ShuYueBrandHeaderCard: View {
+    @Environment(\.openURL) private var openURL
     let appVersion: String
+    let feedbackURL: URL?
 
     var body: some View {
         HStack(spacing: DSSpacing.md) {
@@ -276,6 +296,20 @@ private struct ShuYueBrandHeaderCard: View {
             }
 
             Spacer(minLength: 0)
+
+            if let feedbackURL {
+                Button {
+                    openURL(feedbackURL)
+                } label: {
+                    Image(systemName: "envelope.fill")
+                        .font(DSFont.body.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                        .frame(width: 38, height: 38)
+                        .background(DSColor.surface, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(localized("反馈"))
+            }
         }
         .padding(.vertical, DSSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -354,7 +388,7 @@ private struct AboutSupportView: View {
             }
             .interfaceSectionSurface()
 
-            Section(header: Text(localized("診斷與回報")).foregroundStyle(DSColor.textSecondary)) {
+            Section(header: Text(localized("帮助与诊断")).foregroundStyle(DSColor.textSecondary)) {
                 NavigationLink {
                     DiagnosticsView()
                 } label: {
@@ -366,9 +400,9 @@ private struct AboutSupportView: View {
                             iconSize: 16
                         )
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(localized("診斷與回報"))
+                            Text(localized("帮助与诊断"))
                                 .foregroundColor(DSColor.textPrimary)
-                            Text(localized("應用診斷與問題回報"))
+                            Text(localized("应用诊断与问题回报"))
                                 .font(DSFont.caption)
                                 .foregroundColor(DSColor.textSecondary)
                                 .lineLimit(2)
@@ -436,7 +470,7 @@ private struct AboutSupportView: View {
             .interfaceSectionSurface()
         }
         .softScrollEdges()
-        .navigationTitle(localized("關於 ShuYue"))
+        .navigationTitle(localized("关于书悦"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
     }

@@ -189,7 +189,7 @@ struct DiagnosticsView: View {
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: localized("搜尋紀錄")
         )
-        .navigationTitle(localized("診斷與回報"))
+        .navigationTitle(localized("帮助与诊断"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .toolbar {

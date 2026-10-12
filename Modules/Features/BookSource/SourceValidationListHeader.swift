@@ -74,23 +74,30 @@ struct SourceValidationListHeader: View {
         .padding(.vertical, DSSpacing.sm)
     }
 
-    /// Modern dashboard-style stat tiles arranged in a 2×2 grid, replacing the classic
+    /// Modern dashboard-style stat strip: 总数／启用数／异常数. Replaces the classic
     /// vertical list so the header no longer reads as the Legado / 閱讀 management screen.
     private var statsCard: some View {
         HStack(spacing: DSSpacing.md) {
             statTile(
-                icon: "checkmark.circle.fill",
-                title: localized("已啟用"),
-                value: "\(counts.enabled)",
-                total: counts.total,
+                icon: "tray.full.fill",
+                title: localized("总数"),
+                value: "\(counts.total)",
+                total: nil,
                 tint: DSColor.appAccent
             )
             statTile(
-                icon: "safari.fill",
-                title: localized("支持發現"),
-                value: "\(counts.discover)",
+                icon: "checkmark.circle.fill",
+                title: localized("启用数"),
+                value: "\(counts.enabled)",
+                total: counts.total,
+                tint: DSColor.success
+            )
+            statTile(
+                icon: "exclamationmark.triangle.fill",
+                title: localized("异常数"),
+                value: "\(counts.fetchError + counts.contentError)",
                 total: nil,
-                tint: DSColor.appAccentDark
+                tint: DSColor.warning
             )
         }
         .padding(.horizontal, DSSpacing.md)

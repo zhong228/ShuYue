@@ -84,7 +84,7 @@ struct LanServerView: View {
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
-            .navigationTitle(localized("局域網服務"))
+            .navigationTitle(localized("局域传书"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

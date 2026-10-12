@@ -26,7 +26,7 @@ struct LegadoMigrationView: View {
                     }
                 }
                 .softScrollEdges()
-            .navigationTitle(localized("Legado 資料遷移"))
+            .navigationTitle(localized("导入阅读器数据"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
