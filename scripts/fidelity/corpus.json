@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "note": "Machine-local corpus for the render-fidelity oracle. Every *.epub in `root` is measured. `match` is a piece of the file name; a file no entry matches gets an id derived from its name. `pinned` chapters are always in the dev sample. No book content is committed.",
+  "root": "<repo>/Test document/EPUB Format",
+  "sample": {
+    "dev": 10,
+    "holdout": 6
+  },
+  "books": [
+    {
+      "id": "ai-glossary",
+      "match": "AI术语词典",
+      "pinned": []
+    },
+    {
+      "id": "hail-mary",
+      "match": "Project Hail Mary",
+      "pinned": [
+        6
+      ]
+    },
+    {
+      "id": "the-deal",
+      "match": "The Deal",
+      "pinned": []
+    },
+    {
+      "id": "georgia",
+      "match": "georgia-pls-ssml",
+      "pinned": []
+    },
+    {
+      "id": "israelsailing",
+      "match": "israelsailing",
+      "pinned": []
+    },
+    {
+      "id": "kusamakura",
+      "match": "kusamakura",
+      "pinned": []
+    },
+    {
+      "id": "mahabharata",
+      "match": "mahabharata",
+      "pinned": []
+    },
+    {
+      "id": "orv",
+      "match": "全知读者视角01",
+      "pinned": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "quanzhi",
+      "match": "全职高手3",
+      "pinned": [
+        56,
+        69
+      ]
+    },
+    {
+      "id": "game-designer",
+      "match": "全能游戏设计师1",
+      "pinned": [
+        10,
+        16,
+        58
+      ]
+    },
+    {
+      "id": "redchamber",
+      "match": "红楼梦+大观红楼",
+      "pinned": [
+        4,
+        138
+      ]
+    },
+    {
+      "id": "guimi",
+      "match": "诡秘之主4",
+      "pinned": [
+        8,
+        64,
+        68,
+        80,
+        136
+      ]
+    },
+    {
+      "id": "harry-potter",
+      "match": "哈利波特全集",
+      "pinned": []
+    },
+    {
+      "id": "hongwu",
+      "match": "洪武大帝",
+      "pinned": [
+        24
+      ]
+    },
+    {
+      "id": "sherlock",
+      "match": "福尔摩斯探案全集",
+      "pinned": []
+    },
+    {
+      "id": "redchamber-vertical",
+      "match": "红楼梦脂评汇校本",
+      "pinned": []
+    }
+  ]
+}

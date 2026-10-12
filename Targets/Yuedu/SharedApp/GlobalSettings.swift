@@ -1,0 +1,3842 @@
+import YueduCoreText
+import Combine
+import Foundation
+import SwiftUI
+import UIKit
+
+// MARK: - Reader Text Conversion
+
+enum TextConversion: String, CaseIterable {
+    case original = "原文"
+    case toTraditional = "繁體"
+    case toSimplified = "简体"
+}
+
+// MARK: - Reader Text Underline Decoration Style
+
+enum ReaderTextUnderlineStyle: Int, CaseIterable, Codable {
+    case solid = 0
+    case dashed = 1
+    case dotted = 2
+
+    var localizedTitleKey: String {
+        switch self {
+        case .solid: return "底線樣式.實線"
+        case .dashed: return "底線樣式.虛線"
+        case .dotted: return "底線樣式.點線"
+        }
+    }
+
+    var localizedTitle: String { localized(localizedTitleKey) }
+
+    var systemImageName: String {
+        switch self {
+        case .solid: return "line.diagonal"
+        case .dashed: return "lines.measurement.horizontal"
+        case .dotted: return "ellipsis"
+        }
+    }
+}
+
+// MARK: - Page-Turn Style
+
+enum PageTurnStyle: String, CaseIterable {
+    case slide = "滑動"
+    case cover = "覆蓋翻頁"
+    case curl = "仿真翻書"
+    case none = "無動畫"
+}
+
+enum ReaderCommentBubblePresetMode: String, CaseIterable, Identifiable {
+    case builtin
+    case square
+    case custom
+
+    var id: String { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .builtin: return "氣泡"
+        case .square: return "方泡"
+        case .custom: return "自訂 SVG"
+        }
+    }
+
+    var localizedTitle: String { localized(titleKey) }
+}
+
+enum ReaderCustomBackgroundMode: String, CaseIterable, Identifiable {
+    case none
+    case color
+    case image
+
+    var id: String { rawValue }
+}
+
+// MARK: - Reader Theme
+
+enum ReaderTheme: String, CaseIterable {
+    case night = "夜間"
+    case white = "白天"
+    case green = "護眼綠"
+    case sepia = "護眼"
+
+    private static let userDefaultsKey = "yd_reader_theme"
+    private static let lastLightThemeKey = "lastLightTheme"
+    private static let weChatAccent = UIColor(red: 56 / 255, green: 151 / 255, blue: 241 / 255, alpha: 1)
+    private static let weChatDayBackground = UIColor(red: 244 / 255, green: 245 / 255, blue: 247 / 255, alpha: 1)
+    private static let weChatNightBackground = UIColor.black
+    private static let weChatNightBarBackground = UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)
+    private static let eyeComfortGreenBackground = UIColor(
+        red: 207 / 255,
+        green: 232 / 255,
+        blue: 204 / 255,
+        alpha: 1
+    )
+
+    var titleKey: String {
+        switch self {
+        case .night: return "黑色"
+        case .white: return "白色"
+        case .green: return "護眼綠"
+        case .sepia: return "棕色"
+        }
+    }
+
+    var localizedTitle: String { localized(titleKey) }
+
+    static func loadPersisted() -> ReaderTheme {
+        let raw = UserDefaults.standard.string(forKey: userDefaultsKey) ?? ""
+        return ReaderTheme(rawValue: raw) ?? .white
+    }
+
+    /// Whether the reader has ever been given a background: none is stored until one is.
+    static var hasPersistedChoice: Bool {
+        UserDefaults.standard.string(forKey: userDefaultsKey) != nil
+    }
+
+    /// The most recently used non-night theme: the light mode's built-in background
+    /// while the reader sits on 黑色.
+    static var lastLightTheme: ReaderTheme {
+        let raw = UserDefaults.standard.string(forKey: lastLightThemeKey) ?? ""
+        return ReaderTheme(rawValue: raw) ?? .white
+    }
+
+    func persist() {
+        UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
+        if self != .night {
+            UserDefaults.standard.set(rawValue, forKey: Self.lastLightThemeKey)
+        }
+    }
+
+    var backgroundColor: Color {
+        Color(uiColor: uiBackgroundColor)
+    }
+
+    var previewBackgroundColor: Color {
+        Color(uiColor: intrinsicUIBackgroundColor)
+    }
+
+    var textColor: Color {
+        Color(uiColor: uiTextColor)
+    }
+
+    var previewTextColor: Color {
+        Color(uiColor: intrinsicUITextColor)
+    }
+
+    var accentColor: Color {
+        Color(uiColor: uiAccentColor)
+    }
+
+    /// A palette repaints only the background of its own tone: a light one never paints
+    /// 黑色, and a dark one paints nothing else — the reader's chrome reads its darkness
+    /// off the built-in background, so the two have to agree. Which palette is in place,
+    /// and which built-in it sits on, is decided by the reader's mode
+    /// (`GlobalSettings.readerBackgroundResolution`), not by this.
+    private var activeAppearancePreset: AppearanceThemePreset? {
+        guard let preset = AppearanceThemePreset.activeReaderTheme else { return nil }
+        guard (self == .night) == preset.isDarkAppearancePalette else { return nil }
+        return preset
+    }
+
+    /// The saved background painting this one, if any.
+    var activeReaderBackgroundID: UUID? {
+        activeAppearancePreset?.readerBackgroundID
+    }
+
+    var uiBackgroundColor: UIColor {
+        if let preset = activeAppearancePreset { return preset.background }
+        return intrinsicUIBackgroundColor
+    }
+
+    private var intrinsicUIBackgroundColor: UIColor {
+        switch self {
+        case .white: return Self.weChatDayBackground
+        case .green: return Self.eyeComfortGreenBackground
+        case .sepia: return UIColor(red: 244 / 255, green: 236 / 255, blue: 216 / 255, alpha: 1)
+        case .night: return Self.weChatNightBackground
+        }
+    }
+
+    /// Resolution order: a saved background's own text colour (it is a background of its
+    /// own, so the one set for the built-in under it does not apply) → the reader's own
+    /// 文字顏色 for this background (an explicit user choice, so it outranks the rest) →
+    /// the bound appearance palette → the background's built-in text color.
+    var uiTextColor: UIColor {
+        if let preset = activeAppearancePreset, preset.readerBackgroundID != nil {
+            return preset.text
+        }
+        if let rgbHex = GlobalSettings.shared.readerTextColorOverride(for: self) {
+            return AppearanceThemePreset.hex(rgbHex)
+        }
+        if let preset = activeAppearancePreset { return preset.text }
+        return intrinsicUITextColor
+    }
+
+    private var intrinsicUITextColor: UIColor {
+        switch self {
+        case .white: return UIColor(red: 51 / 255, green: 51 / 255, blue: 51 / 255, alpha: 1)
+        case .green: return UIColor(red: 47 / 255, green: 61 / 255, blue: 47 / 255, alpha: 1)
+        case .sepia: return UIColor(red: 91 / 255, green: 70 / 255, blue: 54 / 255, alpha: 1)
+        case .night: return UIColor(red: 217 / 255, green: 217 / 255, blue: 217 / 255, alpha: 1)
+        }
+    }
+
+    var uiAccentColor: UIColor {
+        if let preset = activeAppearancePreset { return preset.accent }
+        return Self.weChatAccent
+    }
+
+    var barColor: Color {
+        Color(uiColor: uiBarColor)
+    }
+
+    var uiBarColor: UIColor {
+        if let preset = activeAppearancePreset { return preset.bar }
+        switch self {
+        case .white: return .white
+        case .green:
+            return UIColor(red: 191 / 255, green: 218 / 255, blue: 188 / 255, alpha: 1)
+        case .sepia: return UIColor(red: 0.93, green: 0.91, blue: 0.83, alpha: 1)
+        case .night: return Self.weChatNightBarBackground
+        }
+    }
+
+    var epubJSName: String {
+        switch self {
+        case .white: return "white"
+        case .green: return "green"
+        case .sepia: return "sepia"
+        case .night: return "night"
+        }
+    }
+}
+
+/// What paints the reader in one of its two modes while 綁定閱讀主題 is on.
+/// The user picks one of these per mode (淺色閱讀主題 / 深色閱讀主題), which is the
+/// whole content of the binding: the reader's light mode wears the light pick, its
+/// dark mode (`GlobalSettings.readerDarkMode`) the dark pick.
+enum ReaderBoundTheme: Hashable, Identifiable {
+    /// Paint the reader with the app appearance theme itself — its light palette
+    /// in light mode, its dark palette in dark mode.
+    case followAppearanceTheme
+    /// Paint the reader with one of its own reading backgrounds.
+    case reading(ReaderTheme)
+    /// A saved background (`ReaderCustomBackground`), by id — how dark mode gets a
+    /// background of the user's own instead of 黑色 (2026-09-29).
+    case custom(UUID)
+
+    /// Menu order: the follow entry first, then the reading backgrounds from
+    /// lightest to darkest (`ReaderTheme.allCases` starts at 夜間, which reads
+    /// wrong at the top of a list). The saved backgrounds follow these.
+    static let builtInMenuOptions: [ReaderBoundTheme] = [
+        .followAppearanceTheme,
+        .reading(.white),
+        .reading(.green),
+        .reading(.sepia),
+        .reading(.night),
+    ]
+
+    private static let followStorageValue = "follow_appearance"
+    private static let customStoragePrefix = "custom:"
+
+    var id: String { storageValue }
+
+    var storageValue: String {
+        switch self {
+        case .followAppearanceTheme: return Self.followStorageValue
+        case .reading(let theme): return theme.rawValue
+        case .custom(let id): return Self.customStoragePrefix + id.uuidString
+        }
+    }
+
+    init(storageValue: String) {
+        if let theme = ReaderTheme(rawValue: storageValue) {
+            self = .reading(theme)
+        } else if storageValue.hasPrefix(Self.customStoragePrefix),
+                  let id = UUID(uuidString: String(storageValue.dropFirst(Self.customStoragePrefix.count))) {
+            self = .custom(id)
+        } else {
+            self = .followAppearanceTheme
+        }
+    }
+}
+
+@MainActor
+final class ReaderConfig: ObservableObject {
+    static let shared = ReaderConfig()
+
+    @Published var fontSize: CGFloat
+    @Published var lineHeightMultiple: CGFloat
+    @Published var letterSpacing: CGFloat
+    @Published var paragraphSpacingMultiplier: CGFloat
+    @Published var pageMarginH: CGFloat
+    @Published var pageMarginV: CGFloat
+    @Published var pageMarginTop: CGFloat
+    @Published var pageMarginBottom: CGFloat
+    @Published var footerBottomPadding: CGFloat
+    @Published var footerTextGap: CGFloat
+    @Published var chapterTitleStyle: ChapterTitleStyle
+    @Published var readerFontBold: Bool
+    @Published var readerHeaderVisible: Bool
+    @Published var readerHeaderTopPadding: CGFloat
+    @Published var readerHeaderTextGap: CGFloat
+    @Published var readerHeaderHorizontalPadding: CGFloat
+    @Published var readerFooterVisible: Bool
+    @Published var readerFooterHorizontalPadding: CGFloat
+    @Published var theme: ReaderTheme
+
+    var lineSpacing: CGFloat {
+        max(0, (lineHeightMultiple - 1.0) * fontSize)
+    }
+
+    var paragraphSpacing: CGFloat {
+        max(0, fontSize * paragraphSpacingMultiplier)
+    }
+
+    private var cancellables = Set<AnyCancellable>()
+    private var isApplyingGlobalSettings = false
+    private var settingsSyncGeneration: UInt64 = 0
+
+    private init() {
+        let gs = GlobalSettings.shared
+        fontSize = CGFloat(gs.readerFontSize)
+        lineHeightMultiple = CGFloat(gs.lineHeightMultiple)
+        letterSpacing = CGFloat(gs.letterSpacing)
+        paragraphSpacingMultiplier = CGFloat(gs.paragraphSpacingMultiplier)
+        pageMarginH = CGFloat(gs.pageMarginH)
+        pageMarginV = CGFloat(gs.pageMarginV)
+        pageMarginTop = CGFloat(gs.pageMarginTop)
+        pageMarginBottom = CGFloat(gs.pageMarginBottom)
+        footerBottomPadding = CGFloat(gs.footerBottomPadding)
+        footerTextGap = CGFloat(gs.footerTextGap)
+        chapterTitleStyle = gs.chapterTitleStyle
+        readerFontBold = gs.readerFontBold
+        readerHeaderVisible = gs.readerHeaderVisible
+        readerHeaderTopPadding = CGFloat(gs.readerHeaderTopPadding)
+        readerHeaderTextGap = CGFloat(gs.readerHeaderTextGap)
+        readerHeaderHorizontalPadding = CGFloat(gs.readerHeaderHorizontalPadding)
+        readerFooterVisible = gs.readerFooterVisible
+        readerFooterHorizontalPadding = CGFloat(gs.readerFooterHorizontalPadding)
+        theme = ReaderTheme.loadPersisted()
+        setupBindings()
+    }
+
+    func syncFromGlobalSettings() {
+        settingsSyncGeneration &+= 1
+        isApplyingGlobalSettings = true
+        defer { isApplyingGlobalSettings = false }
+        var updates = SettingsUpdateBatch(self, reason: "readerConfig")
+        defer { updates.finish() }
+        let gs = GlobalSettings.shared
+        updates.set(\.fontSize, CGFloat(gs.readerFontSize), field: "fontSize")
+        updates.set(\.lineHeightMultiple, CGFloat(gs.lineHeightMultiple), field: "lineHeightMultiple")
+        updates.set(\.letterSpacing, CGFloat(gs.letterSpacing), field: "letterSpacing")
+        updates.set(\.paragraphSpacingMultiplier, CGFloat(gs.paragraphSpacingMultiplier), field: "paragraphSpacingMultiplier")
+        updates.set(\.pageMarginH, CGFloat(gs.pageMarginH), field: "pageMarginH")
+        updates.set(\.pageMarginV, CGFloat(gs.pageMarginV), field: "pageMarginV")
+        updates.set(\.pageMarginTop, CGFloat(gs.pageMarginTop), field: "pageMarginTop")
+        updates.set(\.pageMarginBottom, CGFloat(gs.pageMarginBottom), field: "pageMarginBottom")
+        updates.set(\.footerBottomPadding, CGFloat(gs.footerBottomPadding), field: "footerBottomPadding")
+        updates.set(\.footerTextGap, CGFloat(gs.footerTextGap), field: "footerTextGap")
+        updates.set(\.chapterTitleStyle, gs.chapterTitleStyle, field: "chapterTitleStyle")
+        updates.set(\.readerFontBold, gs.readerFontBold, field: "readerFontBold")
+        updates.set(\.readerHeaderVisible, gs.readerHeaderVisible, field: "readerHeaderVisible")
+        updates.set(\.readerHeaderTopPadding, CGFloat(gs.readerHeaderTopPadding), field: "readerHeaderTopPadding")
+        updates.set(\.readerHeaderTextGap, CGFloat(gs.readerHeaderTextGap), field: "readerHeaderTextGap")
+        updates.set(\.readerHeaderHorizontalPadding, CGFloat(gs.readerHeaderHorizontalPadding), field: "readerHeaderHorizontalPadding")
+        updates.set(\.readerFooterVisible, gs.readerFooterVisible, field: "readerFooterVisible")
+        updates.set(\.readerFooterHorizontalPadding, CGFloat(gs.readerFooterHorizontalPadding), field: "readerFooterHorizontalPadding")
+        updates.set(\.theme, ReaderTheme.loadPersisted(), field: "theme")
+    }
+
+    private func setupBindings() {
+        $pageMarginTop.combineLatest($pageMarginBottom)
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .sink { top, bottom in
+                let gs = GlobalSettings.shared
+                if gs.pageMarginTop != Double(top) { gs.pageMarginTop = Double(top) }
+                if gs.pageMarginBottom != Double(bottom) { gs.pageMarginBottom = Double(bottom) }
+            }
+            .store(in: &cancellables)
+
+        let layoutPublisher = Publishers.CombineLatest4($fontSize, $lineHeightMultiple, $letterSpacing, $paragraphSpacingMultiplier)
+            .combineLatest($pageMarginH, $pageMarginV)
+            .combineLatest($footerBottomPadding, $footerTextGap)
+            .combineLatest($readerFontBold)
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .map { [weak self] value in (self?.settingsSyncGeneration, value) }
+            .debounce(for: .milliseconds(120), scheduler: RunLoop.main)
+
+        layoutPublisher
+            .sink { [weak self] generation, value in
+                guard generation == self?.settingsSyncGeneration else { return }
+                let (combinedAll, readerFontBold) = value
+                let (combinedMargins, footerBottomPadding, footerTextGap) = combinedAll
+                let (combined, marginH, marginV) = combinedMargins
+                let (fontSize, lineHeightMultiple, letterSpacing, paragraphSpacingMultiplier) = combined
+                let gs = GlobalSettings.shared
+                if gs.readerFontSize != Double(fontSize) { gs.readerFontSize = Double(fontSize) }
+                if gs.lineHeightMultiple != Double(lineHeightMultiple) { gs.lineHeightMultiple = Double(lineHeightMultiple) }
+                if gs.letterSpacing != Double(letterSpacing) { gs.letterSpacing = Double(letterSpacing) }
+                if gs.paragraphSpacingMultiplier != Double(paragraphSpacingMultiplier) { gs.paragraphSpacingMultiplier = Double(paragraphSpacingMultiplier) }
+                if gs.pageMarginH != Double(marginH) { gs.pageMarginH = Double(marginH) }
+                if gs.pageMarginV != Double(marginV) { gs.pageMarginV = Double(marginV) }
+                if gs.footerBottomPadding != Double(footerBottomPadding) { gs.footerBottomPadding = Double(footerBottomPadding) }
+                if gs.footerTextGap != Double(footerTextGap) { gs.footerTextGap = Double(footerTextGap) }
+                if gs.readerFontBold != readerFontBold { gs.readerFontBold = readerFontBold }
+            }
+            .store(in: &cancellables)
+
+        $theme
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .sink { theme in
+                theme.persist()
+                // The reading background is part of a theme's reading setup, and this
+                // is the only place it is written — `GlobalSettings` has no copy.
+                GlobalSettings.shared.recordReadingSettingEdit { $0.readerTheme = theme.rawValue }
+            }
+            .store(in: &cancellables)
+
+        // A theme switch or an import wrote the settings mirrored here. Without the
+        // reload an open reader keeps drawing the old values, and its next edit writes
+        // all of them back over the new ones (the layout sink sends every field).
+        NotificationCenter.default.publisher(for: .readingSettingsDidApply)
+            .sink { [weak self] _ in
+                // Every writer runs on the main thread (settings UI and the MainActor
+                // import services), so this reloads before the writer returns — callers
+                // may read `ReaderConfig` straight after an import.
+                guard Thread.isMainThread else {
+                    DispatchQueue.main.async { self?.syncFromGlobalSettings() }
+                    return
+                }
+                self?.syncFromGlobalSettings()
+            }
+            .store(in: &cancellables)
+
+        $chapterTitleStyle
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .map { [weak self] value in (self?.settingsSyncGeneration, value) }
+            .debounce(for: .milliseconds(120), scheduler: RunLoop.main)
+            .sink { [weak self] generation, style in
+                guard generation == self?.settingsSyncGeneration else { return }
+                if GlobalSettings.shared.chapterTitleStyle != style {
+                    GlobalSettings.shared.chapterTitleStyle = style
+                }
+            }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest4($readerHeaderVisible, $readerHeaderTopPadding, $readerHeaderTextGap, $readerHeaderHorizontalPadding)
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .sink { visible, topPadding, textGap, hPadding in
+                let gs = GlobalSettings.shared
+                if gs.readerHeaderVisible != visible { gs.readerHeaderVisible = visible }
+                if gs.readerHeaderTopPadding != Double(topPadding) { gs.readerHeaderTopPadding = Double(topPadding) }
+                if gs.readerHeaderTextGap != Double(textGap) { gs.readerHeaderTextGap = Double(textGap) }
+                if gs.readerHeaderHorizontalPadding != Double(hPadding) { gs.readerHeaderHorizontalPadding = Double(hPadding) }
+            }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest($readerFooterVisible, $readerFooterHorizontalPadding)
+            .dropFirst()
+            .filter { [weak self] _ in self?.isApplyingGlobalSettings == false }
+            .sink { visible, hPadding in
+                let gs = GlobalSettings.shared
+                if gs.readerFooterVisible != visible { gs.readerFooterVisible = visible }
+                if gs.readerFooterHorizontalPadding != Double(hPadding) { gs.readerFooterHorizontalPadding = Double(hPadding) }
+            }
+            .store(in: &cancellables)
+    }
+}
+
+func localized(_ key: String, bundle: Bundle = .main) -> String {
+    NSLocalizedString(key, bundle: bundle, comment: "")
+}
+
+enum AppearanceColorScheme: String, Equatable {
+    case light
+    case dark
+
+    init(_ colorScheme: ColorScheme) {
+        self = colorScheme == .dark ? .dark : .light
+    }
+
+    init(storageValue: String?) {
+        self = Self(rawValue: storageValue ?? "") ?? .light
+    }
+
+    var colorScheme: ColorScheme {
+        self == .dark ? .dark : .light
+    }
+}
+
+// MARK: - Global Settings
+
+class GlobalSettings: ObservableObject {
+    static let shared = GlobalSettings()
+    static let defaultReaderFontSize = 18.0
+    static let defaultReaderLineHeightMultiple = 1.65
+    static let defaultReaderParagraphSpacingMultiplier = 0.8
+    static let defaultReaderPageMarginH = 24.0
+    static let defaultReaderPageMarginV = 16.0
+    static let defaultReaderPageTurnStyle: PageTurnStyle = .slide
+    static let bookshelfGridColumnCountOptions = [2, 3, 4, 5]
+    static let defaultBookshelfGridColumnCount = 3
+    private static let bookshelfGridColumnCountKey = "yd_bookshelf_grid_column_count"
+    /// After a local import, look online for a missing cover (書坊刮削).
+    private static let autoScrapeCoversKey = "yd_auto_scrape_covers"
+
+    // 預設封面 (default cover) — see `DefaultCoverLibrary`.
+    private static let useDefaultCoverForAllBooksKey = "yd_default_cover_force"
+    private static let bookshelfCoverCornerRadiusKey = "yd_bookshelf_cover_corner_radius"
+    private static let exploreUsesDefaultCoverKey = "yd_explore_default_cover"
+    private static let defaultCoverLightFileNamesKey = "yd_default_cover_light_files"
+    private static let defaultCoverDarkFileNamesKey = "yd_default_cover_dark_files"
+    private static let defaultCoverDrawsBookNameKey = "yd_default_cover_draw_name"
+    private static let defaultCoverDrawsBookAuthorKey = "yd_default_cover_draw_author"
+
+    /// Cover corner radius the bookshelf clips its covers with. The ceiling is
+    /// deliberately short of half a cover's width — past that the "rounded
+    /// rectangle" is a lozenge and the artwork loses its corners entirely.
+    static let bookshelfCoverCornerRadiusRange: ClosedRange<Double> = 0...24
+    static let defaultBookshelfCoverCornerRadius: Double = 8
+    /// "默認" (classic) — the app's original look; also the fallback when a
+    /// selected Pro theme becomes unavailable (entitlement lapse / deletion).
+    static let defaultAppearanceThemeID = AppearanceThemePreset.classicID
+    static let defaultAppearanceFollowsSystem = true
+    private static let appearanceThemeIDKey = "yd_appearance_theme_id"
+    private static let appearanceDarkThemeIDKey = "yd_appearance_dark_theme_id"
+    private static let appearanceFollowsSystemKey = "yd_appearance_follows_system"
+    private static let appearancePinnedColorSchemeKey = "yd_appearance_pinned_color_scheme"
+    private static let appearanceSeparateDarkThemeKey = "yd_appearance_separate_dark_theme"
+    private static let appearanceOnScreenKey = "yd_appearance_on_screen"
+    private static let appearanceBindReaderThemeKey = "yd_appearance_bind_reader_theme"
+    private static let appearanceBoundLightReaderThemeKey = "yd_appearance_bound_light_reader_theme"
+    private static let appearanceBoundDarkReaderThemeKey = "yd_appearance_bound_dark_reader_theme"
+    private static let appearanceReaderInterfaceKey = "yd_appearance_reader_interface"
+    static let readerChromeColorsKey = "yd_reader_chrome_colors"
+    static let readerChromeHiddenIDsKey = "yd_reader_chrome_hidden_ids"
+    static let readerChromeIconsKey = "yd_reader_chrome_icons"
+    private static let interfaceGlowIntensityKey = "yd_interface_glow_intensity"
+    private static let interfaceFrostedGlassKey = "yd_interface_frosted_glass"
+    private static let interfaceGlassTransparencyKey = "yd_interface_glass_transparency"
+    /// Key kept at the original `list_sections` spelling: the setting shipped under that
+    /// name and renaming the key would silently reset it for anyone who already turned it on.
+    private static let interfaceGlassCardsKey = "yd_interface_glass_list_sections"
+    static let customAppearanceThemesKey = "yd_custom_appearance_themes"
+    private static let appearancePageBackgroundsKey = "yd_appearance_page_backgrounds"
+    private static let appearanceCardBackgroundKey = "yd_appearance_card_background"
+    private static let globalFontPostScriptKey = "yd_global_font_postscript"
+    private static let commentBubbleFollowsSourceSVGKey = "yd_comment_bubble_follows_source_svg"
+    private static let commentBubblePresetModeKey = "yd_comment_bubble_preset_mode"
+    private static let commentBubbleCustomSVGKey = "yd_comment_bubble_custom_svg"
+    private static let commentBubbleCustomStyleNameKey = "yd_comment_bubble_custom_style_name"
+    private static let commentBubbleCustomStylesV2Key = "yd_comment_bubble_custom_styles_v2"
+    private static let commentBubbleSelectedCustomStyleIDKey = "yd_comment_bubble_selected_custom_style_id"
+    private static let commentBubbleSelectionSyncClockKey = "yd_comment_bubble_selection_sync_clock"
+    private static let commentBubbleScaleKey = "yd_comment_bubble_scale"
+    private static let commentBubbleTextScaleKey = "yd_comment_bubble_text_scale"
+    private static let chapterTitleStyleKey = "yd_chapter_title_style_v1"
+    private static let chapterTitleCustomPresetsKey = "yd_chapter_title_custom_presets_v1"
+    private static let readerTextUnderlineDecorationKey = "yd_reader_text_underline_decoration"
+    private static let readerTextUnderlineDecorationColorHexKey = "yd_reader_text_underline_decoration_color_hex"
+    private static let readerTextUnderlineStyleKey = "yd_reader_text_underline_style"
+    private static let readerTextUnderlineThicknessKey = "yd_reader_text_underline_thickness"
+    private static let readerTextUnderlineOffsetKey = "yd_reader_text_underline_offset"
+    private static let readerDialogueHighlightKey = "yd_reader_dialogue_highlight"
+    private static let readerDialogueHighlightColorHexKey = "yd_reader_dialogue_highlight_color_hex"
+    private static let readerDialogueBoxKey = "yd_reader_dialogue_box"
+    private static let readerDialogueBoxColorHexKey = "yd_reader_dialogue_box_color_hex"
+    private static let readerDialogueBoxStyleKey = "yd_reader_dialogue_box_style"
+    private static let regexHighlightConfigurationKey = "yd_regex_highlight_configuration_v1"
+    private static let dialogueBubbleStyleKey = "yd_reader_dialogue_bubble_v1"
+    private var readerStyleAssetRevisionCancellable: AnyCancellable?
+    // TTS playback highlight — independent from the reader dialogue decoration.
+    private static let ttsHighlightEnabledKey = "yd_tts_highlight_enabled"
+    private static let ttsHighlightColorHexKey = "yd_tts_highlight_color_hex"
+    private static let ttsHighlightBoxEnabledKey = "yd_tts_highlight_box_enabled"
+    private static let ttsHighlightBoxColorHexKey = "yd_tts_highlight_box_color_hex"
+    private static let ttsHighlightBoxStyleKey = "yd_tts_highlight_box_style"
+    private static let ttsKeepsScreenAwakeKey = "yd_tts_keeps_screen_awake"
+    private static let ttsSystemVoiceIdentifiersKey = "yd_tts_system_voice_ids"
+    private static let ttsMultiRoleEnabledKey = "yd_tts_multi_role_enabled"
+    private static let ttsRoleVoicesKey = "yd_tts_role_voices"
+    private static let readerTextColorOverridesKey = "yd_reader_text_color_overrides"
+    static let readerCustomBackgroundsKey = "yd_reader_custom_backgrounds"
+    static let readerCustomBackgroundIDKey = "yd_reader_custom_background_id"
+    static let readerDarkModeKey = "yd_reader_dark_mode"
+    private static let readerOverlayLayoutDataKey = "yd_reader_overlay_layout_data"
+    private static let readerOverlayLayoutMigrationVersionKey = "yd_reader_overlay_layout_migration_version"
+    private static let readerOverlayLayoutCorruptBackupKey = "yd_reader_overlay_layout_corrupt_backup"
+    private static let readerOverlayLayoutSyncClockKey = "yd_reader_overlay_layout_sync_clock"
+    private static let readerBarLayoutDataKey = "yd_reader_bar_layout_data"
+    private static let readerBarLayoutCorruptBackupKey = "yd_reader_bar_layout_corrupt_backup"
+    private static let readerBarLayoutSyncClockKey = "yd_reader_bar_layout_sync_clock"
+    private static let launchImageEnabledKey = "yd_launch_image_enabled"
+    private static let launchImageLightFileNameKey = "yd_launch_image_light_file_name"
+    private static let launchImageDarkFileNameKey = "yd_launch_image_dark_file_name"
+    private static let rootTabVisibleIDsKey = "yd_root_tab_visible_ids"
+    private static let rootTabHidesLabelsKey = "yd_root_tab_hides_labels"
+    private static let rootTabIconSizeKey = "yd_root_tab_icon_size"
+    static let rootTabIconAssetsKey = "yd_root_tab_icon_assets"
+    // 界面效果 — see `InterfaceEffects.swift` for what each value paints.
+    static let interfaceGlowIntensityRange: ClosedRange<Double> = 0...1
+    static let interfaceGlassTransparencyRange: ClosedRange<Double> = 0...1
+    /// A restrained glow out of the box: enough to read as an intentional effect
+    /// on first launch, well short of the neon end of the slider.
+    static let defaultInterfaceGlowIntensity: Double = 0.3
+    /// On by default — frosted glass is what every floating element already used
+    /// before 界面效果 existed, and 透明度 100% reproduces that look exactly.
+    static let defaultInterfaceFrostedGlass = true
+    static let defaultInterfaceGlassTransparency: Double = 1.0
+    /// Off by default. Apple's HIG puts Liquid Glass in the functional layer
+    /// (controls, navigation, transient UI) and keeps it out of the content layer,
+    /// which is where a settings list's cards live — so this stays opt-in, and off
+    /// reproduces the original opaque cards exactly.
+    static let defaultInterfaceGlassCards = false
+    static let commentBubbleScaleRange: ClosedRange<Double> = 0.5...2.0
+    static let commentBubbleTextScaleRange: ClosedRange<Double> = 0.2...0.8
+    static let defaultCommentBubbleScale = 1.0
+    static let defaultCommentBubbleTextScale = 0.4
+    static let defaultReaderUnderlineColorHex: UInt32 = 0x8E8E93
+    static let defaultReaderUnderlineStyle: ReaderTextUnderlineStyle = .solid
+    /// Line thickness in points. Slider range 0.3...2.0; legacy fixed value was 0.6.
+    static let defaultReaderUnderlineThickness: Double = 0.6
+    /// Distance of the underline below the text baseline, in points. Slider range 1.0...10.0;
+    /// the legacy formula was `max(2, descent * 0.72)`, which fell in the 2–4 pt band.
+    static let defaultReaderUnderlineOffset: Double = 3.0
+    static let readerUnderlineThicknessRange: ClosedRange<Double> = 0.3...2.0
+    static let readerUnderlineOffsetRange: ClosedRange<Double> = 1.0...10.0
+    static let defaultReaderDialogueHighlightColorHex: UInt32 = 0xFF6B3A
+    /// Default box tint = the shared reference lavender rgb(195,185,225); the gradient-pill
+    /// style derives its two translucent stops from this base.
+    static let defaultReaderDialogueBoxColorHex: UInt32 = 0xC3B9E1
+    /// Box style: 0 = solid block, 1 = translucent gradient pill (default).
+    static let defaultReaderDialogueBoxStyle: Int = 1
+
+    /// Defaults for TTS playback highlight (independent from reader dialogue decoration).
+    static let defaultTTSHighlightColorHex: UInt32 = 0xFFD60A        // system yellow-ish
+    static let defaultTTSHighlightBoxColorHex: UInt32 = 0xC3B9E1
+    static let defaultTTSHighlightBoxStyle: Int = 1                  // gradient pill
+
+    static func uiColor(rgbHex: UInt32) -> UIColor {
+        UIColor(
+            red: CGFloat((rgbHex >> 16) & 0xFF) / 255,
+            green: CGFloat((rgbHex >> 8) & 0xFF) / 255,
+            blue: CGFloat(rgbHex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+
+    // MARK: - Reader Text
+
+    @Published var textConversion: TextConversion {
+        didSet { UserDefaults.standard.set(textConversion.rawValue, forKey: "yd_text_conv") }
+    }
+    @Published var lineHeightMultiple: Double {
+        didSet {
+            UserDefaults.standard.set(lineHeightMultiple, forKey: "yd_line_height_multiple")
+            recordReadingSettingEdit { $0.lineHeightMultiple = lineHeightMultiple }
+        }
+    }
+    @Published var scrollMode: Bool {
+        didSet {
+            UserDefaults.standard.set(scrollMode, forKey: "yd_scroll_mode")
+            recordReadingSettingEdit { $0.scrollMode = scrollMode }
+        }
+    }
+    @Published var readerBrightness: Double {
+        didSet { UserDefaults.standard.set(readerBrightness, forKey: "yd_reader_brightness") }
+    }
+    @Published var followSystemBrightness: Bool {
+        didSet {
+            UserDefaults.standard.set(followSystemBrightness, forKey: "yd_follow_sys_brightness")
+        }
+    }
+    @Published var letterSpacing: Double {
+        didSet {
+            UserDefaults.standard.set(letterSpacing, forKey: "yd_letter_spacing")
+            recordReadingSettingEdit { $0.letterSpacing = letterSpacing }
+        }
+    }
+    @Published var paragraphSpacingMultiplier: Double {
+        didSet {
+            UserDefaults.standard.set(paragraphSpacingMultiplier, forKey: "yd_paragraph_spacing_mult")
+            recordReadingSettingEdit { $0.paragraphSpacingMultiplier = paragraphSpacingMultiplier }
+        }
+    }
+    @Published var pageMarginH: Double {
+        didSet {
+            UserDefaults.standard.set(pageMarginH, forKey: "yd_page_margin_h")
+            recordReadingSettingEdit { $0.pageMarginH = pageMarginH }
+        }
+    }
+    @Published var pageMarginTop: Double {
+        didSet {
+            UserDefaults.standard.set(pageMarginTop, forKey: "yd_page_margin_top")
+            recordReadingSettingEdit { $0.pageMarginTop = pageMarginTop }
+        }
+    }
+    @Published var pageMarginBottom: Double {
+        didSet {
+            UserDefaults.standard.set(pageMarginBottom, forKey: "yd_page_margin_bottom")
+            recordReadingSettingEdit { $0.pageMarginBottom = pageMarginBottom }
+        }
+    }
+    @Published var pageMarginV: Double {
+        didSet {
+            UserDefaults.standard.set(pageMarginV, forKey: "yd_page_margin_v")
+            recordReadingSettingEdit { $0.pageMarginV = pageMarginV }
+        }
+    }
+    /// Per-reading-background body text color. Key = `ReaderTheme.rawValue`,
+    /// value = RGB hex. A missing key means 跟隨主題: the background keeps the text
+    /// color it (or the bound appearance palette) already defines. Keyed per
+    /// background rather than global so a color chosen for 白天 can't follow the
+    /// reader into 黑色 and leave black text on a black page.
+    @Published var readerTextColorOverrides: [String: UInt32] {
+        didSet {
+            UserDefaults.standard.set(
+                readerTextColorOverrides.mapValues { Int($0) },
+                forKey: Self.readerTextColorOverridesKey
+            )
+            recordReadingSettingEdit { $0.textColorOverrides = readerTextColorOverrides }
+        }
+    }
+    @Published var footerBottomPadding: Double {
+        didSet {
+            UserDefaults.standard.set(footerBottomPadding, forKey: "yd_footer_bottom_padding")
+            recordReadingSettingEdit { $0.footerBottomPadding = footerBottomPadding }
+        }
+    }
+    @Published var footerTextGap: Double {
+        didSet {
+            UserDefaults.standard.set(footerTextGap, forKey: "yd_footer_text_gap")
+            recordReadingSettingEdit { $0.footerTextGap = footerTextGap }
+        }
+    }
+    // DEPRECATED loose title fields. The single source of truth for the
+    // in-content chapter title is `chapterTitleStyle` below; these are retained
+    // only as a one-time migration source (see `loadChapterTitleStyle`) and for
+    // reading older layout presets. Do not treat them as authoritative for
+    // rendering — nothing mirrors them into the renderer anymore.
+    @Published var readerTitleVisible: Bool {
+        didSet { UserDefaults.standard.set(readerTitleVisible, forKey: "yd_reader_title_visible") }
+    }
+    @Published var readerTitleSize: Double {
+        didSet { UserDefaults.standard.set(readerTitleSize, forKey: "yd_reader_title_size") }
+    }
+    @Published var readerTitleTopSpacing: Double {
+        didSet { UserDefaults.standard.set(readerTitleTopSpacing, forKey: "yd_reader_title_top_spacing") }
+    }
+    @Published var readerTitleBottomSpacing: Double {
+        didSet { UserDefaults.standard.set(readerTitleBottomSpacing, forKey: "yd_reader_title_bottom_spacing") }
+    }
+    /// Full chapter-title style (size/spacing/weight/alignment/split/fonts) — the
+    /// authoritative in-content title description consumed by the renderer.
+    @Published var chapterTitleStyle: ChapterTitleStyle {
+        didSet {
+            Self.saveChapterTitleStyle(chapterTitleStyle)
+            recordReadingSettingEdit { $0.chapterTitleStyle = chapterTitleStyle }
+        }
+    }
+    /// User-saved chapter-title presets ("我的預設"). Built-ins live in code.
+    @Published private(set) var chapterTitleCustomPresets: [ChapterTitleStylePreset] {
+        didSet { Self.saveChapterTitleCustomPresets(chapterTitleCustomPresets) }
+    }
+    /// Reader header (頁眉): the info band above the text in paged mode.
+    @Published var readerHeaderVisible: Bool {
+        didSet {
+            UserDefaults.standard.set(readerHeaderVisible, forKey: "yd_reader_header_visible")
+            recordReadingSettingEdit { $0.headerVisible = readerHeaderVisible }
+        }
+    }
+    @Published var readerHeaderTopPadding: Double {
+        didSet {
+            UserDefaults.standard.set(readerHeaderTopPadding, forKey: "yd_reader_header_top_padding")
+            recordReadingSettingEdit { $0.headerTopPadding = readerHeaderTopPadding }
+        }
+    }
+    @Published var readerHeaderTextGap: Double {
+        didSet {
+            UserDefaults.standard.set(readerHeaderTextGap, forKey: "yd_reader_header_text_gap")
+            recordReadingSettingEdit { $0.headerTextGap = readerHeaderTextGap }
+        }
+    }
+    @Published var readerHeaderHorizontalPadding: Double {
+        didSet {
+            UserDefaults.standard.set(readerHeaderHorizontalPadding, forKey: "yd_reader_header_h_padding")
+            recordReadingSettingEdit { $0.headerHorizontalPadding = readerHeaderHorizontalPadding }
+        }
+    }
+    /// Reader footer (頁腳): the page/progress/clock band below the text in paged mode.
+    @Published var readerFooterVisible: Bool {
+        didSet {
+            UserDefaults.standard.set(readerFooterVisible, forKey: "yd_reader_footer_visible")
+            recordReadingSettingEdit { $0.footerVisible = readerFooterVisible }
+        }
+    }
+    @Published var readerFooterHorizontalPadding: Double {
+        didSet {
+            UserDefaults.standard.set(readerFooterHorizontalPadding, forKey: "yd_reader_footer_h_padding")
+            recordReadingSettingEdit { $0.footerHorizontalPadding = readerFooterHorizontalPadding }
+        }
+    }
+    /// Placement of each header field, keyed by `ReaderHeaderField.rawValue`
+    /// with `ReaderHeaderFieldPosition.rawValue` values. Fields without an
+    /// entry are hidden. Display-only — changing it never repaginates.
+    @Published var readerHeaderFieldPositions: [String: String] {
+        didSet { UserDefaults.standard.set(readerHeaderFieldPositions, forKey: "yd_reader_header_positions") }
+    }
+    @Published private(set) var readerOverlayLayout: ReaderOverlayLayout
+    /// Merge clock for the iCloud-synced header/footer layout. Advances only
+    /// when *this device's user* edits the layout, never when a sync applies a
+    /// remote one — otherwise every sync would re-stamp the record as newest and
+    /// the two devices would fight forever. See `ReaderOverlayLayoutSyncRecord`.
+    @Published private(set) var readerOverlayLayoutSyncClock: Date? {
+        didSet {
+            if let readerOverlayLayoutSyncClock {
+                UserDefaults.standard.set(
+                    readerOverlayLayoutSyncClock,
+                    forKey: Self.readerOverlayLayoutSyncClockKey
+                )
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.readerOverlayLayoutSyncClockKey)
+            }
+        }
+    }
+    /// Which info field sits in which of the six header/footer slots.
+    ///
+    /// Supersedes `readerOverlayLayout` for everything the reader actually draws.
+    /// That one survives only as the format `.qitheme` packs and exported presets
+    /// arrive in — free coordinates get snapped onto slots on the way in, and are
+    /// never rendered.
+    @Published private(set) var readerBarLayout: ReaderBarLayout {
+        didSet { recordReadingSettingEdit { $0.barLayout = readerBarLayout } }
+    }
+    /// Merge clock for the iCloud-synced bar layout. Advances only when *this
+    /// device's user* edits the layout, never when a sync applies a remote one —
+    /// otherwise every sync would re-stamp the record as newest and the two
+    /// devices would fight forever. See `ReaderBarLayoutSyncRecord`.
+    @Published private(set) var readerBarLayoutSyncClock: Date? {
+        didSet {
+            if let readerBarLayoutSyncClock {
+                UserDefaults.standard.set(
+                    readerBarLayoutSyncClock,
+                    forKey: Self.readerBarLayoutSyncClockKey
+                )
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.readerBarLayoutSyncClockKey)
+            }
+        }
+    }
+    @Published var pageTurnStyle: PageTurnStyle {
+        didSet {
+            UserDefaults.standard.set(pageTurnStyle.rawValue, forKey: "yd_page_turn_style")
+            recordReadingSettingEdit { $0.pageTurnStyle = pageTurnStyle.rawValue }
+        }
+    }
+    @Published var readerSpreadMode: ReaderSpreadMode {
+        didSet { UserDefaults.standard.set(readerSpreadMode.rawValue, forKey: "yd_reader_spread_mode") }
+    }
+    @Published var readerWritingMode: ReaderWritingMode {
+        didSet {
+            UserDefaults.standard.set(readerWritingMode.rawValue, forKey: "yd_reader_writing_mode")
+            recordReadingSettingEdit { $0.writingMode = readerWritingMode.rawValue }
+        }
+    }
+    /// When on, tapping EITHER side edge of a paged reader turns to the next page
+    /// (instead of left = previous / right = next). The center zone still toggles the menu.
+    /// Read at tap time by `CoreTextPageEngineView`'s gesture handler — no relayout needed.
+    @Published var readerTapBothSidesNextPage: Bool {
+        didSet { UserDefaults.standard.set(readerTapBothSidesNextPage, forKey: "yd_reader_tap_both_next") }
+    }
+    /// Fixed-page reader (manga, PDF, fixed-layout EPUB): a double tap zooms in and back
+    /// out. Defaults ON. Off, a single tap turns the page or brings up the controls without
+    /// first waiting to see whether a second tap follows; pinch zoom stays. One setting for
+    /// every book. Read per touch by `FixedPageDoubleTapZoomGate` — no reload needed.
+    @Published var fixedPageDoubleTapToZoom: Bool {
+        didSet { UserDefaults.standard.set(fixedPageDoubleTapToZoom, forKey: "yd_fixed_page_double_tap_zoom") }
+    }
+    /// Webtoon layout of the fixed-page reader: a floating button that starts and pauses
+    /// auto-scroll. Off by default, as in Aidoku — most reading never uses it, and it
+    /// would otherwise sit over the page the whole time. One setting for every book.
+    @Published var fixedPageAutoScrollButton: Bool {
+        didSet { UserDefaults.standard.set(fixedPageAutoScrollButton, forKey: "yd_fixed_page_auto_scroll_button") }
+    }
+    /// Which bottom corner that button sits in. Right by default, as in Aidoku.
+    @Published var fixedPageAutoScrollButtonPosition: FixedPageAutoScrollButtonPosition {
+        didSet {
+            UserDefaults.standard.set(
+                fixedPageAutoScrollButtonPosition.rawValue,
+                forKey: "yd_fixed_page_auto_scroll_button_position"
+            )
+        }
+    }
+    /// Paged mode only: swiping up shows a growing ✕ chip and releasing closes
+    /// the reader. Defaults ON; scroll mode never installs the gesture. Read at
+    /// gesture-begin time by `CoreTextPageEngineView` — no relayout needed.
+    @Published var readerSwipeUpToExit: Bool {
+        didSet { UserDefaults.standard.set(readerSwipeUpToExit, forKey: "yd_reader_swipe_up_exit") }
+    }
+    /// Paged mode only: pulling down shows a bookmark pill and releasing past the
+    /// commit point bookmarks this page — or removes the bookmark, when the page
+    /// already has one. Defaults ON; scroll mode never installs the gesture, where
+    /// a downward drag is the scroll itself. Read at gesture-begin time by
+    /// `CoreTextPageEngineView` — no relayout needed.
+    @Published var readerPullDownToBookmark: Bool {
+        didSet { UserDefaults.standard.set(readerPullDownToBookmark, forKey: "yd_reader_pull_down_bookmark") }
+    }
+    /// 跟隨裝置深淺色: the reader's dark mode (`readerDarkMode`) keeps to the device's
+    /// appearance. Its switch shows in the reader only under 綁定閱讀主題, off to start
+    /// with. Without the binding no switch shows and the reader follows the device by
+    /// itself: a mode set against the device holds until the device comes round to it
+    /// (`ReaderBackgroundResolution.swift`; the user's call, 2026-09-30).
+    @Published var readerFollowSystemTheme: Bool {
+        didSet {
+            UserDefaults.standard.set(readerFollowSystemTheme, forKey: "yd_reader_follow_system_theme")
+            recordReadingSettingEdit { $0.followsSystemTheme = readerFollowSystemTheme }
+        }
+    }
+    /// The reader's own dark mode — what its 深色／白天 button switches, and what
+    /// 跟隨裝置深淺色 keeps on the device's appearance. It decides the background worn:
+    /// 黑色 or the light one, and under 綁定閱讀主題 which of the two picks
+    /// (`ReaderBackgroundResolution.swift`). This device's alone: the background it puts
+    /// on is what syncs.
+    ///
+    /// Until 2026-09-30 the mode was read off `ReaderTheme.night`, which a dark saved
+    /// background also sits on — so making one put the reader in dark mode — and under
+    /// 綁定閱讀主題 off the device's appearance alone, so the button did nothing there.
+    @Published var readerDarkMode: Bool {
+        didSet { UserDefaults.standard.set(readerDarkMode, forKey: Self.readerDarkModeKey) }
+    }
+    @Published var readerTextUnderlineDecorationEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(readerTextUnderlineDecorationEnabled, forKey: Self.readerTextUnderlineDecorationKey)
+            recordReadingSettingEdit { $0.textUnderline = currentTextUnderlineSettings }
+        }
+    }
+    @Published var readerTextUnderlineDecorationColorHex: UInt32 {
+        didSet {
+            UserDefaults.standard.set(Int(readerTextUnderlineDecorationColorHex), forKey: Self.readerTextUnderlineDecorationColorHexKey)
+            recordReadingSettingEdit { $0.textUnderline = currentTextUnderlineSettings }
+        }
+    }
+    @Published var readerTextUnderlineStyle: ReaderTextUnderlineStyle {
+        didSet {
+            UserDefaults.standard.set(readerTextUnderlineStyle.rawValue, forKey: Self.readerTextUnderlineStyleKey)
+            recordReadingSettingEdit { $0.textUnderline = currentTextUnderlineSettings }
+        }
+    }
+    @Published var readerTextUnderlineThickness: Double {
+        didSet {
+            UserDefaults.standard.set(readerTextUnderlineThickness, forKey: Self.readerTextUnderlineThicknessKey)
+            recordReadingSettingEdit { $0.textUnderline = currentTextUnderlineSettings }
+        }
+    }
+    @Published var readerTextUnderlineOffset: Double {
+        didSet {
+            UserDefaults.standard.set(readerTextUnderlineOffset, forKey: Self.readerTextUnderlineOffsetKey)
+            recordReadingSettingEdit { $0.textUnderline = currentTextUnderlineSettings }
+        }
+    }
+    /// Tint quoted dialogue (「」『』"" '') in the theme accent color. Applied as a
+    /// `.foregroundColor` override when the chapter attributed string is built, so it
+    /// colors justified glyphs natively and works in both horizontal and vertical modes.
+    @Published var readerDialogueHighlightEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(readerDialogueHighlightEnabled, forKey: Self.readerDialogueHighlightKey)
+        }
+    }
+    @Published var readerDialogueHighlightColorHex: UInt32 {
+        didSet {
+            UserDefaults.standard.set(Int(readerDialogueHighlightColorHex), forKey: Self.readerDialogueHighlightColorHexKey)
+        }
+    }
+    /// Draws a `.backgroundColor` box behind quoted dialogue (nested under 對話文字高亮).
+    @Published var readerDialogueBoxEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(readerDialogueBoxEnabled, forKey: Self.readerDialogueBoxKey)
+        }
+    }
+    @Published var readerDialogueBoxColorHex: UInt32 {
+        didSet {
+            UserDefaults.standard.set(Int(readerDialogueBoxColorHex), forKey: Self.readerDialogueBoxColorHexKey)
+        }
+    }
+    /// 0 = solid block, 1 = gradient pill. See `CoreTextDialogueBox.Style`.
+    @Published var readerDialogueBoxStyleRaw: Int {
+        didSet {
+            UserDefaults.standard.set(readerDialogueBoxStyleRaw, forKey: Self.readerDialogueBoxStyleKey)
+        }
+    }
+    /// Versioned regex rules replacing the legacy single dialogue-highlight style.
+    /// The legacy properties above remain persisted for old appearance payloads,
+    /// while this configuration is the source of truth for the new rule editor.
+    @Published var regexHighlightConfiguration: RegexHighlightConfiguration {
+        didSet {
+            let sanitized = regexHighlightConfiguration.sanitized()
+            if sanitized != regexHighlightConfiguration {
+                regexHighlightConfiguration = sanitized
+                return
+            }
+            Self.saveRegexHighlightConfiguration(sanitized)
+            recordReadingSettingEdit { $0.regexHighlights = sanitized }
+        }
+    }
+    /// 對話氣泡 — the block-level dialogue treatment. Off by default; the inline
+    /// 對話文字高亮 / 對話底色框 above stay the default look.
+    @Published var dialogueBubbleStyle: ReaderDialogueBubbleStyle {
+        didSet {
+            let sanitized = dialogueBubbleStyle.sanitized()
+            if sanitized != dialogueBubbleStyle {
+                dialogueBubbleStyle = sanitized
+                return
+            }
+            Self.saveDialogueBubbleStyle(sanitized)
+            recordReadingSettingEdit { $0.dialogueBubbleStyle = sanitized }
+        }
+    }
+    @Published private(set) var readerStyleAssetRevision: UInt64 = 0
+
+    // MARK: - TTS playback highlight (independent from reader dialogue decoration)
+    @Published var ttsHighlightEnabled: Bool {
+        didSet { UserDefaults.standard.set(ttsHighlightEnabled, forKey: Self.ttsHighlightEnabledKey) }
+    }
+    @Published var ttsHighlightColorHex: UInt32 {
+        didSet { UserDefaults.standard.set(Int(ttsHighlightColorHex), forKey: Self.ttsHighlightColorHexKey) }
+    }
+    @Published var ttsHighlightBoxEnabled: Bool {
+        didSet { UserDefaults.standard.set(ttsHighlightBoxEnabled, forKey: Self.ttsHighlightBoxEnabledKey) }
+    }
+    @Published var ttsHighlightBoxColorHex: UInt32 {
+        didSet { UserDefaults.standard.set(Int(ttsHighlightBoxColorHex), forKey: Self.ttsHighlightBoxColorHexKey) }
+    }
+    /// 0 = solid block, 1 = gradient pill. See `CoreTextDialogueBox.Style`.
+    @Published var ttsHighlightBoxStyleRaw: Int {
+        didSet { UserDefaults.standard.set(ttsHighlightBoxStyleRaw, forKey: Self.ttsHighlightBoxStyleKey) }
+    }
+
+    @Published var commentBubbleFollowsSourceSVG: Bool {
+        didSet {
+            UserDefaults.standard.set(commentBubbleFollowsSourceSVG, forKey: Self.commentBubbleFollowsSourceSVGKey)
+            recordReadingSettingEdit { $0.commentBubble = currentCommentBubbleSettings }
+        }
+    }
+    @Published var commentBubblePresetMode: ReaderCommentBubblePresetMode {
+        didSet {
+            UserDefaults.standard.set(commentBubblePresetMode.rawValue, forKey: Self.commentBubblePresetModeKey)
+            recordReadingSettingEdit { $0.commentBubble = currentCommentBubbleSettings }
+        }
+    }
+    @Published private(set) var commentBubbleCustomStyles: [ReaderCommentBubbleCustomStyle] {
+        didSet {
+            Self.saveCommentBubbleCustomStyles(commentBubbleCustomStyles)
+        }
+    }
+    @Published private(set) var commentBubbleSelectedCustomStyleID: UUID? {
+        didSet {
+            Self.saveCommentBubbleSelectedCustomStyleID(commentBubbleSelectedCustomStyleID)
+            recordReadingSettingEdit { $0.commentBubble = currentCommentBubbleSettings }
+        }
+    }
+    /// iCloud merge clock for the bubble *selection* record. Advances ONLY on
+    /// user actions that change the selection (`selectCommentBubbleCustomStyle`
+    /// / `upsertCommentBubbleCustomStyle` / `deleteCommentBubbleCustomStyle`),
+    /// never on launch-load or on applying a synced selection — otherwise the
+    /// newest-write-wins merge would let a device stamp itself as "newer" every
+    /// launch and clobber the other device's choice.
+    private(set) var commentBubbleSelectionSyncClock: Date? {
+        didSet {
+            if let commentBubbleSelectionSyncClock {
+                UserDefaults.standard.set(commentBubbleSelectionSyncClock, forKey: Self.commentBubbleSelectionSyncClockKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.commentBubbleSelectionSyncClockKey)
+            }
+        }
+    }
+    var commentBubbleSelectedCustomStyle: ReaderCommentBubbleCustomStyle? {
+        guard let commentBubbleSelectedCustomStyleID else { return nil }
+        return commentBubbleCustomStyles.first { $0.id == commentBubbleSelectedCustomStyleID }
+    }
+    /// Read-only compatibility accessor for renderer and settings call sites.
+    var commentBubbleCustomSVG: String {
+        commentBubbleSelectedCustomStyle?.svg ?? ""
+    }
+    /// Read-only compatibility accessor for renderer and settings call sites.
+    var commentBubbleCustomStyleName: String {
+        commentBubbleSelectedCustomStyle?.name ?? ""
+    }
+    @Published var commentBubbleScale: Double {
+        didSet {
+            let sanitized = Self.sanitizedCommentBubbleScale(commentBubbleScale)
+            if commentBubbleScale != sanitized {
+                commentBubbleScale = sanitized
+            } else {
+                UserDefaults.standard.set(commentBubbleScale, forKey: Self.commentBubbleScaleKey)
+                recordReadingSettingEdit { $0.commentBubble = currentCommentBubbleSettings }
+            }
+        }
+    }
+    /// The old 數字字號比例. Nothing draws with it any more: a bubble's count is the size its
+    /// SVG gives it, as in legado and Sigma's bubble packs, and the slider is gone. It stays
+    /// stored because themes and synced reading settings carry it as a non-optional
+    /// `AppearanceThemeReadingSettings.CommentBubble.textScale`, which builds before this one
+    /// still decode. Remove it together with that field once no such build syncs.
+    @Published var commentBubbleTextScale: Double {
+        didSet {
+            let sanitized = Self.sanitizedCommentBubbleTextScale(commentBubbleTextScale)
+            if commentBubbleTextScale != sanitized {
+                commentBubbleTextScale = sanitized
+            } else {
+                UserDefaults.standard.set(commentBubbleTextScale, forKey: Self.commentBubbleTextScaleKey)
+                recordReadingSettingEdit { $0.commentBubble = currentCommentBubbleSettings }
+            }
+        }
+    }
+    /// The saved reading backgrounds, in the order they were made — see
+    /// `ReaderCustomBackground`. Synced through iCloud like the bubble styles, with the
+    /// pictures riding as files. Written through `ReaderCustomBackgroundStore.swift`.
+    @Published var readerCustomBackgrounds: [ReaderCustomBackground] {
+        didSet { Self.saveReaderCustomBackgrounds(readerCustomBackgrounds) }
+    }
+    /// The saved background the reader's light mode wears in place of the built-in light
+    /// one, whatever its tone; nil for the built-in one alone. Dark mode is 黑色. Under
+    /// 綁定閱讀主題 the two picks decide instead, and only 跟隨外觀主題 reads this — as the
+    /// theme's own reading picture.
+    @Published var readerCustomBackgroundID: UUID? {
+        didSet {
+            if let readerCustomBackgroundID {
+                UserDefaults.standard.set(readerCustomBackgroundID.uuidString, forKey: Self.readerCustomBackgroundIDKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.readerCustomBackgroundIDKey)
+            }
+            recordReadingSettingEdit { $0.readerBackgroundID = readerCustomBackgroundID?.uuidString ?? "" }
+        }
+    }
+
+    // MARK: - App Appearance Themes
+
+    @Published var appearanceFollowsSystem: Bool {
+        didSet {
+            UserDefaults.standard.set(appearanceFollowsSystem, forKey: Self.appearanceFollowsSystemKey)
+        }
+    }
+
+    @Published var appearancePinnedColorScheme: AppearanceColorScheme {
+        didSet {
+            UserDefaults.standard.set(
+                appearancePinnedColorScheme.rawValue,
+                forKey: Self.appearancePinnedColorSchemeKey
+            )
+        }
+    }
+
+    /// True while `synchronizeAppearanceThemeExtras` is installing a theme's values.
+    /// Every covered setting writes back into the selected theme from its `didSet`, so
+    /// without this the restore-baseline-then-apply sequence would immediately
+    /// overwrite the extras it is in the middle of applying.
+    var isApplyingAppearanceExtras = false
+    /// True while reading settings from another device are being worn: their writes are
+    /// recorded like edits, but none of them is a setting made here.
+    var isApplyingReadingSettingsSync = false
+
+    @Published var appearanceThemeID: String {
+        didSet {
+            UserDefaults.standard.set(appearanceThemeID, forKey: Self.appearanceThemeIDKey)
+            guard appearanceThemeID != oldValue else { return }
+            synchronizeAppearanceThemeExtras()
+        }
+    }
+    @Published var appearanceDarkThemeID: String {
+        didSet {
+            UserDefaults.standard.set(appearanceDarkThemeID, forKey: Self.appearanceDarkThemeIDKey)
+            guard appearanceDarkThemeID != oldValue else { return }
+            synchronizeAppearanceThemeExtras()
+        }
+    }
+    /// Card artwork in force — set by the selected theme's extras, nil for a plain
+    /// theme. Read by `interfaceCardSurface` / `interfaceSectionSurface`.
+    @Published var appearanceCardBackground: AppearanceCardBackground? {
+        didSet {
+            updateActiveThemeExtras { $0.cardBackground = appearanceCardBackground }
+            guard let appearanceCardBackground,
+                  let data = try? JSONEncoder().encode(appearanceCardBackground) else {
+                UserDefaults.standard.removeObject(forKey: Self.appearanceCardBackgroundKey)
+                return
+            }
+            UserDefaults.standard.set(data, forKey: Self.appearanceCardBackgroundKey)
+        }
+    }
+    @Published var appearanceUsesSeparateDarkTheme: Bool {
+        didSet {
+            UserDefaults.standard.set(appearanceUsesSeparateDarkTheme, forKey: Self.appearanceSeparateDarkThemeKey)
+            // Which slot's theme is worn can change with it.
+            synchronizeAppearanceThemeExtras()
+        }
+    }
+    /// The appearance on screen. While 單獨設定深色主題 is on it picks whose theme is worn —
+    /// the light slot's or the dark slot's — so `ContentView` keeps it current. Stored,
+    /// so a launch starts from the last one rather than guessing.
+    @Published var appearanceOnScreen: AppearanceColorScheme {
+        didSet {
+            guard appearanceOnScreen != oldValue else { return }
+            UserDefaults.standard.set(appearanceOnScreen.rawValue, forKey: Self.appearanceOnScreenKey)
+            synchronizeAppearanceThemeExtras()
+        }
+    }
+    /// The slot 外觀主題's 淺色／深色 tab is previewing while 跟隨系統 is on, worn by the
+    /// whole window — pages opened from 外觀主題 included — until the user is back on 設定
+    /// or on another tab (`endAppearanceSlotPreview`). Not stored: a preview is not a setting.
+    ///
+    /// It used to be the page's own state, painted by overriding that page's environment —
+    /// which the status bar and the navigation bar never read, and `ContentView`'s
+    /// `.preferredColorScheme` overrode the page's own. Previewing 淺色 in a dark app left
+    /// the time, the battery and the page title white on white (2026-10-05).
+    @Published var appearanceSlotPreview: AppearanceColorScheme?
+    @Published var appearanceBindReaderTheme: Bool {
+        didSet {
+            UserDefaults.standard.set(appearanceBindReaderTheme, forKey: Self.appearanceBindReaderThemeKey)
+            // The binding is what shows 跟隨裝置深淺色 in the reader, and it shows off:
+            // the two picks are worn by the reader's own 深色／白天 until the user asks
+            // for the device's appearance (2026-09-30).
+            if appearanceBindReaderTheme { readerFollowSystemTheme = false }
+            recordReadingSettingEdit { $0.bindsAppearanceReaderTheme = appearanceBindReaderTheme }
+        }
+    }
+    /// Reading theme applied while 綁定閱讀主題 is on and the reader is in light mode.
+    /// Stored as `ReaderBoundTheme.storageValue`.
+    @Published var appearanceBoundLightReaderTheme: String {
+        didSet {
+            UserDefaults.standard.set(
+                appearanceBoundLightReaderTheme,
+                forKey: Self.appearanceBoundLightReaderThemeKey
+            )
+            recordReadingSettingEdit { $0.boundLightReaderTheme = appearanceBoundLightReaderTheme }
+        }
+    }
+    /// Reading theme applied while 綁定閱讀主題 is on and the reader is in dark mode.
+    /// Stored as `ReaderBoundTheme.storageValue`.
+    @Published var appearanceBoundDarkReaderTheme: String {
+        didSet {
+            UserDefaults.standard.set(
+                appearanceBoundDarkReaderTheme,
+                forKey: Self.appearanceBoundDarkReaderThemeKey
+            )
+            recordReadingSettingEdit { $0.boundDarkReaderTheme = appearanceBoundDarkReaderTheme }
+        }
+    }
+
+    // MARK: - Launch Image (App Splash)
+
+    /// Master switch for the custom launch splash. Defaults off; gated on Pro at
+    /// the UI entry point and again when the overlay decides whether to present.
+    @Published var launchImageEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(launchImageEnabled, forKey: Self.launchImageEnabledKey)
+            updateActiveThemeExtras { $0.launchImageEnabled = launchImageEnabled }
+        }
+    }
+    @Published var launchImageLightFileName: String? {
+        didSet {
+            if let launchImageLightFileName, !launchImageLightFileName.isEmpty {
+                UserDefaults.standard.set(launchImageLightFileName, forKey: Self.launchImageLightFileNameKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.launchImageLightFileNameKey)
+            }
+            updateActiveThemeExtras { $0.launchImageLightFileName = launchImageLightFileName ?? "" }
+        }
+    }
+    @Published var launchImageDarkFileName: String? {
+        didSet {
+            if let launchImageDarkFileName, !launchImageDarkFileName.isEmpty {
+                UserDefaults.standard.set(launchImageDarkFileName, forKey: Self.launchImageDarkFileNameKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.launchImageDarkFileNameKey)
+            }
+            updateActiveThemeExtras { $0.launchImageDarkFileName = launchImageDarkFileName ?? "" }
+        }
+    }
+    @Published var appearanceReaderInterface: AppearanceReaderInterface {
+        didSet {
+            UserDefaults.standard.set(appearanceReaderInterface.rawValue, forKey: Self.appearanceReaderInterfaceKey)
+            updateActiveThemeExtras { $0.readerInterface = appearanceReaderInterface.rawValue }
+        }
+    }
+
+    // MARK: - 閱讀介面自定義（經典／現代）
+
+    /// Hand-picked chrome colours, keyed "<interface>.<slot>" — see
+    /// `ReaderChromePalette`. An absent key means "follow the reading theme",
+    /// which is why clearing a slot must remove it rather than store a sentinel.
+    @Published var readerChromeColors: [String: UInt32] {
+        didSet {
+            Self.saveReaderChromeColors(readerChromeColors)
+            updateActiveThemeExtras { $0.readerChromeColors = readerChromeColors }
+        }
+    }
+
+    /// `storageID`s of buttons the reader switched off. Absent = visible, so a new
+    /// button added in a later version shows up by default.
+    @Published var readerChromeHiddenIDs: [String] {
+        didSet {
+            UserDefaults.standard.set(readerChromeHiddenIDs, forKey: Self.readerChromeHiddenIDsKey)
+            updateActiveThemeExtras { $0.readerChromeHiddenIDs = readerChromeHiddenIDs }
+        }
+    }
+
+    /// User-imported replacements for those buttons' symbols.
+    @Published var readerChromeIcons: [ReaderChromeIconAsset] {
+        didSet {
+            Self.saveReaderChromeIcons(readerChromeIcons)
+            updateActiveThemeExtras {
+                $0.readerChromeIcons = Dictionary(
+                    readerChromeIcons.map { ($0.itemID, $0.fileName) },
+                    uniquingKeysWith: { _, last in last }
+                )
+            }
+        }
+    }
+
+    // MARK: - 界面效果 (Interface Effects)
+
+    /// Strength of the glow bleeding out of every floating element's edge, 0...1.
+    @Published var interfaceGlowIntensity: Double {
+        didSet {
+            let sanitized = Self.sanitizedInterfaceGlowIntensity(interfaceGlowIntensity)
+            if sanitized != interfaceGlowIntensity {
+                interfaceGlowIntensity = sanitized
+            } else {
+                UserDefaults.standard.set(interfaceGlowIntensity, forKey: Self.interfaceGlowIntensityKey)
+                updateActiveThemeExtras { $0.glowIntensity = interfaceGlowIntensity }
+            }
+        }
+    }
+    /// Whether floating elements blur what is behind them. Off = the solid fill.
+    @Published var interfaceFrostedGlass: Bool {
+        didSet {
+            UserDefaults.standard.set(interfaceFrostedGlass, forKey: Self.interfaceFrostedGlassKey)
+            updateActiveThemeExtras { $0.frostedGlass = interfaceFrostedGlass }
+        }
+    }
+    /// How much of the blur shows through, 0...1. 1 = untouched material.
+    @Published var interfaceGlassTransparency: Double {
+        didSet {
+            let sanitized = Self.sanitizedInterfaceGlassTransparency(interfaceGlassTransparency)
+            if sanitized != interfaceGlassTransparency {
+                interfaceGlassTransparency = sanitized
+            } else {
+                UserDefaults.standard.set(interfaceGlassTransparency, forKey: Self.interfaceGlassTransparencyKey)
+                updateActiveThemeExtras { $0.glassTransparency = interfaceGlassTransparency }
+            }
+        }
+    }
+    /// Whether content-layer cards — Form/List sections and the hand-drawn cards on
+    /// 外觀主題, 統計, 書籍詳情 — wear the same glass as floating elements. Rides
+    /// `interfaceFrostedGlass` and 透明度 rather than owning its own material.
+    @Published var interfaceGlassCards: Bool {
+        didSet {
+            UserDefaults.standard.set(interfaceGlassCards, forKey: Self.interfaceGlassCardsKey)
+            updateActiveThemeExtras { $0.glassCards = interfaceGlassCards }
+        }
+    }
+    @Published var customAppearanceThemes: [AppearanceCustomTheme] {
+        didSet { Self.saveCustomAppearanceThemes(customAppearanceThemes) }
+    }
+    /// Colours the user edited on the built-in themes in 配色, by theme id — only the
+    /// colour fields of each are read (`AppearanceThemePreset.withEditedColors`).
+    /// 重置為默認 clears them (2026-09-29).
+    @Published var appearanceBuiltInThemeColors: [String: AppearanceCustomTheme] {
+        didSet { Self.saveAppearanceBuiltInThemeColors(appearanceBuiltInThemeColors) }
+    }
+    /// Live per-scope page backgrounds (keyed by `AppearancePageBackgroundScope`
+    /// raw value). This is what tabs render; saved themes only feed it through
+    /// 保存為新主題 / theme selection / 導入主題.
+    @Published var appearancePageBackgrounds: [String: AppearancePageBackgroundConfig] {
+        didSet {
+            Self.savePageBackgrounds(appearancePageBackgrounds)
+            updateActiveThemeExtras { $0.pageBackgrounds = appearancePageBackgrounds }
+            // After the write-back, so artwork the selected theme still names is not
+            // counted as dropped. This is the *only* place page-background files are
+            // reclaimed — every removal path simply stops naming the file.
+            reclaimDroppedPageBackgroundFiles(from: oldValue)
+        }
+    }
+
+    // MARK: - Root Tab Customization
+
+    @Published var rootTabVisibleIDs: [String] {
+        didSet {
+            let sanitized = Self.sanitizedRootTabVisibleIDs(rootTabVisibleIDs)
+            if rootTabVisibleIDs != sanitized {
+                rootTabVisibleIDs = sanitized
+            } else {
+                UserDefaults.standard.set(rootTabVisibleIDs, forKey: Self.rootTabVisibleIDsKey)
+                updateActiveThemeExtras { $0.visibleTabIDs = rootTabVisibleIDs }
+            }
+        }
+    }
+    @Published var rootTabHidesLabels: Bool {
+        didSet {
+            UserDefaults.standard.set(rootTabHidesLabels, forKey: Self.rootTabHidesLabelsKey)
+            updateActiveThemeExtras { $0.hidesTabLabels = rootTabHidesLabels }
+        }
+    }
+    @Published var rootTabIconSize: Double {
+        didSet {
+            let sanitized = Self.sanitizedRootTabIconSize(rootTabIconSize)
+            if abs(rootTabIconSize - sanitized) > 0.001 {
+                rootTabIconSize = sanitized
+            } else {
+                UserDefaults.standard.set(rootTabIconSize, forKey: Self.rootTabIconSizeKey)
+                updateActiveThemeExtras { $0.tabIconSize = rootTabIconSize }
+            }
+        }
+    }
+    @Published var rootTabIconAssets: [RootTabIconAsset] {
+        didSet {
+            Self.saveRootTabIconAssets(rootTabIconAssets)
+            updateActiveThemeExtras {
+                $0.tabIcons = Dictionary(
+                    rootTabIconAssets.map { ("\($0.tabID).\($0.slotRawValue)", $0.fileName) },
+                    uniquingKeysWith: { _, last in last }
+                )
+            }
+        }
+    }
+
+    @Published var selectedGlobalFontPostScript: String? {
+        didSet {
+            if let selectedGlobalFontPostScript, !selectedGlobalFontPostScript.isEmpty {
+                UserDefaults.standard.set(
+                    selectedGlobalFontPostScript,
+                    forKey: Self.globalFontPostScriptKey
+                )
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.globalFontPostScriptKey)
+            }
+            updateActiveThemeExtras { $0.globalFontPostScript = selectedGlobalFontPostScript ?? "" }
+        }
+    }
+    @Published var selectedReaderFontPostScript: String? {
+        didSet {
+            if let selectedReaderFontPostScript, !selectedReaderFontPostScript.isEmpty {
+                UserDefaults.standard.set(selectedReaderFontPostScript, forKey: "yd_reader_font_postscript")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "yd_reader_font_postscript")
+            }
+            recordReadingSettingEdit { $0.fontPostScript = selectedReaderFontPostScript ?? "" }
+        }
+    }
+
+    /// Bold Text changed (`GlobalAppTypography.isBoldTextActive`): every screen observing
+    /// the settings redraws, so a font it sets itself picks up the new weight — the way a
+    /// change of the global font reaches them. Nothing here is stored.
+    func typographyDidChange() {
+        objectWillChange.send()
+    }
+
+    var resolvedGlobalFontPostScript: String? {
+        guard let selectedGlobalFontPostScript,
+              userFonts.contains(where: { $0.postScriptName == selectedGlobalFontPostScript }) else {
+            return nil
+        }
+        return selectedGlobalFontPostScript
+    }
+
+    func validateGlobalFontSelection() {
+        guard let selectedGlobalFontPostScript else { return }
+        guard userFonts.contains(where: { $0.postScriptName == selectedGlobalFontPostScript }),
+              UIFont(name: selectedGlobalFontPostScript, size: 17) != nil else {
+            self.selectedGlobalFontPostScript = nil
+            return
+        }
+    }
+    @Published var userFonts: [UserFontInfo] {
+        didSet {
+            if let data = try? JSONEncoder().encode(userFonts) {
+                UserDefaults.standard.set(data, forKey: "yd_user_fonts")
+            }
+        }
+    }
+
+    // MARK: - Reader Font (persisted across sessions)
+
+    @Published var readerFontBold: Bool {
+        didSet {
+            UserDefaults.standard.set(readerFontBold, forKey: "yd_reader_font_bold")
+            recordReadingSettingEdit { $0.isBold = readerFontBold }
+        }
+    }
+
+    @Published var readerFontSize: Double {
+        didSet {
+            UserDefaults.standard.set(readerFontSize, forKey: "yd_reader_font_size")
+            recordReadingSettingEdit { $0.fontSize = readerFontSize }
+        }
+    }
+
+    /// The one allowed range for the reader body font size, in points. Every editor and
+    /// every importer clamps through this.
+    ///
+    /// It used to be copied into four places. When the settings stepper's declared range
+    /// was widened to 10–40, the separate `min(32, max(12, …))` clamp inside
+    /// `ReaderSettingsView.fontSizeBinding` kept squashing each write back into 12–32, so
+    /// the control looked frozen at the old bounds. Add new call sites here, never a
+    /// fresh literal.
+    static let readerFontSizeRange: ClosedRange<CGFloat> = 10...40
+
+    static func clampedReaderFontSize(_ value: CGFloat) -> CGFloat {
+        min(readerFontSizeRange.upperBound, max(readerFontSizeRange.lowerBound, value))
+    }
+
+    /// Additional inter-line spacing derived from the line-height multiplier (pt).
+    var lineSpacing: Double {
+        max(0, (lineHeightMultiple - 1.0) * readerFontSize)
+    }
+
+    /// Paragraph spacing derived from the multiplier (pt).
+    var paragraphSpacing: Double {
+        max(0, readerFontSize * paragraphSpacingMultiplier)
+    }
+
+    var localeIdentifier: String {
+        Locale.autoupdatingCurrent.identifier
+    }
+
+    // MARK: - Bookshelf Settings
+
+    @Published var bookshelfGridColumnCount: Int {
+        didSet {
+            let sanitized = Self.sanitizedBookshelfGridColumnCount(bookshelfGridColumnCount)
+            if bookshelfGridColumnCount != sanitized {
+                bookshelfGridColumnCount = sanitized
+            } else {
+                UserDefaults.standard.set(sanitized, forKey: Self.bookshelfGridColumnCountKey)
+                updateActiveThemeExtras { $0.bookshelfGridColumnCount = sanitized }
+            }
+        }
+    }
+
+    static func sanitizedBookshelfGridColumnCount(_ value: Int) -> Int {
+        guard let minimum = bookshelfGridColumnCountOptions.min(),
+              let maximum = bookshelfGridColumnCountOptions.max() else {
+            return defaultBookshelfGridColumnCount
+        }
+        return min(max(value, minimum), maximum)
+    }
+
+    /// Scrape a cover from the open web when an imported book has none.
+    /// Off by default because scraping after every import costs network traffic;
+    /// the manual 刮削 button in the shelf menu works regardless.
+    @Published var autoScrapeCovers: Bool {
+        didSet {
+            UserDefaults.standard.set(autoScrapeCovers, forKey: Self.autoScrapeCoversKey)
+        }
+    }
+
+    // MARK: - 預設封面 (Default Cover)
+
+    /// Every book shows a default cover, ignoring the one it came with. Legado's
+    /// `useDefaultCover`; the shelf, search results and detail pages all honor it.
+    @Published var useDefaultCoverForAllBooks: Bool {
+        didSet {
+            UserDefaults.standard.set(useDefaultCoverForAllBooks, forKey: Self.useDefaultCoverForAllBooksKey)
+            updateActiveThemeExtras { $0.forceDefaultCover = useDefaultCoverForAllBooks }
+        }
+    }
+
+    /// Corner radius applied to the cover artwork on bookshelf cards. It clips the
+    /// image only — the card's own background keeps the design system's radius.
+    @Published var bookshelfCoverCornerRadius: Double {
+        didSet {
+            let clamped = Self.clampedBookshelfCoverCornerRadius(bookshelfCoverCornerRadius)
+            if bookshelfCoverCornerRadius != clamped {
+                bookshelfCoverCornerRadius = clamped
+            } else {
+                UserDefaults.standard.set(clamped, forKey: Self.bookshelfCoverCornerRadiusKey)
+                updateActiveThemeExtras { $0.bookshelfCoverCornerRadius = clamped }
+            }
+        }
+    }
+
+    /// 探索頁 book cards fall back to a default cover instead of the title card.
+    @Published var exploreUsesDefaultCover: Bool {
+        didSet {
+            UserDefaults.standard.set(exploreUsesDefaultCover, forKey: Self.exploreUsesDefaultCoverKey)
+        }
+    }
+
+    @Published var defaultCoverLightFileNames: [String] {
+        didSet {
+            UserDefaults.standard.set(defaultCoverLightFileNames, forKey: Self.defaultCoverLightFileNamesKey)
+            DefaultCoverLibrary.invalidateCache()
+            updateActiveThemeExtras { $0.defaultCoverLightFileNames = defaultCoverLightFileNames }
+        }
+    }
+
+    @Published var defaultCoverDarkFileNames: [String] {
+        didSet {
+            UserDefaults.standard.set(defaultCoverDarkFileNames, forKey: Self.defaultCoverDarkFileNamesKey)
+            DefaultCoverLibrary.invalidateCache()
+            updateActiveThemeExtras { $0.defaultCoverDarkFileNames = defaultCoverDarkFileNames }
+        }
+    }
+
+    /// Draw the book's name down the generated cover. Legado's `coverShowName`,
+    /// which gates the same vertical title. Only affects `GeneratedBookCover` —
+    /// a cover the user imported into the library is shown as authored.
+    @Published var defaultCoverDrawsBookName: Bool {
+        didSet {
+            UserDefaults.standard.set(defaultCoverDrawsBookName, forKey: Self.defaultCoverDrawsBookNameKey)
+            GeneratedBookCoverRenderer.invalidateCache()
+        }
+    }
+
+    /// Draw the author down the generated cover's right edge. Legado's
+    /// `coverShowAuthor`.
+    @Published var defaultCoverDrawsBookAuthor: Bool {
+        didSet {
+            UserDefaults.standard.set(defaultCoverDrawsBookAuthor, forKey: Self.defaultCoverDrawsBookAuthorKey)
+            GeneratedBookCoverRenderer.invalidateCache()
+        }
+    }
+
+    static func clampedBookshelfCoverCornerRadius(_ value: Double) -> Double {
+        min(max(value, bookshelfCoverCornerRadiusRange.lowerBound), bookshelfCoverCornerRadiusRange.upperBound)
+    }
+
+    func defaultCoverFileNames(for scheme: DefaultCoverScheme) -> [String] {
+        scheme == .dark ? defaultCoverDarkFileNames : defaultCoverLightFileNames
+    }
+
+    @discardableResult
+    func importDefaultCover(from url: URL, for scheme: DefaultCoverScheme) throws -> String {
+        try adoptDefaultCover(
+            fileName: DefaultCoverStorageManager.shared.importImage(fileURL: url, scheme: scheme),
+            for: scheme
+        )
+    }
+
+    @discardableResult
+    func importDefaultCover(data: Data, for scheme: DefaultCoverScheme) throws -> String {
+        try adoptDefaultCover(
+            fileName: DefaultCoverStorageManager.shared.importImage(data: data, scheme: scheme),
+            for: scheme
+        )
+    }
+
+    private func adoptDefaultCover(fileName: String, for scheme: DefaultCoverScheme) -> String {
+        switch scheme {
+        case .light: defaultCoverLightFileNames.append(fileName)
+        case .dark: defaultCoverDarkFileNames.append(fileName)
+        }
+        return fileName
+    }
+
+    func removeDefaultCover(fileName: String, for scheme: DefaultCoverScheme) {
+        switch scheme {
+        case .light: defaultCoverLightFileNames.removeAll { $0 == fileName }
+        case .dark: defaultCoverDarkFileNames.removeAll { $0 == fileName }
+        }
+        // Checked *after* the removal: that assignment's write-back has already taken
+        // the name off the selected theme, so the theme's own reference cannot block
+        // its own delete and leak the file forever.
+        guard !isDefaultCoverFileReferenced(fileName) else { return }
+        DefaultCoverStorageManager.shared.delete(fileName: fileName)
+    }
+
+    // MARK: - Network Settings
+
+    @Published var searchConcurrency: Int {
+        didSet { UserDefaults.standard.set(searchConcurrency, forKey: "yd_search_concurrency") }
+    }
+    @Published var searchAutoPauseCount: Int {
+        didSet {
+            UserDefaults.standard.set(searchAutoPauseCount, forKey: "yd_search_auto_pause_count")
+        }
+    }
+    @Published var searchCacheDays: Int {
+        didSet { UserDefaults.standard.set(searchCacheDays, forKey: "yd_search_cache_days") }
+    }
+    /// 換源搜索時順便抓每個候選源的目錄（Legado `changeSourceLoadToc`）。Tapping a source
+    /// whose TOC was captured this way switches without a network round trip. Off by default
+    /// — same as Legado — because it turns one request per source into two.
+    @Published var changeSourceLoadToc: Bool {
+        didSet { UserDefaults.standard.set(changeSourceLoadToc, forKey: "yd_change_source_load_toc") }
+    }
+
+    /// Auto iCloud sync: merge with iCloud on launch and when backgrounding.
+    @Published var iCloudAutoSync: Bool {
+        didSet { UserDefaults.standard.set(iCloudAutoSync, forKey: "yd_icloud_auto_sync") }
+    }
+
+    // MARK: - TTS Settings
+
+    static let ttsPreSynthesisConcurrencyRange = 1...8
+    private static let ttsPreSynthesisConcurrencyKey = "yd_tts_pre_synthesis_concurrency"
+    @Published var ttsPreSynthesisConcurrency: Int {
+        didSet {
+            let range = Self.ttsPreSynthesisConcurrencyRange
+            let bounded = min(range.upperBound, max(range.lowerBound, ttsPreSynthesisConcurrency))
+            // Assigning an unchanged @Published value re-enters this observer too.
+            if ttsPreSynthesisConcurrency != bounded {
+                ttsPreSynthesisConcurrency = bounded
+            } else {
+                UserDefaults.standard.set(bounded, forKey: Self.ttsPreSynthesisConcurrencyKey)
+            }
+        }
+    }
+
+    @Published var edgeTtsVoiceID: String {
+        didSet { UserDefaults.standard.set(edgeTtsVoiceID, forKey: "yd_edge_tts_voice_id") }
+    }
+
+    var selectedEdgeTTSVoice: EdgeTTSVoice {
+        EdgeTTSVoice.voice(id: edgeTtsVoiceID) ?? EdgeTTSVoice.defaultVoice
+    }
+
+    var usesEdgeTTS: Bool {
+        !ttsUseSystemVoice && EdgeTTSVoice.isEdgeSource(httpTtsUrlTemplate)
+    }
+
+    func selectEdgeTTSVoice(_ voice: EdgeTTSVoice) {
+        edgeTtsVoiceID = voice.id
+        httpTtsUrlTemplate = voice.sourceIdentifier
+        httpTtsHeaders = [:]
+        ttsUseSystemVoice = false
+    }
+
+    @Published var httpTtsUrlTemplate: String {
+        didSet { UserDefaults.standard.set(httpTtsUrlTemplate, forKey: "yd_http_tts_url_template") }
+    }
+    @Published var httpTtsHeaders: [String: String] {
+        didSet { Self.saveTTSHeaders(httpTtsHeaders) }
+    }
+    @Published var importedTTSSources: [ImportedTTSSource] {
+        didSet { Self.saveImportedTTSSources(importedTTSSources) }
+    }
+    /// Force the offline, on-device `AVSpeechSynthesizer` voice even when an HTTP source exists.
+    @Published var ttsUseSystemVoice: Bool {
+        didSet { UserDefaults.standard.set(ttsUseSystemVoice, forKey: "yd_tts_use_system_voice") }
+    }
+    /// Prevents automatic screen dimming while TTS is actively reading. Pressing the
+    /// hardware lock button still locks the device and does not stop background audio.
+    @Published var ttsKeepsScreenAwake: Bool {
+        didSet { UserDefaults.standard.set(ttsKeepsScreenAwake, forKey: Self.ttsKeepsScreenAwakeKey) }
+    }
+    /// The user's system-voice choice per language (BCP-47 code → voice identifier),
+    /// set in 語音朗讀設定 → 系統語音音色. Empty means "let the system pick the
+    /// default voice for the language", which was the only behavior before.
+    /// Stored per language because the engine chooses the language from the text.
+    @Published var ttsSystemVoiceIdentifiers: [String: String] {
+        didSet {
+            UserDefaults.standard.set(ttsSystemVoiceIdentifiers, forKey: Self.ttsSystemVoiceIdentifiersKey)
+        }
+    }
+
+    /// 多角色朗讀: give each character its own voice instead of reading the whole
+    /// chapter in one. Off by default — it splits the chapter at every quote, which
+    /// means more, shorter utterances, and on a network voice that is more requests.
+    @Published var ttsMultiRoleEnabled: Bool {
+        didSet { UserDefaults.standard.set(ttsMultiRoleEnabled, forKey: Self.ttsMultiRoleEnabledKey) }
+    }
+
+    /// Which voice reads which character, keyed `"<bookID>\u{1F}<speaker>"` → voice id.
+    ///
+    /// Per book because a name means a different person in a different book, and flat
+    /// rather than nested so it stores as a plain UserDefaults dictionary — the same
+    /// shape `ttsSystemVoiceIdentifiers` already uses. A speaker with no entry reads in
+    /// the narrator's voice, which is what an unattributed line gets too.
+    @Published var ttsRoleVoices: [String: String] {
+        didSet { UserDefaults.standard.set(ttsRoleVoices, forKey: Self.ttsRoleVoicesKey) }
+    }
+
+    /// Whether the AI assistant is limited to what the reader has already read.
+    ///
+    /// On by default, off by choice. A reader who has just opened a book has almost no
+    /// progress, so the limit answers every question with "nothing in range" — correct and
+    /// useless. The toggle sits next to the question box because it is a per-question call.
+    @Published var aiSpoilerSafe: Bool {
+        didSet { UserDefaults.standard.set(aiSpoilerSafe, forKey: "yd_ai_spoiler_safe") }
+    }
+    @Published var sourceDisclaimerAccepted: Bool {
+        didSet { UserDefaults.standard.set(sourceDisclaimerAccepted, forKey: "yd_source_disclaimer_accepted") }
+    }
+    /// 書源管理列表是否按分組摺疊顯示。Off flattens every source into one plain list,
+    /// which is what a user with a handful of sources wants; on is the default because
+    /// imported source packs arrive pre-grouped.
+    @Published var bookSourceListGrouped: Bool {
+        didSet { UserDefaults.standard.set(bookSourceListGrouped, forKey: "yd_booksource_list_grouped") }
+    }
+    /// 儲存書源時是否自動補全簡寫規則（Legado 的「自動補全」選單項）。Off by default,
+    /// matching Legado: only authors who opt in get `a` completed to `a@text` etc.
+    @Published var bookSourceAutoComplete: Bool {
+        didSet { UserDefaults.standard.set(bookSourceAutoComplete, forKey: "yd_booksource_auto_complete") }
+    }
+
+    /// The currently active TTS source, derived from matching `httpTtsUrlTemplate` against imported sources.
+    var activeTTSSource: ImportedTTSSource? {
+        let template = httpTtsUrlTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !template.isEmpty else { return nil }
+        return importedTTSSources.first { $0.urlTemplate == template }
+    }
+
+    private init() {
+        UserDefaults.standard.removeObject(forKey: "yd_app_lang")
+        // Before anything below reads the stores it rewrites.
+        ReaderBackgroundMigration.runIfNeeded()
+        let rawConv = UserDefaults.standard.string(forKey: "yd_text_conv") ?? ""
+        textConversion = TextConversion(rawValue: rawConv) ?? .original
+        readerFontBold = UserDefaults.standard.bool(forKey: "yd_reader_font_bold")
+        let persistedFontSize =
+            (UserDefaults.standard.object(forKey: "yd_reader_font_size") as? Double)
+            ?? Self.defaultReaderFontSize
+        readerFontSize = persistedFontSize
+
+        if let savedLineHeightMultiple = UserDefaults.standard.object(forKey: "yd_line_height_multiple") as? Double {
+            lineHeightMultiple = savedLineHeightMultiple
+        } else if let legacyLineSpacing = UserDefaults.standard.object(forKey: "yd_line_spacing") as? Double {
+            lineHeightMultiple = max(1.0, 1.0 + legacyLineSpacing / max(persistedFontSize, 1.0))
+        } else {
+            lineHeightMultiple = Self.defaultReaderLineHeightMultiple
+        }
+
+        scrollMode = UserDefaults.standard.bool(forKey: "yd_scroll_mode")
+        readerBrightness =
+            (UserDefaults.standard.object(forKey: "yd_reader_brightness") as? Double) ?? 0.8
+        if UserDefaults.standard.object(forKey: "yd_follow_sys_brightness") == nil {
+            followSystemBrightness = true
+        } else {
+            followSystemBrightness = UserDefaults.standard.bool(forKey: "yd_follow_sys_brightness")
+        }
+        letterSpacing =
+            (UserDefaults.standard.object(forKey: "yd_letter_spacing") as? Double) ?? 0.0
+
+        if let savedParagraphSpacingMultiplier = UserDefaults.standard.object(forKey: "yd_paragraph_spacing_mult") as? Double {
+            paragraphSpacingMultiplier = savedParagraphSpacingMultiplier
+        } else if let legacyParagraphSpacing = UserDefaults.standard.object(forKey: "yd_paragraph_spacing") as? Double {
+            paragraphSpacingMultiplier = max(0, legacyParagraphSpacing / max(persistedFontSize, 1.0))
+        } else {
+            paragraphSpacingMultiplier = Self.defaultReaderParagraphSpacingMultiplier
+        }
+
+        pageMarginH =
+            (UserDefaults.standard.object(forKey: "yd_page_margin_h") as? Double)
+            ?? Self.defaultReaderPageMarginH
+        let loadedPageMarginV = (UserDefaults.standard.object(forKey: "yd_page_margin_v") as? Double)
+            ?? Self.defaultReaderPageMarginV
+        pageMarginV = loadedPageMarginV
+        pageMarginTop = (UserDefaults.standard.object(forKey: "yd_page_margin_top") as? Double)
+            ?? loadedPageMarginV
+        pageMarginBottom = (UserDefaults.standard.object(forKey: "yd_page_margin_bottom") as? Double)
+            ?? loadedPageMarginV
+        readerTextColorOverrides =
+            (UserDefaults.standard.dictionary(forKey: Self.readerTextColorOverridesKey) as? [String: Int])?
+                .mapValues { UInt32(clamping: $0) } ?? [:]
+        let loadedFooterBottomPadding =
+            (UserDefaults.standard.object(forKey: "yd_footer_bottom_padding") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultFooterBottomPadding)
+        footerBottomPadding = loadedFooterBottomPadding
+        let loadedFooterTextGap =
+            (UserDefaults.standard.object(forKey: "yd_footer_text_gap") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultFooterTextGap)
+        footerTextGap = loadedFooterTextGap
+        readerTitleVisible =
+            (UserDefaults.standard.object(forKey: "yd_reader_title_visible") as? Bool) ?? true
+        readerTitleSize =
+            (UserDefaults.standard.object(forKey: "yd_reader_title_size") as? Double) ?? 28.0
+        readerTitleTopSpacing =
+            (UserDefaults.standard.object(forKey: "yd_reader_title_top_spacing") as? Double)
+            ?? Double(ChapterTitleStyle.default.topSpacing)
+        readerTitleBottomSpacing =
+            (UserDefaults.standard.object(forKey: "yd_reader_title_bottom_spacing") as? Double)
+            ?? Double(ChapterTitleStyle.default.bottomSpacing)
+        chapterTitleStyle = Self.loadChapterTitleStyle()
+        chapterTitleCustomPresets = Self.loadChapterTitleCustomPresets()
+        let loadedReaderHeaderVisible =
+            (UserDefaults.standard.object(forKey: "yd_reader_header_visible") as? Bool) ?? true
+        readerHeaderVisible = loadedReaderHeaderVisible
+        let loadedReaderHeaderTopPadding =
+            (UserDefaults.standard.object(forKey: "yd_reader_header_top_padding") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultHeaderTopPadding)
+        readerHeaderTopPadding = loadedReaderHeaderTopPadding
+        let loadedReaderHeaderTextGap =
+            (UserDefaults.standard.object(forKey: "yd_reader_header_text_gap") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultHeaderTextGap)
+        readerHeaderTextGap = loadedReaderHeaderTextGap
+        let loadedReaderFooterVisible =
+            (UserDefaults.standard.object(forKey: "yd_reader_footer_visible") as? Bool) ?? true
+        readerFooterVisible = loadedReaderFooterVisible
+        let loadedReaderHeaderHorizontalPadding =
+            (UserDefaults.standard.object(forKey: "yd_reader_header_h_padding") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultHeaderHorizontalPadding)
+        readerHeaderHorizontalPadding = loadedReaderHeaderHorizontalPadding
+        let loadedReaderFooterHorizontalPadding =
+            (UserDefaults.standard.object(forKey: "yd_reader_footer_h_padding") as? Double)
+            ?? Double(ReaderLayoutMetrics.defaultFooterHorizontalPadding)
+        readerFooterHorizontalPadding = loadedReaderFooterHorizontalPadding
+        let loadedReaderHeaderFieldPositions =
+            (UserDefaults.standard.dictionary(forKey: "yd_reader_header_positions") as? [String: String])
+            ?? ReaderHeaderLayout.defaultFieldPositions
+        readerHeaderFieldPositions = loadedReaderHeaderFieldPositions
+        let legacyOverlaySettings = ReaderLegacyOverlaySettings(
+            headerVisible: loadedReaderHeaderVisible,
+            footerVisible: loadedReaderFooterVisible,
+            headerFieldPositions: loadedReaderHeaderFieldPositions,
+            headerTopPadding: loadedReaderHeaderTopPadding,
+            headerHorizontalPadding: loadedReaderHeaderHorizontalPadding,
+            footerBottomPadding: loadedFooterBottomPadding,
+            footerHorizontalPadding: loadedReaderFooterHorizontalPadding,
+            topContentReservation: Double(
+                ReaderLayoutMetrics.topInset(
+                    safeTop: 0,
+                    headerVisible: loadedReaderHeaderVisible,
+                    headerTopPadding: CGFloat(loadedReaderHeaderTopPadding),
+                    headerTextGap: CGFloat(loadedReaderHeaderTextGap)
+                )
+            ),
+            bottomContentReservation: Double(
+                ReaderLayoutMetrics.bottomInset(
+                    safeBottom: 0,
+                    footerVisible: loadedReaderFooterVisible,
+                    footerBottomPadding: CGFloat(loadedFooterBottomPadding),
+                    footerTextGap: CGFloat(loadedFooterTextGap)
+                )
+            )
+        )
+        let overlayDefaults = UserDefaults.standard
+        let hasPersistedLegacyOverlaySettings = [
+            "yd_reader_header_visible",
+            "yd_reader_footer_visible",
+            "yd_reader_header_positions",
+            "yd_reader_header_top_padding",
+            "yd_reader_header_text_gap",
+            "yd_reader_header_h_padding",
+            "yd_footer_bottom_padding",
+            "yd_footer_text_gap",
+            "yd_reader_footer_h_padding"
+        ].contains { overlayDefaults.object(forKey: $0) != nil }
+        let overlayResolution = ReaderOverlayLayoutMigration.resolve(
+            storedData: overlayDefaults.data(forKey: Self.readerOverlayLayoutDataKey),
+            legacy: legacyOverlaySettings,
+            hasPersistedLegacySettings: hasPersistedLegacyOverlaySettings
+        )
+        readerOverlayLayout = overlayResolution.layout
+        readerOverlayLayoutSyncClock = overlayDefaults.object(
+            forKey: Self.readerOverlayLayoutSyncClockKey
+        ) as? Date
+        if let corruptData = overlayResolution.corruptData {
+            overlayDefaults.set(corruptData, forKey: Self.readerOverlayLayoutCorruptBackupKey)
+        }
+        if overlayResolution.shouldPersistPrimary {
+            _ = ReaderOverlayLayoutPersistence.save(
+                current: overlayResolution.layout,
+                proposed: overlayResolution.layout
+            ) { data in
+                Self.persistReaderOverlayLayoutData(data, defaults: overlayDefaults)
+            }
+        }
+        // Snap the free-position layout onto the six bar slots the first time this
+        // build runs; afterwards the stored bar layout is the only thing consulted.
+        let barResolution = ReaderBarLayoutMigration.resolve(
+            storedData: overlayDefaults.data(forKey: Self.readerBarLayoutDataKey),
+            legacyLayout: overlayResolution.layout
+        )
+        readerBarLayout = barResolution.layout
+        readerBarLayoutSyncClock = overlayDefaults.object(
+            forKey: Self.readerBarLayoutSyncClockKey
+        ) as? Date
+        if let corruptData = barResolution.corruptData {
+            overlayDefaults.set(corruptData, forKey: Self.readerBarLayoutCorruptBackupKey)
+        }
+        if barResolution.shouldPersistPrimary {
+            _ = ReaderBarLayoutPersistence.save(
+                current: barResolution.layout,
+                proposed: barResolution.layout
+            ) { data in
+                Self.persistReaderBarLayoutData(data, defaults: overlayDefaults)
+            }
+        }
+        let rawPageTurn = UserDefaults.standard.string(forKey: "yd_page_turn_style") ?? ""
+        pageTurnStyle = PageTurnStyle(rawValue: rawPageTurn) ?? Self.defaultReaderPageTurnStyle
+        let rawSpreadMode = UserDefaults.standard.string(forKey: "yd_reader_spread_mode") ?? ""
+        let loadedSpreadMode = (ReaderSpreadMode(rawValue: rawSpreadMode) ?? .singlePage).normalizedForUserSelection
+        readerSpreadMode = loadedSpreadMode
+        if rawSpreadMode != loadedSpreadMode.rawValue {
+            UserDefaults.standard.set(loadedSpreadMode.rawValue, forKey: "yd_reader_spread_mode")
+        }
+        let rawWritingMode = UserDefaults.standard.string(forKey: "yd_reader_writing_mode") ?? ""
+        readerWritingMode = ReaderWritingMode(rawValue: rawWritingMode) ?? .horizontal
+        readerTapBothSidesNextPage = UserDefaults.standard.bool(forKey: "yd_reader_tap_both_next")
+        // `bool(forKey:)` also reads a launch argument's "NO", which `as? Bool` does not.
+        fixedPageDoubleTapToZoom = UserDefaults.standard.object(forKey: "yd_fixed_page_double_tap_zoom") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "yd_fixed_page_double_tap_zoom")
+        fixedPageAutoScrollButton = UserDefaults.standard.bool(forKey: "yd_fixed_page_auto_scroll_button")
+        fixedPageAutoScrollButtonPosition = FixedPageAutoScrollButtonPosition(
+            rawValue: UserDefaults.standard.string(forKey: "yd_fixed_page_auto_scroll_button_position") ?? ""
+        ) ?? .right
+        readerSwipeUpToExit =
+            (UserDefaults.standard.object(forKey: "yd_reader_swipe_up_exit") as? Bool) ?? true
+        readerPullDownToBookmark =
+            (UserDefaults.standard.object(forKey: "yd_reader_pull_down_bookmark") as? Bool) ?? true
+        readerFollowSystemTheme = Self.startingReaderFollowsDevice(
+            stored: UserDefaults.standard.object(forKey: "yd_reader_follow_system_theme") as? Bool,
+            hasPickedBackground: ReaderTheme.hasPersistedChoice
+        )
+        readerTextUnderlineDecorationEnabled = UserDefaults.standard.bool(forKey: Self.readerTextUnderlineDecorationKey)
+        readerTextUnderlineDecorationColorHex = UInt32(clamping:
+            (UserDefaults.standard.object(forKey: Self.readerTextUnderlineDecorationColorHexKey) as? Int)
+                ?? Int(Self.defaultReaderUnderlineColorHex)
+        )
+        readerTextUnderlineStyle = {
+            let stored = UserDefaults.standard.integer(forKey: Self.readerTextUnderlineStyleKey)
+            return ReaderTextUnderlineStyle(rawValue: stored) ?? Self.defaultReaderUnderlineStyle
+        }()
+        readerTextUnderlineThickness = (UserDefaults.standard.object(forKey: Self.readerTextUnderlineThicknessKey) as? Double)
+            ?? Self.defaultReaderUnderlineThickness
+        readerTextUnderlineOffset = (UserDefaults.standard.object(forKey: Self.readerTextUnderlineOffsetKey) as? Double)
+            ?? Self.defaultReaderUnderlineOffset
+        let loadedDialogueHighlightEnabled = UserDefaults.standard.bool(
+            forKey: Self.readerDialogueHighlightKey
+        )
+        readerDialogueHighlightEnabled = loadedDialogueHighlightEnabled
+        readerDialogueHighlightColorHex = UInt32(clamping:
+            (UserDefaults.standard.object(forKey: Self.readerDialogueHighlightColorHexKey) as? Int)
+                ?? Int(Self.defaultReaderDialogueHighlightColorHex)
+        )
+        readerDialogueBoxEnabled = UserDefaults.standard.bool(forKey: Self.readerDialogueBoxKey)
+        readerDialogueBoxColorHex = UInt32(clamping:
+            (UserDefaults.standard.object(forKey: Self.readerDialogueBoxColorHexKey) as? Int)
+                ?? Int(Self.defaultReaderDialogueBoxColorHex)
+        )
+        readerDialogueBoxStyleRaw =
+            (UserDefaults.standard.object(forKey: Self.readerDialogueBoxStyleKey) as? Int)
+            ?? Self.defaultReaderDialogueBoxStyle
+        regexHighlightConfiguration = Self.loadRegexHighlightConfiguration(
+            oldGlobalEnabled: loadedDialogueHighlightEnabled
+        )
+        dialogueBubbleStyle = Self.loadDialogueBubbleStyle()
+
+        // TTS playback highlight
+        if UserDefaults.standard.object(forKey: Self.ttsHighlightEnabledKey) == nil {
+            ttsHighlightEnabled = true   // default ON: keeps existing playback highlight behavior
+        } else {
+            ttsHighlightEnabled = UserDefaults.standard.bool(forKey: Self.ttsHighlightEnabledKey)
+        }
+        ttsHighlightColorHex = UInt32(clamping:
+            (UserDefaults.standard.object(forKey: Self.ttsHighlightColorHexKey) as? Int)
+                ?? Int(Self.defaultTTSHighlightColorHex)
+        )
+        ttsHighlightBoxEnabled = UserDefaults.standard.bool(forKey: Self.ttsHighlightBoxEnabledKey)
+        ttsHighlightBoxColorHex = UInt32(clamping:
+            (UserDefaults.standard.object(forKey: Self.ttsHighlightBoxColorHexKey) as? Int)
+                ?? Int(Self.defaultTTSHighlightBoxColorHex)
+        )
+        ttsHighlightBoxStyleRaw =
+            (UserDefaults.standard.object(forKey: Self.ttsHighlightBoxStyleKey) as? Int)
+            ?? Self.defaultTTSHighlightBoxStyle
+        if UserDefaults.standard.object(forKey: Self.commentBubbleFollowsSourceSVGKey) == nil {
+            commentBubbleFollowsSourceSVG = true
+        } else {
+            commentBubbleFollowsSourceSVG = UserDefaults.standard.bool(forKey: Self.commentBubbleFollowsSourceSVGKey)
+        }
+        let defaults = UserDefaults.standard
+        let rawBubbleMode = defaults.string(forKey: Self.commentBubblePresetModeKey) ?? ""
+        var loadedBubbleMode = ReaderCommentBubblePresetMode(rawValue: rawBubbleMode) ?? .builtin
+        let legacyName = defaults.string(forKey: Self.commentBubbleCustomStyleNameKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let migratedName = legacyName.flatMap { $0.isEmpty ? nil : $0 }
+            ?? localized("自訂 SVG")
+        let recoverableLegacyStyles = ReaderCommentBubbleCustomStyleLibrary.migratingLegacyStyleIfNeeded(
+            in: [],
+            legacySVG: defaults.string(forKey: Self.commentBubbleCustomSVGKey) ?? "",
+            generatedPlaceholderSVG: CommentBubbleSVGRecognizer.builtinBubbleSVG,
+            migratedName: migratedName
+        )
+        let loadedCustomStyles: [ReaderCommentBubbleCustomStyle]
+        let loadedSelectedCustomStyleID: UUID?
+        let shouldPersistLoadedLibrary: Bool
+        let shouldRemoveLegacyKeys: Bool
+        let v2DecodingResult = ReaderCommentBubbleCustomStyleLibrary.decodeV2(
+            keyExists: defaults.object(forKey: Self.commentBubbleCustomStylesV2Key) != nil,
+            data: defaults.data(forKey: Self.commentBubbleCustomStylesV2Key)
+        )
+        switch v2DecodingResult {
+        case .valid(let decodedStyles):
+            loadedCustomStyles = ReaderCommentBubbleCustomStyleLibrary.uniqued(decodedStyles)
+            let persistedSelectedID = defaults.string(forKey: Self.commentBubbleSelectedCustomStyleIDKey)
+                .flatMap { UUID(uuidString: $0) }
+            loadedSelectedCustomStyleID = ReaderCommentBubbleCustomStyleLibrary.validatedSelectedID(
+                persistedSelectedID,
+                in: loadedCustomStyles
+            )
+            shouldPersistLoadedLibrary = true
+            shouldRemoveLegacyKeys = true
+        case .missing:
+            loadedCustomStyles = recoverableLegacyStyles
+            loadedSelectedCustomStyleID = loadedCustomStyles.first?.id
+            shouldPersistLoadedLibrary = true
+            shouldRemoveLegacyKeys = true
+        case .invalid where !recoverableLegacyStyles.isEmpty:
+            loadedCustomStyles = recoverableLegacyStyles
+            loadedSelectedCustomStyleID = loadedCustomStyles.first?.id
+            shouldPersistLoadedLibrary = true
+            shouldRemoveLegacyKeys = true
+        case .invalid:
+            loadedCustomStyles = []
+            loadedSelectedCustomStyleID = nil
+            shouldPersistLoadedLibrary = false
+            shouldRemoveLegacyKeys = false
+        }
+        if loadedBubbleMode == .custom, loadedSelectedCustomStyleID == nil {
+            loadedBubbleMode = .builtin
+        }
+        commentBubblePresetMode = loadedBubbleMode
+        commentBubbleCustomStyles = loadedCustomStyles
+        commentBubbleSelectedCustomStyleID = loadedSelectedCustomStyleID
+        commentBubbleSelectionSyncClock = UserDefaults.standard.object(
+            forKey: Self.commentBubbleSelectionSyncClockKey
+        ) as? Date
+        if shouldPersistLoadedLibrary {
+            Self.saveCommentBubbleCustomStyles(loadedCustomStyles)
+            Self.saveCommentBubbleSelectedCustomStyleID(loadedSelectedCustomStyleID)
+            defaults.set(loadedBubbleMode.rawValue, forKey: Self.commentBubblePresetModeKey)
+        }
+        if shouldRemoveLegacyKeys {
+            defaults.removeObject(forKey: Self.commentBubbleCustomSVGKey)
+            defaults.removeObject(forKey: Self.commentBubbleCustomStyleNameKey)
+        }
+        commentBubbleScale = Self.sanitizedCommentBubbleScale(
+            (UserDefaults.standard.object(forKey: Self.commentBubbleScaleKey) as? Double)
+                ?? Self.defaultCommentBubbleScale
+        )
+        commentBubbleTextScale = Self.sanitizedCommentBubbleTextScale(
+            (UserDefaults.standard.object(forKey: Self.commentBubbleTextScaleKey) as? Double)
+                ?? Self.defaultCommentBubbleTextScale
+        )
+        let savedBackgrounds = Self.loadReaderCustomBackgrounds()
+        let wornBackgroundID = UserDefaults.standard.string(forKey: Self.readerCustomBackgroundIDKey)
+            .flatMap(UUID.init(uuidString:))
+        readerCustomBackgrounds = savedBackgrounds
+        readerCustomBackgroundID = wornBackgroundID
+        readerDarkMode = Self.startingReaderDarkMode(
+            stored: UserDefaults.standard.object(forKey: Self.readerDarkModeKey) as? Bool,
+            theme: ReaderTheme.loadPersisted(),
+            wornBackgroundIsDark: savedBackgrounds.first { $0.id == wornBackgroundID }?.isDark == true,
+            binds: UserDefaults.standard.bool(forKey: Self.appearanceBindReaderThemeKey)
+        )
+        customAppearanceThemes = Self.loadCustomAppearanceThemes()
+        appearanceBuiltInThemeColors = Self.loadAppearanceBuiltInThemeColors()
+        appearancePageBackgrounds = Self.loadPageBackgrounds()
+        appearanceCardBackground = UserDefaults.standard
+            .data(forKey: Self.appearanceCardBackgroundKey)
+            .flatMap { try? JSONDecoder().decode(AppearanceCardBackground.self, from: $0) }
+        appearanceFollowsSystem =
+            (UserDefaults.standard.object(forKey: Self.appearanceFollowsSystemKey) as? Bool)
+            ?? Self.defaultAppearanceFollowsSystem
+        appearancePinnedColorScheme = AppearanceColorScheme(
+            storageValue: UserDefaults.standard.string(forKey: Self.appearancePinnedColorSchemeKey)
+        )
+        appearanceThemeID = UserDefaults.standard.string(forKey: Self.appearanceThemeIDKey)
+            ?? Self.defaultAppearanceThemeID
+        appearanceDarkThemeID = UserDefaults.standard.string(forKey: Self.appearanceDarkThemeIDKey)
+            ?? Self.defaultAppearanceThemeID
+        appearanceUsesSeparateDarkTheme = UserDefaults.standard.bool(forKey: Self.appearanceSeparateDarkThemeKey)
+        appearanceOnScreen = AppearanceColorScheme(
+            storageValue: UserDefaults.standard.string(forKey: Self.appearanceOnScreenKey)
+        )
+        appearanceBindReaderTheme = UserDefaults.standard.bool(forKey: Self.appearanceBindReaderThemeKey)
+        // Defaults reproduce what binding did before it was configurable: the
+        // appearance theme paints the reader in light mode, dark mode is 黑色.
+        appearanceBoundLightReaderTheme =
+            UserDefaults.standard.string(forKey: Self.appearanceBoundLightReaderThemeKey)
+            ?? ReaderBoundTheme.followAppearanceTheme.storageValue
+        appearanceBoundDarkReaderTheme =
+            UserDefaults.standard.string(forKey: Self.appearanceBoundDarkReaderThemeKey)
+            ?? ReaderBoundTheme.reading(.night).storageValue
+        launchImageEnabled = UserDefaults.standard.bool(forKey: Self.launchImageEnabledKey)
+        launchImageLightFileName = UserDefaults.standard.string(forKey: Self.launchImageLightFileNameKey)
+        launchImageDarkFileName = UserDefaults.standard.string(forKey: Self.launchImageDarkFileNameKey)
+        let rawReaderInterface = UserDefaults.standard.string(forKey: Self.appearanceReaderInterfaceKey) ?? ""
+        appearanceReaderInterface = AppearanceReaderInterface(rawValue: rawReaderInterface) ?? .classic
+        readerChromeColors = Self.loadReaderChromeColors()
+        readerChromeHiddenIDs = UserDefaults.standard.stringArray(forKey: Self.readerChromeHiddenIDsKey) ?? []
+        readerChromeIcons = Self.loadReaderChromeIcons()
+        interfaceGlowIntensity = Self.sanitizedInterfaceGlowIntensity(
+            (UserDefaults.standard.object(forKey: Self.interfaceGlowIntensityKey) as? Double)
+                ?? Self.defaultInterfaceGlowIntensity
+        )
+        interfaceFrostedGlass =
+            (UserDefaults.standard.object(forKey: Self.interfaceFrostedGlassKey) as? Bool)
+            ?? Self.defaultInterfaceFrostedGlass
+        interfaceGlassTransparency = Self.sanitizedInterfaceGlassTransparency(
+            (UserDefaults.standard.object(forKey: Self.interfaceGlassTransparencyKey) as? Double)
+                ?? Self.defaultInterfaceGlassTransparency
+        )
+        interfaceGlassCards =
+            (UserDefaults.standard.object(forKey: Self.interfaceGlassCardsKey) as? Bool)
+            ?? Self.defaultInterfaceGlassCards
+        rootTabVisibleIDs = Self.sanitizedRootTabVisibleIDs(
+            UserDefaults.standard.stringArray(forKey: Self.rootTabVisibleIDsKey)
+                ?? Self.defaultRootTabVisibleIDs
+        )
+        rootTabHidesLabels = UserDefaults.standard.bool(forKey: Self.rootTabHidesLabelsKey)
+        let loadedRootTabIconSize =
+            (UserDefaults.standard.object(forKey: Self.rootTabIconSizeKey) as? Double)
+            ?? Self.defaultRootTabIconSize
+        rootTabIconSize = Self.sanitizedRootTabIconSize(loadedRootTabIconSize)
+        rootTabIconAssets = Self.loadRootTabIconAssets()
+        let decodedUserFonts: [UserFontInfo]
+        if let fontData = UserDefaults.standard.data(forKey: "yd_user_fonts"),
+           let decodedFonts = try? JSONDecoder().decode([UserFontInfo].self, from: fontData) {
+            decodedUserFonts = decodedFonts
+        } else {
+            decodedUserFonts = []
+        }
+        userFonts = decodedUserFonts
+        selectedReaderFontPostScript = UserDefaults.standard.string(forKey: "yd_reader_font_postscript")
+        let storedGlobalFont = UserDefaults.standard.string(forKey: Self.globalFontPostScriptKey)
+        let validatedGlobalFont = storedGlobalFont.flatMap { postScriptName in
+            decodedUserFonts.contains { $0.postScriptName == postScriptName }
+                ? postScriptName
+                : nil
+        }
+        selectedGlobalFontPostScript = validatedGlobalFont
+        if storedGlobalFont != nil, validatedGlobalFont == nil {
+            UserDefaults.standard.removeObject(forKey: Self.globalFontPostScriptKey)
+        }
+
+        bookshelfGridColumnCount = Self.sanitizedBookshelfGridColumnCount(
+            (UserDefaults.standard.object(forKey: Self.bookshelfGridColumnCountKey) as? Int)
+            ?? Self.defaultBookshelfGridColumnCount
+        )
+        useDefaultCoverForAllBooks = UserDefaults.standard.bool(forKey: Self.useDefaultCoverForAllBooksKey)
+        bookshelfCoverCornerRadius = Self.clampedBookshelfCoverCornerRadius(
+            (UserDefaults.standard.object(forKey: Self.bookshelfCoverCornerRadiusKey) as? Double)
+            ?? Self.defaultBookshelfCoverCornerRadius
+        )
+        exploreUsesDefaultCover = UserDefaults.standard.bool(forKey: Self.exploreUsesDefaultCoverKey)
+        autoScrapeCovers = UserDefaults.standard.bool(forKey: Self.autoScrapeCoversKey)
+        defaultCoverLightFileNames =
+            UserDefaults.standard.stringArray(forKey: Self.defaultCoverLightFileNamesKey) ?? []
+        defaultCoverDarkFileNames =
+            UserDefaults.standard.stringArray(forKey: Self.defaultCoverDarkFileNamesKey) ?? []
+        defaultCoverDrawsBookName =
+            (UserDefaults.standard.object(forKey: Self.defaultCoverDrawsBookNameKey) as? Bool) ?? true
+        defaultCoverDrawsBookAuthor =
+            (UserDefaults.standard.object(forKey: Self.defaultCoverDrawsBookAuthorKey) as? Bool) ?? true
+
+        // MD3 defaults to 16. Current upstream Legado defaults to 32, while its
+        // fixed CPU dispatcher is capped at 9; our URLSession work is asynchronous
+        // and uses this value as the actual in-flight source bound. Searches fan
+        // out over *different* hosts, so the per-host ceiling (16) never binds it;
+        // 24 is a conservative middle ground that shortens large-pack searches.
+        searchConcurrency =
+            (UserDefaults.standard.object(forKey: "yd_search_concurrency") as? Int) ?? 24
+        searchAutoPauseCount =
+            (UserDefaults.standard.object(forKey: "yd_search_auto_pause_count") as? Int) ?? 0
+        searchCacheDays =
+            (UserDefaults.standard.object(forKey: "yd_search_cache_days") as? Int) ?? 5
+        changeSourceLoadToc =
+            (UserDefaults.standard.object(forKey: "yd_change_source_load_toc") as? Bool) ?? false
+        iCloudAutoSync =
+            (UserDefaults.standard.object(forKey: "yd_icloud_auto_sync") as? Bool) ?? true
+        edgeTtsVoiceID = UserDefaults.standard.string(forKey: "yd_edge_tts_voice_id") ?? EdgeTTSVoice.defaultVoice.id
+        httpTtsUrlTemplate = UserDefaults.standard.string(forKey: "yd_http_tts_url_template") ?? ""
+        httpTtsHeaders = Self.loadTTSHeaders()
+        importedTTSSources = Self.loadImportedTTSSources()
+        ttsUseSystemVoice = UserDefaults.standard.bool(forKey: "yd_tts_use_system_voice")
+        ttsPreSynthesisConcurrency = min(8, max(1,
+            (UserDefaults.standard.object(forKey: Self.ttsPreSynthesisConcurrencyKey) as? Int) ?? 2
+        ))
+        ttsKeepsScreenAwake = UserDefaults.standard.bool(forKey: Self.ttsKeepsScreenAwakeKey)
+        ttsSystemVoiceIdentifiers =
+            (UserDefaults.standard.dictionary(forKey: Self.ttsSystemVoiceIdentifiersKey)
+                as? [String: String]) ?? [:]
+        ttsMultiRoleEnabled = UserDefaults.standard.bool(forKey: Self.ttsMultiRoleEnabledKey)
+        ttsRoleVoices =
+            (UserDefaults.standard.dictionary(forKey: Self.ttsRoleVoicesKey)
+                as? [String: String]) ?? [:]
+        aiSpoilerSafe = (UserDefaults.standard.object(forKey: "yd_ai_spoiler_safe") as? Bool) ?? true
+        sourceDisclaimerAccepted = UserDefaults.standard.bool(forKey: "yd_source_disclaimer_accepted")
+        bookSourceListGrouped =
+            (UserDefaults.standard.object(forKey: "yd_booksource_list_grouped") as? Bool) ?? true
+        bookSourceAutoComplete =
+            (UserDefaults.standard.object(forKey: "yd_booksource_auto_complete") as? Bool) ?? false
+
+        readerStyleAssetRevisionCancellable = NotificationCenter.default.publisher(
+            for: .readerStyleAssetsDidChange
+        )
+        .compactMap { notification in
+            (notification.userInfo?[ReaderStyleAssetStore.revisionUserInfoKey] as? NSNumber)?
+                .uint64Value
+        }
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] revision in
+            guard let self else { return }
+            self.readerStyleAssetRevision = max(self.readerStyleAssetRevision, revision)
+        }
+        Task { @MainActor [weak self] in
+            let revision = await ReaderStyleAssetStore.shared.revision
+            guard let self else { return }
+            self.readerStyleAssetRevision = max(self.readerStyleAssetRevision, revision)
+        }
+
+        // Establishes "a custom theme is selected ⟹ a baseline exists". The selection
+        // `didSet` cannot do it, because it never fires for a theme restored from
+        // disk — so a theme saved before write-back existed would take the user's
+        // first edit with no captured original to hand back on the way out.
+        synchronizeAppearanceThemeExtras()
+    }
+
+    func selectCommentBubbleBuiltinStyle() {
+        commentBubblePresetMode = .builtin
+    }
+
+    func selectCommentBubbleSquareStyle() {
+        commentBubblePresetMode = .square
+    }
+
+    func selectCommentBubbleCustomStyle(id: UUID) {
+        guard ReaderCommentBubbleCustomStyleLibrary.validatedSelectedID(
+            id,
+            in: commentBubbleCustomStyles
+        ) != nil else {
+            commentBubbleSelectedCustomStyleID = nil
+            commentBubblePresetMode = .builtin
+            stampCommentBubbleSelectionSyncClock()
+            return
+        }
+
+        commentBubbleSelectedCustomStyleID = id
+        commentBubblePresetMode = .custom
+        stampCommentBubbleSelectionSyncClock()
+    }
+
+    func upsertCommentBubbleCustomStyle(_ style: ReaderCommentBubbleCustomStyle) {
+        commentBubbleCustomStyles = ReaderCommentBubbleCustomStyleLibrary.uniqued(
+            ReaderCommentBubbleCustomStyleLibrary.upserting(
+                style,
+                into: commentBubbleCustomStyles
+            )
+        )
+        commentBubbleSelectedCustomStyleID = style.id
+        commentBubblePresetMode = .custom
+        stampCommentBubbleSelectionSyncClock()
+    }
+
+    func deleteCommentBubbleCustomStyle(id: UUID) {
+        let wasSelected = commentBubbleSelectedCustomStyleID == id
+        commentBubbleCustomStyles = ReaderCommentBubbleCustomStyleLibrary.deleting(
+            id: id,
+            from: commentBubbleCustomStyles
+        )
+
+        guard wasSelected else { return }
+        commentBubbleSelectedCustomStyleID = nil
+        commentBubblePresetMode = .builtin
+        stampCommentBubbleSelectionSyncClock()
+    }
+
+    /// Adds or replaces a style in the shared library *without* wearing it — an
+    /// imported pack whose bubble belongs to its theme rather than to the live setup.
+    func storeCommentBubbleCustomStyle(_ style: ReaderCommentBubbleCustomStyle) {
+        commentBubbleCustomStyles = ReaderCommentBubbleCustomStyleLibrary.uniqued(
+            ReaderCommentBubbleCustomStyleLibrary.upserting(style, into: commentBubbleCustomStyles)
+        )
+    }
+
+    /// Wears one bubble choice as a unit, the way a theme or an import sets it. The
+    /// custom entry is validated like `selectCommentBubbleCustomStyle`: a choice naming a
+    /// style the library no longer holds falls back to the built-in bubble rather than
+    /// to a custom mode with nothing to draw.
+    func applyCommentBubbleChoice(
+        presetMode: ReaderCommentBubblePresetMode,
+        customStyleID: UUID?,
+        stampsSyncClock: Bool
+    ) {
+        let validID = ReaderCommentBubbleCustomStyleLibrary.validatedSelectedID(
+            customStyleID,
+            in: commentBubbleCustomStyles
+        )
+        let mode: ReaderCommentBubblePresetMode =
+            presetMode == .custom && validID == nil ? .builtin : presetMode
+        let changed = commentBubbleSelectedCustomStyleID != validID || commentBubblePresetMode != mode
+        if commentBubbleSelectedCustomStyleID != validID { commentBubbleSelectedCustomStyleID = validID }
+        if commentBubblePresetMode != mode { commentBubblePresetMode = mode }
+        if changed, stampsSyncClock { stampCommentBubbleSelectionSyncClock() }
+    }
+
+    /// Applies the iCloud-merged bubble style list (per-item last-write-wins).
+    /// Does NOT re-stamp `updatedAt` — the merged values carry their own merge
+    /// clock from the winning device.
+    @MainActor
+    func applyCommentBubbleSync(styles: [ReaderCommentBubbleCustomStyle]) {
+        var updates = SettingsUpdateBatch(self, reason: "bubbleStyles")
+        defer { updates.finish() }
+        updates.set(\.commentBubbleCustomStyles, ReaderCommentBubbleCustomStyleLibrary.uniqued(styles), field: "commentBubbleCustomStyles")
+        // Keep the invariant that select/delete maintain: a .custom selection
+        // must point at a style that actually exists.
+        guard commentBubblePresetMode == .custom,
+              let selectedID = commentBubbleSelectedCustomStyleID,
+              ReaderCommentBubbleCustomStyleLibrary.validatedSelectedID(selectedID, in: commentBubbleCustomStyles) == nil
+        else { return }
+        updates.set(\.commentBubbleSelectedCustomStyleID, nil, field: "commentBubbleSelectedCustomStyleID")
+        updates.set(\.commentBubblePresetMode, .builtin, field: "commentBubblePresetMode")
+    }
+
+    /// Applies the iCloud-merged bubble selection (single last-write-wins
+    /// record). Mirroring the user picking a style: a synced selection becomes
+    /// the active custom bubble; a cleared selection falls back to builtin when
+    /// the custom mode was active. Never touches the sync clock.
+    @MainActor
+    func applyCommentBubbleSync(selection: UUID?) {
+        var updates = SettingsUpdateBatch(self, reason: "bubbleSelection")
+        defer { updates.finish() }
+        guard let selection else {
+            guard commentBubblePresetMode == .custom else { return }
+            updates.set(\.commentBubbleSelectedCustomStyleID, nil, field: "commentBubbleSelectedCustomStyleID")
+            updates.set(\.commentBubblePresetMode, .builtin, field: "commentBubblePresetMode")
+            return
+        }
+        guard ReaderCommentBubbleCustomStyleLibrary.validatedSelectedID(
+            selection,
+            in: commentBubbleCustomStyles
+        ) != nil else { return }
+        updates.set(\.commentBubbleSelectedCustomStyleID, selection, field: "commentBubbleSelectedCustomStyleID")
+        updates.set(\.commentBubblePresetMode, .custom, field: "commentBubblePresetMode")
+    }
+
+    private func stampCommentBubbleSelectionSyncClock() {
+        commentBubbleSelectionSyncClock = Date()
+    }
+
+    private static func saveCommentBubbleCustomStyles(
+        _ styles: [ReaderCommentBubbleCustomStyle]
+    ) {
+        let encodedStyles = (try? JSONEncoder().encode(styles)) ?? Data("[]".utf8)
+        UserDefaults.standard.set(encodedStyles, forKey: commentBubbleCustomStylesV2Key)
+    }
+
+    private static func saveCommentBubbleSelectedCustomStyleID(_ id: UUID?) {
+        if let id {
+            UserDefaults.standard.set(
+                id.uuidString,
+                forKey: commentBubbleSelectedCustomStyleIDKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(forKey: commentBubbleSelectedCustomStyleIDKey)
+        }
+    }
+
+    // MARK: - Chapter Title Style
+
+    private static func loadChapterTitleStyle() -> ChapterTitleStyle {
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: chapterTitleStyleKey),
+           let decoded = try? JSONDecoder().decode(ChapterTitleStyle.self, from: data) {
+            return decoded.sanitized()
+        }
+        // One-time migration from the legacy loose fields. They always resolve
+        // (real values for upgraders, defaults for fresh installs), so an
+        // upgrader keeps their size/spacing/visibility while the new fields take
+        // their defaults. The first `didSet` save writes JSON; thereafter the
+        // legacy keys are only read by older layout-preset import.
+        let styleDefaults = ChapterTitleStyle.default
+        let visible = (defaults.object(forKey: "yd_reader_title_visible") as? Bool)
+            ?? styleDefaults.visible
+        let size = (defaults.object(forKey: "yd_reader_title_size") as? Double)
+            ?? Double(styleDefaults.size)
+        let top = (defaults.object(forKey: "yd_reader_title_top_spacing") as? Double)
+            ?? Double(styleDefaults.topSpacing)
+        let bottom = (defaults.object(forKey: "yd_reader_title_bottom_spacing") as? Double)
+            ?? Double(styleDefaults.bottomSpacing)
+        return ChapterTitleStyle(
+            legacyVisible: visible,
+            legacySize: CGFloat(size),
+            legacyTopSpacing: CGFloat(top),
+            legacyBottomSpacing: CGFloat(bottom)
+        ).sanitized()
+    }
+
+    private static func saveChapterTitleStyle(_ style: ChapterTitleStyle) {
+        guard let data = try? JSONEncoder().encode(style) else { return }
+        UserDefaults.standard.set(data, forKey: chapterTitleStyleKey)
+    }
+
+    private static func loadChapterTitleCustomPresets() -> [ChapterTitleStylePreset] {
+        guard let data = UserDefaults.standard.data(forKey: chapterTitleCustomPresetsKey),
+              let decoded = try? JSONDecoder().decode([ChapterTitleStylePreset].self, from: data)
+        else { return [] }
+        return decoded
+    }
+
+    private static func saveChapterTitleCustomPresets(_ presets: [ChapterTitleStylePreset]) {
+        let encoded = (try? JSONEncoder().encode(presets)) ?? Data("[]".utf8)
+        UserDefaults.standard.set(encoded, forKey: chapterTitleCustomPresetsKey)
+    }
+
+    // MARK: - Regex Highlight Configuration
+
+    private static func loadRegexHighlightConfiguration(
+        oldGlobalEnabled: Bool
+    ) -> RegexHighlightConfiguration {
+        let defaults = UserDefaults.standard
+        if let data = defaults.data(forKey: regexHighlightConfigurationKey),
+           let decoded = try? JSONDecoder().decode(RegexHighlightConfiguration.self, from: data) {
+            let sanitized = decoded.sanitized()
+            if sanitized != decoded {
+                saveRegexHighlightConfiguration(sanitized)
+            }
+            return sanitized
+        }
+
+        // One-time migration intentionally carries only the legacy global switch.
+        // Old dialogue colors and box settings must not leak into the approved
+        // five-rule defaults. Persist immediately so subsequent launches never
+        // repeat the migration or observe later edits to the legacy keys.
+        let migrated = RegexHighlightMigration.makeInitialConfiguration(
+            oldGlobalEnabled: oldGlobalEnabled
+        )
+        saveRegexHighlightConfiguration(migrated)
+        return migrated
+    }
+
+    private static func saveRegexHighlightConfiguration(
+        _ configuration: RegexHighlightConfiguration
+    ) {
+        guard let data = try? JSONEncoder().encode(configuration.sanitized()) else { return }
+        UserDefaults.standard.set(data, forKey: regexHighlightConfigurationKey)
+    }
+
+    // MARK: - Dialogue bubble style
+
+    private static func loadDialogueBubbleStyle() -> ReaderDialogueBubbleStyle {
+        guard let data = UserDefaults.standard.data(forKey: dialogueBubbleStyleKey),
+              let decoded = try? JSONDecoder().decode(
+                  ReaderDialogueBubbleStyle.self,
+                  from: data
+              ) else {
+            return .default
+        }
+        return decoded.sanitized()
+    }
+
+    private static func saveDialogueBubbleStyle(_ style: ReaderDialogueBubbleStyle) {
+        guard let data = try? JSONEncoder().encode(style.sanitized()) else { return }
+        UserDefaults.standard.set(data, forKey: dialogueBubbleStyleKey)
+    }
+
+    /// Add or replace a user preset (matched by id).
+    func upsertChapterTitleCustomPreset(_ preset: ChapterTitleStylePreset) {
+        var list = chapterTitleCustomPresets
+        if let index = list.firstIndex(where: { $0.id == preset.id }) {
+            list[index] = preset
+        } else {
+            list.append(preset)
+        }
+        chapterTitleCustomPresets = list
+    }
+
+    func deleteChapterTitleCustomPreset(id: String) {
+        chapterTitleCustomPresets = chapterTitleCustomPresets.filter { $0.id != id }
+    }
+
+    @discardableResult
+    func saveReaderOverlayLayout(_ proposedLayout: ReaderOverlayLayout) -> Bool {
+        persistReaderOverlayLayout(proposedLayout, stampsSyncClock: true)
+    }
+
+    /// Applies the iCloud-merged header/footer layout. Deliberately does **not**
+    /// stamp the sync clock: the merged value already carries the winning
+    /// device's timestamp, and re-stamping it here would make every device
+    /// declare itself newest on the next pass.
+    func applyReaderOverlayLayoutFromSync(_ layout: ReaderOverlayLayout, modifiedAt: Date?) {
+        guard layout != readerOverlayLayout || modifiedAt != readerOverlayLayoutSyncClock else {
+            return
+        }
+        guard persistReaderOverlayLayout(layout, stampsSyncClock: false) else { return }
+        readerOverlayLayoutSyncClock = modifiedAt
+    }
+
+    @discardableResult
+    private func persistReaderOverlayLayout(
+        _ proposedLayout: ReaderOverlayLayout,
+        stampsSyncClock: Bool
+    ) -> Bool {
+        let result = ReaderOverlayLayoutPersistence.save(
+            current: readerOverlayLayout,
+            proposed: proposedLayout
+        ) { data in
+            Self.persistReaderOverlayLayoutData(data)
+        }
+        guard result.didPersist else { return false }
+        readerOverlayLayout = result.layout
+        if stampsSyncClock {
+            readerOverlayLayoutSyncClock = Date()
+        }
+        return true
+    }
+
+    private static func persistReaderOverlayLayoutData(
+        _ data: Data,
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        defaults.set(data, forKey: readerOverlayLayoutDataKey)
+        guard defaults.data(forKey: readerOverlayLayoutDataKey) == data else { return false }
+        defaults.set(
+            ReaderOverlayLayout.currentVersion,
+            forKey: readerOverlayLayoutMigrationVersionKey
+        )
+        return true
+    }
+
+    @discardableResult
+    func saveReaderBarLayout(_ proposedLayout: ReaderBarLayout) -> Bool {
+        persistReaderBarLayout(proposedLayout, stampsSyncClock: true)
+    }
+
+    /// A theme switch or an import laying a stored layout over the live one. Same
+    /// persistence as an edit; a theme switch passes `stampsSyncClock: false`, since it
+    /// is this device changing *which* layout it wears rather than the user editing
+    /// one — stamping would push the theme's layout to every other device as the
+    /// newest edit.
+    @discardableResult
+    func writeReaderBarLayout(_ layout: ReaderBarLayout, stampsSyncClock: Bool) -> Bool {
+        persistReaderBarLayout(layout, stampsSyncClock: stampsSyncClock)
+    }
+
+    /// Applies the iCloud-merged bar layout. Deliberately does **not** stamp the
+    /// sync clock: the merged value already carries the winning device's
+    /// timestamp, and re-stamping it here would make every device declare itself
+    /// newest on the next pass.
+    ///
+    /// Recorded in the reading setup, so the next theme sync keeps it, but not noted as a
+    /// setting made here (`isApplyingReadingSettingsSync`). Noted, it was this device's
+    /// newest 頁首頁尾 row (`noteReadingSettingSync`), and every other device took this
+    /// one's header and footer settings with it (2026-10-05).
+    ///
+    /// - Returns: false when the layout could not be stored, and was not applied.
+    @discardableResult
+    func applyReaderBarLayoutFromSync(_ layout: ReaderBarLayout, modifiedAt: Date?) -> Bool {
+        guard layout != readerBarLayout || modifiedAt != readerBarLayoutSyncClock else {
+            return true
+        }
+        let wasApplying = isApplyingReadingSettingsSync
+        isApplyingReadingSettingsSync = true
+        defer { isApplyingReadingSettingsSync = wasApplying }
+        guard persistReaderBarLayout(layout, stampsSyncClock: false) else { return false }
+        readerBarLayoutSyncClock = modifiedAt
+        return true
+    }
+
+    @discardableResult
+    private func persistReaderBarLayout(
+        _ proposedLayout: ReaderBarLayout,
+        stampsSyncClock: Bool
+    ) -> Bool {
+        let result = ReaderBarLayoutPersistence.save(
+            current: readerBarLayout,
+            proposed: proposedLayout
+        ) { data in
+            Self.persistReaderBarLayoutData(data)
+        }
+        guard result.didPersist else { return false }
+        readerBarLayout = result.layout
+        if stampsSyncClock {
+            readerBarLayoutSyncClock = Date()
+        }
+        return true
+    }
+
+    private static func persistReaderBarLayoutData(
+        _ data: Data,
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        defaults.set(data, forKey: readerBarLayoutDataKey)
+        return defaults.data(forKey: readerBarLayoutDataKey) == data
+    }
+
+    static func sanitizedCommentBubbleScale(_ value: Double) -> Double {
+        min(max(value, commentBubbleScaleRange.lowerBound), commentBubbleScaleRange.upperBound)
+    }
+
+    static func sanitizedCommentBubbleTextScale(_ value: Double) -> Double {
+        min(max(value, commentBubbleTextScaleRange.lowerBound), commentBubbleTextScaleRange.upperBound)
+    }
+
+    static func sanitizedInterfaceGlowIntensity(_ value: Double) -> Double {
+        min(max(value, interfaceGlowIntensityRange.lowerBound), interfaceGlowIntensityRange.upperBound)
+    }
+
+    static func sanitizedInterfaceGlassTransparency(_ value: Double) -> Double {
+        min(max(value, interfaceGlassTransparencyRange.lowerBound), interfaceGlassTransparencyRange.upperBound)
+    }
+
+    private static func loadImportedTTSSources() -> [ImportedTTSSource] {
+        guard let data = UserDefaults.standard.data(forKey: "yd_imported_tts_sources"),
+              let decoded = try? JSONDecoder().decode([ImportedTTSSource].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    private static func saveImportedTTSSources(_ sources: [ImportedTTSSource]) {
+        if sources.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "yd_imported_tts_sources")
+            return
+        }
+        if let data = try? JSONEncoder().encode(sources) {
+            UserDefaults.standard.set(data, forKey: "yd_imported_tts_sources")
+        }
+    }
+
+    private static func loadTTSHeaders() -> [String: String] {
+        guard let data = UserDefaults.standard.data(forKey: "yd_http_tts_headers"),
+              let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private static func saveTTSHeaders(_ headers: [String: String]) {
+        if headers.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "yd_http_tts_headers")
+            return
+        }
+        if let data = try? JSONEncoder().encode(headers) {
+            UserDefaults.standard.set(data, forKey: "yd_http_tts_headers")
+        }
+    }
+
+    func selectedAppearanceThemeID(for colorScheme: ColorScheme) -> String {
+        if appearanceUsesSeparateDarkTheme, colorScheme == .dark {
+            return appearanceDarkThemeID
+        }
+        return appearanceThemeID
+    }
+
+    func setAppearanceFollowsSystem(
+        _ followsSystem: Bool,
+        currentColorScheme: ColorScheme
+    ) {
+        if !followsSystem {
+            appearancePinnedColorScheme = AppearanceColorScheme(currentColorScheme)
+        }
+        // Off, the tab is the appearance itself; on, the device decides again.
+        appearanceSlotPreview = nil
+        appearanceFollowsSystem = followsSystem
+    }
+
+    /// What `ContentView` holds the window to, nil to follow the device: the appearance
+    /// picked with 跟隨系統 off, else 外觀主題's preview of the other slot.
+    var appearanceWindowColorScheme: ColorScheme? {
+        guard appearanceFollowsSystem else { return appearancePinnedColorScheme.colorScheme }
+        guard appearanceUsesSeparateDarkTheme else { return nil }
+        return appearanceSlotPreview?.colorScheme
+    }
+
+    /// Whether 外觀主題 shows its 淺色／深色 tab: to pick the dark slot's theme, and with
+    /// 跟隨系統 off to pick the appearance itself — off, nothing else can (2026-10-05).
+    var showsAppearanceSlotTab: Bool {
+        appearanceUsesSeparateDarkTheme || !appearanceFollowsSystem
+    }
+
+    /// The 淺色／深色 tab's value. `windowColorScheme` is the scheme the page is drawn in.
+    func appearanceSlotOnTab(windowColorScheme: ColorScheme) -> ColorScheme {
+        guard appearanceFollowsSystem else { return appearancePinnedColorScheme.colorScheme }
+        return appearanceSlotPreview?.colorScheme ?? windowColorScheme
+    }
+
+    /// Ends 外觀主題's preview: back on 設定, or on another tab.
+    func endAppearanceSlotPreview() {
+        guard appearanceSlotPreview != nil else { return }
+        appearanceSlotPreview = nil
+    }
+
+    /// The 淺色／深色 tab picked. With 跟隨系統 off it is the app's appearance and stays;
+    /// it used to be a preview there too, gone on leaving the page, and the appearance
+    /// held since the switch was turned off could not be changed at all (2026-10-05).
+    func pickAppearanceSlot(_ scheme: ColorScheme) {
+        if appearanceFollowsSystem {
+            appearanceSlotPreview = AppearanceColorScheme(scheme)
+        } else {
+            appearancePinnedColorScheme = AppearanceColorScheme(scheme)
+        }
+    }
+
+    func effectiveAppearanceColorScheme(systemColorScheme: ColorScheme) -> ColorScheme {
+        appearanceFollowsSystem ? systemColorScheme : appearancePinnedColorScheme.colorScheme
+    }
+
+    /// The theme in effect for `colorScheme`, already resolved to that
+    /// appearance's palette — the light colors in light appearance, the derived
+    /// dark colors in dark appearance.
+    func appearanceTheme(
+        for colorScheme: ColorScheme,
+        isProActive: Bool
+    ) -> AppearanceThemePreset {
+        appearanceBaseTheme(for: colorScheme, isProActive: isProActive).palette(for: colorScheme)
+    }
+
+    /// Same resolution as `appearanceTheme(for:isProActive:)` but without the
+    /// light/dark palette step — the theme's *identity*. Use it when comparing
+    /// against a preset id (selection state) rather than drawing with it.
+    func appearanceBaseTheme(
+        for colorScheme: ColorScheme,
+        isProActive: Bool
+    ) -> AppearanceThemePreset {
+        let selectedID = selectedAppearanceThemeID(for: colorScheme)
+        if let selected = appearancePreset(id: selectedID, isProActive: isProActive),
+           isProActive || !selected.requiresPro {
+            return selected
+        }
+        return appearancePreset(id: Self.defaultAppearanceThemeID, isProActive: isProActive)
+            ?? AppearanceThemePreset.freeSolidPresets[0]
+    }
+
+    /// The theme the app wears for `colorScheme`, or nil for 默認 as it ships (no tint,
+    /// system colours). Until launch has read every source of Pro, a false
+    /// `isProActive` may only mean "not read yet", so the Pro look is worn
+    /// optimistically — otherwise a Pro user's theme would flash 默認 for the
+    /// 0.5–2 s StoreKit takes. After that it is the truth: without Pro, a theme of the
+    /// user's own falls back to 默認 and a built-in one to the colours it ships with.
+    func appThemeOnScreen(
+        for colorScheme: ColorScheme,
+        isProActive: Bool,
+        hasResolvedEntitlements: Bool
+    ) -> AppearanceThemePreset? {
+        let wearsPro = isProActive || !hasResolvedEntitlements
+        let theme = appearanceTheme(for: colorScheme, isProActive: wearsPro)
+        return theme.isClassic ? nil : theme
+    }
+
+    /// Any theme by id: one of the user's own, or a built-in one — in the colours the
+    /// user gave it in 配色 with Pro, which that is part of; as it ships without. The
+    /// edits are kept either way and come back with Pro, like the user's own themes.
+    /// The one lookup the app resolves themes through.
+    func appearancePreset(id: String?, isProActive: Bool) -> AppearanceThemePreset? {
+        AppearanceThemePreset.preset(
+            id: id,
+            customThemes: customAppearanceThemes,
+            builtInColors: isProActive ? appearanceBuiltInThemeColors : [:]
+        )
+    }
+
+    /// A built-in theme as the user coloured it in 配色 (with Pro), or as it ships.
+    func builtInThemePreset(_ preset: AppearanceThemePreset, isProActive: Bool) -> AppearanceThemePreset {
+        guard isProActive else { return preset }
+        return appearanceBuiltInThemeColors[preset.id].map(preset.withEditedColors) ?? preset
+    }
+
+    private static let appearanceBuiltInThemeColorsKey = "yd_appearance_builtin_theme_colors"
+
+    private static func loadAppearanceBuiltInThemeColors() -> [String: AppearanceCustomTheme] {
+        guard let data = UserDefaults.standard.data(forKey: appearanceBuiltInThemeColorsKey) else { return [:] }
+        do {
+            return try JSONDecoder().decode([String: AppearanceCustomTheme].self, from: data)
+        } catch {
+            AppLogger.error("⟐ built-in theme colours unreadable", error: error)
+            return [:]
+        }
+    }
+
+    private static func saveAppearanceBuiltInThemeColors(_ colors: [String: AppearanceCustomTheme]) {
+        guard !colors.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: appearanceBuiltInThemeColorsKey)
+            return
+        }
+        do {
+            UserDefaults.standard.set(try JSONEncoder().encode(colors), forKey: appearanceBuiltInThemeColorsKey)
+        } catch {
+            AppLogger.error("⟐ built-in theme colours not stored", error: error)
+        }
+    }
+
+    /// Selects `preset` for one appearance slot.
+    ///
+    /// - Parameters:
+    ///   - slot: which slot the pick belongs to. With 單獨設定深色主題 off there is
+    ///     only one slot, so anything but an explicit dark pick lands on it.
+    ///   - activeAppearance: the appearance actually on screen. It can differ
+    ///     from `slot` — the 淺色／深色 picker in 外觀主題 edits the dark slot while
+    ///     the device is still in light mode — and only a change to the slot in
+    ///     use may retint the running app.
+    func setAppearanceTheme(
+        _ preset: AppearanceThemePreset,
+        for slot: ColorScheme,
+        activeAppearance: ColorScheme
+    ) {
+        selectAppearanceTheme(id: preset.id, for: slot)
+        guard slot == activeAppearance else { return }
+        // Sync the DSColor-facing global in the same turn as the selection.
+        // `activeAppThemes` is otherwise refreshed only in ContentView.body, which
+        // SwiftUI may run *after* re-rendering the themed screen that triggered
+        // this — so surfaces would read last frame's theme and only catch up on
+        // the next tap (the "switch takes two taps" bug). Matches ContentView's
+        // resolvedAppTheme rule: classic (默認) means no override.
+        let active = preset.palette(for: activeAppearance)
+        let resolved = active.isClassic ? nil : active
+        // Only the slot on screen; `ContentView.body` refreshes both on the pass this
+        // selection triggers. Which *preset* is active still needs this immediate write —
+        // the per-trait dynamic colors fixed appearance ordering, not selection ordering.
+        if activeAppearance == .dark {
+            AppearanceThemePreset.activeAppThemes.dark = resolved
+        } else {
+            AppearanceThemePreset.activeAppThemes.light = resolved
+        }
+    }
+
+    private func selectAppearanceTheme(id: String, for slot: ColorScheme) {
+        if appearanceUsesSeparateDarkTheme, slot == .dark {
+            appearanceDarkThemeID = id
+        } else {
+            appearanceThemeID = id
+        }
+    }
+
+    // MARK: - 綁定閱讀主題 (appearance → reading theme)
+
+    func boundReaderTheme(for appearance: ColorScheme) -> ReaderBoundTheme {
+        ReaderBoundTheme(
+            storageValue: appearance == .dark
+                ? appearanceBoundDarkReaderTheme
+                : appearanceBoundLightReaderTheme
+        )
+    }
+
+    func setBoundReaderTheme(_ choice: ReaderBoundTheme, for appearance: ColorScheme) {
+        if appearance == .dark {
+            appearanceBoundDarkReaderTheme = choice.storageValue
+        } else {
+            appearanceBoundLightReaderTheme = choice.storageValue
+        }
+    }
+
+    /// Deletes a custom theme. Any selection (light or dark slot) pointing at
+    /// the deleted theme falls back to the classic default.
+    func deleteCustomAppearanceTheme(id: String) {
+        let removed = customAppearanceThemes.first(where: { $0.id == id })
+        customAppearanceThemes.removeAll { $0.id == id }
+        if appearanceThemeID == id {
+            appearanceThemeID = Self.defaultAppearanceThemeID
+        }
+        if appearanceDarkThemeID == id {
+            appearanceDarkThemeID = Self.defaultAppearanceThemeID
+        }
+        // Swept after the removal, so the reference check below sees the world without
+        // this theme in it and reclaims the artwork only it was holding.
+        guard let removed else { return }
+        for extras in [removed.extras, removed.originalExtras].compactMap({ $0 }) {
+            let covers = (extras.defaultCoverLightFileNames ?? [])
+                + (extras.defaultCoverDarkFileNames ?? [])
+            for name in covers where !isDefaultCoverFileReferenced(name) {
+                DefaultCoverStorageManager.shared.delete(fileName: name)
+            }
+            removeLaunchImageFile(extras.launchImageLightFileName)
+            removeLaunchImageFile(extras.launchImageDarkFileName)
+            let backgrounds = extras.pageBackgrounds?.values.flatMap(\.imageFileNames) ?? []
+            for name in backgrounds where !isPageBackgroundFileReferenced(name) {
+                AppearancePageBackgroundImageStore.shared.delete(fileName: name)
+            }
+            // Card artwork was never reclaimed at all: nothing in the app deleted from
+            // this store, so every imported pack left its picture behind for good.
+            for name in extras.cardBackground?.imageFileNames ?? []
+            where !isCardBackgroundFileReferenced(name) {
+                AppearanceCardBackgroundImageStore.shared.delete(fileName: name)
+            }
+        }
+    }
+
+    /// Renames one of the user's themes. A blank name leaves it as it was.
+    func renameCustomAppearanceTheme(id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = customAppearanceThemes.firstIndex(where: { $0.id == id }),
+              customAppearanceThemes[index].name != trimmed else { return }
+        customAppearanceThemes[index].name = trimmed
+    }
+
+    /// Every extras snapshot that could still be pointing at a stored file: the saved
+    /// themes, the pack originals imported themes keep, and the baseline handed back when
+    /// the user leaves a theme.
+    ///
+    /// Deleting a cover or splash file used to be unconditional, which was survivable
+    /// while only the live settings ever named one. Now that each theme keeps its own
+    /// set, two themes can name the same file — and removing it from one would have
+    /// pulled the picture out from under the other. Delete only what nothing claims.
+    private var appearanceExtrasFileReferences: [AppearanceThemeExtras] {
+        customAppearanceThemes.compactMap(\.extras)
+            + customAppearanceThemes.compactMap(\.originalExtras)
+            + [appearanceExtrasBaseline].compactMap { $0 }
+    }
+
+    private func isDefaultCoverFileReferenced(_ fileName: String) -> Bool {
+        defaultCoverLightFileNames.contains(fileName)
+            || defaultCoverDarkFileNames.contains(fileName)
+            || appearanceExtrasFileReferences.contains {
+                ($0.defaultCoverLightFileNames?.contains(fileName) ?? false)
+                    || ($0.defaultCoverDarkFileNames?.contains(fileName) ?? false)
+            }
+    }
+
+    private func isPageBackgroundFileReferenced(_ fileName: String) -> Bool {
+        appearancePageBackgrounds.values.contains { $0.imageFileNames.contains(fileName) }
+            || appearanceExtrasFileReferences.contains { extras in
+                extras.pageBackgrounds?.values
+                    .contains { $0.imageFileNames.contains(fileName) } ?? false
+            }
+    }
+
+    private func isCardBackgroundFileReferenced(_ fileName: String) -> Bool {
+        if appearanceCardBackground?.imageFileNames.contains(fileName) == true { return true }
+        return appearanceExtrasFileReferences.contains {
+            $0.cardBackground?.imageFileNames.contains(fileName) ?? false
+        }
+    }
+
+    /// Lives here rather than in `RootTabCustomization` because the reference list it
+    /// consults is private to this file.
+    func isRootTabIconFileReferenced(_ fileName: String) -> Bool {
+        rootTabIconAssets.contains { $0.fileName == fileName }
+            || appearanceExtrasFileReferences.contains {
+                $0.tabIcons?.values.contains(fileName) ?? false
+            }
+    }
+
+    /// Same check for the reader's 按鈕圖示. A theme pack's toolbar icons live on the
+    /// theme and in its pack original, so replacing one while wearing the
+    /// theme must not delete the file the original still needs. Lives here for the same
+    /// reason as the tab-icon check: the reference list is private to this file.
+    func isReaderChromeIconFileReferenced(_ fileName: String) -> Bool {
+        readerChromeIcons.contains { $0.fileName == fileName }
+            || appearanceExtrasFileReferences.contains {
+                $0.readerChromeIcons?.values.contains(fileName) ?? false
+            }
+    }
+
+    private func isLaunchImageFileReferenced(_ fileName: String) -> Bool {
+        launchImageLightFileName == fileName || launchImageDarkFileName == fileName
+            || appearanceExtrasFileReferences.contains {
+                $0.launchImageLightFileName == fileName || $0.launchImageDarkFileName == fileName
+            }
+    }
+
+    private static func loadCustomAppearanceThemes() -> [AppearanceCustomTheme] {
+        guard let data = UserDefaults.standard.data(forKey: customAppearanceThemesKey),
+              let decoded = try? JSONDecoder().decode([AppearanceCustomTheme].self, from: data) else {
+            return []
+        }
+        return decoded.map(migratedPageBackgrounds)
+    }
+
+    /// Page backgrounds used to be their own field on the theme, outside the baseline
+    /// and the write-back — so leaving a theme never handed the user's own backgrounds
+    /// back, and an edit made under a theme was dropped on the next switch. Folding
+    /// them into `extras` on load is what puts them on the one mechanism.
+    ///
+    /// The old copies stay exactly where they are on disk: the live settings still name
+    /// them, so the reference check keeps them alive and nothing is reclaimed here.
+    static func migratedPageBackgrounds(
+        _ theme: AppearanceCustomTheme
+    ) -> AppearanceCustomTheme {
+        guard let legacy = theme.pageBackgrounds else { return theme }
+        var migrated = theme
+        migrated.pageBackgrounds = nil
+        guard migrated.extras?.pageBackgrounds == nil, !legacy.isEmpty else { return migrated }
+        var extras = migrated.extras ?? AppearanceThemeExtras()
+        extras.pageBackgrounds = legacy
+        migrated.extras = extras
+        return migrated
+    }
+
+    private static func saveCustomAppearanceThemes(_ themes: [AppearanceCustomTheme]) {
+        if themes.isEmpty {
+            UserDefaults.standard.removeObject(forKey: customAppearanceThemesKey)
+            return
+        }
+        if let data = try? JSONEncoder().encode(themes) {
+            UserDefaults.standard.set(data, forKey: customAppearanceThemesKey)
+        }
+    }
+
+    // MARK: - Page Backgrounds (app-wide)
+
+    private static func loadPageBackgrounds() -> [String: AppearancePageBackgroundConfig] {
+        guard let data = UserDefaults.standard.data(forKey: appearancePageBackgroundsKey),
+              let decoded = try? JSONDecoder().decode(
+                  [String: AppearancePageBackgroundConfig].self,
+                  from: data
+              ) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private static func savePageBackgrounds(_ value: [String: AppearancePageBackgroundConfig]) {
+        if value.isEmpty {
+            UserDefaults.standard.removeObject(forKey: appearancePageBackgroundsKey)
+            return
+        }
+        if let data = try? JSONEncoder().encode(value) {
+            UserDefaults.standard.set(data, forKey: appearancePageBackgroundsKey)
+        }
+    }
+
+    func pageBackgroundConfig(for scope: AppearancePageBackgroundScope) -> AppearancePageBackgroundConfig {
+        appearancePageBackgrounds[scope.rawValue] ?? AppearancePageBackgroundConfig()
+    }
+
+    func updatePageBackgroundConfig(
+        _ config: AppearancePageBackgroundConfig,
+        for scope: AppearancePageBackgroundScope
+    ) {
+        if config.isEmpty {
+            appearancePageBackgrounds.removeValue(forKey: scope.rawValue)
+        } else {
+            appearancePageBackgrounds[scope.rawValue] = config
+        }
+    }
+
+    /// The layer to draw behind `scope` in `colorScheme`: the scope's own config
+    /// when it paints anything for that appearance, otherwise the global one.
+    /// Nil keeps the stock system look.
+    func resolvedPageBackgroundSlice(
+        for scope: AppearancePageBackgroundScope,
+        colorScheme: ColorScheme
+    ) -> AppearancePageBackgroundSlice? {
+        if let own = appearancePageBackgrounds[scope.rawValue]?.slice(for: colorScheme) {
+            return own
+        }
+        guard scope != .global else { return nil }
+        return appearancePageBackgrounds[AppearancePageBackgroundScope.global.rawValue]?
+            .slice(for: colorScheme)
+    }
+
+    @discardableResult
+    func importPageBackgroundImage(
+        from url: URL,
+        scope: AppearancePageBackgroundScope,
+        appearance colorScheme: ColorScheme
+    ) throws -> String {
+        let fileName = try AppearancePageBackgroundImageStore.shared.importImage(fileURL: url)
+        replacePageBackgroundImage(fileName: fileName, scope: scope, colorScheme: colorScheme)
+        return fileName
+    }
+
+    @discardableResult
+    func importPageBackgroundImage(
+        data: Data,
+        scope: AppearancePageBackgroundScope,
+        appearance colorScheme: ColorScheme
+    ) throws -> String {
+        let fileName = try AppearancePageBackgroundImageStore.shared.importImage(data: data)
+        replacePageBackgroundImage(fileName: fileName, scope: scope, colorScheme: colorScheme)
+        return fileName
+    }
+
+    func clearPageBackgroundImage(
+        scope: AppearancePageBackgroundScope,
+        appearance colorScheme: ColorScheme
+    ) {
+        replacePageBackgroundImage(fileName: nil, scope: scope, colorScheme: colorScheme)
+    }
+
+    private func replacePageBackgroundImage(
+        fileName: String?,
+        scope: AppearancePageBackgroundScope,
+        colorScheme: ColorScheme
+    ) {
+        var config = pageBackgroundConfig(for: scope)
+        config.setImageFileName(fileName, for: colorScheme)
+        updatePageBackgroundConfig(config, for: scope)
+    }
+
+    /// Clears every scope's page background. The image files go with it only if no
+    /// saved theme still shows them — see `reclaimDroppedPageBackgroundFiles`.
+    func resetAllPageBackgrounds() {
+        appearancePageBackgrounds = [:]
+    }
+
+    /// Deletes the page-background artwork `oldValue` named that nothing points at any
+    /// more: not the live settings, not a saved theme, not the baseline waiting to be
+    /// handed back.
+    ///
+    /// Themes used to own private *copies* of every image, which made a saved theme
+    /// safe but made recording an edit onto one mean duplicating files on every
+    /// opacity tick. Sharing the files and reclaiming them by reference is what lets
+    /// the edit be a plain value write.
+    private func reclaimDroppedPageBackgroundFiles(
+        from oldValue: [String: AppearancePageBackgroundConfig]
+    ) {
+        let dropped = Set(oldValue.values.flatMap(\.imageFileNames))
+            .subtracting(appearancePageBackgrounds.values.flatMap(\.imageFileNames))
+        for name in dropped where !isPageBackgroundFileReferenced(name) {
+            AppearancePageBackgroundImageStore.shared.delete(fileName: name)
+        }
+    }
+
+    /// Snapshots the current theme colors plus the live page backgrounds into a
+    /// new custom theme and selects it. Image files are duplicated so the theme
+    /// owns its copies.
+    @discardableResult
+    func saveCurrentAppearanceAsTheme(
+        named name: String,
+        basedOn preset: AppearanceThemePreset,
+        for slot: ColorScheme = .light
+    ) -> AppearanceCustomTheme {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var custom = preset.customCopy(
+            name: uniqueCustomThemeName(base: trimmed.isEmpty ? localized("自訂主題") : trimmed)
+        )
+        // A full snapshot, unlike the per-field write-back: pressing 保存為新主題 is the
+        // user saying "this whole look is the theme", covers, page backgrounds, font,
+        // icons and all.
+        custom.extras = currentAppearanceExtrasSnapshot()
+        customAppearanceThemes.append(custom)
+        selectAppearanceTheme(id: custom.id, for: slot)
+        return custom
+    }
+
+    private func uniqueCustomThemeName(base: String) -> String {
+        let existing = Set(customAppearanceThemes.map(\.name))
+        guard existing.contains(base) else { return base }
+        var index = 2
+        while existing.contains("\(base) \(index)") { index += 1 }
+        return "\(base) \(index)"
+    }
+
+    // MARK: - Theme export / import
+
+    /// The cheap value read a full-customization export is built from. Main
+    /// actor, no disk I/O — `AppearanceCustomizationBundle` does the reading.
+    func appearanceCustomizationSnapshot() -> AppearanceCustomizationSnapshot {
+        let regexAssetIDs = Set(regexHighlightConfiguration.evaluationRules.flatMap { rule in
+            [
+                rule.lightStyle.decoration.backgroundImage?.assetID,
+                rule.darkStyle.decoration.backgroundImage?.assetID,
+            ].compactMap { $0 }
+        })
+        return AppearanceCustomizationSnapshot(
+            themes: customAppearanceThemes,
+            pageBackgrounds: appearancePageBackgrounds,
+            tabIcons: rootTabIconAssets,
+            launchImageLightFileName: launchImageFileName(for: .light),
+            launchImageDarkFileName: launchImageFileName(for: .dark),
+            readerBackgrounds: readerCustomBackgrounds,
+            wornReaderBackgroundID: wornReaderCustomBackground?.id,
+            builtInThemeColors: appearanceBuiltInThemeColors,
+            regexHighlightConfiguration: regexHighlightConfiguration,
+            readerStyleAssetIDs: Array(regexAssetIDs)
+        )
+    }
+
+    /// Imports any appearance file the app writes: a full customization bundle,
+    /// a theme collection, a single theme, or a bare array of themes. One entry
+    /// point so 導入 can't grow a second parse route that behaves differently.
+    @discardableResult
+    @MainActor
+    func importAppearanceCustomization(from data: Data) throws -> AppearanceImportSummary {
+        if let bundle = try? JSONDecoder().decode(AppearanceCustomizationBundle.self, from: data),
+           bundle.format == AppearanceCustomizationBundle.formatIdentifier {
+            return importAppearanceCustomizationBundle(bundle)
+        }
+
+        let files = AppearanceThemeFileDecoder.themes(in: data)
+        guard !files.isEmpty else {
+            throw AppearanceThemeImportError.invalidFile
+        }
+        var summary = AppearanceImportSummary()
+        (summary.themes, summary.selectedThemeID) = importThemeFiles(files)
+        return summary
+    }
+
+    /// Imports the package form used by full-customization sharing. JSON stays
+    /// supported by the synchronous entry point above for backward compatibility.
+    @discardableResult
+    @MainActor
+    func importAppearanceCustomizationPackage(from data: Data) async throws -> AppearanceImportSummary {
+        if let legacyResult = try? importAppearanceCustomization(from: data) {
+            return legacyResult
+        }
+        let payload = try await ReaderStylePackage.import(
+            data,
+            assetStore: .shared,
+            expectedKind: .appearance
+        )
+        let bundle = try payload.decode(AppearanceCustomizationBundle.self)
+        guard bundle.format == AppearanceCustomizationBundle.formatIdentifier else {
+            throw AppearanceThemeImportError.invalidFile
+        }
+        return importAppearanceCustomizationBundle(bundle)
+    }
+
+    /// Appends a custom theme per entry, then selects the last one and applies
+    /// its page-background snapshot — so a single-theme import behaves the way
+    /// it always has, and a pack import leaves you looking at one of them.
+    private func importThemeFiles(_ files: [AppearanceThemeExportFile]) -> (count: Int, selectedID: String?) {
+        var imported: [AppearanceCustomTheme] = []
+        for file in files {
+            let custom = customTheme(from: file)
+            customAppearanceThemes.append(custom)
+            imported.append(custom)
+        }
+        if let last = imported.last {
+            // Into the slot on screen. It was always the light slot's: with 單獨設定深色主題
+            // on and the app dark, nothing in view changed while 匯入完成 said the pack was
+            // the theme now (2026-10-05).
+            selectAppearanceTheme(id: last.id, for: appearanceOnScreen.colorScheme)
+        }
+        return (imported.count, imported.last?.id)
+    }
+
+    private func importAppearanceCustomizationBundle(
+        _ bundle: AppearanceCustomizationBundle
+    ) -> AppearanceImportSummary {
+        var summary = AppearanceImportSummary()
+        restoreBundleOwnLook(bundle, into: &summary)
+        if let colors = bundle.builtInThemeColors, !colors.isEmpty {
+            // Built-in themes are the same on every device, so their edited colours
+            // land on them as they are — replacing this device's edits of the same theme.
+            appearanceBuiltInThemeColors.merge(colors) { _, imported in imported }
+        }
+        (summary.themes, summary.selectedThemeID) = importThemeFiles(bundle.themes)
+        if let configuration = bundle.regexHighlightConfiguration {
+            regexHighlightConfiguration = configuration.sanitized()
+        }
+        return summary
+    }
+
+    /// The half of a bundle that is the user's *own* look — page backgrounds, tab
+    /// icons, splash, the reading background — rather than any one theme's.
+    ///
+    /// Runs before `importThemeFiles` so those values are already in place when
+    /// selecting the bundle's theme captures the baseline: they become the layer the
+    /// theme falls back to, which is what they were on the device that exported them.
+    /// Write-back is suppressed for the same reason — restoring a look must not be
+    /// recorded as an edit to whatever theme happens to be selected right now.
+    ///
+    /// The page backgrounds used to be applied *after* the themes, because selecting an
+    /// imported theme replaced the live ones with that theme's snapshot. Now that they
+    /// ride the same baseline as everything else, landing them first is what makes the
+    /// theme's own show on top and the bundle's show again on the way out — so the
+    /// ordering constraint is gone rather than inverted.
+    ///
+    /// One case this does not cover: importing a bundle while already wearing a custom
+    /// theme leaves these values live but outside that theme's baseline, so the next
+    /// theme switch drops them. Deselecting first would fix it but would also throw
+    /// away a 單獨設定深色主題 pairing the bundle may not restore.
+    private func restoreBundleOwnLook(
+        _ bundle: AppearanceCustomizationBundle,
+        into summary: inout AppearanceImportSummary
+    ) {
+        let wasApplying = isApplyingAppearanceExtras
+        isApplyingAppearanceExtras = true
+        defer { isApplyingAppearanceExtras = wasApplying }
+
+        if let payloads = bundle.pageBackgrounds {
+            let restored = pageBackgroundConfigs(from: payloads)
+            if !restored.isEmpty {
+                appearancePageBackgrounds = restored
+                summary.restoredPageBackgrounds = true
+            }
+        }
+
+        for icon in bundle.tabIcons ?? [] {
+            guard let tab = RootTabItem(rawValue: icon.tabID),
+                  let slot = RootTabIconSlot(rawValue: icon.slot),
+                  let data = Data(base64Encoded: icon.image.base64) else { continue }
+            if (try? importRootTabIcon(
+                data: data,
+                originalFileName: icon.originalFileName,
+                tab: tab,
+                slot: slot
+            )) != nil {
+                summary.tabIcons += 1
+            }
+        }
+
+        for (payload, scheme) in [
+            (bundle.launchImageLight, LaunchImageScheme.light),
+            (bundle.launchImageDark, LaunchImageScheme.dark),
+        ] {
+            guard let payload, let data = Data(base64Encoded: payload.base64) else { continue }
+            if (try? importLaunchImage(data: data, for: scheme)) != nil {
+                summary.launchImages += 1
+            }
+        }
+
+        if let worn = restoreReaderBackgrounds(from: bundle, into: &summary) {
+            readerCustomBackgroundID = worn
+            // The bundle's reading background is the exporter's own setup, so it goes
+            // into 全域 — recorded here because the write above is not an edit, and the
+            // next theme sync would otherwise put the old background back.
+            globalReadingSettings = globalReadingSettings.overlaid(
+                with: currentReadingSettingsSnapshot().restricted(to: [.background])
+            )
+        }
+    }
+
+    /// Writes a bundle's background images back out to the image store and
+    /// rebuilds the configs that point at them.
+    private func pageBackgroundConfigs(
+        from payloads: [String: AppearanceThemeExportFile.PageBackgroundPayload]
+    ) -> [String: AppearancePageBackgroundConfig] {
+        var result: [String: AppearancePageBackgroundConfig] = [:]
+        for (key, payload) in payloads {
+            guard AppearancePageBackgroundScope(rawValue: key) != nil else { continue }
+            var config = AppearancePageBackgroundConfig(
+                lightPrimaryHex: payload.lightPrimaryHex,
+                lightSecondaryHex: payload.lightSecondaryHex,
+                darkPrimaryHex: payload.darkPrimaryHex,
+                darkSecondaryHex: payload.darkSecondaryHex
+            )
+            config.lightImageFileName = writeImportedThemeImage(payload.lightImage)
+            config.darkImageFileName = writeImportedThemeImage(payload.darkImage)
+            config.lightImageOpacity = payload.lightImageOpacity
+            config.darkImageOpacity = payload.darkImageOpacity
+            if !config.isEmpty {
+                result[key] = config
+            }
+        }
+        return result
+    }
+
+    /// Materializes one exported theme: its colors, and its background images
+    /// written back out to the image store so the new theme owns real files.
+    private func customTheme(from file: AppearanceThemeExportFile) -> AppearanceCustomTheme {
+        // The payload's images are written back out under fresh local names, and those
+        // names go into `extras` — the file's own `extras` deliberately ships without
+        // page backgrounds, since its copy would name the exporter's files.
+        // A pack without dark pictures keeps its light ones in dark mode, dimmed, rather
+        // than going to a plain dark page.
+        let payloadConfigs = pageBackgroundConfigs(from: file.pageBackgrounds ?? [:]).mapValues { config in
+            var config = config
+            config.reuseLightImageInDarkIfMissing()
+            return config
+        }
+        var extras = file.extras
+        if !payloadConfigs.isEmpty {
+            var merged = extras ?? AppearanceThemeExtras()
+            merged.pageBackgrounds = payloadConfigs
+            extras = merged
+        }
+        return AppearanceCustomTheme(
+            name: uniqueCustomThemeName(
+                base: file.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? localized("自訂主題")
+                    : file.name
+            ),
+            backgroundHex: file.backgroundHex,
+            textHex: file.textHex,
+            barHex: file.barHex,
+            accentHex: file.accentHex,
+            dialogueHex: file.dialogueHex,
+            dark: file.darkColors,
+            textPrimaryHex: file.textPrimaryHex,
+            textSecondaryHex: file.textSecondaryHex,
+            textTertiaryHex: file.textTertiaryHex,
+            darkTextPrimaryHex: file.darkTextPrimaryHex,
+            darkTextSecondaryHex: file.darkTextSecondaryHex,
+            darkTextTertiaryHex: file.darkTextTertiaryHex,
+            extras: extras,
+            // The author's version, kept untouched by the write-back: it marks the theme
+            // as an imported pack, which the one-time migrations look for.
+            originalExtras: extras
+        )
+    }
+
+    private func writeImportedThemeImage(
+        _ payload: AppearanceThemeExportFile.ImagePayload?
+    ) -> String? {
+        guard let payload, let data = Data(base64Encoded: payload.base64) else { return nil }
+        return try? AppearancePageBackgroundImageStore.shared.importImage(data: data)
+    }
+
+    /// The user's own body text color for one reading background, or nil for 跟隨主題.
+    func readerTextColorOverride(for theme: ReaderTheme) -> UInt32? {
+        readerTextColorOverrides[theme.rawValue]
+    }
+
+    /// Pass nil to go back to 跟隨主題 for that background.
+    func setReaderTextColorOverride(_ rgbHex: UInt32?, for theme: ReaderTheme) {
+        var overrides = readerTextColorOverrides
+        if let rgbHex {
+            overrides[theme.rawValue] = rgbHex
+        } else {
+            overrides.removeValue(forKey: theme.rawValue)
+        }
+        guard overrides != readerTextColorOverrides else { return }
+        readerTextColorOverrides = overrides
+    }
+
+    // MARK: - Launch Image import / resolution
+
+    @discardableResult
+    func importLaunchImage(from url: URL, for scheme: LaunchImageScheme) throws -> String {
+        try adoptLaunchImage(
+            fileName: LaunchImageStorageManager.shared.importImage(fileURL: url, scheme: scheme),
+            for: scheme
+        )
+    }
+
+    @discardableResult
+    func importLaunchImage(data: Data, for scheme: LaunchImageScheme) throws -> String {
+        try adoptLaunchImage(
+            fileName: LaunchImageStorageManager.shared.importImage(data: data, scheme: scheme),
+            for: scheme
+        )
+    }
+
+    private func adoptLaunchImage(fileName: String, for scheme: LaunchImageScheme) -> String {
+        // Assign before deleting: the assignment's write-back takes the old name off
+        // the selected theme, which is what lets the delete tell "nobody wants this any
+        // more" from "another theme still shows it".
+        replaceLaunchImageFileName(with: fileName, for: scheme)
+        return fileName
+    }
+
+    func clearLaunchImage(for scheme: LaunchImageScheme) {
+        replaceLaunchImageFileName(with: nil, for: scheme)
+    }
+
+    private func replaceLaunchImageFileName(with fileName: String?, for scheme: LaunchImageScheme) {
+        let previous: String?
+        switch scheme {
+        case .light:
+            previous = launchImageLightFileName
+            launchImageLightFileName = fileName
+        case .dark:
+            previous = launchImageDarkFileName
+            launchImageDarkFileName = fileName
+        }
+        removeLaunchImageFile(previous)
+    }
+
+    func launchImageFileName(for scheme: LaunchImageScheme) -> String? {
+        let name = scheme == .dark ? launchImageDarkFileName : launchImageLightFileName
+        return (name?.isEmpty == false) ? name : nil
+    }
+
+    /// On-disk URL of the splash image to show for `colorScheme`, or nil when the
+    /// matching (and fallback) slot is empty. Falls back to the other appearance's
+    /// image so a single imported image still shows in both modes.
+    func launchImageURL(for colorScheme: ColorScheme) -> URL? {
+        let primary = colorScheme == .dark ? launchImageDarkFileName : launchImageLightFileName
+        let secondary = colorScheme == .dark ? launchImageLightFileName : launchImageDarkFileName
+        let name = (primary?.isEmpty == false ? primary : nil)
+            ?? (secondary?.isEmpty == false ? secondary : nil)
+        guard let name,
+              let url = try? LaunchImageStorageManager.shared.fileURL(fileName: name),
+              FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+        return url
+    }
+
+    private func removeLaunchImageFile(_ fileName: String?) {
+        guard let fileName, !fileName.isEmpty, !isLaunchImageFileReferenced(fileName) else { return }
+        LaunchImageStorageManager.shared.delete(fileName: fileName)
+    }
+
+    /// Installs a font into the user's library **without** selecting it. Internal so
+    /// an appearance pack can add its font and let the theme's extras decide when it
+    /// is actually in use — selecting here would poison the extras baseline with the
+    /// pack's own font before the user's is captured.
+    @discardableResult
+    func importUserFont(from url: URL) throws -> UserFontInfo {
+        let info = try UserFontStorageManager.shared.importFont(fileURL: url)
+        userFonts.removeAll { $0.postScriptName == info.postScriptName }
+        userFonts.append(info)
+        userFonts.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        return info
+    }
+
+    @discardableResult
+    func importReaderFont(from url: URL) throws -> UserFontInfo {
+        let info = try importUserFont(from: url)
+        selectedReaderFontPostScript = info.postScriptName
+        return info
+    }
+
+    @discardableResult
+    func importGlobalFont(from url: URL) throws -> UserFontInfo {
+        let info = try importUserFont(from: url)
+        selectedGlobalFontPostScript = info.postScriptName
+        return info
+    }
+
+    @MainActor
+    func deleteUserFont(_ font: UserFontInfo) {
+        UserFontStorageManager.shared.delete(font)
+        userFonts.removeAll { $0.id == font.id }
+        if selectedGlobalFontPostScript == font.postScriptName {
+            selectedGlobalFontPostScript = nil
+        }
+        if selectedReaderFontPostScript == font.postScriptName {
+            selectedReaderFontPostScript = nil
+        }
+        var titleStyle = ReaderConfig.shared.chapterTitleStyle
+        var titleStyleChanged = false
+        if titleStyle.numberFontPostScript == font.postScriptName {
+            titleStyle.numberFontPostScript = nil
+            titleStyleChanged = true
+        }
+        if titleStyle.nameFontPostScript == font.postScriptName {
+            titleStyle.nameFontPostScript = nil
+            titleStyleChanged = true
+        }
+        if titleStyleChanged {
+            ReaderConfig.shared.chapterTitleStyle = titleStyle
+        }
+    }
+}
+
+enum ReaderCustomBackgroundStorageError: Error {
+    case unsupportedImageFile
+    case cannotReadImage
+
+    var messageKey: String {
+        switch self {
+        case .unsupportedImageFile:
+            return "只支援 WebP、JPG、JPEG、PNG 圖片。"
+        case .cannotReadImage:
+            return "無法讀取圖片。"
+        }
+    }
+}
+
+final class ReaderCustomBackgroundStorageManager {
+    static let shared = ReaderCustomBackgroundStorageManager()
+
+    private let fileManager: FileManager
+    private let allowedExtensions: Set<String> = ["webp", "jpg", "jpeg", "png"]
+    private let thumbnails = NSCache<NSString, UIImage>()
+
+    private init(fileManager: FileManager = .default) {
+        self.fileManager = fileManager
+    }
+
+    func importBackground(fileURL: URL) throws -> String {
+        let sourceExtension = fileURL.pathExtension.lowercased()
+        guard allowedExtensions.contains(sourceExtension) else {
+            throw ReaderCustomBackgroundStorageError.unsupportedImageFile
+        }
+        guard let data = try? Data(contentsOf: fileURL) else {
+            throw ReaderCustomBackgroundStorageError.cannotReadImage
+        }
+        return try store(data: data, fallbackExtension: sourceExtension)
+    }
+
+    /// Import from raw data (Photos picker). A photo-library pick has no file
+    /// name and is often HEIC, so the container is sniffed and re-encoded when
+    /// this store can't name it — see `ImportedImageNormalizer`.
+    func importBackground(data: Data) throws -> String {
+        try store(data: data, fallbackExtension: "")
+    }
+
+    private func store(data: Data, fallbackExtension: String) throws -> String {
+        guard let image = UIImage(data: data),
+              image.size.width > 0,
+              image.size.height > 0 else {
+            throw ReaderCustomBackgroundStorageError.cannotReadImage
+        }
+        guard let output = ImportedImageNormalizer.normalize(
+            image: image,
+            data: data,
+            fallbackExtension: fallbackExtension,
+            allowedExtensions: allowedExtensions
+        ) else {
+            throw ReaderCustomBackgroundStorageError.cannotReadImage
+        }
+
+        let directory = try backgroundsDirectoryURL()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let fileName = "reader-background-\(UUID().uuidString).\(output.fileExtension)"
+        let destination = directory.appendingPathComponent(fileName)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try output.data.write(to: destination, options: .atomic)
+        return fileName
+    }
+
+    func fileURL(fileName: String) throws -> URL {
+        try backgroundsDirectoryURL().appendingPathComponent(fileName)
+    }
+
+    /// A small copy for the list's tiles and the editor's preview, cached: the full
+    /// picture is for the page itself.
+    func thumbnail(fileName: String) -> UIImage? {
+        if let cached = thumbnails.object(forKey: fileName as NSString) { return cached }
+        guard let url = try? fileURL(fileName: fileName),
+              let image = UIImage(contentsOfFile: url.path),
+              image.size.width > 0, image.size.height > 0 else {
+            return nil
+        }
+        let scale = min(1, 360 / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let thumbnail = image.preparingThumbnail(of: size) ?? image
+        thumbnails.setObject(thumbnail, forKey: fileName as NSString)
+        return thumbnail
+    }
+
+    func delete(fileName: String) {
+        thumbnails.removeObject(forKey: fileName as NSString)
+        let url: URL
+        do {
+            url = try fileURL(fileName: fileName)
+        } catch {
+            AppLogger.error("⟐ reading background folder unavailable", error: error)
+            return
+        }
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            AppLogger.error("⟐ reading background picture not deleted", error: error, context: ["file": fileName])
+        }
+    }
+
+    private func backgroundsDirectoryURL() throws -> URL {
+        let base = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        return base.appendingPathComponent("ReaderBackgrounds", isDirectory: true)
+    }
+}
+
+// MARK: - Launch Image storage
+
+enum LaunchImageScheme: String, CaseIterable, Identifiable {
+    case light
+    case dark
+    var id: String { rawValue }
+}
+
+enum LaunchImageStorageError: Error {
+    case unsupportedImageFile
+    case cannotReadImage
+
+    var messageKey: String {
+        switch self {
+        case .unsupportedImageFile:
+            return "只支援 WebP、JPG、JPEG 或 PNG 圖片。"
+        case .cannotReadImage:
+            return "無法讀取圖片。"
+        }
+    }
+}
+
+/// Copies imported launch images into Application Support/LaunchImages and hands
+/// back a stable file name persisted in `GlobalSettings`.
+final class LaunchImageStorageManager {
+    static let shared = LaunchImageStorageManager()
+
+    private let fileManager: FileManager
+    private let allowedExtensions: Set<String> = ["webp", "jpg", "jpeg", "png"]
+
+    private init(fileManager: FileManager = .default) {
+        self.fileManager = fileManager
+    }
+
+    func importImage(fileURL: URL, scheme: LaunchImageScheme) throws -> String {
+        let sourceExtension = fileURL.pathExtension.lowercased()
+        guard allowedExtensions.contains(sourceExtension) else {
+            throw LaunchImageStorageError.unsupportedImageFile
+        }
+        guard let data = try? Data(contentsOf: fileURL) else {
+            throw LaunchImageStorageError.cannotReadImage
+        }
+        return try store(data: data, fallbackExtension: sourceExtension, scheme: scheme)
+    }
+
+    /// Import from raw data (Photos picker). A photo-library pick has no file
+    /// name and is often HEIC, so the container is sniffed and re-encoded when
+    /// this store can't name it — see `ImportedImageNormalizer`.
+    func importImage(data: Data, scheme: LaunchImageScheme) throws -> String {
+        try store(data: data, fallbackExtension: "", scheme: scheme)
+    }
+
+    private func store(
+        data: Data,
+        fallbackExtension: String,
+        scheme: LaunchImageScheme
+    ) throws -> String {
+        guard let image = UIImage(data: data),
+              image.size.width > 0,
+              image.size.height > 0 else {
+            throw LaunchImageStorageError.cannotReadImage
+        }
+        guard let output = ImportedImageNormalizer.normalize(
+            image: image,
+            data: data,
+            fallbackExtension: fallbackExtension,
+            allowedExtensions: allowedExtensions
+        ) else {
+            throw LaunchImageStorageError.cannotReadImage
+        }
+
+        let directory = try imagesDirectoryURL()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let fileName = "launch-\(scheme.rawValue)-\(UUID().uuidString).\(output.fileExtension)"
+        let destination = directory.appendingPathComponent(fileName)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try output.data.write(to: destination, options: .atomic)
+        return fileName
+    }
+
+    func fileURL(fileName: String) throws -> URL {
+        try imagesDirectoryURL().appendingPathComponent(fileName)
+    }
+
+    func delete(fileName: String) {
+        guard let url = try? fileURL(fileName: fileName) else { return }
+        try? fileManager.removeItem(at: url)
+    }
+
+    private func imagesDirectoryURL() throws -> URL {
+        let base = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        return base.appendingPathComponent("LaunchImages", isDirectory: true)
+    }
+}

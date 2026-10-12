@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Assumed data model:
+// - users/{uid}: private profile and reader preferences owned by uid.
+// - users/{uid}/{collection}/{docId}: private sync records owned by uid.
+// - entitlements/{uid}: server-aggregated membership status; owner-readable only.
+// - accountTokens/{uid}: server-owned UUID used as StoreKit appAccountToken.
+// - purchaseBindings/{originalTransactionId}: server-verified Apple transaction owner.
+// - testflightRequests/{email}: server-owned normalized TestFlight request.
+// - testflightProRequests/{uid}: server-owned one-time TestFlight slot per Pro account.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /{collection}/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Aggregated membership is written only by Cloud Functions with Admin SDK.
+    match /entitlements/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // These collections contain server-owned purchase identity and transaction data.
+    match /accountTokens/{uid} {
+      allow read, write: if false;
+    }
+
+    match /purchaseBindings/{originalTransactionId} {
+      allow read, write: if false;
+    }
+
+    // TestFlight access requests are written only by Cloud Functions with
+    // Admin SDK (email validation + idempotency live in the function).
+    match /testflightRequests/{email} {
+      allow read, write: if false;
+    }
+
+    // One server-owned TestFlight slot per authenticated Pro account. The
+    // callable owns this collection so clients cannot reset the one-time gate.
+    match /testflightProRequests/{uid} {
+      allow read, write: if false;
+    }
+
+    // Client-side entitlement diagnostics, auto-reported by the app the moment
+    // a Pro entitlement drops (true -> false) on a device the developer cannot
+    // reach directly (e.g. a user reporting from behind a VPN). Anonymous
+    // create with a whitelisted schema of non-sensitive fields only; the
+    // developer reads these from the Firebase console with admin credentials.
+    match /entitlementDiagnostics/{docId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        "storeKit", "account", "iCloud", "ownedProducts", "revokedCount", "uid",
+        "appVersion", "build", "storefront", "iCloudAccountStatus", "createdAt"
+      ]);
+      allow read, update, delete: if false;
+    }
+  }
+}

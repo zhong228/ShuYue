@@ -1,0 +1,60 @@
+name: Build IPA (unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag, e.g. 1.0.0"
+        required: false
+        default: "1.0.0"
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 120
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode (prefer 26, fallback 16)
+        run: |
+          ls /Applications | grep -i xcode || true
+          XCODE_APP="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          fi
+          if [ -n "$XCODE_APP" ]; then
+            sudo xcode-select -s "$XCODE_APP"
+          fi
+          xcodebuild -version
+
+      - name: Build unsigned IPA
+        run: |
+          chmod +x scripts/build_ipa.sh
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          scripts/build_ipa.sh "$VERSION"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShuYue-unsigned-ipa
+          path: build/ShuYue-*.ipa
+          retention-days: 7
+
+      - name: Create Release and upload IPA
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ShuYue-*.ipa
+          generate_release_notes: true

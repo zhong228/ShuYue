@@ -1,0 +1,54 @@
+import Foundation
+
+/// Where async code runs synchronous source-script work — a parse, a `loginCheckJs`, a login
+/// menu's script.
+///
+/// Source JS runs on its engine's own queue while the caller waits for the result. A script
+/// can stop for the reader — `java.startBrowserAwait`, `java.getVerificationCode` — for as
+/// long as the reader takes, and a Swift concurrency thread that waits that long is gone from
+/// a pool the size of the CPU: a few sources waiting at once (a search across several
+/// Cloudflare-protected sources, 書源驗證) left no thread for any other async work in the
+/// app. The threads here are GCD's, which adds threads when its own are blocked — what
+/// Legado's IO dispatcher gives its source scripts.
+///
+/// Every synchronous call into source JS from async code goes through `run` — rules, the
+/// fetch-time URL and response scripts, `loginCheckJs`, login menus, 段評 actions, image
+/// decoding, RSS rules and TTS scripts. The one exception is a `@js:` header rule, which
+/// `BookSource.parsedHeaders` evaluates synchronously once per source revision and caches:
+/// none of the 115 such rules in 4,765 real sources reaches a user wait.
+enum SourceScriptThread {
+    private static let queue = DispatchQueue(
+        label: "com.yuedu.sourceScriptCallers",
+        qos: .userInitiated,
+        attributes: .concurrent
+    )
+
+    static func run<T>(_ body: @escaping () throws -> T) async throws -> T {
+        let qos = dispatchQoS(for: Task.currentPriority)
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async(qos: qos, flags: .enforceQoS) {
+                continuation.resume(with: Result(catching: body))
+            }
+        }
+    }
+
+    static func run<T>(_ body: @escaping () -> T) async -> T {
+        let qos = dispatchQoS(for: Task.currentPriority)
+        return await withCheckedContinuation { continuation in
+            queue.async(qos: qos, flags: .enforceQoS) {
+                continuation.resume(returning: body())
+            }
+        }
+    }
+
+    /// The caller's priority carried over, so a background download's parse does not run at
+    /// search's priority.
+    private static func dispatchQoS(for priority: TaskPriority) -> DispatchQoS {
+        switch priority {
+        case .high, .userInitiated: return .userInitiated
+        case .low, .utility: return .utility
+        case .background: return .background
+        default: return .default
+        }
+    }
+}

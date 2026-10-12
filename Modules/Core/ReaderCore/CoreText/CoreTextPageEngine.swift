@@ -1,0 +1,1877 @@
+import CoreText
+import CoreGraphics
+import CryptoKit
+import os
+import UIKit
+import ReadiumShared
+import YueduCoreText
+
+struct FontRegistrationResult {
+    let familyName: String
+    let postScriptName: String
+    let tempFileURL: URL?
+}
+
+protocol FontRegistrationServicing {
+    func registerFont(data: Data, alias: String, existingTempURL: URL?) -> FontRegistrationResult?
+    func cleanupTemporaryFile(at url: URL)
+}
+
+final class CoreTextFontRegistrationService: FontRegistrationServicing {
+    /// URL registrations are path-backed on iOS: removing the temporary file
+    /// while the process registration is still live makes a later UIFont lookup
+    /// fall through to LastResort. Frontends own separate resolver instances, so
+    /// immutable font bytes need one process-wide registration and one retained
+    /// backing file rather than resolver-scoped UUID files.
+    private static let registrationLock = NSLock()
+    private nonisolated(unsafe) static var registrationsByDigest: [String: FontRegistrationResult] = [:]
+
+    static func cleanupStaleTemporaryFonts(maxAge: TimeInterval = 7 * 24 * 60 * 60) {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+        let cutoff = Date().addingTimeInterval(-maxAge)
+
+        guard let urls = try? fm.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return }
+
+        for url in urls where url.lastPathComponent.hasPrefix("reader-font-") {
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            if let modified, modified < cutoff {
+                try? fm.removeItem(at: url)
+            }
+        }
+    }
+
+    func registerFont(data: Data, alias: String, existingTempURL: URL?) -> FontRegistrationResult? {
+        let digest = Self.digest(for: data)
+        Self.registrationLock.lock()
+        defer { Self.registrationLock.unlock() }
+
+        if let existing = Self.registrationsByDigest[digest] {
+            return existing
+        }
+
+        let result = registerUncached(
+            data: data,
+            alias: alias,
+            digest: digest,
+            existingTempURL: existingTempURL
+        )
+        if let result {
+            Self.registrationsByDigest[digest] = result
+        }
+        return result
+    }
+
+    private func registerUncached(
+        data: Data,
+        alias: String,
+        digest: String,
+        existingTempURL: URL?
+    ) -> FontRegistrationResult? {
+        _ = alias
+        let sourceFont: CTFont?
+        if let provider = CGDataProvider(data: data as CFData),
+           let cgFont = CGFont(provider) {
+            let directFont = CTFontCreateWithGraphicsFont(cgFont, 12, nil, nil)
+            sourceFont = directFont
+
+            let name = CTFontCopyPostScriptName(directFont) as String
+            if let existing = UIFont(name: name, size: 12),
+               !Self.hasMatchingGlyphMap(source: directFont, registered: existing as CTFont) {
+                // EPUBs can embed unrelated subsets named "Undefined". A
+                // family-name lookup may succeed during registration, but a
+                // later PostScript lookup would silently pick the other book.
+                // Give this asset its own internal identity before registration.
+                guard let isolated = EmbeddedTrueTypeFontIdentity.namespaced(data, digest: digest) else {
+                    // Unsupported/non-SFNT collisions must use the next authored
+                    // CSS family, never the unrelated registered font. Remove
+                    // this limitation when CFF/collection renaming is supported.
+                    AppLogger.render("[CoreTextEngine] unsupported embedded font name collision ps=\(name)")
+                    return nil
+                }
+                return registerUncached(data: isolated, alias: alias, digest: digest, existingTempURL: nil)
+            }
+
+            var graphicsError: Unmanaged<CFError>?
+            let registered = CTFontManagerRegisterGraphicsFont(cgFont, &graphicsError)
+            if let resolved = Self.resolveRegisteredGraphicsFont(
+                cgFont: cgFont,
+                sourceFont: directFont
+            ) {
+                return FontRegistrationResult(
+                    familyName: resolved.familyName,
+                    postScriptName: resolved.fontName,
+                    tempFileURL: nil
+                )
+            }
+
+            // A successful graphics registration that cannot be resolved back
+            // to the source glyph map must not poison the following URL path.
+            if registered {
+                var unregisterError: Unmanaged<CFError>?
+                _ = CTFontManagerUnregisterGraphicsFont(cgFont, &unregisterError)
+            } else if let error = graphicsError?.takeRetainedValue() {
+                AppLogger.render("[CoreTextEngine] registerFont graphics warning: \(error)")
+            }
+        } else {
+            sourceFont = nil
+        }
+
+        let tempURL = existingTempURL
+            ?? FileManager.default.temporaryDirectory
+                .appendingPathComponent("reader-font-\(digest)")
+                .appendingPathExtension("ttf")
+
+        var writableTempURL: URL? = tempURL
+
+        do {
+            try data.write(to: tempURL, options: .atomic)
+
+            var registrationError: Unmanaged<CFError>?
+            let registered = CTFontManagerRegisterFontsForURL(tempURL as CFURL, .process, &registrationError)
+            if !registered, let error = registrationError?.takeRetainedValue() {
+                AppLogger.render("[CoreTextEngine] registerFont URL register warning: \(error)")
+            }
+
+            if let descriptors = CTFontManagerCreateFontDescriptorsFromURL(tempURL as CFURL) as? [[CFString: Any]],
+               let descriptor = descriptors.first {
+                let postScriptName = descriptor[kCTFontNameAttribute] as? String ?? ""
+                let familyName = descriptor[kCTFontFamilyNameAttribute] as? String ?? ""
+                if !familyName.isEmpty || !postScriptName.isEmpty {
+                    let resolvedPostScript = postScriptName.isEmpty ? familyName : postScriptName
+                    let resolvedFamily = familyName.isEmpty ? postScriptName : familyName
+                    if let sourceFont,
+                       let registeredFont = UIFont(name: resolvedPostScript, size: 12)
+                            ?? UIFont(name: resolvedFamily, size: 12),
+                       !Self.hasMatchingGlyphMap(
+                            source: sourceFont,
+                            registered: registeredFont as CTFont
+                       ) {
+                        var unregisterError: Unmanaged<CFError>?
+                        _ = CTFontManagerUnregisterFontsForURL(
+                            tempURL as CFURL,
+                            .process,
+                            &unregisterError
+                        )
+                        try? FileManager.default.removeItem(at: tempURL)
+                        AppLogger.render("[CoreTextEngine] registerFont URL glyph-map mismatch ps=\(resolvedPostScript)")
+                        return nil
+                    } else {
+                        return FontRegistrationResult(
+                            familyName: resolvedFamily,
+                            postScriptName: resolvedPostScript,
+                            tempFileURL: tempURL
+                        )
+                    }
+                }
+            }
+        } catch {
+            writableTempURL = nil
+            AppLogger.render("[CoreTextEngine] registerFont temp write failed: \(error)")
+        }
+
+        guard
+            let provider = CGDataProvider(data: data as CFData),
+            let cgFont = CGFont(provider)
+        else {
+            AppLogger.render("[CoreTextEngine] registerFont CGFont provider failed header=\(data.prefix(8).map { String(format: "%02x", $0) }.joined())")
+            return nil
+        }
+
+        let descriptors = CTFontManagerCreateFontDescriptorsFromData(data as CFData)
+        if CFArrayGetCount(descriptors) == 0 {
+            AppLogger.render("[CoreTextEngine] registerFont warning: failed to register font from data")
+        }
+
+        let postScriptName = cgFont.postScriptName as String? ?? ""
+        let font = CTFontCreateWithGraphicsFont(cgFont, 12, nil, nil)
+        let familyName = CTFontCopyFamilyName(font) as String
+        guard !familyName.isEmpty || !postScriptName.isEmpty else { return nil }
+
+        return FontRegistrationResult(
+            familyName: familyName.isEmpty ? postScriptName : familyName,
+            postScriptName: postScriptName.isEmpty ? familyName : postScriptName,
+            tempFileURL: writableTempURL
+        )
+    }
+
+    func cleanupTemporaryFile(at url: URL) {
+        Self.registrationLock.lock()
+        let backsLiveRegistration = Self.registrationsByDigest.values.contains {
+            $0.tempFileURL?.standardizedFileURL == url.standardizedFileURL
+        }
+        Self.registrationLock.unlock()
+        guard !backsLiveRegistration else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private static func digest(for data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func resolveRegisteredGraphicsFont(
+        cgFont: CGFont,
+        sourceFont: CTFont
+    ) -> UIFont? {
+        let familyName = CTFontCopyFamilyName(sourceFont) as String
+        let postScriptName = (cgFont.postScriptName as String?)
+            ?? (CTFontCopyPostScriptName(sourceFont) as String)
+        for name in [postScriptName, familyName] where !name.isEmpty {
+            guard let candidate = UIFont(name: name, size: 12) else { continue }
+            if hasMatchingGlyphMap(source: sourceFont, registered: candidate as CTFont) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    /// Matching a few glyph IDs misses both subset coverage differences and
+    /// unrelated outlines with the same cmap. Verify the actual font tables.
+    private static func hasMatchingGlyphMap(source: CTFont, registered: CTFont) -> Bool {
+        let tags: [CTFontTableTag] = [
+            CTFontTableTag(kCTFontTableCmap), CTFontTableTag(kCTFontTableGlyf),
+            CTFontTableTag(kCTFontTableCFF), 0x43464632, CTFontTableTag(kCTFontTableHmtx)
+        ]
+        guard CTFontGetGlyphCount(source) == CTFontGetGlyphCount(registered) else { return false }
+        return tags.allSatisfy { tag in
+            let lhs = CTFontCopyTable(source, tag, []).map { $0 as Data }
+            let rhs = CTFontCopyTable(registered, tag, []).map { $0 as Data }
+            return lhs == rhs
+        }
+    }
+
+}
+
+/// A page as `CoreTextPageView.renderPage` painted it, with the bars it was painted
+/// with: a live page uses the bitmap only when it is exactly what the page would
+/// draw itself (see `livePageSource`).
+final class ReaderRenderedPage {
+    let image: UIImage
+    let bars: ReaderPageBars?
+
+    init(image: UIImage, bars: ReaderPageBars?) {
+        self.image = image
+        self.bars = bars
+    }
+}
+
+@MainActor
+final class CoreTextPageEngine: PageRenderingProvider, LinkNavigationProviding, PageBarsProviding {
+
+    private(set) var totalPages: Int = 0
+    private(set) var currentPage: Int = 0
+    private var readingAnchor = CoreTextReadingPosition.chapterStart(0)
+
+    private let _layouts = LayoutCache<CoreTextPaginator.ChapterLayout>()
+    var layouts: [Int: CoreTextPaginator.ChapterLayout] {
+        _layouts.asDictionary
+    }
+    // Identity belongs to one installed layout, including its appearance. Keep only
+    // the same bounded set of chapters as LayoutCache; image storage retains the
+    // existing device-tiered NSCache limits.
+    private var snapshotLayoutRevisions: [Int: UUID] = [:]
+    private let chapterSnapshots: NSCache<NSString, ReaderRenderedPage> = {
+        let cache = NSCache<NSString, ReaderRenderedPage>()
+        let physicalMemory = ProcessInfo.processInfo.physicalMemory
+        // Device-tiered snapshot budget. The old floor of 64MB was too high for
+        // low-memory devices (<4GB): a 3x screen snapshot is ~10-12MB, so 64MB
+        // already meant 5-6 images. Snapshots back cross-chapter curl/cover
+        // animation handoff — never zero them out, only size them per tier.
+        //   <4GB  (XR/11/SE2):  16MB, 4 images  = current chapter ±1 first/last pages
+        //   4-6GB:             32MB, 6 images
+        //   ≥6GB  (incl. iPad): ~5% clamped to 64-128MB, 12 images
+        var budget = 64 * 1024 * 1024
+        var countLimit = 12
+        if physicalMemory < 4 * 1024 * 1024 * 1024 {
+            budget = 16 * 1024 * 1024
+            countLimit = 4
+        } else if physicalMemory < 6 * 1024 * 1024 * 1024 {
+            budget = 32 * 1024 * 1024
+            countLimit = 6
+        } else {
+            let fivePercent = Int(physicalMemory / 20)
+            budget = min(max(fivePercent, 64 * 1024 * 1024), 128 * 1024 * 1024)
+            countLimit = 12
+        }
+        cache.totalCostLimit = budget
+        // Keep a modest countLimit to avoid flooding the cache with many low-cost snapshots.
+        cache.countLimit = countLimit
+        return cache
+    }()
+    private var spinePageOffsets: [Int] = []
+    private(set) var renderSize: CGSize = .zero
+    private var preloadTasks: [Int: Task<ChapterLayoutOutcome, Never>] = [:]
+    private var preloadTaskIDs: [Int: UUID] = [:]
+    private var layoutGeneration: Int = 0
+    private var nextLayoutInvalidationOperationID: UInt64 = 0
+    private var activeLayoutInvalidationOperationID: UInt64?
+
+    private let attributedBuilder: any AttributedStringBuilding
+    private let chapterDocumentStore: ChapterDocumentStore
+    private let paginationManager: PaginationManager
+    let offsetStore: CharOffsetStore
+
+    private(set) var renderSettings: ReaderRenderSettings
+
+    private var currentBookId: String?
+    private var chapterByteScanTask: Task<Void, Never>?
+    private var startupBeganUptime: TimeInterval?
+    private var didLogProgressFallback = false
+    private var didLogProgressByteMode = false
+    /// Raw data size (bytes) per chapter, used for global progress estimation
+    private var chapterByteSizes: [Int] = []
+    /// Prefix-summed byte units for stable O(1) reading metrics. Unlike layouts,
+    /// this metadata is not evicted by the chapter LRU.
+    private var contentUnitMap: ReaderContentUnitMap?
+
+    private(set) var isRelaying = false
+
+    private var themeTextColor: UIColor = .label
+    private var themeBackgroundColor: UIColor = .systemBackground
+    private var cachedReaderBackgroundImageURL: URL?
+    private var cachedReaderBackgroundImage: UIImage?
+    private var textAnnotations: [CoreTextTextAnnotation] = []
+    var onChapterReady: ((Int?) -> Void)?
+    var onChapterLayoutUnresolved: ((Int, ChapterLayoutOutcome) -> Void)?
+    var onNavigateToPage: ((Int) -> Void)?
+    /// Fired when a tapped in-content link (TOC table, cross-reference) resolves to a page.
+    /// Distinct from `onNavigateToPage`, which is a binding-level offset-correction channel:
+    /// the host's executor model never turns a bare binding write into a visible page change,
+    /// so a link tap must come through here to actually move the page view controller.
+    var onLinkNavigate: ((Int) -> Void)?
+
+    deinit {
+        chapterByteScanTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func subscribeMemoryWarning() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                // A jetsam kill shows up only as a session that never reached the
+                // background. This is the one warning the app gets first, so it is the
+                // only thing that can explain one after the fact.
+                AppLogger.render(
+                    "⟐ memory warning — dropping every cached layout and snapshot",
+                    level: .warning
+                )
+                MemoryFootprint.log("warning-before")
+                self?.invalidateSnapshots()
+                self?._layouts.trim(keeping: 0)
+                self?.cancelPreloadTasks()
+                self?.chapterDocumentStore.invalidateAll()
+                MemoryFootprint.log("warning-after")
+            }
+        }
+
+        // A requested CJK font (楷体/宋体/…) finished downloading — re-paginate loaded chapters so
+        // the real typeface replaces the PingFang fallback rendered on the first pass.
+        NotificationCenter.default.addObserver(
+            forName: CJKFontInstaller.didInstallNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.renderSize != .zero, !self.isRelaying else { return }
+                Task { await self.invalidateLayout(newSize: self.renderSize) }
+            }
+        }
+    }
+
+    private func startupElapsedMs() -> String {
+        guard let startupBeganUptime else { return "n/a" }
+        let elapsedMs = (ProcessInfo.processInfo.systemUptime - startupBeganUptime) * 1000
+        return String(format: "%.1f", elapsedMs)
+    }
+
+    private func startupTrace(_ message: String) {
+        let line = "[StartupTrace][CoreTextPageEngine][+\(startupElapsedMs())ms] \(message)"
+        AppLogger.render(line)
+        NSLog("%@", line)
+    }
+
+    init(
+        attributedBuilder: any AttributedStringBuilding,
+        renderSettings: ReaderRenderSettings,
+        chapterDocumentStore: ChapterDocumentStore? = nil,
+        paginationManager: PaginationManager? = nil,
+        offsetStore: CharOffsetStore
+    ) {
+        self.attributedBuilder = attributedBuilder
+        self.chapterDocumentStore = chapterDocumentStore
+            ?? ChapterDocumentStore(builder: attributedBuilder)
+        self.renderSettings = renderSettings
+        self.paginationManager = paginationManager ?? PaginationManager()
+        self.offsetStore = offsetStore
+        subscribeMemoryWarning()
+    }
+
+    convenience init(
+        session: PublicationSession,
+        renderSettings: ReaderRenderSettings,
+        fontRegistrationService: any FontRegistrationServicing = CoreTextFontRegistrationService(),
+        paginationManager: PaginationManager? = nil,
+        offsetStore: CharOffsetStore
+    ) {
+        self.init(
+            attributedBuilder: EPUBAttributedStringBuilder(session: session, renderSize: .zero),
+            renderSettings: renderSettings,
+            paginationManager: paginationManager,
+            offsetStore: offsetStore
+        )
+    }
+
+    func updateRenderSettings(_ settings: ReaderRenderSettings) {
+        renderSettings = settings
+    }
+
+    private func currentReaderBackgroundImage() -> UIImage? {
+        let url = renderSettings.readerBackgroundImageURL
+        guard cachedReaderBackgroundImageURL != url else { return cachedReaderBackgroundImage }
+        cachedReaderBackgroundImageURL = url
+        cachedReaderBackgroundImage = url.flatMap { UIImage(contentsOfFile: $0.path) }
+        return cachedReaderBackgroundImage
+    }
+
+    func setTextAnnotations(_ annotations: [CoreTextTextAnnotation]) {
+        textAnnotations = annotations
+        onChapterReady?(nil)
+    }
+
+    private var chapterCount: Int {
+        attributedBuilder.chapterCount
+    }
+
+    private func chapterTitle(at index: Int) -> String {
+        attributedBuilder.chapterTitle(at: index)
+    }
+
+    private func chapterSourceHref(at index: Int) -> String {
+        attributedBuilder.chapterSourceHref(at: index) ?? ""
+    }
+
+    private func chapterIndex(for href: String) -> Int? {
+        attributedBuilder.chapterIndex(for: href)
+    }
+
+    func start(renderSize: CGSize, bookId: String) async {
+        await start(renderSize: renderSize, bookId: bookId, preloadingFirstChapter: true)
+    }
+
+    /// `preloadingFirstChapter: false` is the browser engine's start: it owns the
+    /// first chapter's admission and lays it out with whichever engine that picks,
+    /// asking this one through `preloadChapter(at:)` only on a fallback. Building
+    /// chapter 0 here as well laid it out twice on every open of a browser book.
+    func start(renderSize: CGSize, bookId: String, preloadingFirstChapter: Bool) async {
+        startupBeganUptime = ProcessInfo.processInfo.systemUptime
+        self.renderSize = renderSize
+        updateBuilderRenderSize(renderSize)
+        self.currentBookId = bookId
+        didLogProgressFallback = false
+        didLogProgressByteMode = false
+        let totalChapters = chapterCount
+        AppLogger.render("[CoreTextEngine] start renderSize=\(renderSize) chapters=\(totalChapters)")
+        startupTrace("start bookId=\(bookId) renderSize=\(renderSize) chapters=\(totalChapters)")
+        guard totalChapters > 0 else {
+            totalPages = 0
+            currentPage = 0
+            return
+        }
+
+        // 1. Background scan of all chapter data sizes (does not block the main open-book flow)
+        chapterByteScanTask?.cancel()
+        chapterByteSizes = []
+        contentUnitMap = nil
+        startupTrace("byteScan launch mode=background")
+        chapterByteScanTask = Task { [weak self] in
+            guard let self else { return }
+            await self.scanChapterByteSizes(for: bookId)
+        }
+
+        // 2. Load chapter 0. Restore targets are supplied by ReaderNavigator/ReaderView;
+        // the engine no longer reads persisted position independently.
+        guard preloadingFirstChapter else {
+            startupTrace("preload skipped: the browser engine admits chapter 0")
+            AppLogger.render("[CoreTextEngine] start done without chapter 0 (browser admission)")
+            return
+        }
+        var priority = Set<Int>()
+        priority.insert(0) // Cover/TOC is always needed
+        startupTrace("preload priority=\(priority.sorted())")
+
+        await withTaskGroup(of: Void.self) { group in
+            for i in priority.sorted() {
+                group.addTask { await self.awaitFirstLayout(at: i) }
+            }
+        }
+        startupTrace("preload priority done totalPages=\(totalPages)")
+        AppLogger.render("[CoreTextEngine] start done totalPages=\(totalPages)")
+    }
+
+    /// Returns once the spine has ANY layout installed — a partial first page
+    /// counts. Used by `start()` so the reader's first paint isn't gated on
+    /// paginating a huge opening chapter fully; the running preload task keeps
+    /// completing the layout in the background.
+    private func awaitFirstLayout(at spineIndex: Int) async {
+        guard (0..<chapterCount).contains(spineIndex) else { return }
+        if _layouts[spineIndex] != nil { return }
+        schedulePreloadChapter(at: spineIndex)
+        // Installs happen on the main actor between awaits; poll at frame pace.
+        while _layouts[spineIndex] == nil, preloadTasks[spineIndex] != nil {
+            try? await Task.sleep(nanoseconds: 16_000_000)
+        }
+    }
+
+    private func scanChapterByteSizes(for bookId: String) async {
+        startupTrace("byteScan begin bookId=\(bookId) chapters=\(chapterCount) mode=builder")
+
+        // Lazy path: online books skip the full O(N) scan.
+        // Sizes are filled incrementally via notifyChapterDataChanged.
+        if attributedBuilder.prefersLazyByteScan {
+            guard !Task.isCancelled else { return }
+            guard currentBookId == bookId else { return }
+            chapterByteSizes = [Int](repeating: 0, count: attributedBuilder.chapterCount)
+            contentUnitMap = nil
+            startupTrace("byteScan lazy chapters=\(attributedBuilder.chapterCount)")
+            rebuildPageOffsets()
+            onChapterReady?(nil)
+            return
+        }
+
+        var sizes = [Int](repeating: 0, count: attributedBuilder.chapterCount)
+        for i in 0..<attributedBuilder.chapterCount {
+            if Task.isCancelled { return }
+            sizes[i] = await attributedBuilder.chapterDataSize(at: i)
+            if i == 0 || i == attributedBuilder.chapterCount - 1 || i % 200 == 0 {
+                startupTrace("byteScan progress=\(i + 1)/\(attributedBuilder.chapterCount)")
+            }
+        }
+
+        guard !Task.isCancelled else { return }
+        guard currentBookId == bookId else { return }
+        chapterByteSizes = sizes
+        contentUnitMap = ReaderContentUnitMap(chapterUnitCounts: sizes)
+        let totalBytes = sizes.reduce(0, +)
+        startupTrace("byteScan done chapters=\(sizes.count) totalBytes=\(totalBytes)")
+        rebuildPageOffsets()
+        onChapterReady?(nil)
+    }
+
+    /// Global progress (0.0 ~ 1.0).
+    ///
+    /// - Online books (`prefersLazyByteScan == true`): uses `(spineIndex + intra-chapter page progress) / chapterCount`.
+    ///   Because unfetched chapters have byteSize=0, byte-based summation would drift as fetching progresses
+    ///   (e.g. chapter 4 shows 80% initially, then drops to 7% as more chapters are fetched). Chapter-index-based progress stays stable.
+    /// - EPUB / TXT: all chapter byte sizes are known at open time, byte-based summation is more accurate (longer chapters have higher weight).
+    func totalProgress(forSpine spineIndex: Int, charOffset: Int) -> Double {
+        let totalChapters = max(chapterCount, 1)
+        let clampedSpine = min(max(spineIndex, 0), totalChapters - 1)
+
+        if attributedBuilder.prefersLazyByteScan {
+            let layout = _layouts[clampedSpine]
+            let charLen = layout?.sourceLength ?? 0
+            let chapterFraction: Double
+            if charLen > 0 {
+                chapterFraction = min(1.0, max(0.0, Double(charOffset) / Double(charLen)))
+            } else {
+                chapterFraction = 0
+            }
+            return min(1.0, (Double(clampedSpine) + chapterFraction) / Double(totalChapters))
+        }
+
+        if let metrics = contentMetrics(
+            forSpine: clampedSpine,
+            charOffset: charOffset,
+            currentChapterCharacterCount: nil
+        ) {
+            return Double(metrics.currentUnitOffset) / Double(metrics.totalUnitCount)
+        }
+
+        guard !chapterByteSizes.isEmpty else {
+            if !didLogProgressFallback {
+                didLogProgressFallback = true
+                startupTrace("totalProgress mode=fallback spine=\(spineIndex) clamped=\(clampedSpine) totalChapters=\(totalChapters)")
+            }
+            return min(1.0, Double(clampedSpine) / Double(totalChapters))
+        }
+        if !didLogProgressByteMode {
+            didLogProgressByteMode = true
+            startupTrace("totalProgress mode=bytes chapterByteSizesReady count=\(chapterByteSizes.count)")
+        }
+        let total = chapterByteSizes.reduce(0, +)
+        guard total > 0 else { return 0 }
+        let prior = chapterByteSizes.prefix(spineIndex).reduce(0, +)
+
+        // Convert the current chapter's charOffset proportionally to bytes
+        let currentChapterBytes = chapterByteSizes.indices.contains(spineIndex) ? chapterByteSizes[spineIndex] : 0
+        let currentChapterChars = layouts[spineIndex]?.sourceLength ?? currentChapterBytes
+        let scaledOffset: Int
+        if currentChapterChars > 0 {
+            scaledOffset = Int(Double(charOffset) / Double(currentChapterChars) * Double(currentChapterBytes))
+        } else {
+            scaledOffset = charOffset
+        }
+        return min(1.0, Double(prior + scaledOffset) / Double(total))
+    }
+
+    func contentMetrics(
+        forSpine spineIndex: Int,
+        charOffset: Int,
+        currentChapterCharacterCount: Int?
+    ) -> ReaderContentMetrics? {
+        guard !attributedBuilder.prefersLazyByteScan,
+              let contentUnitMap
+        else {
+            return nil
+        }
+        let characterCount = currentChapterCharacterCount
+            ?? _layouts[spineIndex]?.sourceLength
+        return contentUnitMap.metrics(
+            spineIndex: spineIndex,
+            localCharacterOffset: charOffset,
+            currentChapterCharacterCount: characterCount
+        )
+    }
+
+    /// Maps global progress (0.0 ~ 1.0) to (spineIndex, charOffset)
+    func position(forProgress progress: Double) -> (spineIndex: Int, charOffset: Int) {
+        let totalChapters = chapterCount
+        guard totalChapters > 0 else { return (0, 0) }
+
+        // Online books: align with totalProgress's chapter-index-based approach to avoid jumping to wrong chapters when dragging the slider
+        if attributedBuilder.prefersLazyByteScan {
+            let scaled = progress * Double(totalChapters)
+            let idx = max(0, min(Int(scaled), totalChapters - 1))
+            let chapterFraction = max(0.0, min(1.0, scaled - Double(idx)))
+            let charLen = layouts[idx]?.sourceLength ?? 0
+            let charOffset = charLen > 0 ? Int(chapterFraction * Double(charLen)) : 0
+            return (idx, charOffset)
+        }
+
+        guard !chapterByteSizes.isEmpty else {
+            let idx = Int(progress * Double(max(0, totalChapters - 1)))
+            let clamped = max(0, min(idx, totalChapters - 1))
+            return (clamped, 0)
+        }
+
+        let totalBytes = chapterByteSizes.reduce(0, +)
+        guard totalBytes > 0 else { return (0, 0) }
+        let targetByte = Int(progress * Double(totalBytes))
+
+        var currentSum = 0
+        for (i, size) in chapterByteSizes.enumerated() {
+            if currentSum + size > targetByte {
+                let byteOffsetInChapter = targetByte - currentSum
+                let charLength = layouts[i]?.sourceLength ?? size
+                let charOffset = Int(Double(byteOffsetInChapter) / Double(max(1, size)) * Double(charLength))
+                return (i, charOffset)
+            }
+            currentSum += size
+        }
+        return (max(0, totalChapters - 1), 0)
+    }
+
+    func updateReadingPosition(_ position: CoreTextReadingPosition) {
+        guard (0..<chapterCount).contains(position.spineIndex) else { return }
+        if readingAnchor != position {
+            AppLogger.render("[FlipTrace] readingAnchor \(readingAnchor) → \(position)")
+        }
+        readingAnchor = position
+        // A TOC jump must move the eviction anchor before its layout is inserted.
+        // Waiting for warmUpNext after a successful page turn discarded the distant
+        // destination itself from the full five-entry cache, causing endless rebuilds.
+        _layouts.setCurrentChapter(position.spineIndex)
+        if let page = pageIndex(for: position) ?? estimatedGlobalPage(for: position) {
+            currentPage = max(0, min(page, max(totalPages - 1, 0)))
+        }
+    }
+
+    private func cancelPreloadTasks() {
+        for task in preloadTasks.values {
+            task.cancel()
+        }
+        preloadTasks.removeAll()
+        preloadTaskIDs.removeAll()
+    }
+
+    /// Why this attempt must stop, or nil to carry on.
+    ///
+    /// This was a `Bool`, which collapsed "someone threw away every layout" and "this
+    /// task was cancelled" into one indistinguishable early return — and both of them
+    /// left the caller looking at a missing chapter with no way to say which had
+    /// happened. They are different bugs with different fixes, so they are different
+    /// values now.
+    private func abortReason(generation: Int) -> ChapterLayoutOutcome? {
+        if generation != layoutGeneration { return .supersededByGeneration }
+        return Task.isCancelled ? .cancelled : nil
+    }
+
+    private func makePreloadTask(
+        spineIndex: Int,
+        generation: Int,
+        taskID: UUID
+    ) -> Task<ChapterLayoutOutcome, Never> {
+        Task { @MainActor [weak self] in
+            // The engine went away mid-flight; nobody is left to receive a layout.
+            guard let self else { return .cancelled }
+            defer {
+                if self.preloadTaskIDs[spineIndex] == taskID {
+                    self.preloadTasks.removeValue(forKey: spineIndex)
+                    self.preloadTaskIDs.removeValue(forKey: spineIndex)
+                }
+            }
+            return await self.preloadChapterInternal(at: spineIndex, generation: generation)
+        }
+    }
+
+    @discardableResult
+    private func installPreloadTask(
+        spineIndex: Int,
+        generation: Int
+    ) -> Task<ChapterLayoutOutcome, Never> {
+        let taskID = UUID()
+        let task = makePreloadTask(
+            spineIndex: spineIndex,
+            generation: generation,
+            taskID: taskID
+        )
+        preloadTaskIDs[spineIndex] = taskID
+        preloadTasks[spineIndex] = task
+        return task
+    }
+
+    private func schedulePreloadChapter(at spineIndex: Int) {
+        guard (0..<chapterCount).contains(spineIndex) else {
+            AppLogger.render("[FlipTrace] schedulePreload skip outOfRange spine=\(spineIndex) chapterCount=\(chapterCount)")
+            return
+        }
+        guard _layouts[spineIndex]?.isPartial != false else {
+            AppLogger.render("[FlipTrace] schedulePreload skip loaded spine=\(spineIndex) layouts=\(_layouts.keys.sorted())")
+            return
+        }
+        guard preloadTasks[spineIndex] == nil else {
+            AppLogger.render("[FlipTrace] schedulePreload skip pending spine=\(spineIndex) pending=\(preloadTasks.keys.sorted())")
+            return
+        }
+
+        let generation = layoutGeneration
+        AppLogger.render("[FlipTrace] schedulePreload spine=\(spineIndex) generation=\(generation) layouts=\(_layouts.keys.sorted())")
+        installPreloadTask(
+            spineIndex: spineIndex,
+            generation: generation
+        )
+    }
+
+    /// Every caller that throws away every laid-out chapter, so the log can name the one
+    /// that did it.
+    ///
+    /// A blind user's export showed the layout generation climbing 3 → 9 in 53 seconds
+    /// with chapter 14 re-preloaded four times inside one second — a retry storm that
+    /// made VoiceOver page turns crawl. The retries were visible; what bumped the
+    /// generation was not, because these lines were `trace` and dropped with verbose off.
+
+    func cancelPendingWork(cause: LayoutInvalidationCause = .unspecified) {
+        // `notice`, not `trace`: discarding every layout is the most expensive thing this
+        // engine does, and it is never narration.
+        AppLogger.render(
+            "⟐ layoutGeneration \(layoutGeneration) → \(layoutGeneration + 1) cause=\(cause.rawValue) discardingPreloads",
+            level: .notice
+        )
+        cancelPendingWorkInternal()
+    }
+
+    private func cancelPendingWorkInternal() {
+        AppLogger.render("[FlipTrace] cancelPendingWork generation=\(layoutGeneration) pending=\(preloadTasks.keys.sorted()) layouts=\(_layouts.keys.sorted())")
+        layoutGeneration += 1
+        cancelPreloadTasks()
+        if activeLayoutInvalidationOperationID != nil {
+            activeLayoutInvalidationOperationID = nil
+            isRelaying = false
+        }
+    }
+
+    func pageViewController(at index: Int) -> UIViewController {
+        let (spineIndex, localPage) = localPosition(for: index)
+        // A partial layout only carries its leading page(s); later pages fall
+        // through to the placeholder path until full pagination replaces it.
+        if let layout = _layouts[spineIndex], localPage < layout.pageRanges.count {
+            AppLogger.render("[FlipTrace] pageVC REAL page=\(index) spine=\(spineIndex) local=\(localPage) pages=\(layout.pageRanges.count)")
+            return configuredPageViewController(
+                layout: layout,
+                spineIndex: spineIndex,
+                localPage: localPage,
+                globalPage: index
+            )
+        }
+        let title = chapterTitle(at: spineIndex)
+        let readingPosition = placeholderReadingPosition(
+            spineIndex: spineIndex,
+            localPage: localPage,
+            globalPage: index
+        )
+        AppLogger.render("[FlipTrace] pageVC PLACEHOLDER page=\(index) spine=\(spineIndex) local=\(localPage) layouts=\(_layouts.keys.sorted()) pending=\(preloadTasks.keys.sorted())")
+        let placeholder = PlaceholderPageViewController(
+            chapterTitle: title,
+            globalPage: index,
+            readingPosition: readingPosition,
+            themeBackgroundColor: themeBackgroundColor,
+            themeTextColor: themeTextColor,
+            readerBackgroundImage: currentReaderBackgroundImage()
+        )
+        Task { [weak self] in
+            guard let self else { return }
+            let outcome = await self.preloadChapter(at: spineIndex)
+            guard _layouts[spineIndex] != nil else {
+                // The placeholder this page is standing in for will not be replaced by
+                // this attempt, and nothing here asks again — the user's own workaround
+                // is to swipe away and back, which calls this method afresh. Which exit
+                // `preloadChapter` took is the whole question, so it is in the line.
+                AppLogger.render(
+                    "⟐ placeholder unresolved spine=\(spineIndex) outcome=\(outcome.rawValue)"
+                    + " generation=\(layoutGeneration) pending=\(preloadTasks.keys.sorted())",
+                    level: .warning
+                )
+                self.onChapterLayoutUnresolved?(spineIndex, outcome)
+                return
+            }
+            self.onChapterReady?(spineIndex)
+        }
+        return placeholder
+    }
+
+    /// Character offset of an anchor (`id`/fragment) within a spine, if that spine is laid out.
+    /// Returns nil when the spine hasn't been paginated yet or the anchor is unknown, letting
+    /// callers fall back to the spine start.
+    func charOffset(forSpine spineIndex: Int, fragment: String) -> Int? {
+        _layouts[spineIndex]?.anchorOffsets[fragment]
+    }
+
+    func pageIndex(forSpine spineIndex: Int, charOffset: Int) -> Int {
+        guard spinePageOffsets.indices.contains(spineIndex) else { return 0 }
+        if let layout = _layouts[spineIndex] {
+            let localPage = layout.pageIndex(for: layout.displayOffset(forSource: charOffset))
+            return spinePageOffsets[spineIndex] + localPage
+        } else {
+            // Rough estimate when not yet loaded: ~400 characters per page (conservative)
+            let estimatedLocal = max(0, charOffset / 400)
+            return spinePageOffsets[spineIndex] + estimatedLocal
+        }
+    }
+
+    func pageIndex(for position: CoreTextReadingPosition) -> Int? {
+        // While a chapter is only partially paginated, offsets beyond the covered
+        // range (including .chapterEnd's .max) cannot be resolved yet — return
+        // nil so callers take the placeholder path and wait for the full layout.
+        if let layout = _layouts[position.spineIndex], layout.isPartial {
+            let coveredEnd = layout.pageRanges.last.map { Int($0.location + $0.length) } ?? 0
+            if position.charOffset == .max || layout.displayOffset(for: position) >= coveredEnd { return nil }
+        }
+        return CoreTextReadingPositionMapper.pageIndex(
+            for: position,
+            layouts: layouts,
+            spinePageOffsets: spinePageOffsets
+        )
+    }
+
+    // MARK: - PagePositionWalking
+
+    func positionAfter(_ position: CoreTextReadingPosition) -> CoreTextReadingPosition? {
+        CoreTextReadingPositionMapper.positionAfter(
+            position,
+            layouts: layouts,
+            chapterCount: chapterCount
+        )
+    }
+
+    func positionBefore(_ position: CoreTextReadingPosition) -> CoreTextReadingPosition? {
+        CoreTextReadingPositionMapper.positionBefore(
+            position,
+            layouts: layouts,
+            chapterCount: chapterCount
+        )
+    }
+
+    func readingPosition(forPage page: Int) -> CoreTextReadingPosition? {
+        let (spineIndex, localPage) = localPosition(for: page)
+        guard let layout = _layouts[spineIndex],
+              localPage < layout.pageRanges.count else {
+            return CoreTextReadingPosition.chapterStart(spineIndex)
+        }
+        return layout.readingPosition(atDisplay: Int(layout.pageRanges[localPage].location))
+    }
+
+    func charOffset(forPage page: Int) -> (spineIndex: Int, charOffset: Int) {
+        let (spineIndex, localPage) = localPosition(for: page)
+        guard let layout = _layouts[spineIndex],
+              localPage < layout.pageRanges.count else {
+            return (spineIndex, 0)
+        }
+        return (spineIndex, layout.sourceOffset(forDisplay: Int(layout.pageRanges[localPage].location)))
+    }
+
+    func pageViewController(for position: CoreTextReadingPosition) -> UIViewController {
+        guard (0..<chapterCount).contains(position.spineIndex) else {
+            return pageViewController(at: 0)
+        }
+
+        if let globalPage = pageIndex(for: position) {
+            AppLogger.render("[FlipTrace] positionVC exact position=\(position) page=\(globalPage)")
+            return pageViewController(at: globalPage)
+        }
+
+        let title = chapterTitle(at: position.spineIndex)
+        let estimated = estimatedGlobalPage(for: position) ?? 0
+        AppLogger.render("[FlipTrace] positionVC PLACEHOLDER position=\(position) estimated=\(estimated) layouts=\(_layouts.keys.sorted()) pending=\(preloadTasks.keys.sorted())")
+        let placeholder = PlaceholderPageViewController(
+            chapterTitle: title,
+            globalPage: estimated,
+            readingPosition: position,
+            themeBackgroundColor: themeBackgroundColor,
+            themeTextColor: themeTextColor,
+            readerBackgroundImage: currentReaderBackgroundImage()
+        )
+        Task { [weak self] in
+            guard let self else { return }
+            let outcome = await self.preloadChapter(at: position.spineIndex)
+            guard _layouts[position.spineIndex] != nil else {
+                AppLogger.render(
+                    "⟐ placeholder unresolved position=\(position) outcome=\(outcome.rawValue)"
+                    + " generation=\(layoutGeneration) pending=\(preloadTasks.keys.sorted())",
+                    level: .warning
+                )
+                self.onChapterLayoutUnresolved?(position.spineIndex, outcome)
+                return
+            }
+            self.onChapterReady?(position.spineIndex)
+        }
+        return placeholder
+    }
+
+    @discardableResult
+    func preloadChapter(at spineIndex: Int) async -> ChapterLayoutOutcome {
+        guard (0..<chapterCount).contains(spineIndex) else { return .outOfRange }
+        // A partial (first-page-only) layout does not count as loaded: callers
+        // of this method need the FULL pagination (restore, link resolution …).
+        if let existing = _layouts[spineIndex], !existing.isPartial {
+            AppLogger.render("[FlipTrace] preload skip loaded spine=\(spineIndex) layouts=\(_layouts.keys.sorted())")
+            return .alreadyLaidOut
+        }
+
+        // Joining an in-flight task used to end the method outright, which reported
+        // success with no layout whenever that task had been abandoned by
+        // `cancelPendingWork` — it bumps the generation, and every task built for the
+        // old one returns without laying anything out. Callers read that as "nothing
+        // more to do": a placeholder's notify `Task` gives up, TTS stops waiting, and
+        // nothing ever asks again, so the 載入中 page stays up until the chapter is
+        // re-entered. Retry against the generation that superseded us instead.
+        //
+        // Bounded at two rounds: a retry is justified only by a *newer* generation, and
+        // an engine being invalidated faster than it can paginate is better served by an
+        // honest "no layout" than by a loop that never settles.
+        var lastAttempt: ChapterLayoutOutcome = .contentUnavailable
+        for _ in 0..<2 {
+            let generation = layoutGeneration
+            if let existing = preloadTasks[spineIndex] {
+                AppLogger.render("[FlipTrace] preload await existing spine=\(spineIndex) generation=\(generation)")
+                lastAttempt = await existing.value
+            } else {
+                lastAttempt = await installPreloadTask(
+                    spineIndex: spineIndex,
+                    generation: generation
+                ).value
+            }
+
+            // Laid out — done.
+            guard _layouts[spineIndex]?.isPartial != false else { return .laidOut }
+            // Still nothing, but nobody superseded us: the chapter genuinely cannot be
+            // laid out yet (an online chapter whose content has not been fetched). That
+            // is the fetch's job, not ours; retrying here would spin.
+            //
+            // For a local book no fetch follows, so this exit is a dead end for whoever
+            // was waiting — the placeholder on screen, or TTS at a chapter boundary.
+            // Returning the attempt's own reason rather than a bare `return` is what
+            // lets them say so.
+            guard layoutGeneration != generation else { return lastAttempt }
+            AppLogger.render(
+                "⟐ preload retry superseded spine=\(spineIndex) oldGeneration=\(generation) generation=\(layoutGeneration)",
+                level: .warning
+            )
+            ChapterRetryLog.record(
+                .layoutSuperseded,
+                chapter: spineIndex,
+                bookId: nil,
+                detail: "oldGeneration=\(generation) generation=\(layoutGeneration)"
+            )
+        }
+        // Two rounds and the generation was still moving underneath us.
+        return .supersededByGeneration
+    }
+
+    func notifyChapterDataAvailable(at spineIndex: Int) async -> ChapterLayoutOutcome {
+        guard (0..<chapterCount).contains(spineIndex) else { return .outOfRange }
+        await updateChapterDataSize(at: spineIndex)
+        return await preloadChapter(at: spineIndex)
+    }
+
+    private func updateChapterDataSize(at spineIndex: Int) async {
+        let size = await attributedBuilder.chapterDataSize(at: spineIndex)
+        if spineIndex < chapterByteSizes.count {
+            chapterByteSizes[spineIndex] = size
+        } else if chapterByteSizes.count == spineIndex {
+            chapterByteSizes.append(size)
+        }
+        if !attributedBuilder.prefersLazyByteScan {
+            contentUnitMap = ReaderContentUnitMap(chapterUnitCounts: chapterByteSizes)
+        }
+    }
+
+    func notifyChapterDataChanged(at spineIndex: Int) async {
+        guard (0..<chapterCount).contains(spineIndex) else { return }
+        AppLogger.render("[FetchTrace] engine.notifyChapterDataChanged enter ch=\(spineIndex)")
+
+        // 1. Clear the old layout and any in-progress preload task
+        _layouts[spineIndex] = nil
+        preloadTasks[spineIndex]?.cancel()
+        preloadTasks[spineIndex] = nil
+        preloadTaskIDs[spineIndex] = nil
+        invalidateSnapshots()
+        chapterDocumentStore.invalidate(spineIndex: spineIndex)
+
+        // 2. Incrementally update the chapter's byte size (O(1), no full rescan)
+        await updateChapterDataSize(at: spineIndex)
+
+        // 3. Reload the chapter (preloadChapter checks layouts[spineIndex] == nil before executing)
+        let outcome = await preloadChapter(at: spineIndex)
+
+        // 4. Notify ReaderView to refresh:
+        //    - layoutOK=true → swap to the VC with the new layout, showing actual content
+        //    - layoutOK=false → swap to PlaceholderVC (loading UI), so refresh can immediately
+        //      clear old content and show loading, then notifyChapterDataChanged again once refetch completes.
+        let layoutOK = layouts[spineIndex] != nil
+        if layoutOK {
+            AppLogger.render("[FetchTrace] engine.notifyChapterDataChanged done ch=\(spineIndex) layoutOK=true hasCallback=\(onChapterReady != nil)")
+        } else {
+            // The chapter's data changed and it still cannot be laid out. Whoever is
+            // looking at it keeps the 載入中 page.
+            AppLogger.render(
+                "⟐ notifyChapterDataChanged left no layout ch=\(spineIndex) outcome=\(outcome.rawValue)"
+                + " hasCallback=\(onChapterReady != nil)",
+                level: .warning
+            )
+        }
+        onChapterReady?(spineIndex)
+    }
+
+    /// Chapters at or above this UTF-16 length take the two-phase path: a fast
+    /// first-page pass is installed (and shown) while full pagination continues
+    /// in the background. Short chapters paginate fully in one pass.
+    private static let partialFirstPageThreshold = 20_000
+
+    /// The single door a chapter layout comes through.
+    ///
+    /// Installing a layout and announcing it are one act, not two. Every consumer of
+    /// `layouts` — the paged data source, TTS text extraction, progress — learns that a
+    /// chapter became renderable only through `onChapterReady`; a layout that lands
+    /// silently is invisible to all of them. Two of the three exits that installed one
+    /// used to return without announcing (a paginator-cache hit, and the full-pagination
+    /// pass), so a chapter laid out while its placeholder was on screen stayed a
+    /// placeholder until something unrelated rebuilt the page — leaving the book, or
+    /// re-entering the chapter from another one. Keeping the three steps together makes
+    /// forgetting the announcement impossible rather than merely unlikely.
+    private func installLayout(
+        _ layout: CoreTextPaginator.ChapterLayout,
+        for spineIndex: Int
+    ) {
+        _layouts[spineIndex] = layout
+        snapshotLayoutRevisions = snapshotLayoutRevisions.filter { _layouts[$0.key] != nil }
+        snapshotLayoutRevisions[spineIndex] = UUID()
+        generateSnapshot(for: spineIndex)
+        rebuildPageOffsets()
+        onChapterReady?(spineIndex)
+    }
+
+    private func preloadChapterInternal(
+        at spineIndex: Int,
+        generation: Int
+    ) async -> ChapterLayoutOutcome {
+        guard (0..<chapterCount).contains(spineIndex) else { return .outOfRange }
+        guard _layouts[spineIndex]?.isPartial != false else { return .alreadyLaidOut }
+        if let abort = abortReason(generation: generation) { return abort }
+        AppLogger.render("[FlipTrace] preload begin spine=\(spineIndex) generation=\(generation) layouts=\(_layouts.keys.sorted())")
+
+        // `try?` here used to discard the reason the document could not be built, so
+        // every failure — an online chapter with no content yet, a parse that blew up,
+        // a cancellation — arrived at the caller as the same silent "no layout". The
+        // thrown error is the only thing that tells them apart on a device.
+        let buildResult: ChapterDocument
+        do {
+            buildResult = try await ReaderPerfTrace.spanAsync(
+                .chapterLoad,
+                metadata: ReaderPerfMetadata(
+                    spineIndex: spineIndex,
+                    writingMode: String(describing: renderSettings.writingMode),
+                    executor: Thread.isMainThread ? "main" : "background",
+                    generation: generation
+                )
+            ) {
+                try await chapterDocumentStore.document(
+                    for: ChapterDocumentRequest(
+                        spineIndex: spineIndex,
+                        settings: renderSettings,
+                        themeTextColor: themeTextColor,
+                        themeBackgroundColor: themeBackgroundColor
+                    )
+                )
+            }
+        } catch is CancellationError {
+            // Pre-empted, not refused — `Technotes/ReaderChapterSupply.md` invariant 3.
+            return .cancelled
+        } catch AttributedStringBuildingError.contentNotCached(let index) {
+            // The chapter's text has not arrived. `notice`, not `warning`: for an
+            // online book this is the ordinary state of a neighbour being preloaded
+            // ahead of its fetch, and it fires on most chapter turns. The line that
+            // means something is wrong is the one raised where somebody is actually
+            // waiting on it — `placeholder unresolved`, and the TTS anomaly.
+            AppLogger.render(
+                "⟐ preload contentUnavailable spine=\(spineIndex) builderIndex=\(index) generation=\(generation)",
+                level: .notice
+            )
+            return .contentUnavailable
+        } catch AttributedStringBuildingError.chapterOutOfRange {
+            return .outOfRange
+        } catch {
+            AppLogger.render(
+                "⟐ preload buildFailed spine=\(spineIndex) generation=\(generation)",
+                error: error,
+                level: .error
+            )
+            return .buildFailed
+        }
+        if let abort = abortReason(generation: generation) { return abort }
+
+        // A chapter that built cleanly but carries no text is the other way the reader
+        // ends up with nothing: the page has no ranges to show and TTS has nothing to
+        // read, yet neither the build nor the layout failed. It reads identically to a
+        // stuck placeholder from outside, so it gets its own name.
+        let documentIsEmpty = buildResult.attributedString.length == 0
+            && buildResult.imagePage == nil && buildResult.pageBackgroundImage == nil
+        if documentIsEmpty {
+            AppLogger.render(
+                "⟐ preload builtEmptyDocument spine=\(spineIndex) generation=\(generation)",
+                level: .warning
+            )
+        }
+
+        let request = PaginationRequest(
+            spineIndex: spineIndex,
+            attributedString: buildResult.attributedString,
+            imagePage: buildResult.imagePage,
+            pageBackgroundImage: buildResult.pageBackgroundImage,
+            pageBackgroundColor: buildResult.pageBackgroundColor,
+            darkPageBackgroundColor: buildResult.darkPageBackgroundColor,
+            anchorOffsets: buildResult.anchorOffsets,
+            renderSize: renderSize,
+            fontSize: renderSettings.fontSize,
+            lineSpacing: renderSettings.lineSpacing,
+            paragraphSpacing: renderSettings.paragraphSpacing,
+            letterSpacing: renderSettings.letterSpacing,
+            contentInsets: currentContentInsets(),
+            revision: buildResult.revision,
+            writingMode: renderSettings.writingMode
+        )
+
+        // Two-phase open for long chapters (Legado TextChapterLayout idea): lay
+        // out and publish page 1 immediately, then let the full pass replace it.
+        let firstPageStart = ProcessInfo.processInfo.systemUptime
+        if buildResult.attributedString.length >= Self.partialFirstPageThreshold,
+           _layouts[spineIndex] == nil {
+            let firstPageTrace = ReaderPerfTrace.begin(
+                .layoutFirstPagePublish,
+                metadata: ReaderPerfMetadata(
+                    spineIndex: spineIndex,
+                    characterCount: buildResult.attributedString.length,
+                    writingMode: String(describing: renderSettings.writingMode),
+                    executor: Thread.isMainThread ? "main" : "background",
+                    generation: generation
+                )
+            )
+            if let firstPageResult = await paginationManager.paginateFirstPage(request) {
+                if let abort = abortReason(generation: generation) {
+                    ReaderPerfTrace.end(firstPageTrace)
+                    return abort
+                }
+                var paginatedFirstPage = firstPageResult.layout
+                paginatedFirstPage.translation = buildResult.translation
+                let firstPageLayout = paginatedFirstPage.withUpdatedAppearance(
+                    textColor: themeTextColor,
+                    backgroundColor: themeBackgroundColor,
+                    readerBackgroundImage: currentReaderBackgroundImage(),
+                    regexHighlightConfiguration: renderSettings.regexHighlightConfiguration,
+                    readerStyleAppearance: renderSettings.readerStyleAppearance,
+                    readerStyleAssetRevision: renderSettings.readerStyleAssetRevision
+                )
+                installLayout(firstPageLayout, for: spineIndex)
+                if firstPageLayout.isPartial {
+                    SourcePerfTrace.record(
+                        "coreText.firstPage", "spine=\(spineIndex)", since: firstPageStart
+                    )
+                    ReaderPerfTrace.end(
+                        firstPageTrace,
+                        metadata: ReaderPerfMetadata(
+                            spineIndex: spineIndex,
+                            characterCount: buildResult.attributedString.length,
+                            pageCount: firstPageLayout.pageRanges.count,
+                            writingMode: String(describing: renderSettings.writingMode),
+                            executor: Thread.isMainThread ? "main" : "background",
+                            generation: generation
+                        )
+                    )
+                    AppLogger.render("[FlipTrace] preload partial spine=\(spineIndex) estPages=\(firstPageLayout.displayPageCount) generation=\(generation)")
+                } else {
+                    // Paginator cache hit — the layout is already complete.
+                    ReaderPerfTrace.end(
+                        firstPageTrace,
+                        metadata: ReaderPerfMetadata(
+                            spineIndex: spineIndex,
+                            characterCount: buildResult.attributedString.length,
+                            pageCount: firstPageLayout.pageRanges.count,
+                            writingMode: String(describing: renderSettings.writingMode),
+                            cacheResult: "hit",
+                            executor: Thread.isMainThread ? "main" : "background",
+                            generation: generation
+                        )
+                    )
+                    AppLogger.render("[FlipTrace] preload done spine=\(spineIndex) pages=\(firstPageLayout.pageRanges.count) generation=\(generation) source=cache")
+                    return documentIsEmpty ? .contentUnavailable : .laidOut
+                }
+            } else {
+                ReaderPerfTrace.end(firstPageTrace)
+            }
+        }
+
+        let fullLayoutStart = ProcessInfo.processInfo.systemUptime
+        var layout = await paginationManager.paginate(request).layout
+        layout.translation = buildResult.translation
+        if let abort = abortReason(generation: generation) { return abort }
+        SourcePerfTrace.record(
+            "coreText.fullLayout",
+            "spine=\(spineIndex) chars=\(buildResult.attributedString.length)",
+            since: fullLayoutStart
+        )
+
+        installLayout(
+            layout.withUpdatedAppearance(
+                textColor: themeTextColor,
+                backgroundColor: themeBackgroundColor,
+                readerBackgroundImage: currentReaderBackgroundImage(),
+                regexHighlightConfiguration: renderSettings.regexHighlightConfiguration,
+                readerStyleAppearance: renderSettings.readerStyleAppearance,
+                readerStyleAssetRevision: renderSettings.readerStyleAssetRevision
+            ),
+            for: spineIndex
+        )
+        AppLogger.render("[FlipTrace] preload done spine=\(spineIndex) pages=\(layout.pageRanges.count) generation=\(generation) layouts=\(_layouts.keys.sorted())")
+        return documentIsEmpty ? .contentUnavailable : .laidOut
+    }
+
+    func invalidateLayout(newSize: CGSize) async {
+        await invalidateLayout(newSize: newSize, ensuringSpine: nil)
+    }
+
+    func invalidateLayout(
+        newSize: CGSize,
+        ensuringSpine spineIndex: Int?
+    ) async {
+        AppLogger.render("[FlipTrace] invalidateLayout newSize=\(newSize) oldSize=\(renderSize) loaded=\(_layouts.keys.sorted()) pending=\(preloadTasks.keys.sorted())")
+        let restorePosition: CoreTextReadingPosition? = readingAnchor
+        cancelPendingWork()
+        nextLayoutInvalidationOperationID &+= 1
+        let operationID = nextLayoutInvalidationOperationID
+        activeLayoutInvalidationOperationID = operationID
+        isRelaying = true
+        renderSize = newSize
+        updateBuilderRenderSize(newSize)
+        paginationManager.invalidate(reason: .viewSizeChanged)
+
+        // Re-layout chapters currently held in memory plus an explicit visible
+        // target that an overlapping invalidation may already have removed.
+        var spinesToReload = Set(_layouts.keys)
+        if let spineIndex,
+           (0..<chapterCount).contains(spineIndex) {
+            spinesToReload.insert(spineIndex)
+        }
+_layouts.removeAll()
+        invalidateSnapshots()
+
+        await withTaskGroup(of: Void.self) { group in
+            for i in spinesToReload.sorted() {
+                group.addTask { _ = await self.preloadChapter(at: i) }
+            }
+        }
+
+        guard activeLayoutInvalidationOperationID == operationID else {
+            return
+        }
+
+        // Byte size rescan not needed (unaffected by font size changes)
+        // Restore the in-memory location after re-pagination; do not read disk.
+        if let restorePosition,
+           let resolved = pageIndex(for: restorePosition) {
+            currentPage = resolved
+            onNavigateToPage?(resolved)
+        } else {
+            currentPage = max(0, min(currentPage, max(totalPages - 1, 0)))
+        }
+        isRelaying = false
+        activeLayoutInvalidationOperationID = nil
+        onChapterReady?(nil)
+    }
+
+    func resolveInternalLink(_ href: String, fromSpineIndex spineIndex: Int) async -> Int? {
+        // Ignore special Kindle / device-specific links that can't be resolved to EPUB content
+        if href.hasPrefix("kindle:") { return nil }
+        let parts = href.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+        let rawPath = parts.first.map(String.init) ?? ""
+        let fragment = parts.count > 1 ? String(parts[1]) : nil
+
+        let targetSpine: Int
+        if rawPath.isEmpty {
+            targetSpine = spineIndex
+        } else {
+            let resolvedHref = EPUBStyleResolver.resolveImageHref(rawPath, chapterHref: chapterSourceHref(at: spineIndex))
+            guard let matchedIndex = chapterIndex(for: resolvedHref) ?? chapterIndex(for: rawPath) else {
+                AppLogger.render("⟐ link.resolve noChapter spine=\(spineIndex) raw=\(rawPath.prefix(80)) resolved=\(resolvedHref.prefix(96))")
+                return nil
+            }
+            targetSpine = matchedIndex
+        }
+
+        updateReadingPosition(.chapterStart(targetSpine))
+        await preloadChapter(at: targetSpine)
+        guard let layout = _layouts[targetSpine] else { return nil }
+        let charOffset: Int
+        if let fragment, !fragment.isEmpty {
+            charOffset = layout.anchorOffsets[fragment] ?? 0
+        } else {
+            charOffset = 0
+        }
+        updateReadingPosition(CoreTextReadingPosition(spineIndex: targetSpine, charOffset: charOffset))
+        return pageIndex(forSpine: targetSpine, charOffset: charOffset)
+    }
+
+    func warmUpNext(currentGlobalPage: Int) {
+        prefetchPageImages(around: currentGlobalPage)
+        let (spineIndex, localPage) = localPosition(for: currentGlobalPage)
+
+        guard let layout = _layouts[spineIndex] else {
+            AppLogger.render("[FlipTrace] warmUp skip missingCurrent page=\(currentGlobalPage) spine=\(spineIndex) local=\(localPage) layouts=\(_layouts.keys.sorted())")
+            return
+        }
+        let total = layout.displayPageCount
+        // Trigger at 20% remaining (minimum 3 pages) so snapshot is ready before chapter boundary
+        let threshold = max(3, Int(Double(total) * 0.20))
+        let remaining = total - localPage
+        AppLogger.render("[FlipTrace] warmUp page=\(currentGlobalPage) spine=\(spineIndex) local=\(localPage) total=\(total) remaining=\(remaining) threshold=\(threshold) layouts=\(_layouts.keys.sorted())")
+        if remaining <= threshold {
+            let nextSpine = spineIndex + 1
+            if nextSpine < chapterCount {
+                schedulePreloadChapter(at: nextSpine)
+            }
+        }
+        // Preload previous chapter when near the beginning, so backward cross-chapter navigation can correctly locate the last page
+        if localPage < threshold && spineIndex > 0 && layouts[spineIndex - 1] == nil {
+            schedulePreloadChapter(at: spineIndex - 1)
+        }
+    }
+
+    func applyThemeChange(textColor: UIColor, backgroundColor: UIColor) {
+        themeTextColor = textColor
+        themeBackgroundColor = backgroundColor
+        let readerBackgroundImage = currentReaderBackgroundImage()
+        // Color changes don't affect line breaking; directly update attributedString + framesetter synchronously, preserving all blockAttachments etc.
+        for spineIndex in _layouts.keys {
+            _layouts[spineIndex] = _layouts[spineIndex]?.withUpdatedAppearance(
+                textColor: textColor,
+                backgroundColor: backgroundColor,
+                readerBackgroundImage: readerBackgroundImage,
+                regexHighlightConfiguration: renderSettings.regexHighlightConfiguration,
+                readerStyleAppearance: renderSettings.readerStyleAppearance,
+                readerStyleAssetRevision: renderSettings.readerStyleAssetRevision
+            )
+        }
+        invalidateSnapshots()
+        onChapterReady?(nil)
+        // Rebuild chapter boundary snapshots in the background (for cross-chapter animation)
+        for spineIndex in _layouts.keys {
+            generateSnapshot(for: spineIndex)
+        }
+    }
+
+    /// Offscreen renders any global page as a UIImage for use as an immediate snapshot during cover animation.
+    func renderSnapshot(forPage globalPage: Int) -> UIImage? {
+        let traceStart = SourcePerfTrace.now
+        var traceOutcome = "unavailable"
+        let (spineIndex, localPage) = localPosition(for: globalPage)
+        defer {
+            SourcePerfTrace.record(
+                "coreText.pageSnapshot", "spine=\(spineIndex) local=\(localPage) outcome=\(traceOutcome)",
+                since: traceStart, thresholdMs: 0
+            )
+        }
+        guard let layout = _layouts[spineIndex] else {
+            AppLogger.render("[FlipTrace] renderSnapshot MISS noLayout page=\(globalPage) spine=\(spineIndex) local=\(localPage) layouts=\(_layouts.keys.sorted())")
+            return nil
+        }
+        guard localPage < layout.pageRanges.count else {
+            AppLogger.render("[FlipTrace] renderSnapshot MISS pageOutOfRange page=\(globalPage) spine=\(spineIndex) local=\(localPage) pages=\(layout.pageRanges.count)")
+            return nil
+        }
+        guard renderSize.width > 0, renderSize.height > 0 else {
+            AppLogger.render("[FlipTrace] renderSnapshot MISS invalidSize page=\(globalPage) spine=\(spineIndex) size=\(renderSize)")
+            return nil
+        }
+        
+        guard let key = snapshotKey(spineIndex: spineIndex, localPage: localPage) else { return nil }
+        // UIKit may request the same middle-page back from both its data source
+        // and the programmatic curl stack. Share that render, just as boundaries
+        // do, within the existing bounded snapshot cache.
+        if let cached = chapterSnapshots.object(forKey: key) {
+            traceOutcome = "cached"
+            AppLogger.render("[FlipTrace] renderSnapshot HIT cached page=\(globalPage) spine=\(spineIndex) local=\(localPage)")
+            return cached.image
+        }
+        AppLogger.render("[FlipTrace] renderSnapshot render page=\(globalPage) spine=\(spineIndex) local=\(localPage)")
+
+        traceOutcome = "rendered"
+        let bars = pageBars(forGlobalPage: globalPage)
+        let image = Self.renderImage(
+            layout: layout,
+            pageIndex: localPage,
+            size: renderSize,
+            bgColor: Self.snapshotBackgroundColor(of: layout).cgColor,
+            bars: bars
+        )
+        storeSnapshotIfCurrent(image, key: key, spineIndex: spineIndex, localPage: localPage, bars: bars)
+        return image
+    }
+
+    /// Renders the pages either side of `globalPage`, and that page itself, off the
+    /// main thread into the snapshot cache, so the next turn finds them drawn.
+    ///
+    /// A page drawn on the main thread costs 10–55ms (CoreText line building, first
+    /// rasterisation of the page's glyphs, full-page fills). A device trace on
+    /// 2026-10-05 caught that draw landing at the start of a turn every time: one
+    /// dropped frame at the start of every slide swipe, a 50–84ms stall between
+    /// pages in every tapped burst, and a 20ms curl back-page render inside the
+    /// running curl. Rendered here ahead of time, the live page shows the bitmap
+    /// (`CoreTextPageView.display(_:)`) and the curl back page is a cache hit.
+    ///
+    /// Same renderer, key and budget as every other snapshot: nothing here is a
+    /// second cache. Which page, the one ahead or behind, is the reader's next is
+    /// unknown, so both are rendered; the page itself is the back of a forward curl.
+    func prefetchPageImages(around globalPage: Int) {
+        for page in [globalPage + 1, globalPage, globalPage - 1] {
+            prefetchPageImage(forPage: page)
+        }
+    }
+
+    private func prefetchPageImage(forPage globalPage: Int) {
+        guard globalPage >= 0, globalPage < totalPages,
+              renderSize.width > 0, renderSize.height > 0 else { return }
+        let (spineIndex, localPage) = localPosition(for: globalPage)
+        guard let layout = _layouts[spineIndex], localPage < layout.pageRanges.count,
+              let key = snapshotKey(spineIndex: spineIndex, localPage: localPage),
+              chapterSnapshots.object(forKey: key) == nil,
+              pageImagePrefetches[key] == nil else { return }
+        let size = renderSize
+        let bgColor = Self.snapshotBackgroundColor(of: layout).cgColor
+        let signpostID = Self.prefetchSignposter.makeSignpostID()
+        let interval = Self.prefetchSignposter.beginInterval("PagePrefetch", id: signpostID, "page=\(globalPage)")
+        // A main-actor task: it starts after the caller's runloop turn, so building
+        // the bars (~1.5ms a page) never delays the frame a turn is committing. A
+        // layout replaced meanwhile fails `storeSnapshotIfCurrent`'s key check.
+        pageImagePrefetches[key] = Task {
+            let bars = self.pageBars(forGlobalPage: globalPage)
+            let image = await Task.detached(priority: .userInitiated) {
+                Self.renderImage(layout: layout, pageIndex: localPage, size: size, bgColor: bgColor, bars: bars)
+            }.value
+            self.pageImagePrefetches[key] = nil
+            let stored = self.storeSnapshotIfCurrent(
+                image, key: key, spineIndex: spineIndex, localPage: localPage, bars: bars
+            )
+            Self.prefetchSignposter.endInterval("PagePrefetch", interval, "stored=\(stored ? 1 : 0)")
+        }
+    }
+
+    /// Waits for every prefetch already started. For tests: nothing in the reader
+    /// waits on a prefetch — a page that is not ready yet is simply drawn.
+    func finishPageImagePrefetches() async {
+        for task in Array(pageImagePrefetches.values) {
+            await task.value
+        }
+    }
+
+    /// Prefetches in flight, so a page requested twice before its render lands is
+    /// rendered once.
+    private var pageImagePrefetches: [NSString: Task<Void, Never>] = [:]
+    private static let prefetchSignposter = OSSignposter(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.zhong228.shuyue",
+        category: "ReaderPerformance"
+    )
+
+    /// A live page's way to the cached bitmap of exactly what it would draw itself.
+    ///
+    /// Pinned to what the page is built with: the key carries the installed layout's
+    /// revision and the bars revision, so a bitmap of a newer layout or newer bars is
+    /// never offered to a page still showing the old one. A live page draws its bars
+    /// without the bookmark ribbon — the ribbon there is its own animated view —
+    /// while a snapshot draws it in, so a bookmarked page's snapshot is not the live
+    /// page's picture and is not offered as one.
+    private func livePageSource(
+        spineIndex: Int,
+        localPage: Int,
+        liveBars: ReaderPageBars?
+    ) -> PrerenderedPageSource? {
+        guard let key = snapshotKey(spineIndex: spineIndex, localPage: localPage) else { return nil }
+        return { [weak self] in
+            guard let page = self?.chapterSnapshots.object(forKey: key),
+                  page.bars == liveBars else { return nil }
+            return page.image
+        }
+    }
+
+    private static func snapshotBackgroundColor(of layout: CoreTextPaginator.ChapterLayout) -> UIColor {
+        if layout.attributedString.length > 0,
+           let color = layout.attributedString.attribute(
+               .backgroundColor, at: 0, effectiveRange: nil
+           ) as? UIColor {
+            return color
+        }
+        return .systemBackground
+    }
+
+    private func invalidateSnapshots() {
+        chapterSnapshots.removeAllObjects()
+        snapshotLayoutRevisions = Dictionary(uniqueKeysWithValues: _layouts.keys.map { ($0, UUID()) })
+    }
+
+    // MARK: - Page bars (頁眉／頁腳)
+
+    /// Global page index → the bars that page draws. Set by the reader.
+    var pageBarsProvider: ((Int) -> ReaderPageBars?)?
+
+    /// Bumped whenever the bars say something new without the pagination changing.
+    /// Part of `snapshotKey`, so a baked curl back-page or cover snapshot cannot
+    /// keep showing the clock from a minute ago.
+    private var pageBarsRevision: UInt = 0
+
+    func refreshPageBars() {
+        pageBarsRevision &+= 1
+        chapterSnapshots.removeAllObjects()
+    }
+
+    func pageBars(forGlobalPage globalPage: Int) -> ReaderPageBars? {
+        pageBarsProvider?(globalPage)
+    }
+
+    private func globalPage(spineIndex: Int, localPage: Int) -> Int {
+        guard spinePageOffsets.indices.contains(spineIndex) else { return localPage }
+        return spinePageOffsets[spineIndex] + localPage
+    }
+
+    func snapshotKey(spineIndex: Int, localPage: Int) -> NSString? {
+        guard let revision = snapshotLayoutRevisions[spineIndex],
+              let layout = _layouts[spineIndex], layout.pageRanges.indices.contains(localPage) else { return nil }
+        return "\(revision.uuidString):\(spineIndex):\(localPage):\(pageBarsRevision)" as NSString
+    }
+
+    /// Both synchronous curl requests and asynchronous boundary renders commit
+    /// through this check. An old background result must not repopulate the cache
+    /// after a refetch, partial-to-full layout install, resize, or appearance change.
+    @discardableResult
+    /// - Parameter bars: the bars `image` was drawn with.
+    func storeSnapshotIfCurrent(
+        _ image: UIImage,
+        key: NSString,
+        spineIndex: Int,
+        localPage: Int,
+        bars: ReaderPageBars? = nil
+    ) -> Bool {
+        guard snapshotKey(spineIndex: spineIndex, localPage: localPage) == key else { return false }
+        if chapterSnapshots.object(forKey: key) == nil {
+            chapterSnapshots.setObject(
+                ReaderRenderedPage(image: image, bars: bars),
+                forKey: key,
+                cost: Self.imageCost(image)
+            )
+        }
+        return true
+    }
+
+    // MARK: - Private helpers
+
+    /// Pre-renders the first and last pages of a chapter as UIImages, stored in chapterSnapshots for cross-chapter animation handoff.
+    /// Uses Task.detached to render on a background thread, avoiding main thread blocking.
+    private func generateSnapshot(for spineIndex: Int) {
+        guard let layout = _layouts[spineIndex],
+              !layout.pageRanges.isEmpty,
+              renderSize.width > 0, renderSize.height > 0 else { return }
+        
+        let size = renderSize
+        // Convert UIColor to CGColor for passing in non-isolated context
+        let bgCGColor = Self.snapshotBackgroundColor(of: layout).cgColor
+        
+        // Boundary pre-rendering uses the same key and budget as on-demand pages.
+        guard let firstKey = snapshotKey(spineIndex: spineIndex, localPage: 0) else { return }
+        if chapterSnapshots.object(forKey: firstKey) == nil {
+            let firstBars = pageBars(forGlobalPage: globalPage(spineIndex: spineIndex, localPage: 0))
+            Task {
+                let img = await Task.detached(priority: .userInitiated) {
+                    Self.renderImage(layout: layout, pageIndex: 0, size: size, bgColor: bgCGColor, bars: firstBars)
+                }.value
+                self.storeSnapshotIfCurrent(img, key: firstKey, spineIndex: spineIndex, localPage: 0, bars: firstBars)
+            }
+        }
+
+        let lastIdx = layout.pageRanges.count - 1
+        if lastIdx > 0, let lastKey = snapshotKey(spineIndex: spineIndex, localPage: lastIdx) {
+            if chapterSnapshots.object(forKey: lastKey) == nil {
+                let lastBars = pageBars(forGlobalPage: globalPage(spineIndex: spineIndex, localPage: lastIdx))
+                Task {
+                    let img = await Task.detached(priority: .userInitiated) {
+                        Self.renderImage(layout: layout, pageIndex: lastIdx, size: size, bgColor: bgCGColor, bars: lastBars)
+                    }.value
+                    self.storeSnapshotIfCurrent(img, key: lastKey, spineIndex: spineIndex, localPage: lastIdx, bars: lastBars)
+                }
+            }
+        }
+    }
+
+    private nonisolated static func imageCost(_ image: UIImage) -> Int {
+        let width = Int(image.size.width * image.scale)
+        let height = Int(image.size.height * image.scale)
+        let bytesPerPixel = 4
+        return max(width * height * bytesPerPixel, 1)
+    }
+
+    private nonisolated static func renderImage(
+        layout: CoreTextPaginator.ChapterLayout,
+        pageIndex: Int,
+        size: CGSize,
+        bgColor: CGColor,
+        bars: ReaderPageBars? = nil
+    ) -> UIImage {
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let c = ctx.cgContext
+            c.setFillColor(bgColor)
+            c.fill(CGRect(origin: .zero, size: size))
+            CoreTextPageView.renderPage(
+                layout: layout,
+                pageIndex: pageIndex,
+                in: c,
+                bounds: CGRect(origin: .zero, size: size),
+                bars: bars
+            )
+        }
+    }
+
+    /// Returns the global page index of the last page of the specified chapter.
+    /// Returns nil if the chapter is not loaded — or only partially paginated,
+    /// since the real last page is unknown until the full pass completes.
+    func lastPageIndex(ofChapter spineIndex: Int) -> Int? {
+        guard let layout = _layouts[spineIndex],
+              !layout.isPartial,
+              spinePageOffsets.indices.contains(spineIndex) else { return nil }
+        return spinePageOffsets[spineIndex] + max(0, layout.pageRanges.count - 1)
+    }
+
+    func localPosition(for globalPage: Int) -> (spineIndex: Int, localPage: Int) {
+        guard !spinePageOffsets.isEmpty else { return (0, globalPage) }
+        var lo = 0
+        var hi = spinePageOffsets.count - 1
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2
+            if spinePageOffsets[mid] <= globalPage { lo = mid } else { hi = mid - 1 }
+        }
+        let localPage = globalPage - spinePageOffsets[lo]
+        return (lo, max(0, localPage))
+    }
+
+    private func rebuildPageOffsets() {
+        let anchoredPosition = readingAnchor
+        let oldOffsets = spinePageOffsets
+        let oldPage = currentPage
+        var offset = 0
+
+        // Estimate bytes per page, scaled by font size so totalPages tracks layout changes.
+        // At 20pt CJK, ~600 bytes/page. Larger font → fewer chars per page → fewer bytes per page.
+        let baseFontSize: CGFloat = 20
+        let referenceBytesPerPage: CGFloat = 600
+        let scale = baseFontSize / max(1, renderSettings.fontSize)
+        let avgBytesPerPage = max(100, Int(referenceBytesPerPage * scale * scale)) 
+
+        spinePageOffsets = (0..<chapterCount).map { i in
+            let start = offset
+            if let layout = _layouts[i] {
+                // displayPageCount: real count when complete, extrapolated
+                // estimate while the chapter is still partially paginated.
+                offset += layout.displayPageCount
+            } else if i < chapterByteSizes.count && chapterByteSizes[i] > 0 {
+                // Estimate page count from byte size
+                offset += max(1, chapterByteSizes[i] / avgBytesPerPage)
+            } else {
+                // Without layout or byte info, estimate 1 page to keep spinePageOffsets and totalPages from breaking
+                offset += 1
+            }
+            return start
+        }
+        totalPages = offset
+
+        if let correctedPage = pageIndex(for: anchoredPosition) ?? estimatedGlobalPage(for: anchoredPosition) {
+            currentPage = max(0, min(correctedPage, max(totalPages - 1, 0)))
+        }
+
+        if currentPage != oldPage {
+            onNavigateToPage?(currentPage)
+        }
+        
+        if !oldOffsets.isEmpty, oldOffsets != spinePageOffsets {
+            onChapterReady?(nil)
+        }
+    }
+
+    private func configuredPageViewController(
+        layout: CoreTextPaginator.ChapterLayout,
+        spineIndex: Int,
+        localPage: Int,
+        globalPage: Int
+    ) -> UIViewController {
+        let vc = CoreTextPageViewController()
+        vc.onInternalLinkTap = { [weak self] href in
+            guard let self else { return }
+            // Footnotes never reach here: `CoreTextPageView` intercepts both the
+            // image marker and the text marker and shows the anchored popover
+            // itself, where the marker's rect is known. This closure only ever
+            // sees real navigation.
+            Task { @MainActor in
+                if let url = Self.externalURL(from: href) {
+                    await UIApplication.shared.open(url)
+                    return
+                }
+                guard let targetPage = await self.resolveInternalLink(href, fromSpineIndex: spineIndex) else {
+                    AppLogger.render("⟐ link.tap unresolved spine=\(spineIndex) href=\(href.prefix(96))")
+                    return
+                }
+                AppLogger.render("⟐ link.tap page=\(targetPage) href=\(href.prefix(64))")
+                (self.onLinkNavigate ?? self.onNavigateToPage)?(targetPage)
+            }
+        }
+        let bars = pageBars(forGlobalPage: globalPage)
+        vc.pageBars = bars
+        let readingPosition = layout.readingPosition(atDisplay: Int(layout.pageRanges[localPage].location))
+        vc.configure(
+            layout: layout,
+            localPage: localPage,
+            globalPage: globalPage,
+            readingPosition: readingPosition,
+            fallbackBackgroundColor: themeBackgroundColor,
+            prerenderedPage: livePageSource(
+                spineIndex: spineIndex,
+                localPage: localPage,
+                liveBars: bars?.removingBookmarkRibbon()
+            )
+        )
+        vc.setTextAnnotations(textAnnotations.filter { $0.spineIndex == spineIndex })
+        return vc
+    }
+
+    private static func externalURL(from href: String) -> URL? {
+        guard let url = URL(string: href),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https"
+        else {
+            return nil
+        }
+        return url
+    }
+
+    func estimatedGlobalPage(for position: CoreTextReadingPosition) -> Int? {
+        guard spinePageOffsets.indices.contains(position.spineIndex) else { return nil }
+        let chapterStart = spinePageOffsets[position.spineIndex]
+        if let layout = _layouts[position.spineIndex] {
+            let localPage = layout.pageIndex(
+                for: CoreTextReadingPositionMapper.clampedCharOffset(for: position, in: layout)
+            )
+            return chapterStart + localPage
+        }
+        if position.charOffset == .max {
+            return chapterStart + max(0, estimatedPageCount(forChapter: position.spineIndex) - 1)
+        }
+        let estimatedLocal = max(0, position.charOffset / 400)
+        return chapterStart + min(estimatedLocal, max(0, estimatedPageCount(forChapter: position.spineIndex) - 1))
+    }
+
+    private func estimatedPageCount(forChapter spineIndex: Int) -> Int {
+        guard spinePageOffsets.indices.contains(spineIndex) else { return 1 }
+        if let layout = _layouts[spineIndex] {
+            return max(1, layout.displayPageCount)
+        }
+        if spineIndex + 1 < spinePageOffsets.count {
+            return max(1, spinePageOffsets[spineIndex + 1] - spinePageOffsets[spineIndex])
+        }
+        return max(1, totalPages - spinePageOffsets[spineIndex])
+    }
+
+    private func placeholderReadingPosition(
+        spineIndex: Int,
+        localPage: Int,
+        globalPage: Int
+    ) -> CoreTextReadingPosition? {
+        if localPage == 0 {
+            return .chapterStart(spineIndex)
+        }
+        let estimatedLastPage = spinePageOffsets.indices.contains(spineIndex)
+            ? spinePageOffsets[spineIndex] + max(0, estimatedPageCount(forChapter: spineIndex) - 1)
+            : globalPage
+        if globalPage >= estimatedLastPage {
+            return .chapterEnd(spineIndex)
+        }
+        return nil
+    }
+
+    private func currentContentInsets() -> UIEdgeInsets {
+        renderSettings.contentInsets
+    }
+
+    private func updateBuilderRenderSize(_ size: CGSize) {
+        (attributedBuilder as? RenderSizeAwareAttributedStringBuilding)?.updateRenderSize(size)
+        chapterDocumentStore.invalidateAll()
+    }
+
+    /// Returns appropriate text color. GlobalSettings does not expose a theme enum,
+    /// so we fall back to the system adaptive label color which respects dark/light mode.
+    private func currentTextColor() -> UIColor { themeTextColor }
+    private func currentBackgroundColor() -> UIColor { themeBackgroundColor }
+
+
+    /// Returns the plain text content of a page (for TTS / bookmark excerpt use)
+    func plainText(forPage page: Int) -> String {
+        let (spineIndex, localPage) = localPosition(for: page)
+        guard let layout = _layouts[spineIndex],
+              localPage < layout.pageRanges.count else { return "" }
+        let range = layout.pageRanges[localPage]
+        let nsRange = NSRange(location: range.location, length: range.length)
+        guard nsRange.location != NSNotFound, nsRange.length > 0,
+              nsRange.location + nsRange.length <= layout.attributedString.length else { return "" }
+        return (layout.attributedString.string as NSString).substring(with: nsRange)
+    }
+
+}

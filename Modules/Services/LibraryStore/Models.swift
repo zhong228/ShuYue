@@ -1,0 +1,1185 @@
+import YueduCoreText
+import Combine
+import Foundation
+import OSLog
+// MARK: - HTML to Plain Text
+import SwiftSoup
+import SwiftUI
+import UIKit
+import ReadiumShared
+
+// MARK: - Book Chapter
+
+struct BookChapter: Identifiable, Codable {
+    var id = UUID()
+    var index: Int
+    var title: String
+    var content: String
+    var href: String = ""  // EPUB chapter path, used as the rendering baseURL
+    var level: Int = 0  // TOC indentation level (0 = top, 1 = sub-chapter, …)
+    var fragment: String? = nil  // EPUB TOC anchor within the spine file (the part after '#')
+}
+
+// MARK: - Online Chapter Reference
+
+// MARK: - Bookmark
+
+struct Bookmark: Identifiable, Codable, Equatable {
+    enum Kind: String, Codable {
+        case bookmark
+        case underline
+        case highlight
+    }
+
+    let id: UUID
+    let chapterIndex: Int
+    let chapterTitle: String
+    let position: CoreTextReadingPosition
+    let length: Int
+    let kind: Kind
+    let date: Date
+    var note: String
+    let excerpt: String
+    let annotationStyle: AnnotationStyle?
+    let annotationColor: AnnotationColor?
+
+    init(
+        chapterIndex: Int,
+        chapterTitle: String,
+        position: CoreTextReadingPosition,
+        length: Int = 0,
+        kind: Kind = .bookmark,
+        note: String = "",
+        excerpt: String = "",
+        id: UUID = UUID(),
+        date: Date = Date(),
+        annotationStyle: AnnotationStyle? = nil,
+        annotationColor: AnnotationColor? = nil
+    ) {
+        self.id = id
+        self.chapterIndex = chapterIndex
+        self.chapterTitle = chapterTitle
+        self.position = position
+        self.length = max(0, length)
+        self.kind = kind
+        self.date = date
+        self.note = note
+        self.excerpt = excerpt
+        self.annotationStyle = annotationStyle
+        self.annotationColor = annotationColor
+    }
+
+    /// 書籤卡片摘錄的字數上限。卡片給摘錄兩行，而章首那一頁的開頭是排進版面的
+    /// 章名、顯示時會被 `ReaderBookmarkExcerpt.body(of:chapterTitle:)` 去掉，
+    /// 所以要多存一點，扣掉章名後才剩得下兩行內文。
+    static let pageExcerptLength = 90
+
+    var isChapterStartBookmark: Bool {
+        position.spineIndex == chapterIndex && position.charOffset == 0
+    }
+
+    func hasSameStableLocation(as other: Bookmark) -> Bool {
+        position == other.position
+    }
+
+    static func stablePositionSort(_ lhs: Bookmark, _ rhs: Bookmark) -> Bool {
+        if lhs.position.spineIndex != rhs.position.spineIndex {
+            return lhs.position.spineIndex < rhs.position.spineIndex
+        }
+        if lhs.position.charOffset != rhs.position.charOffset {
+            return lhs.position.charOffset < rhs.position.charOffset
+        }
+        return lhs.date < rhs.date
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, chapterIndex, chapterTitle, position, length, kind, date, note, excerpt
+        case spineIndex, charOffset, pageIndex
+        case annotationStyle, annotationColor
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
+        chapterIndex = try c.decode(Int.self, forKey: .chapterIndex)
+        chapterTitle = try c.decode(String.self, forKey: .chapterTitle)
+        if let decodedPosition = try? c.decode(CoreTextReadingPosition.self, forKey: .position) {
+            position = decodedPosition
+        } else {
+            let legacySpine = (try? c.decode(Int.self, forKey: .spineIndex)) ?? chapterIndex
+            let legacyOffset = (try? c.decode(Int.self, forKey: .charOffset)) ?? 0
+            position = CoreTextReadingPosition(spineIndex: legacySpine, charOffset: legacyOffset)
+        }
+        length = (try? c.decode(Int.self, forKey: .length)) ?? 0
+        kind = (try? c.decode(Kind.self, forKey: .kind)) ?? .bookmark
+        date = (try? c.decode(Date.self, forKey: .date)) ?? Date()
+        note = (try? c.decode(String.self, forKey: .note)) ?? ""
+        excerpt = (try? c.decode(String.self, forKey: .excerpt)) ?? ""
+        annotationStyle = try? c.decode(AnnotationStyle.self, forKey: .annotationStyle)
+        annotationColor = try? c.decode(AnnotationColor.self, forKey: .annotationColor)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(chapterIndex, forKey: .chapterIndex)
+        try c.encode(chapterTitle, forKey: .chapterTitle)
+        try c.encode(position, forKey: .position)
+        try c.encode(length, forKey: .length)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(date, forKey: .date)
+        try c.encode(note, forKey: .note)
+        try c.encode(excerpt, forKey: .excerpt)
+        try c.encodeIfPresent(annotationStyle, forKey: .annotationStyle)
+        try c.encodeIfPresent(annotationColor, forKey: .annotationColor)
+    }
+}
+
+extension Array where Element == Bookmark {
+    func sortedByStablePosition() -> [Bookmark] {
+        sorted(by: Bookmark.stablePositionSort)
+    }
+}
+
+extension ReadingBook {
+    var shouldShowNewOnBookshelf: Bool {
+        lastOpenedDate == nil && currentPosition <= 0
+    }
+
+    /// Display title of the newest readable chapter (volume separators skipped),
+    /// shown on the bookshelf so a TOC refresh is visible. Nil for local books or
+    /// when no chapters are known yet.
+    var latestChapterDisplayTitle: String? {
+        guard isOnline, let latestChapterTitle, !latestChapterTitle.isEmpty else { return nil }
+        return latestChapterTitle
+    }
+
+    /// Brings `totalChapterNum` and `latestChapterTitle` in line with `chapters`, the
+    /// book's table of contents — legado's `BookChapterList` sets `Book.totalChapterNum` and
+    /// `latestChapterTitle` the same way whenever it stores a new list.
+    mutating func applyChapterSummary(from chapters: [OnlineChapterRef]) {
+        guard !chapters.isEmpty else {
+            totalChapterNum = nil
+            latestChapterTitle = nil
+            return
+        }
+        totalChapterNum = chapters.count
+        let latest = chapters.last(where: { !$0.shouldRenderAsVolumeSeparator }) ?? chapters.last
+        let text = latest.map {
+            ReaderHTMLUtilities.displayText(fromHTMLFragment: $0.title)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } ?? ""
+        latestChapterTitle = text.isEmpty ? nil : text
+    }
+
+    /// The book as another device receives it through iCloud: without its table of
+    /// contents, and without the summary of one. Both belong to this device — the list is
+    /// fetched here and kept in `BookChapterStore`, and the summary is derived from it —
+    /// as legado's backup carries `bookshelf.json` without the chapters table.
+    func withoutTableOfContents() -> ReadingBook {
+        var copy = self
+        copy.onlineChapters = nil
+        copy.totalChapterNum = nil
+        copy.latestChapterTitle = nil
+        return copy
+    }
+
+    /// A copy suitable for storing in a single Firestore document. The online
+    /// chapter list can be thousands of entries (web novels) and would risk the
+    /// 1 MB document limit, so it is dropped — it stays local and is re-fetchable
+    /// from the source's table of contents.
+    func strippedForSync() -> ReadingBook {
+        var copy = withoutTableOfContents()
+        if let reference = copy.remoteSource {
+            copy.remoteSource?.cachedFilename = nil
+            copy.contentFilename = reference.offlineFilename ?? ""
+        }
+        return copy
+    }
+}
+
+// MARK: - Book Model
+
+struct ReadingBook: Identifiable, Codable {
+    let id: UUID
+    var title: String
+    var author: String
+    var source: String  // "local", "local_epub", or a URL string
+    var contentFilename: String  // Local book: filename in Documents; online book: empty string
+    var contentPipelineKind: BookPipelineKind
+    var currentPosition: Double  // 0.0 ~ 1.0
+    var addedDate: Date
+    var lastOpenedDate: Date?
+
+    /// Shelf membership is independent from opening or caching a remote file.
+    var isInBookshelf: Bool = true
+    var remoteSource: RemoteBookReference? = nil
+
+    // Online book-source fields
+    var isOnline: Bool
+    var bookSourceId: UUID?
+    var bookInfoURL: String?
+    var tocURL: String?
+    var runtimeVariables: [String: String]?
+    /// The book's table of contents, for whoever holds this copy: `BookStore.readingBook(id:)`
+    /// reads it from `BookChapterStore` on demand, and code building a book can attach its
+    /// chapters. A record in `BookStore` never carries it — the list is stored on its own,
+    /// as legado's chapters table is — so it is not part of the book's encoding either.
+    var onlineChapters: [OnlineChapterRef]?
+    /// The table of contents' chapter count and the display title of its newest readable
+    /// chapter, kept on the book so the shelf needs no list (legado's `Book.totalChapterNum`
+    /// / `latestChapterTitle`). Derived on this device by `applyChapterSummary(from:)`;
+    /// never synced (`withoutTableOfContents`). Optional, so a book without a list encodes
+    /// exactly as it did before these existed — see `audioPlayMode` on why that matters.
+    var totalChapterNum: Int?
+    var latestChapterTitle: String?
+    var coverUrl: String?
+
+    /// True when a table-of-contents refresh discovered chapters newer than the
+    /// ones the user has already seen. Set by `BookStore.refreshOnlineBookMetadata`
+    /// (launch / foreground / pull-to-refresh) and cleared when the book is opened.
+    var hasNewChapterUpdate: Bool = false
+
+    // Bookshelf grouping
+    var group: String = ""
+
+    // Bookmarks
+    var bookmarks: [Bookmark] = []
+
+    // Cover image path (relative filename under Application Support/Covers, e.g. "xxx_cover.jpg")
+    var coverImagePath: String?
+
+    /// The cover the user picked by hand in 書籍資訊 — a remote URL (封面搜索 or a
+    /// pasted address) or `localCustomCoverMarker` when it came from the photo
+    /// library / Files. Non-nil is the definition of "this cover is customized",
+    /// which is what gates 重設封面. Mirrors Legado's `Book.customCoverUrl`.
+    var customCoverUrl: String?
+
+    /// Filename (under Application Support/Covers) of the cover the book had
+    /// before the user replaced it, so 重設封面 restores the source's / EPUB's own
+    /// cover without a network round trip. Nil when nothing needed preserving.
+    /// Not carried by iCloud sync — only `coverImagePath` is — so a restored
+    /// device falls back to re-downloading `coverUrl`.
+    var originalCoverImagePath: String?
+
+    /// `customCoverUrl` value meaning "the cover file is a local pick, not a URL".
+    static let localCustomCoverMarker = "yuedu://local-cover"
+
+    /// True once the user has replaced the cover by hand.
+    var hasCustomCover: Bool { customCoverUrl != nil }
+    var rendererPreference: BookRendererPreference
+    var compatibilityState: BookCompatibilityState
+    var offlineDownloadState: BookOfflineDownloadState
+    var downloadedChapterCount: Int
+    var offlineDownloadTask: BookOfflineDownloadTask?
+
+    // Manga reading position: chapter index + page index within that chapter
+    var mangaChapterIndex: Int = 0
+    var mangaPage: Int = 0
+
+    // Audiobook reading position: chapter index + playback time (seconds)
+    var audioChapterIndex: Int = 0
+    var audioTimeSeconds: Double = 0
+
+    // Audiobook playback settings, kept per book as legado-E and legado-with-MD3 keep
+    // them (`Book.setPlayMode` / `setOpenCredits` / `setCloseCredits`). Absent until the
+    // listener changes them — read and write them through `audiobookPlayMode` and friends.
+    // A book nobody changed must encode exactly as it did before these existed: iCloud
+    // sync hashes each book, and a new hash counts as an edit made now, so default values
+    // written into every book would let one device's copies overwrite newer progress from
+    // the others on its first sync after the update.
+    var audioPlayMode: AudiobookPlayMode?
+    var audioOpenCreditsSeconds: Int?
+    var audioCloseCreditsSeconds: Int?
+
+    /// Set on a book converted from an Aozora Bunko text: the original file, kept
+    /// next to the EPUB, and the encoding it was read with. Optional and encoded only
+    /// when present, for the reason `audioPlayMode` gives. The converter's version is
+    /// not here but in the EPUB's own `yuedu-aozora.json`: a synced field would tell
+    /// another device that its copy was regenerated when only this one was.
+    var aozora: AozoraBookSource?
+
+    init(
+        title: String, author: String = "未知作者",
+        source: String = "local", contentFilename: String
+    ) {
+        self.id = UUID()
+        self.title = title
+        self.author = author
+        self.source = source
+        self.contentFilename = contentFilename
+        self.contentPipelineKind = Self.inferPipelineKind(
+            source: source,
+            contentFilename: contentFilename,
+            isOnline: false
+        )
+        self.currentPosition = 0.0
+        self.addedDate = Date()
+        self.isOnline = false
+        self.bookSourceId = nil
+        self.bookInfoURL = nil
+        self.tocURL = nil
+        self.runtimeVariables = nil
+        self.onlineChapters = nil
+        self.coverUrl = nil
+        self.hasNewChapterUpdate = false
+        self.bookmarks = []
+        self.coverImagePath = nil
+        self.rendererPreference = .defaultWeb
+        self.compatibilityState = .defaultWeb
+        self.offlineDownloadState = .none
+        self.downloadedChapterCount = 0
+        self.offlineDownloadTask = nil
+    }
+
+    // Custom decoder: missing new fields fall back to defaults instead of crashing
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        author = try c.decode(String.self, forKey: .author)
+        source = try c.decode(String.self, forKey: .source)
+        contentFilename = try c.decode(String.self, forKey: .contentFilename)
+        contentPipelineKind =
+            (try? c.decode(BookPipelineKind.self, forKey: .contentPipelineKind))
+            ?? Self.inferPipelineKind(
+                source: source,
+                contentFilename: contentFilename,
+                isOnline: (try? c.decode(Bool.self, forKey: .isOnline)) ?? false
+            )
+        currentPosition = try c.decode(Double.self, forKey: .currentPosition)
+        addedDate = try c.decode(Date.self, forKey: .addedDate)
+        lastOpenedDate = try? c.decode(Date.self, forKey: .lastOpenedDate)
+        isInBookshelf = try c.decodeIfPresent(Bool.self, forKey: .isInBookshelf) ?? true
+        remoteSource = try c.decodeIfPresent(RemoteBookReference.self, forKey: .remoteSource)
+        isOnline = (try? c.decode(Bool.self, forKey: .isOnline)) ?? false
+        bookSourceId = try? c.decode(UUID.self, forKey: .bookSourceId)
+        bookInfoURL = try? c.decode(String.self, forKey: .bookInfoURL)
+        tocURL = try? c.decode(String.self, forKey: .tocURL)
+        runtimeVariables = try? c.decode([String: String].self, forKey: .runtimeVariables)
+        // Builds before `BookChapterStore`, and a shelf an older build wrote after this
+        // one, keep the list inside the record. `BookStore` moves it into the store on load.
+        onlineChapters = try? decoder.container(keyedBy: InlineChapterListKey.self)
+            .decode([OnlineChapterRef].self, forKey: .onlineChapters)
+        totalChapterNum = try? c.decode(Int.self, forKey: .totalChapterNum)
+        latestChapterTitle = try? c.decode(String.self, forKey: .latestChapterTitle)
+        coverUrl = try? c.decode(String.self, forKey: .coverUrl)
+        hasNewChapterUpdate = (try? c.decode(Bool.self, forKey: .hasNewChapterUpdate)) ?? false
+        bookmarks = (try? c.decode([Bookmark].self, forKey: .bookmarks)) ?? []
+        coverImagePath = try? c.decode(String.self, forKey: .coverImagePath)
+        customCoverUrl = try? c.decode(String.self, forKey: .customCoverUrl)
+        originalCoverImagePath = try? c.decode(String.self, forKey: .originalCoverImagePath)
+        rendererPreference =
+            (try? c.decode(BookRendererPreference.self, forKey: .rendererPreference))
+            ?? .defaultWeb
+        compatibilityState =
+            (try? c.decode(BookCompatibilityState.self, forKey: .compatibilityState))
+            ?? .defaultWeb
+        offlineDownloadState =
+            (try? c.decode(BookOfflineDownloadState.self, forKey: .offlineDownloadState))
+            ?? .none
+        downloadedChapterCount = (try? c.decode(Int.self, forKey: .downloadedChapterCount)) ?? 0
+        offlineDownloadTask = try? c.decode(BookOfflineDownloadTask.self, forKey: .offlineDownloadTask)
+        group = (try? c.decode(String.self, forKey: .group)) ?? ""
+        mangaChapterIndex = (try? c.decode(Int.self, forKey: .mangaChapterIndex)) ?? 0
+        mangaPage = (try? c.decode(Int.self, forKey: .mangaPage)) ?? 0
+        audioChapterIndex = (try? c.decode(Int.self, forKey: .audioChapterIndex)) ?? 0
+        audioTimeSeconds = (try? c.decode(Double.self, forKey: .audioTimeSeconds)) ?? 0
+        audioPlayMode = try? c.decode(AudiobookPlayMode.self, forKey: .audioPlayMode)
+        audioOpenCreditsSeconds = try? c.decode(Int.self, forKey: .audioOpenCreditsSeconds)
+        audioCloseCreditsSeconds = try? c.decode(Int.self, forKey: .audioCloseCreditsSeconds)
+        aozora = try c.decodeIfPresent(AozoraBookSource.self, forKey: .aozora)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, author, source, contentFilename, contentPipelineKind, currentPosition, addedDate
+        case isOnline, bookSourceId, bookInfoURL, tocURL, runtimeVariables, coverUrl, hasNewChapterUpdate, bookmarks
+        case totalChapterNum, latestChapterTitle
+        case coverImagePath, customCoverUrl, originalCoverImagePath
+        case rendererPreference, compatibilityState
+        case offlineDownloadState, downloadedChapterCount, offlineDownloadTask, group, lastOpenedDate
+        case isInBookshelf, remoteSource
+        case mangaChapterIndex, mangaPage
+        case audioChapterIndex, audioTimeSeconds
+        case audioPlayMode, audioOpenCreditsSeconds, audioCloseCreditsSeconds
+        case aozora
+    }
+
+    /// Read only: where builds before `BookChapterStore` kept the table of contents.
+    private enum InlineChapterListKey: String, CodingKey {
+        case onlineChapters
+    }
+
+    private static func inferPipelineKind(
+        source: String,
+        contentFilename: String,
+        isOnline: Bool
+    ) -> BookPipelineKind {
+        if isOnline { return .html }
+        if source == "local_audio"
+            || contentFilename.hasPrefix("local_audio/")
+            || LocalAudiobookArchive.allowedAudioExtensions.contains(
+                (contentFilename as NSString).pathExtension.lowercased()
+            )
+        {
+            return .audio
+        }
+        if source == "local_epub" || contentFilename.hasSuffix("_epub.json")
+            || contentFilename.hasSuffix(".epub")
+        {
+            return .epub
+        }
+        if contentFilename.hasSuffix(".html")
+            || contentFilename.hasSuffix(".htm")
+            || contentFilename.hasSuffix(".xhtml")
+        {
+            return .html
+        }
+        return .txt
+    }
+}
+
+extension ReadingBook {
+    /// The audiobook play mode; legado's default, 順序播放, is stored as absent.
+    var audiobookPlayMode: AudiobookPlayMode {
+        get { audioPlayMode ?? .listEndStop }
+        set { audioPlayMode = newValue == .listEndStop ? nil : newValue }
+    }
+
+    /// Seconds of opening credits the audiobook player skips; 0 is stored as absent.
+    var audiobookOpeningCreditsSeconds: Int {
+        get { audioOpenCreditsSeconds ?? 0 }
+        set { audioOpenCreditsSeconds = newValue > 0 ? newValue : nil }
+    }
+
+    /// Seconds of closing credits the audiobook player cuts; 0 is stored as absent.
+    var audiobookClosingCreditsSeconds: Int {
+        get { audioCloseCreditsSeconds ?? 0 }
+        set { audioCloseCreditsSeconds = newValue > 0 ? newValue : nil }
+    }
+
+    var remoteEPUBRenderIdentifier: String? {
+        guard let remoteSource else { return nil }
+        return "remote-" + id.uuidString + "-" + (remoteSource.version ?? "offline")
+    }
+
+    var resolvedPipelineKind: BookPipelineKind {
+        if contentPipelineKind == .manga || contentPipelineKind == .fixedPage
+            || contentPipelineKind == .audio {
+            return contentPipelineKind
+        }
+        if isOnline { return .html }
+        if source == "local_epub" || contentFilename.hasSuffix("_epub.json") {
+            return .epub
+        }
+        return contentPipelineKind
+    }
+
+    var allowsUserSelectedReaderFont: Bool {
+        if resolvedPipelineKind == .manga || resolvedPipelineKind == .audio { return false }
+        if isOnline { return true }
+        return resolvedPipelineKind.allowsUserSelectedReaderFont
+    }
+
+    var isLegacyParsedEPUB: Bool {
+        contentFilename.hasSuffix("_epub.json")
+    }
+
+    /// Label for the 格式 chip. `.fixedPage` covers both fixed-layout EPUB and PDF,
+    /// so the pipeline kind alone can't name the format — the import source can.
+    var displayFormatLabel: String {
+        if isOnline { return localized("線上") }
+        if resolvedPipelineKind == .fixedPage, source == "local_epub" { return "EPUB" }
+        return resolvedPipelineKind.displayFormat
+    }
+}
+
+enum BookPipelineKind: String, Codable {
+    case epub
+    case txt
+    case html
+    case manga
+    case fixedPage
+    case audio
+
+    var allowsUserSelectedReaderFont: Bool {
+        switch self {
+        case .txt, .epub:
+            return true
+        case .html, .manga, .fixedPage, .audio:
+            return false
+        }
+    }
+
+    /// Short label for the 格式 chip in the reader's book card. File-format names stay
+    /// untranslated; the two content kinds that aren't a file extension are localized.
+    var displayFormat: String {
+        switch self {
+        case .epub: return "EPUB"
+        case .txt: return "TXT"
+        case .html: return "HTML"
+        case .fixedPage: return "PDF"
+        case .manga: return localized("漫畫")
+        case .audio: return localized("有聲書")
+        }
+    }
+}
+
+enum BookRendererPreference: String, Codable {
+    case defaultWeb
+    case forcedLegacy
+    case forcedWeb
+}
+
+enum BookCompatibilityState: String, Codable {
+    case defaultWeb
+    case autoFallback
+    case forcedLegacy
+    case quarantined
+}
+
+enum BookOfflineDownloadState: String, Codable, Sendable {
+    case none
+    case downloading
+    case available
+    case partial
+    case failed
+    case paused
+}
+
+enum BookResourceRole: String, Codable {
+    case content
+    case stylesheet
+    case font
+    case image
+    case cover
+    case unknown
+}
+
+enum PageRenderState: Equatable {
+    case missing
+    case loading
+    case thumbnail
+    case full
+    case failed
+}
+
+struct BookResource: Codable, Equatable {
+    let href: String
+    let mediaType: String
+    let role: BookResourceRole
+}
+
+struct BookSpineItem: Codable, Equatable {
+    let href: String
+    let title: String
+    let mediaType: String
+}
+
+struct BookManifest: Codable, Equatable {
+    let title: String
+    let author: String
+    let pipelineKind: BookPipelineKind
+    let spine: [BookSpineItem]
+    let resources: [BookResource]
+    let toc: [EPUBTocEntry]
+}
+
+struct EPUBCSSResource {
+    let content: String
+    let baseDir: URL
+}
+
+struct EPUBChapterRaw {
+    let href: String
+    let title: String
+    let html: String
+    let cssEntries: [EPUBCSSResource]
+    let baseURL: URL
+    let mediaType: String
+
+    init(
+        href: String,
+        title: String,
+        html: String,
+        cssEntries: [EPUBCSSResource] = [],
+        baseURL: URL,
+        mediaType: String = "application/xhtml+xml"
+    ) {
+        self.href = href
+        self.title = title
+        self.html = html
+        self.cssEntries = cssEntries
+        self.baseURL = baseURL
+        self.mediaType = mediaType
+    }
+}
+
+/// The original of a book converted from an Aozora Bunko text (`ReadingBook.aozora`).
+struct AozoraBookSource: Codable, Equatable, Sendable {
+    /// The original `.txt` or `.zip`, in the book files' folder next to the EPUB.
+    var originalFilename: String
+    /// `String.Encoding.rawValue` of the encoding the text was read with.
+    var sourceEncoding: UInt
+}
+
+struct EPUBTocEntry: Codable, Equatable {
+    let href: String
+    let title: String
+    let level: Int
+}
+
+struct EPUBParsedBook {
+    let title: String
+    let author: String
+    let chapters: [EPUBChapterRaw]
+    let basePath: URL
+    let coverImageURL: URL?
+    let tocEntries: [EPUBTocEntry]
+
+    static func placeholder(title: String, author: String, basePath: URL) -> EPUBParsedBook {
+        EPUBParsedBook(
+            title: title,
+            author: author,
+            chapters: [],
+            basePath: basePath,
+            coverImageURL: nil,
+            tocEntries: []
+        )
+    }
+
+    func makePackage(
+        pipelineKind: BookPipelineKind,
+        originalSourceURL: URL?
+    ) -> BookPackage {
+        let manifest = BookManifest(
+            title: title,
+            author: author,
+            pipelineKind: pipelineKind,
+            spine: chapters.map { chapter in
+                BookSpineItem(
+                    href: chapter.href,
+                    title: chapter.title,
+                    mediaType: chapter.mediaType
+                )
+            },
+            resources: [],
+            toc: tocEntries
+        )
+
+        return BookPackage(
+            title: title,
+            author: author,
+            pipelineKind: pipelineKind,
+            basePath: basePath,
+            originalSourceURL: originalSourceURL,
+            manifest: manifest,
+            parsedBook: self
+        )
+    }
+}
+
+struct BookPackage {
+    let title: String
+    let author: String
+    let pipelineKind: BookPipelineKind
+    let basePath: URL
+    let originalSourceURL: URL?
+    let manifest: BookManifest
+    let parsedBook: EPUBParsedBook
+}
+
+enum OnlineChapterRenderArtifact {
+    /// Bump when normalized chapter HTML semantics change in a way that cannot
+    /// be reconstructed from the persisted plain-text chapter body.
+    static let currentVersion = 4
+}
+
+struct ChapterPackageArtifact: Codable, Equatable {
+    let sourceURL: String?
+    let tocTitle: String?
+    let canonicalTitle: String?
+    let contentChecksum: String
+    let rawHTMLFilename: String?
+    let normalizedHTMLFilename: String?
+    var renderArtifactVersion: Int? = nil
+    let savedAt: Date
+}
+
+enum ChapterPackageState: String, Codable, Equatable {
+    case cached
+    case failed
+}
+
+struct ChapterPackage: Codable, Equatable {
+    let bookId: UUID
+    let chapterIndex: Int
+    let sourceURL: String?
+    let tocTitle: String?
+    let canonicalTitle: String?
+    let content: String
+    let contentChecksum: String
+    let rawHTMLFilename: String?
+    let normalizedHTMLFilename: String?
+    var renderArtifactVersion: Int? = nil
+    let savedAt: Date
+    let state: ChapterPackageState
+    let failureReason: String?
+
+    var renderTitle: String {
+        canonicalTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? canonicalTitle!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : (tocTitle ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+struct TOCPackage: Codable {
+    let sourceId: UUID
+    let sourceName: String
+    let tocURL: String
+    let runtimeVariables: [String: String]?
+    let chapters: [OnlineChapterRef]
+    let rawHTMLFilename: String?
+    let savedAt: Date
+}
+
+struct BookInfoPackage: Codable {
+    let sourceId: UUID
+    let sourceName: String
+    let bookURL: String
+    let name: String
+    let author: String
+    let intro: String
+    let coverUrl: String
+    let tocUrl: String
+    let wordCount: String
+    let lastChapter: String
+    let kind: String
+    let runtimeVariables: [String: String]?
+    let rawHTMLFilename: String?
+    let savedAt: Date
+
+    var onlineBook: OnlineBook {
+        OnlineBook(
+            name: name,
+            author: author,
+            intro: intro,
+            coverUrl: coverUrl,
+            bookUrl: bookURL,
+            tocUrl: tocUrl,
+            wordCount: wordCount,
+            lastChapter: lastChapter,
+            kind: kind,
+            sourceId: sourceId,
+            sourceName: sourceName,
+            runtimeVariables: runtimeVariables
+        )
+    }
+
+    /// Fills empty fields from the search result the user actually picked.
+    ///
+    /// Legado's `BookInfo.analyzeBookInfo` **updates the `Book` it was handed** rather than
+    /// building a fresh one, so a field the detail page does not yield keeps whatever the search
+    /// stage found: `if (parsed.isNotEmpty()) book.field = parsed`, and for name/author
+    /// `if (parsed.isNotEmpty() && (canReName || book.name.isEmpty()))`. 431 of 1912 real sources
+    /// (22.5%) ship an empty `ruleBookInfo.name` precisely because they rely on that — their detail
+    /// page never repeats the title. Parsing into a standalone value, as this reader does, dropped
+    /// it: the book opened with a blank name and 校驗書源 reported 詳情為空.
+    ///
+    /// - Parameters:
+    ///   - known: the book as the search/discover stage knew it, or nil when there is none
+    ///     (opening a bookmarked URL directly), in which case the parsed package is returned as-is.
+    ///   - canReName: `!source.ruleBookInfo.canReName.isEmpty` — legado's flag for "this source is
+    ///     allowed to correct the title it was given".
+    func merging(searchResult known: OnlineBook?, canReName: Bool) -> BookInfoPackage {
+        guard let known else { return self }
+
+        /// Non-name fields: the parsed value wins whenever it is non-empty.
+        func preferParsed(_ parsed: String, _ fallback: String) -> String {
+            parsed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : parsed
+        }
+        /// name/author: the parsed value additionally needs permission to overwrite a known one.
+        func preferParsedRenamable(_ parsed: String, _ fallback: String) -> String {
+            guard !parsed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return fallback
+            }
+            let fallbackIsEmpty = fallback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return (canReName || fallbackIsEmpty) ? parsed : fallback
+        }
+
+        return BookInfoPackage(
+            sourceId: sourceId,
+            sourceName: sourceName,
+            bookURL: bookURL,
+            name: preferParsedRenamable(name, known.name),
+            author: preferParsedRenamable(author, known.author),
+            intro: preferParsed(intro, known.intro),
+            coverUrl: preferParsed(coverUrl, known.coverUrl),
+            tocUrl: preferParsed(tocUrl, known.tocUrl),
+            wordCount: preferParsed(wordCount, known.wordCount),
+            lastChapter: preferParsed(lastChapter, known.lastChapter),
+            kind: preferParsed(kind, known.kind),
+            runtimeVariables: runtimeVariables ?? known.runtimeVariables,
+            rawHTMLFilename: rawHTMLFilename,
+            savedAt: savedAt
+        )
+    }
+}
+
+typealias RenderPackage = BookPackage
+
+struct ReaderRenderSettings: Equatable {
+    let theme: String
+    let textColor: UIColor
+    let backgroundColor: UIColor
+    let fontSize: CGFloat
+    let lineHeightMultiple: CGFloat
+    let lineSpacing: CGFloat
+    let paragraphSpacing: CGFloat
+    let letterSpacing: CGFloat
+    let marginH: CGFloat
+    let marginV: CGFloat
+    let footerHeight: CGFloat
+    let contentInsets: UIEdgeInsets
+    var writingMode: ReaderWritingMode = .horizontal
+    /// PostScript name of the user-selected reader font (nil = publication default
+    /// for EPUB, system font for plain text). EPUB resolvers consume this snapshot
+    /// before measurement; equality also invalidates layout when the font changes.
+    var fontPostScriptName: String? = nil
+    var isBold: Bool = false
+    // In-content chapter title (rendered at the top of each chapter). The full
+    // ChapterTitleStyle (size/spacing/weight/alignment/split/fonts) drives the
+    // paged & scroll TXT and online builders; the EPUB <h1> path reads only
+    // visible/size/bottomSpacing. Included here so a change re-triggers
+    // pagination via the relayout dedup check (ChapterTitleStyle is Equatable).
+    var chapterTitleStyle: ChapterTitleStyle = .default
+    /// Optional user-selected reader background. The URL stays value-semantic so
+    /// layout invalidation can distinguish a new imported image without retaining
+    /// UIKit image objects in persisted render settings.
+    var readerBackgroundImageURL: URL? = nil
+    /// Immutable regex rules used by every attributed-string build path.
+    var regexHighlightConfiguration: RegexHighlightConfiguration = .disabled
+    /// Selects the light/dark rule style without consulting mutable UI state.
+    var readerStyleAppearance: ReaderStyleAppearance = .light
+    /// Invalidates draw-only image decoration snapshots after asset mutations.
+    var readerStyleAssetRevision: UInt64 = 0
+    /// 對話氣泡. Lives here rather than being read from settings at draw time so
+    /// that switching it on re-runs layout: the bubble's side, width and padding
+    /// are baked into paragraph indents while the string is built.
+    var dialogueBubbleStyle: ReaderDialogueBubbleStyle = .default
+    /// 繁簡轉換. Applied while the string is built — ahead of replace rules, as legado
+    /// does — so switching it re-runs layout rather than repainting.
+    var textConversion: TextConversion = .original
+    /// 整章翻譯. Translations are spliced into the chapter documents, so switching it re-runs
+    /// layout; a chapter's translations arriving refreshes that chapter alone.
+    var translation: ReaderTranslationPresentation = .off
+    /// The book being laid out. `CJKTypographyStyleResolver` keeps one CJK typography
+    /// style per book, so its titles and chapters are set alike. Nil outside a book.
+    var bookID: UUID? = nil
+}
+
+enum TOCLayoutMode {
+    case horizontalList
+    case verticalRTLColumns
+
+    static func from(writingMode: ReaderWritingMode) -> TOCLayoutMode {
+        writingMode.isVertical ? .verticalRTLColumns : .horizontalList
+    }
+}
+
+extension ReadingBook {
+    /// Books with no writing mode of their own follow 排版方向: TXT, online books, and
+    /// an Aozora text converted at import, whose EPUB declares none.
+    var allowsVerticalWritingMode: Bool {
+        if isOnline || aozora != nil { return true }
+        return resolvedPipelineKind == .txt
+    }
+
+    /// An EPUB opens the way its package declares; one that follows 排版方向 opens the
+    /// way the setting lays it out.
+    var opensWithDeclaredEPUBFlow: Bool {
+        resolvedPipelineKind == .epub && !allowsVerticalWritingMode
+    }
+}
+
+enum ReaderLayoutMetrics {
+    static let footerHeight: CGFloat = 16
+    static let defaultFooterBottomPadding: CGFloat = 4
+    static let defaultFooterTextGap: CGFloat = 12
+    static let defaultFooterHorizontalPadding: CGFloat = 16
+
+    static let headerHeight: CGFloat = 16
+    static let defaultHeaderTopPadding: CGFloat = 6
+    static let defaultHeaderTextGap: CGFloat = 12
+    static let defaultHeaderHorizontalPadding: CGFloat = 16
+
+    /// Text area bottom = footerHeight + footerBottomPadding + footerTextGap
+    /// (when footer visible). Grid alignment may add extra.
+    static let footerPadding: CGFloat = defaultFooterBottomPadding
+    static let minimumVerticalPadding: CGFloat = 24
+    static let topSafeAreaExtra: CGFloat = 10
+
+    static func topInset(safeTop: CGFloat) -> CGFloat {
+        max(minimumVerticalPadding, safeTop + topSafeAreaExtra)
+    }
+
+    static func topInset(
+        safeTop: CGFloat,
+        headerVisible: Bool,
+        headerTopPadding: CGFloat = defaultHeaderTopPadding,
+        headerTextGap: CGFloat = defaultHeaderTextGap
+    ) -> CGFloat {
+        guard headerVisible else { return topInset(safeTop: safeTop) }
+        return headerTopPadding + headerHeight + headerTextGap
+    }
+
+    /// Returns the extra bottom padding CoreText's grid alignment will inject
+    /// so the content area snaps to whole line heights. The footer overlay must
+    /// shift up by this amount so the visual gap equals `footerTextGap`.
+    static func gridAdjustment(
+        viewHeight: CGFloat,
+        topInset: CGFloat,
+        bottomInset: CGFloat,
+        fontSize: CGFloat,
+        lineSpacing: CGFloat
+    ) -> CGFloat {
+        let lineHeight = max(1, fontSize + lineSpacing)
+        let rawHeight = viewHeight - topInset - bottomInset
+        let lineCount = floor(rawHeight / lineHeight)
+        guard lineCount >= 1 else { return 0 }
+        return rawHeight - lineCount * lineHeight
+    }
+
+    /// The text area's top and bottom insets with the header/footer bars taken
+    /// into account. Both reading modes call this, which is what stops the text
+    /// from sliding under a bar in one of them.
+    ///
+    /// Replaces the hand-tuned "content reservation" numbers the free-position
+    /// overlays needed: a bar's height is known, so the space it needs can be
+    /// computed instead of guessed. The safe-area inset is added on top because
+    /// the reading surface spans the whole screen — a bar sitting at
+    /// `headerTopPadding` alone would land under the notch.
+    /// - Parameter verticalMargin: the reader's 上下邊距, in points. Now honoured in
+    ///   *both* modes. Paged mode used to take its vertical margin from the overlay
+    ///   layout's hand-tuned "content reservation" while scroll mode used
+    ///   `pageMarginV`, so the same slider meant different things depending on how
+    ///   you happened to be reading. A bar's height is known, so the margin no
+    ///   longer has to absorb it and one value can serve both.
+    /// - Parameters:
+    ///   - headerExtent: the header band's own height. Defaults to the historical
+    ///     flat 16pt; the reader passes `ReaderBarRenderer.extent(...)`, which
+    ///     follows the bar's font size and its divider. A bar drawn taller than
+    ///     the band reserved here would overlap the text, so these two must come
+    ///     from the same calculation.
+    ///   - footerExtent: the same, for the footer.
+    static func barContentInsets(
+        safeTop: CGFloat,
+        safeBottom: CGFloat,
+        showsHeader: Bool,
+        showsFooter: Bool,
+        verticalMargin: CGFloat,
+        headerTopPadding: CGFloat = defaultHeaderTopPadding,
+        footerBottomPadding: CGFloat = defaultFooterBottomPadding,
+        headerExtent: CGFloat = headerHeight,
+        footerExtent: CGFloat = footerHeight,
+        edgeDistances: ReaderBarEdgeDistances = ReaderBarEdgeDistances(),
+        topMargin: CGFloat? = nil,
+        bottomMargin: CGFloat? = nil,
+        headerInnerMargin: CGFloat = 0,
+        footerInnerMargin: CGFloat = 0
+    ) -> (top: CGFloat, bottom: CGFloat) {
+        let topMargin = max(0, topMargin ?? verticalMargin)
+        let bottomMargin = max(0, bottomMargin ?? verticalMargin)
+        let top = showsHeader
+            ? headerBarTopOffset(safeTop: safeTop, headerTopPadding: headerTopPadding, edgeDistance: edgeDistances.header)
+                + headerExtent + headerInnerMargin + topMargin
+            : max(minimumVerticalPadding, safeTop + topMargin)
+        let bottom = showsFooter
+            ? footerBarBottomOffset(safeBottom: safeBottom, footerBottomPadding: footerBottomPadding, edgeDistance: edgeDistances.footer)
+                + footerExtent + footerInnerMargin + bottomMargin
+            : max(minimumVerticalPadding, safeBottom + bottomMargin)
+        return (top: top, bottom: bottom)
+    }
+
+    /// Distance from the top of the reading surface to the header bar's own top
+    /// edge. The renderer offsets the bar by this and `barContentInsets` reserves
+    /// the matching band, so the two cannot drift apart.
+    static func headerBarTopOffset(
+        safeTop: CGFloat,
+        headerTopPadding: CGFloat = defaultHeaderTopPadding,
+        edgeDistance: Double? = nil
+    ) -> CGFloat {
+        // Legacy settings keep their exact placement. An edited absolute
+        // distance is independent of safe area, including a deliberate zero.
+        edgeDistance.map { CGFloat($0) } ?? (safeTop + headerTopPadding)
+    }
+
+    /// Distance from the bottom of the reading surface to the footer bar's own
+    /// bottom edge.
+    static func footerBarBottomOffset(
+        safeBottom: CGFloat,
+        footerBottomPadding: CGFloat = defaultFooterBottomPadding,
+        edgeDistance: Double? = nil
+    ) -> CGFloat {
+        edgeDistance.map { CGFloat($0) } ?? (safeBottom + footerBottomPadding)
+    }
+
+    static func bottomInset(
+        safeBottom: CGFloat,
+        footerVisible: Bool = true,
+        footerHeight: CGFloat = footerHeight,
+        footerBottomPadding: CGFloat = defaultFooterBottomPadding,
+        footerTextGap: CGFloat = defaultFooterTextGap
+    ) -> CGFloat {
+        // Footer hidden: keep just enough bottom clearance to avoid the home
+        // indicator / safe area (caller passes the real safe bottom instead of 0).
+        guard footerVisible else {
+            return max(minimumVerticalPadding, safeBottom)
+        }
+        return footerHeight + footerBottomPadding + footerTextGap
+    }
+}
+
+enum ImportedBookContentFormat: Equatable {
+    case plainText
+    case html
+
+    var fileExtension: String {
+        switch self {
+        case .plainText: return "txt"
+        case .html: return "html"
+        }
+    }
+}
+
+protocol BookIngesting {
+    func ingest() throws -> BookPackage
+}
+
+final class ReaderFeatureFlags {
+    static let shared = ReaderFeatureFlags()
+
+    private let defaults = UserDefaults.standard
+    private let globalWebKey = "yd_pipeline_global_web"
+    private let epubWebKey = "yd_pipeline_epub_web"
+    private let txtWebKey = "yd_pipeline_txt_web"
+    private let htmlWebKey = "yd_pipeline_html_web"
+    private let onlineProgressiveKey = "yd_pipeline_online_progressive"
+
+    private init() {}
+
+    var useUnifiedWebPipeline: Bool {
+        get { defaults.object(forKey: globalWebKey) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: globalWebKey) }
+    }
+
+    var useProgressiveOnlineReading: Bool {
+        get { defaults.object(forKey: onlineProgressiveKey) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: onlineProgressiveKey) }
+    }
+
+    func isEnabled(for kind: BookPipelineKind) -> Bool {
+        guard useUnifiedWebPipeline else { return false }
+        let key: String
+        switch kind {
+        case .epub:
+            key = epubWebKey
+        case .txt:
+            key = txtWebKey
+        case .html:
+            key = htmlWebKey
+        case .manga, .fixedPage, .audio:
+            return false
+        }
+        return defaults.object(forKey: key) as? Bool ?? true
+    }
+
+    func shouldUseWebPipeline(for book: ReadingBook, kind: BookPipelineKind) -> Bool {
+        switch book.rendererPreference {
+        case .forcedLegacy:
+            return false
+        case .forcedWeb:
+            return true
+        case .defaultWeb:
+            break
+        }
+
+        switch book.compatibilityState {
+        case .forcedLegacy, .autoFallback, .quarantined:
+            return false
+        case .defaultWeb:
+            break
+        }
+        return isEnabled(for: kind)
+    }
+}
+
+final class ReaderTelemetry {
+    static let shared = ReaderTelemetry()
+
+    private init() {}
+
+    func log(_ event: String, attributes: [String: String] = [:]) {}
+}
+
+// MARK: - Bookshelf Sort
+
+enum BookSortOrder: String {
+    case manual, recentlyRead, title, author
+}
+
+// MARK: - HTML Utilities
+
+extension String {
+    /// Converts HTML to plain text while preserving paragraph boundaries.
+    /// Block-level elements (p, div, br, h1-h6, li, tr, blockquote) become
+    /// line breaks; inline elements have their tags removed. Preserves semantic
+    /// structure for downstream splitIntoParagraphs.
+    var strippedHTML: String {
+        do {
+            let doc = try SwiftSoup.parse(self)
+            try doc.select("script, style, noscript, iframe").remove()
+            let root: SwiftSoup.Element = doc.body() ?? doc
+            return HTMLTextExtractor.extractPreservingBlocks(root)
+        } catch {
+            return self
+        }
+    }
+}
+
+/// Recursively traverses the DOM, inserting line breaks at block-level element boundaries.
+private enum HTMLTextExtractor {
+    static let blockTags: Set<String> = [
+        "p", "div", "br", "hr",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "li", "tr", "blockquote", "section", "article",
+        "dt", "dd", "figcaption", "pre", "header", "footer",
+    ]
+
+    static func extractPreservingBlocks(_ element: SwiftSoup.Element) -> String {
+        var result = ""
+        for node in element.getChildNodes() {
+            if let textNode = node as? SwiftSoup.TextNode {
+                result += textNode.getWholeText()
+            } else if let child = node as? SwiftSoup.Element {
+                let tag = child.tagName().lowercased()
+                if tag == "br" {
+                    result += "\n"
+                } else if blockTags.contains(tag) {
+                    // Block element: add newlines before and after
+                    if !result.isEmpty && !result.hasSuffix("\n") {
+                        result += "\n"
+                    }
+                    result += extractPreservingBlocks(child)
+                    if !result.hasSuffix("\n") {
+                        result += "\n"
+                    }
+                } else {
+                    // Inline element: extract text directly
+                    result += extractPreservingBlocks(child)
+                }
+            }
+        }
+        return result
+    }
+}

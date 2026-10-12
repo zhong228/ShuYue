@@ -1,0 +1,36 @@
+import Testing
+@testable import yuedu_app
+
+@Suite("Reader Premium Visibility Policy")
+struct ReaderPremiumVisibilityPolicyTests {
+    @Test("free users do not see premium customization surfaces")
+    func freeVisibility() {
+        let policy = ReaderPremiumVisibilityPolicy(isProActive: false)
+
+        #expect(!policy.showsReaderDecoration)
+        #expect(!policy.showsBottomTabCustomization)
+        #expect(!policy.showsBackgroundImageImport)
+        #expect(!policy.showsLayoutPresetImport)
+        #expect(!policy.showsTouchZoneEditor)
+        #expect(!policy.showsCommentBubbleSettings(hasParagraphReviews: true))
+        #expect(!policy.allowsAI)
+        #expect(!policy.showsAISelectionActions)
+        #expect(!policy.allowsFontImport)
+    }
+
+    @Test("Pro users see premium customization surfaces")
+    func proVisibility() {
+        let policy = ReaderPremiumVisibilityPolicy(isProActive: true)
+
+        #expect(policy.showsReaderDecoration)
+        #expect(policy.showsBottomTabCustomization)
+        #expect(policy.showsBackgroundImageImport)
+        #expect(policy.showsLayoutPresetImport)
+        #expect(policy.showsTouchZoneEditor)
+        #expect(!policy.showsCommentBubbleSettings(hasParagraphReviews: false))
+        #expect(policy.showsCommentBubbleSettings(hasParagraphReviews: true))
+        #expect(policy.allowsAI)
+        #expect(policy.showsAISelectionActions)
+        #expect(policy.allowsFontImport)
+    }
+}
