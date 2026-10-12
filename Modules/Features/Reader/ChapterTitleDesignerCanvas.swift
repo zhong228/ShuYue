@@ -58,9 +58,9 @@ struct ChapterTitleDesignerCanvas: View {
         .padding(.bottom, DSSpacing.sm)
         .background(DSColor.groupedBackground)
         .safeAreaInset(edge: .top, spacing: 0) {
-            Picker(localized("書寫方向"), selection: $model.previewWritingMode) {
-                Text(localized("橫排")).tag(ReaderWritingMode.horizontal)
-                Text(localized("直排")).tag(ReaderWritingMode.verticalRTL)
+            Picker(localized("书写方向"), selection: $model.previewWritingMode) {
+                Text(localized("横排")).tag(ReaderWritingMode.horizontal)
+                Text(localized("竖排")).tag(ReaderWritingMode.verticalRTL)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, DSSpacing.lg)

@@ -900,14 +900,16 @@ class GlobalSettings: ObservableObject {
         }
     }
     /// Paged mode only: swiping up shows a growing ✕ chip and releasing closes
-    /// the reader. Defaults ON; scroll mode never installs the gesture. Read at
+    /// the reader. Defaults OFF (L6 需求 74: 手势面板开关项，默认关闭以区分墨悦
+    /// 默认行为); scroll mode never installs the gesture. Read at
     /// gesture-begin time by `CoreTextPageEngineView` — no relayout needed.
     @Published var readerSwipeUpToExit: Bool {
         didSet { UserDefaults.standard.set(readerSwipeUpToExit, forKey: "yd_reader_swipe_up_exit") }
     }
     /// Paged mode only: pulling down shows a bookmark pill and releasing past the
     /// commit point bookmarks this page — or removes the bookmark, when the page
-    /// already has one. Defaults ON; scroll mode never installs the gesture, where
+    /// already has one. Defaults OFF (L6 需求 74: 手势面板开关项，默认关闭以区分墨悦
+    /// 默认行为); scroll mode never installs the gesture, where
     /// a downward drag is the scroll itself. Read at gesture-begin time by
     /// `CoreTextPageEngineView` — no relayout needed.
     @Published var readerPullDownToBookmark: Bool {
@@ -2004,9 +2006,9 @@ class GlobalSettings: ObservableObject {
             rawValue: UserDefaults.standard.string(forKey: "yd_fixed_page_auto_scroll_button_position") ?? ""
         ) ?? .right
         readerSwipeUpToExit =
-            (UserDefaults.standard.object(forKey: "yd_reader_swipe_up_exit") as? Bool) ?? true
+            (UserDefaults.standard.object(forKey: "yd_reader_swipe_up_exit") as? Bool) ?? false
         readerPullDownToBookmark =
-            (UserDefaults.standard.object(forKey: "yd_reader_pull_down_bookmark") as? Bool) ?? true
+            (UserDefaults.standard.object(forKey: "yd_reader_pull_down_bookmark") as? Bool) ?? false
         readerFollowSystemTheme = Self.startingReaderFollowsDevice(
             stored: UserDefaults.standard.object(forKey: "yd_reader_follow_system_theme") as? Bool,
             hasPickedBackground: ReaderTheme.hasPersistedChoice

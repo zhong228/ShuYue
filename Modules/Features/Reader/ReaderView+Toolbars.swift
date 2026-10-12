@@ -3,25 +3,36 @@ import UIKit
 
 extension ReaderView {
 
-    @ViewBuilder
+    /// L6 需求 71：三套 chrome 统一为「极简悬浮控制」单套方案，不再提供
+    /// classic / modern / Apple Books 切换。这里恒渲染 `ReaderFloatingChrome`；
+    /// 旧的 topBar / bottomBar / modernToolbarContent / appleBooksControls
+    /// 定义保留（不再被调用，避免一次删光造成不可控回归）。
     var readerChrome: some View {
-        switch settings.appearanceReaderInterface {
-        case .classic:
-            topBar
-            bottomBar
-        case .modern:
-            // Only the bottom panel is drawn here — 現代's top chrome is a real
-            // `.toolbar` (`modernToolbarContent`), which on iOS 26 already renders as
-            // the floating glass controls this interface is modelled on.
-            //
-            // The glass follows the *system* appearance, not the reader theme, so a
-            // night-theme page under a light system would get light chrome. Pin the
-            // scheme to the theme — the same thing appleBooksControls does.
-            modernBottomBar
-                .environment(\.colorScheme, readerTheme == .night ? .dark : .light)
-        case .appleBooks:
-            EmptyView()
-        }
+        ReaderFloatingChrome(
+            readerTheme: readerTheme,
+            chapterTitle: currentChapterTitle.converted(to: settings.textConversion),
+            isBookmarked: isCurrentPageBookmarked,
+            overlayContentMaxWidth: overlayContentMaxWidth,
+            canGoPrevChapter: canGoPrevChapter,
+            canGoNextChapter: canGoNextChapter,
+            pageStatusText: readerPageStatusText,
+            chapterSliderProgressValue: { chapterSliderProgressValue() },
+            applyChapterSliderProgress: { applyChapterSliderProgress($0) },
+            chapterTitleForProgress: { chapterTitle(forProgress: $0).converted(to: settings.textConversion) },
+            onBack: { closeReader() },
+            onOpenSearch: { showReaderSearch = true },
+            onToggleBookmark: { toggleCurrentPageBookmark() },
+            // L6 需求 72：「更多」收纳 刷新／换源／下载／网页打开＋AI 助手／AI 翻译；
+            // 听书不进菜单（它在底部控制岛的固定四功能行里）。
+            menuActions: readerSecondaryActions.filter { $0.id != .playback },
+            onOpenBookDetail: onlineBookDetail == nil ? nil : { openOnlineBookDetail() },
+            onPrevChapter: { jumpToChapter(currentChapterIndex - 1) },
+            onNextChapter: { jumpToChapter(currentChapterIndex + 1) },
+            onOpenTOC: { showTOC = true },
+            onOpenSettings: { showQuickThemePanel = true },
+            onOpenTTS: { handleListeningAction() },
+            onToggleDarkMode: { toggleReaderDarkMode() }
+        )
     }
 
     var showsAppleBooksToolbars: Bool {

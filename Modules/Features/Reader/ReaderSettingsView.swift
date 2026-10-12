@@ -4,6 +4,23 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+/// 阅读偏好的三个横向页面（版式 / 视觉 / 习惯）。
+private enum ReaderSettingsPage: Int, CaseIterable, Identifiable, Hashable {
+    case layout
+    case visual
+    case habits
+
+    var id: Int { rawValue }
+
+    var titleKey: String {
+        switch self {
+        case .layout: return "版式"
+        case .visual: return "视觉"
+        case .habits: return "习惯"
+        }
+    }
+}
+
 struct ReaderSettingsView: View {
     @Binding var fontSize: CGFloat
     @Binding var theme: ReaderTheme
@@ -41,6 +58,8 @@ struct ReaderSettingsView: View {
     /// 匯出閱讀設定's name prompt, and the name typed into it.
     @State private var showingReaderSettingsExport = false
     @State private var readerSettingsExportName = ""
+    /// 三页面板当前页。
+    @State private var selectedPage: ReaderSettingsPage = .layout
 
     private var supportsFontSize: Bool { capabilities.contains(.fontSize) }
     private var supportsUserFont: Bool { supportsFontSize && allowsUserSelectedReaderFont }
@@ -64,42 +83,32 @@ struct ReaderSettingsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                previewPanel
-                Divider()
+            previewPanel
+            Divider()
 
-                // What the text looks like, how it sits on the page, what surrounds it,
-                // what decorates it, then how the reader behaves — the order a reader
-                // reaches for them. 排版生效範圍 comes first because it decides where every
-                // change below is kept.
-                Form {
-                    scopeSection
-
-                    if supportsUserFont || supportsFontSize {
-                        textSection
-                    }
-
-                    if supportsSpacing || supportsLineHeight {
-                        layoutSection
-                    }
-
-                    headerFooterSection
-
-                    // Pro sections stay in view without Pro, locked: a reader has to see a
-                    // feature where it would be used to want it (2026-09-27).
-                    readerDecorationSection
-
-                    if showsPagingSection {
-                        pagingSection
-                    }
-
-                    brightnessSection
-
-                    readerSettingsBackupSection
+            // 三页横向面板：版式 / 视觉 / 习惯。分段控件与页面滑动双向同步，
+            // 替代原来一条长 Form 的顺序分区（2026-10-12）。
+            Picker(selection: $selectedPage) {
+                ForEach(ReaderSettingsPage.allCases) { page in
+                    Text(localized(page.titleKey)).tag(page)
                 }
-                .softScrollEdges()
             }
-            .themedAppSurface(for: .settings)
-            .navigationTitle(localized("閱讀設定"))
+            .pickerStyle(.segmented)
+            .padding(.horizontal, DSSpacing.lg)
+            .padding(.vertical, DSSpacing.md)
+
+            TabView(selection: $selectedPage) {
+                layoutPage
+                    .tag(ReaderSettingsPage.layout)
+                visualPage
+                    .tag(ReaderSettingsPage.visual)
+                habitsPage
+                    .tag(ReaderSettingsPage.habits)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+        }
+        .themedAppSurface(for: .settings)
+        .navigationTitle(localized("阅读偏好"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -180,6 +189,51 @@ struct ReaderSettingsView: View {
         }
     }
 
+    // MARK: - 三页布局
+
+    /// 版式页：排版生效范围 + 字体字号 + 间距边距。
+    private var layoutPage: some View {
+        Form {
+            scopeSection
+
+            if supportsUserFont || supportsFontSize {
+                textSection
+            }
+
+            if supportsSpacing || supportsLineHeight {
+                layoutSection
+            }
+        }
+        .softScrollEdges()
+    }
+
+    /// 视觉页：文字颜色 + 亮度管理。
+    private var visualPage: some View {
+        Form {
+            textColorSection
+            brightnessSection
+        }
+        .softScrollEdges()
+    }
+
+    /// 习惯页：翻页习惯 / 眉脚编辑 / 阅读装饰 / 偏好备份。
+    private var habitsPage: some View {
+        Form {
+            if showsPagingSection {
+                pagingSection
+            }
+
+            headerFooterSection
+
+            // Pro sections stay in view without Pro, locked: a reader has to see a
+            // feature where it would be used to want it (2026-09-27).
+            readerDecorationSection
+
+            readerSettingsBackupSection
+        }
+        .softScrollEdges()
+    }
+
     private var premiumVisibility: ReaderPremiumVisibilityPolicy {
         ReaderPremiumVisibilityPolicy(isProActive: subscriptionStore.isProActive)
     }
@@ -257,6 +311,25 @@ struct ReaderSettingsView: View {
                 )
             }
 
+            if supportsFontSize {
+                Picker(selection: $settings.textConversion) {
+                    ForEach(TextConversion.allCases, id: \.self) { mode in
+                        Text(mode.localizedTitle).tag(mode)
+                    }
+                } label: {
+                    SettingsRowLabel(localized("简繁切换"), systemImage: "character.book.closed")
+                }
+            }
+        } header: {
+            Text(localized("版式"))
+                .foregroundStyle(DSColor.textSecondary)
+        }
+        .interfaceSectionSurface()
+    }
+
+    /// 文字颜色跟随当前阅读背景，归到视觉页与亮度管理相邻。
+    private var textColorSection: some View {
+        Section {
             ColorPicker(selection: readerTextColorBinding, supportsOpacity: false) {
                 SettingsRowLabel(
                     localized(ReadingSettingsScopeItem.textColor.titleKey),
@@ -271,18 +344,8 @@ struct ReaderSettingsView: View {
                     SettingsRowLabel(localized("跟隨主題文字顏色"), systemImage: "arrow.counterclockwise", role: .action)
                 }
             }
-
-            if supportsFontSize {
-                Picker(selection: $settings.textConversion) {
-                    ForEach(TextConversion.allCases, id: \.self) { mode in
-                        Text(mode.localizedTitle).tag(mode)
-                    }
-                } label: {
-                    SettingsRowLabel(localized("繁簡轉換"), systemImage: "character.book.closed")
-                }
-            }
         } header: {
-            Text(localized("文字"))
+            Text(localized(ReadingSettingsScopeItem.textColor.titleKey))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             Text(String(
@@ -432,8 +495,8 @@ struct ReaderSettingsView: View {
         Section {
             if allowsVerticalWritingMode {
                 Picker(selection: $settings.readerWritingMode) {
-                    Text(localized("橫排")).tag(ReaderWritingMode.horizontal)
-                    Text(localized("直排")).tag(ReaderWritingMode.verticalRTL)
+                    Text(localized("横排")).tag(ReaderWritingMode.horizontal)
+                    Text(localized("竖排")).tag(ReaderWritingMode.verticalRTL)
                 } label: {
                     SettingsRowLabel(localized(ReadingSettingsScopeItem.writingMode.titleKey),
                                      systemImage: ReadingSettingsScopeItem.writingMode.systemImage)
@@ -501,11 +564,11 @@ struct ReaderSettingsView: View {
             }
             .disabled(!hasCustomLayout)
         } header: {
-            Text(localized("排版"))
+            Text(localized("排版细节"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             if supportsLineHeight, !settings.scrollMode {
-                Text(localized("上下邊距同時是頁首頁尾的容身空間，改動不會移動頁首頁尾本身。"))
+                Text(localized("上下边距同时是眉脚的容身空间，改动不会移动眉脚本身。"))
                     .dsSectionFooter()
             }
         }
@@ -581,10 +644,10 @@ struct ReaderSettingsView: View {
                 SettingsRowLabel(localized("重設頁首頁尾"), systemImage: "arrow.counterclockwise", role: .destructive)
             }
         } header: {
-            Text(localized("頁首頁尾與標題"))
+            Text(localized("眉脚与标题"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("正文與頁首頁尾的距離在「排版」的上下邊距調整。"))
+            Text(localized("正文与眉脚的间距在「排版细节」的上下边距调整。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -599,7 +662,7 @@ struct ReaderSettingsView: View {
             do {
                 let url = try await ReaderSettingsExportFile.write(
                     inputs,
-                    named: trimmed.isEmpty ? localized("閱讀設定") : trimmed
+                    named: trimmed.isEmpty ? localized("阅读偏好") : trimmed
                 )
                 SystemShareSheet.present(fileURL: url)
             } catch {
@@ -686,7 +749,7 @@ struct ReaderSettingsView: View {
                 }
             }
         } header: {
-            Text(localized("閱讀裝飾"))
+            Text(localized("阅读装饰"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -711,20 +774,20 @@ struct ReaderSettingsView: View {
                         Text(localized(spreadTitleKey(for: mode))).tag(mode)
                     }
                 } label: {
-                    SettingsRowLabel(localized("頁面顯示"), systemImage: "rectangle.portrait.on.rectangle.portrait")
+                    SettingsRowLabel(localized("翻页方向"), systemImage: "rectangle.portrait.on.rectangle.portrait")
                 }
             }
 
             Toggle(isOn: $settings.readerTapBothSidesNextPage) {
-                SettingsRowLabel(localized("全局翻頁"), systemImage: "hand.tap")
+                SettingsRowLabel(localized("双侧翻页"), systemImage: "hand.tap")
             }
 
             Toggle(isOn: $settings.readerSwipeUpToExit) {
-                SettingsRowLabel(localized("上滑退出閱讀"), systemImage: "rectangle.portrait.and.arrow.right")
+                SettingsRowLabel(localized("上滑离开"), systemImage: "rectangle.portrait.and.arrow.right")
             }
 
             Toggle(isOn: $settings.readerPullDownToBookmark) {
-                SettingsRowLabel(localized("下拉加入書籤"), systemImage: "bookmark")
+                SettingsRowLabel(localized("下拉加入书签"), systemImage: "bookmark")
             }
 
             if let onOpenTouchZoneEditor {
@@ -733,19 +796,19 @@ struct ReaderSettingsView: View {
                         dismiss()
                         DispatchQueue.main.async { onOpenTouchZoneEditor() }
                     } label: {
-                        SettingsRowLabel(localized("翻頁區塊編輯"), systemImage: "square.grid.3x3", role: .action)
+                        SettingsRowLabel(localized("触控区域"), systemImage: "square.grid.3x3", role: .action)
                     }
                 } else {
-                    SettingsLockedRow(title: localized("翻頁區塊編輯"), systemImage: "square.grid.3x3") {
+                    SettingsLockedRow(title: localized("触控区域"), systemImage: "square.grid.3x3") {
                         requestPaywall(.touchZoneEditor)
                     }
                 }
             }
         } header: {
-            Text(localized("翻頁與手勢"))
+            Text(localized("翻页习惯"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("全局翻頁：點畫面左右兩側都翻到下一頁，中間仍呼出選單。上滑退出與下拉書籤都要滑過一半再鬆手。"))
+            Text(localized("双侧翻页：点画面左右两侧都翻到下一页，中间仍呼出菜单。上滑离开与下拉加入书签都要滑过一半再松手。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -764,7 +827,7 @@ struct ReaderSettingsView: View {
     private var brightnessSection: some View {
         Section {
             Toggle(isOn: followSystemBrightnessBinding) {
-                SettingsRowLabel(localized("跟隨系統亮度"), systemImage: "sun.max")
+                SettingsRowLabel(localized("自动亮度"), systemImage: "sun.max")
             }
 
             SettingsSliderRow(
@@ -777,7 +840,7 @@ struct ReaderSettingsView: View {
                 isEnabled: !settings.followSystemBrightness
             )
         } header: {
-            Text(localized("亮度"))
+            Text(localized("亮度管理"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -823,14 +886,14 @@ struct ReaderSettingsView: View {
         Section {
             if premiumVisibility.showsLayoutPresetImport {
                 Button {
-                    readerSettingsExportName = localized("閱讀設定")
+                    readerSettingsExportName = localized("阅读偏好")
                     showingReaderSettingsExport = true
                 } label: {
-                    SettingsRowLabel(localized("匯出閱讀設定"), systemImage: "square.and.arrow.up", role: .action)
+                    SettingsRowLabel(localized("导出偏好"), systemImage: "square.and.arrow.up", role: .action)
                 }
                 // The file is named first, then shared: the file name is all that
                 // tells one exported setup from another.
-                .alert(localized("匯出閱讀設定"), isPresented: $showingReaderSettingsExport) {
+                .alert(localized("导出偏好"), isPresented: $showingReaderSettingsExport) {
                     TextField(localized("名稱"), text: $readerSettingsExportName)
                     Button(localized("匯出")) {
                         exportReaderSettings(named: readerSettingsExportName)
@@ -841,21 +904,21 @@ struct ReaderSettingsView: View {
                 Button {
                     requestStyleImporter(.readerSettings)
                 } label: {
-                    SettingsRowLabel(localized("匯入閱讀設定"), systemImage: "square.and.arrow.down", role: .action)
+                    SettingsRowLabel(localized("导入偏好"), systemImage: "square.and.arrow.down", role: .action)
                 }
             } else {
-                SettingsLockedRow(title: localized("匯出閱讀設定"), systemImage: "square.and.arrow.up") {
+                SettingsLockedRow(title: localized("导出偏好"), systemImage: "square.and.arrow.up") {
                     requestPaywall(.layoutPresetImport)
                 }
-                SettingsLockedRow(title: localized("匯入閱讀設定"), systemImage: "square.and.arrow.down") {
+                SettingsLockedRow(title: localized("导入偏好"), systemImage: "square.and.arrow.down") {
                     requestPaywall(.layoutPresetImport)
                 }
             }
         } header: {
-            Text(localized("閱讀設定備份"))
+            Text(localized("偏好备份"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("包含排版、章節標題樣式與正則高亮。匯入也接受 legado 的 readConfig.json。"))
+            Text(localized("包含排版细节、章节标题样式与正则高亮。导入也接受 legado 的 readConfig.json。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
