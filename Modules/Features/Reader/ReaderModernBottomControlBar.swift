@@ -218,14 +218,15 @@ struct ReaderModernBottomControlBar: View {
         VStack(spacing: 4) {
             Text(progressPercentText)
                 .font(DSFont.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(DSColor.textOnAccent)
             Text(chapterTitleForProgress(sliderProgress))
                 .font(DSFont.subheadline)
                 .lineLimit(1)
+                .foregroundStyle(DSColor.textOnAccent)
         }
         .padding(.horizontal, DSSpacing.xl)
         .padding(.vertical, DSSpacing.md)
-        .floatingSurface(in: Capsule(), fill: palette.bottomFill)
+        .floatingSurface(in: Capsule(), fill: DSColor.appAccent)
         .allowsHitTesting(false)
         .transition(.opacity.animation(DSAnimation.fast))
         .offset(y: -72)

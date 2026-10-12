@@ -483,7 +483,7 @@ struct AudiobookSleepTimerView: View {
             dismiss()
         } label: {
             HStack {
-                Text(title).foregroundColor(.primary)
+                Text(title).foregroundStyle(DSColor.textPrimary)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark").foregroundColor(DSColor.appAccent)
