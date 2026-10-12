@@ -1,9 +1,9 @@
 /* UTTypeDescription for the app's .yuedustyle reader-style package (Info.plist
    UTExportedTypeDeclarations). Shown as the file's kind in the Files app. */
-"MoYue Reader Style" = "읽기 스타일";
+"ShuYue Reader Style" = "읽기 스타일";
 
 /* UTTypeDescription for exported diagnostic and book-source debug log files. */
-"MoYue Log File" = "MoYue 로그 파일";
+"ShuYue Log File" = "ShuYue 로그 파일";
 
 "NSLocalNetworkUsageDescription" = "근거리 네트워크 서재에 연결하고, Calibre가 보낸 책을 받고, 기기 내 음성 서비스를 사용하는 데 쓰입니다.";
 
