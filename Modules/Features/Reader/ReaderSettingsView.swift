@@ -88,7 +88,7 @@ struct ReaderSettingsView: View {
 
             // 三页横向面板：版式 / 视觉 / 习惯。分段控件与页面滑动双向同步，
             // 替代原来一条长 Form 的顺序分区（2026-10-12）。
-            Picker(selection: $selectedPage) {
+            Picker(selection: $selectedPage, label: Text(localized("阅读偏好"))) {
                 ForEach(ReaderSettingsPage.allCases) { page in
                     Text(localized(page.titleKey)).tag(page)
                 }
