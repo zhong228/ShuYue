@@ -94,7 +94,7 @@ struct ReaderTopBar: View {
                     } label: {
                         Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                             .font(DSFont.fixed(size: 17, weight: .medium))
-                            .foregroundColor(isBookmarked ? .orange : palette.topIcon)
+                            .foregroundColor(isBookmarked ? DSColor.appAccent : palette.topIcon)
                             .scaleEffect(isBookmarked && !reduceMotion ? 1.15 : 1.0)
                             .frame(width: 36, height: 36)
                             .accessibilityHidden(true)

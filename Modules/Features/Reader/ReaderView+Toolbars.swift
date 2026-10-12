@@ -661,7 +661,7 @@ extension ReaderView {
         .foregroundColor(.white)
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
-        .background(Color.black.opacity(0.48), in: Capsule())
+        .background(DSColor.appAccent, in: Capsule())
         .frame(maxWidth: 520, alignment: alignment)
         .accessibilityLabel(ttsJumpPromptMessage)
     }

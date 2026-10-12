@@ -123,7 +123,7 @@ private struct VerticalTOCColumn: View {
                         cornerRadius: VerticalTOCLayout.selectedCornerRadius,
                         style: .continuous
                     )
-                    .fill(isSelected ? Color.primary.opacity(0.07) : Color.clear)
+                    .fill(isSelected ? DSColor.appAccent.opacity(0.08) : Color.clear)
                 }
             }
             .overlay(alignment: .leading) {
@@ -389,7 +389,7 @@ struct ReaderTOCView: View {
             .background {
                 if chapter.id == currentChapterID {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.primary.opacity(0.07))
+                        .fill(DSColor.appAccent.opacity(0.08))
                 }
             }
         }

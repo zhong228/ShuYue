@@ -413,7 +413,7 @@ struct AudiobookChapterListView: View {
                             Spacer()
                             if chapter.index == player.chapterIndex {
                                 Image(systemName: "speaker.wave.2.fill")
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(DSColor.appAccent)
                             }
                         }
                         .padding(.vertical, 2)
@@ -486,7 +486,7 @@ struct AudiobookSleepTimerView: View {
                 Text(title).foregroundColor(.primary)
                 Spacer()
                 if isSelected {
-                    Image(systemName: "checkmark").foregroundColor(.accentColor)
+                    Image(systemName: "checkmark").foregroundColor(DSColor.appAccent)
                 }
             }
         }

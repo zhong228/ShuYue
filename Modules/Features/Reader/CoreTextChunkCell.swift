@@ -268,7 +268,7 @@ final class CoreTextChunkCollectionCell: UICollectionViewCell {
         playbackOverlay.fillColor = UIColor.systemYellow.withAlphaComponent(0.28)
         playbackOverlay.showsHandles = false
         overlay.fillColor = UIColor.systemYellow.withAlphaComponent(0.30)
-        overlay.handleColor = UIColor(red: 0.63, green: 0.40, blue: 0.00, alpha: 1.0)
+        overlay.handleColor = UIColor(red: 0.725, green: 0.290, blue: 0.180, alpha: 1.0)
         contentView.addSubview(backdropView)
         contentView.addSubview(drawView)
         contentView.addSubview(playbackOverlay)
