@@ -1187,6 +1187,11 @@ struct HomeView: View {
         }
     }
 
+    /// 书悦手势：非编辑状态下长按行/格子进入多选。
+    private func enterSelectionMode() {
+        withAnimation(reduceMotion ? nil : DSAnimation.standard) { editMode = .active }
+    }
+
     /// Puts the book into the 選取 selection, or takes it out.
     private func toggleSelection(of bookID: UUID) {
         if selectedBookIds.remove(bookID) == nil {
