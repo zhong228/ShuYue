@@ -177,10 +177,11 @@ struct RSSListView: View {
 
     private var sourcesEmptyState: some View {
         VStack(spacing: DSSpacing.md) {
-            Image(systemName: sourceFilter.systemImage)
-                .font(.system(size: 40))
-                .foregroundStyle(DSColor.textSecondary)
-            Text(sourceFilter == .all ? localized("还没有订阅源") : localized("没有符合条件的订阅源"))
+            UnavailableLabel(
+                sourceFilter == .all ? localized("还没有订阅源") : localized("没有符合条件的订阅源"),
+                systemImage: sourceFilter.systemImage
+            )
+            Text(localized("点击右上角菜单可以导入 Legado JSON 订阅源"))
                 .font(DSFont.footnote)
                 .foregroundStyle(DSColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -224,6 +225,13 @@ struct RSSListView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DSSpacing.md)
+                    .background(DSColor.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                            .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+                    }
+                    .shadow(color: DSColor.appAccent.opacity(0.08), radius: 6, x: 0, y: 3)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -499,7 +507,7 @@ private struct ImportLegadoJSONURLSheet: View {
                             }
                             Spacer()
                             Image(systemName: "arrow.right.circle.fill")
-                                .foregroundStyle(DSColor.accent)
+                                .foregroundStyle(DSColor.appAccent)
                         }
                     }
                 }
@@ -627,7 +635,7 @@ private struct RSSSourceInfoSheet: View {
                             .labelStyle(.iconOnly)
                     }
                     .accessibilityLabel(localized("完成"))
-                    .foregroundColor(DSColor.accent)
+                    .foregroundColor(DSColor.appAccent)
                 }
             }
         }
