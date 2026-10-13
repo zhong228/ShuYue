@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// The app's own home-screen icon shown inside the app: the light or dark variant with the
-/// appearance (`MoYueAppIcon` carries both), clipped to the icon mask. Decorative —
+/// appearance (`ShuYueAppIcon` carries both), clipped to the icon mask. Decorative —
 /// whatever it heads names the app in words.
 struct AppIconImage: View {
     let size: CGFloat
 
     var body: some View {
         let mask = RoundedRectangle(cornerRadius: size * DSLayout.appIconCornerRatio, style: .continuous)
-        Image("MoYueAppIcon")
+        Image("ShuYueAppIcon")
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)

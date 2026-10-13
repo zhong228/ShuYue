@@ -147,7 +147,7 @@ enum CalibreWirelessHandshake {
             "canUseCachedMetadata": .bool(false), "cacheUsesLpaths": .bool(false),
             "canSendOkToSendbook": .bool(true), "canAcceptLibraryInfo": .bool(true),
             "willAskForUpdateBooks": .bool(false), "useUuidFileNames": .bool(true),
-            "deviceKind": .string("iOS"), "deviceName": .string(deviceName), "appName": .string("MoYue")
+            "deviceKind": .string("iOS"), "deviceName": .string(deviceName), "appName": .string("ShuYue")
         ])
     }
 }

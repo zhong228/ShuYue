@@ -233,7 +233,7 @@ final class CoverLoadExecutor: Sendable {
 
     init(maxConcurrent: Int) {
         let queue = OperationQueue()
-        queue.name = "MoYue.CoverLoad"
+        queue.name = "ShuYue.CoverLoad"
         queue.maxConcurrentOperationCount = maxConcurrent
         queue.qualityOfService = .userInitiated
         self.queue = queue

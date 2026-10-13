@@ -273,7 +273,7 @@ private struct ShuYueBrandHeaderCard: View {
 
     var body: some View {
         HStack(spacing: DSSpacing.md) {
-            Image("MoYueLogo")
+            Image("ShuYueLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 58, height: 58)
@@ -327,7 +327,7 @@ private struct AboutSupportView: View {
         List {
             Section {
                 VStack(spacing: 12) {
-                    Image("MoYueLogo")
+                    Image("ShuYueLogo")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 82, height: 82)

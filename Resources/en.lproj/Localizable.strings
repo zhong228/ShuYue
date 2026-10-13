@@ -3716,3 +3716,11 @@
 "启用" = "Enabled";
 "已按地址归类 %d 个书源" = "Grouped %d source(s) by URL";
 "按地址归类将覆盖现有分组，确定继续？" = "This overwrites existing groups. Continue?";
+"段落" = "Paragraph";
+"無法讀取分享內容" = "Unable to read shared content";
+"分享檔案為空" = "The shared file is empty";
+"連結已儲存，下次開啟書悅時匯入。" = "Link saved. It will be imported the next time you open ShuYue.";
+"檔案已儲存，下次開啟書悅時匯入。" = "File saved. It will be imported the next time you open ShuYue.";
+"無法讀取分享檔案" = "Unable to read the shared file";
+"無法存取共用的儲存空間" = "Unable to access the shared storage";
+"全域文字顏色" = "Global text color";

@@ -44,7 +44,7 @@ final class BookshelfGroupsUITests: XCTestCase {
         let app = launchShelf(grid: false)
         let menu = groupMenu(in: app)
         XCTAssertEqual(app.buttons.matching(identifier: "home_group_chip").count, 0,
-                       "the胶囊 chip row is gone — MoYue does not page groups like 閱讀")
+                       "the胶囊 chip row is gone — ShuYue does not page groups like 閱讀")
         attachScreenshot(of: app, named: "Single group menu")
         XCTAssertTrue(menu.isHittable)
     }

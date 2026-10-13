@@ -68,7 +68,7 @@ final class CalibreProgressService: ObservableObject {
         self.storageURL = storageDirectory.appendingPathComponent("pending.json")
         let key = "calibre_progress_device_id"
         if let existing = defaults.string(forKey: key) { deviceID = existing }
-        else { deviceID = "MoYue-" + UUID().uuidString; defaults.set(deviceID, forKey: key) }
+        else { deviceID = "ShuYue-" + UUID().uuidString; defaults.set(deviceID, forKey: key) }
         if FileManager.default.fileExists(atPath: storageURL.path) {
             do {
                 let saved = try JSONDecoder().decode([Snapshot].self, from: Data(contentsOf: storageURL))
