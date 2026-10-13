@@ -142,7 +142,7 @@ final class ProStatusNavigationUITests: XCTestCase {
     private func assertThankYouPage(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let title = app.staticTexts["pro_status_summary"].firstMatch
         let unlocked = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label == %@", "MoYue Pro unlocked"),
+            predicate: NSPredicate(format: "label == %@", "ShuYue Pro unlocked"),
             object: title
         )
         XCTAssertEqual(
@@ -190,7 +190,7 @@ final class ProStatusNavigationUITests: XCTestCase {
         account.tap()
 
         let proRow = app.buttons["settings_pro_row"].firstMatch
-        XCTAssertTrue(proRow.waitForExistence(timeout: 10), "the MoYue Pro row should exist")
+        XCTAssertTrue(proRow.waitForExistence(timeout: 10), "the ShuYue Pro row should exist")
         if expectsPro {
             // Entitlements resolve after launch. Wait for the row to show them rather
             // than tapping into whichever destination the unresolved state picks.

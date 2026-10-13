@@ -132,7 +132,7 @@ struct DiagnosticReportBundle: Transferable {
     func render() -> String {
         var out: [String] = []
 
-        out.append("MoYue diagnostics")
+        out.append("ShuYue diagnostics")
         out.append("app=\(session.appVersion) (\(session.build))")
         out.append("device=\(session.deviceModel)  os=\(session.osVersion)")
         out.append("session=\(session.id.uuidString)  started=\(Self.lineFormatter.string(from: session.startedAt))")
