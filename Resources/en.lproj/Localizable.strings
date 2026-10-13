@@ -3724,3 +3724,5 @@
 "無法讀取分享檔案" = "Unable to read the shared file";
 "無法存取共用的儲存空間" = "Unable to access the shared storage";
 "全域文字顏色" = "Global text color";
+"閱讀偏好分頁" = "Reading Preferences";
+"貼上圖片網址後，點箭頭下載為封面。" = "After pasting an image URL, tap the arrow to download it as the cover.";

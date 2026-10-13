@@ -146,62 +146,58 @@ struct SearchSourceResultSection: View {
                 .foregroundStyle(DSColor.textPrimary)
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: DSSpacing.md) {
-                    ForEach(visibleBooks) { book in
-                        SearchSourceResultCard(
-                            book: book,
-                            coverURL: coverURL(book),
-                            onOpen: { onOpen(book) }
-                        )
-                    }
+            LazyVStack(spacing: DSSpacing.md) {
+                ForEach(visibleBooks) { book in
+                    SearchSourceResultRow(
+                        book: book,
+                        coverURL: coverURL(book),
+                        onOpen: { onOpen(book) }
+                    )
                 }
-                .padding(.trailing, DSSpacing.lg)
             }
-            .scrollDismissesKeyboard(.immediately)
         }
     }
 }
 
-/// One book in a source's rail: the cover, the title over two lines and the
-/// author, all inside the workbench's result-card width.
-struct SearchSourceResultCard: View {
+/// One book in a source's results: a horizontal row with a thumbnail cover on the
+/// left and title + author on the right, replacing the old vertical card rail.
+struct SearchSourceResultRow: View {
     let book: SearchBook
     let coverURL: String
     let onOpen: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            HStack(alignment: .top, spacing: DSSpacing.md) {
                 BookCoverImage(
                     coverURL: coverURL,
                     title: book.displayName,
                     author: book.author
                 )
-                .frame(
-                    width: DSLayout.searchResultCoverWidth,
-                    height: DSLayout.searchResultCoverHeight
-                )
-                .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+                .frame(width: 56, height: 78)
+                .clipShape(RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous))
                 .shadow(
                     color: DSColor.searchListCoverShadow,
                     radius: DSLayout.searchListCoverShadowRadius,
                     y: DSLayout.searchListCoverShadowY
                 )
-                Text(book.displayName)
-                    .font(DSFont.subheadline)
-                    .foregroundStyle(DSColor.textPrimary)
-                    .lineLimit(2, reservesSpace: true)
-                    .multilineTextAlignment(.leading)
-                    .frame(width: DSLayout.searchResultCoverWidth, alignment: .leading)
-                if !book.author.isEmpty {
-                    Text(book.author)
-                        .font(DSFont.footnote)
-                        .foregroundStyle(DSColor.textSecondary)
-                        .lineLimit(1)
-                        .frame(width: DSLayout.searchResultCoverWidth, alignment: .leading)
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    Text(book.displayName)
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textPrimary)
+                        .lineLimit(2, reservesSpace: true)
+                        .multilineTextAlignment(.leading)
+                    if !book.author.isEmpty {
+                        Text(book.author)
+                            .font(DSFont.footnote)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .lineLimit(1)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(.vertical, DSSpacing.xs)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
     }
@@ -303,7 +299,7 @@ struct SearchGroupedResultsList: View {
         )
         ScrollView(.horizontal) {
             HStack {
-                SearchSourceResultCard(
+                SearchSourceResultRow(
                     book: SearchBook(name: "三體", author: "劉慈欣", origins: []),
                     coverURL: "",
                     onOpen: {}

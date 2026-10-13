@@ -13,7 +13,7 @@ private enum BookSourceFileImportRoute: Hashable {
     case document
 }
 
-// MARK: - Book Source List (Legado Style)
+// MARK: - Book Source List
 
 struct BookSourceListView: View {
     var embedsNavigationStack = true
@@ -176,8 +176,8 @@ struct BookSourceListView: View {
                         sourceList
                     }
 
-                    Divider()
-
+                    // The batch bar floats as its own rounded panel — the docked toolbar
+                    // was the classic management-screen chrome this app no longer shares.
                     bottomToolbar
                 }
             }
@@ -783,6 +783,10 @@ struct BookSourceListView: View {
     /// 全選 (本頁已選/本頁總數): every count and action here is scoped to the current page —
     /// 全部／抓取異常／正文異常 plus the search text. 全選 on 抓取異常 used to select the whole
     /// library, one tap away from deleting all of it.
+    ///
+    /// The batch actions sit in a floating rounded panel instead of a docked system bar —
+    /// the same floating surface the 現代 reading controls use. Inset from the edges and
+    /// shadowed, it is the app's own bottom chrome rather than the classic management bar.
     private var bottomToolbar: some View {
         HStack(spacing: 0) {
             Button {
@@ -804,7 +808,7 @@ struct BookSourceListView: View {
                 }
             }
             .buttonStyle(.plain)
-            .padding(.leading, 16)
+            .padding(.leading, DSSpacing.sm)
             .accessibilityLabel(localized("全選"))
             .accessibilityValue("\(model.pageSelectedCount)/\(model.pageCount)")
 
@@ -815,15 +819,15 @@ struct BookSourceListView: View {
             } label: {
                 Text(localized("反選"))
                     .font(DSFont.fixed(size: 13))
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 7)
                     .background(DSColor.neutralControlFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous))
                     .foregroundStyle(DSColor.textPrimary)
             }
             .buttonStyle(.plain)
 
-            Spacer().frame(width: 10)
+            Spacer().frame(width: 8)
 
             Button {
                 if !model.selectedIDs.isEmpty {
@@ -833,15 +837,15 @@ struct BookSourceListView: View {
                 Text(localized("刪除"))
                     .font(DSFont.fixed(size: 13))
                     .foregroundColor(model.selectedIDs.isEmpty ? .secondary : .red)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 7)
                     .background(DSColor.neutralControlFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(model.selectedIDs.isEmpty)
 
-            Spacer().frame(width: 10)
+            Spacer().frame(width: 8)
 
             Menu {
                 Button {
@@ -869,14 +873,21 @@ struct BookSourceListView: View {
                     .frame(width: 32, height: 32)
             }
             .accessibilityLabel(localized("更多"))
-            .padding(.trailing, 12)
+            .padding(.trailing, DSSpacing.sm)
         }
-        .padding(.vertical, 8)
-        // `.bar` — the same system toolbar material RSS 訂閱, 線上書詳情 and 聽書 use for
-        // their bottom bars, and it honours Reduce Transparency on its own. A hardcoded
-        // `systemBackground` made this bar the one piece of chrome that stayed flat white
-        // no matter what the list above was wearing.
-        .background(.bar)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .fill(DSColor.surface)
+                .shadow(color: DSColor.shadow, radius: 8, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+        )
+        .padding(.horizontal, DSSpacing.md)
+        .padding(.top, DSSpacing.xs)
+        .padding(.bottom, DSSpacing.sm)
     }
 
     // MARK: - Batch Operations

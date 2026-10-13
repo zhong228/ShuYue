@@ -1273,6 +1273,8 @@ struct EditBookSheet: View {
     @State private var coverUrlInput: String
     @State private var isApplyingCover = false
     @State private var coverErrorMessage: String?
+    @State private var showOnlineCoverSearch = false
+    @State private var showChangeCover = false
     @Environment(\.presentationMode) var dismiss
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @EnvironmentObject private var store: BookStore
@@ -1342,122 +1344,39 @@ struct EditBookSheet: View {
     }
 
     private var editorContent: some View {
-            AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
-                Form {
+        AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
+            ScrollView {
+                VStack(spacing: DSSpacing.xl) {
                     coverSection
-
-                    Section(header: Text(localized("基本資訊")).foregroundStyle(DSColor.textSecondary)) {
-                        HStack {
-                            Text(localized("書名"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            TextField(localized("書名"), text: $titleInput)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        HStack {
-                            Text(localized("作者"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            TextField(localized("作者"), text: $authorInput)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        HStack {
-                            Text(localized("分組"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            TextField(localized("未分組"), text: $groupInput)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        if !store.allGroups.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 6) {
-                                    ForEach(store.allGroups, id: \.self) { g in
-                                        Button(g) { groupInput = g }
-                                            .font(DSFont.caption)
-                                            .padding(.horizontal, 10).padding(.vertical, 4)
-                                            .background(groupInput == g ? DSColor.accent.opacity(0.2) : Color.secondary.opacity(0.1))
-                                            .foregroundColor(groupInput == g ? DSColor.accent : DSColor.textSecondary)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .interfaceSectionSurface()
-                    Section(header: Text(localized("閱讀進度")).foregroundStyle(DSColor.textSecondary)) {
-                        HStack {
-                            Text(localized("目前進度"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            Text("\(Int(book.currentPosition * 100))%")
-                                .foregroundStyle(DSColor.textSecondary)
-                        }
-                        HStack {
-                            Text(localized("加入時間"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            Text(book.addedDate, style: .date)
-                                .foregroundStyle(DSColor.textSecondary)
-                        }
-                        HStack {
-                            Text(localized("來源"))
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            Text(book.source == "local" ? localized("本機文件") : localized("網頁匯入"))
-                                .foregroundStyle(DSColor.textSecondary)
-                        }
-                    }
-                    .interfaceSectionSurface()
+                    infoCardSection
+                    progressCardSection
                 }
-                .softScrollEdges()
-                .navigationTitle(localized("書籍資訊"))
-                .themedAppSurface(for: .bookshelf)
-                .alert(
-                    localized("封面設定失敗"),
-                    isPresented: Binding(
-                        get: { coverErrorMessage != nil },
-                        set: { if !$0 { coverErrorMessage = nil } }
-                    )
-                ) {
-                    Button(localized("確定"), role: .cancel) {}
-                } message: {
-                    Text(coverErrorMessage ?? "")
-                }
-        }
-    }
-
-    // MARK: - Cover
-
-    /// Legado's 换封面 block: the cover as the page's hero, a cross-source cover
-    /// search, a local pick, a reset, and the raw address.
-    @ViewBuilder
-    private var coverSection: some View {
-        // Full-bleed and card-less: the hero paints its own backdrop, so it takes
-        // the row edge to edge and hands back a clear row instead of a surface.
-        Section {
-            coverHero
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-        }
-
-        Section {
-            // Pushed, not presented: a nested sheet is the shape iOS 17 drops
-            // (Technotes/iOS17MenuModalPresentation.md), and internal navigation
-            // inside a sheet is the sanctioned pattern anyway.
-            NavigationLink {
+                .padding(.horizontal, DSSpacing.lg)
+                .padding(.bottom, DSSpacing.xl)
+            }
+            .softScrollEdges()
+            .navigationTitle(localized("書籍資訊"))
+            .themedAppSurface(for: .bookshelf)
+            .alert(
+                localized("封面設定失敗"),
+                isPresented: Binding(
+                    get: { coverErrorMessage != nil },
+                    set: { if !$0 { coverErrorMessage = nil } }
+                )
+            ) {
+                Button(localized("確定"), role: .cancel) {}
+            } message: {
+                Text(coverErrorMessage ?? "")
+            }
+            .navigationDestination(isPresented: $showOnlineCoverSearch) {
                 OnlineCoverSearchView(
                     title: liveBook.title,
                     author: liveBook.author
                 ) { candidate in
                     applyCover(url: candidate.coverUrl, sourceId: candidate.sourceId)
                 }
-            } label: {
-                SettingsRowLabel(localized("封面搜索"), systemImage: "globe")
             }
-            .disabled(isApplyingCover)
-
-            NavigationLink {
+            .navigationDestination(isPresented: $showChangeCover) {
                 ChangeCoverView(
                     bookId: book.id,
                     title: liveBook.title,
@@ -1465,55 +1384,273 @@ struct EditBookSheet: View {
                 ) { candidate in
                     applyCover(url: candidate.coverUrl, sourceId: candidate.sourceId)
                 }
-            } label: {
-                SettingsRowLabel(localized("換封面"), systemImage: "books.vertical")
             }
-            .disabled(isApplyingCover)
+        }
+    }
 
-            ImageSourcePickerButton(
-                accessibilityTitle: localized("選擇封面圖片"),
-                onPick: handleCoverPick
-            ) {
-                Label(localized("選擇圖片"), systemImage: "photo")
+    // MARK: - Info Card
+
+    private var infoCardSection: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            Text(localized("基本資訊"))
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+
+            VStack(spacing: 0) {
+                infoField(label: localized("書名"), text: $titleInput, placeholder: localized("書名"))
+                Divider().padding(.leading, DSSpacing.md)
+                infoField(label: localized("作者"), text: $authorInput, placeholder: localized("作者"))
+                Divider().padding(.leading, DSSpacing.md)
+                infoField(label: localized("分組"), text: $groupInput, placeholder: localized("未分組"))
             }
-            .disabled(isApplyingCover)
+            .background(DSColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                    .stroke(DSColor.separator, lineWidth: 0.5)
+            )
 
-            if liveBook.hasCustomCover {
-                Button(role: .destructive) {
-                    store.resetCover(bookId: book.id)
-                    coverUrlInput = liveBook.coverUrl ?? ""
-                } label: {
-                    Label(localized("重設封面"), systemImage: "arrow.uturn.backward")
+            if !store.allGroups.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DSSpacing.sm) {
+                        ForEach(store.allGroups, id: \.self) { g in
+                            Button(g) { groupInput = g }
+                                .font(DSFont.caption)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(
+                                    groupInput == g
+                                    ? DSColor.accent.opacity(0.15)
+                                    : DSColor.surfaceTertiary
+                                )
+                                .foregroundColor(
+                                    groupInput == g
+                                    ? DSColor.accent
+                                    : DSColor.textSecondary
+                                )
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(
+                                            groupInput == g
+                                            ? DSColor.accent.opacity(0.3)
+                                            : DSColor.separator,
+                                            lineWidth: groupInput == g ? 1.0 : 0.5
+                                        )
+                                )
+                        }
+                    }
+                    .padding(.horizontal, DSSpacing.xs)
+                }
+            }
+        }
+    }
+
+    private func infoField(label: String, text: Binding<String>, placeholder: String) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            Text(label)
+                .font(DSFont.caption)
+                .foregroundStyle(DSColor.textSecondary)
+            TextField(placeholder, text: text)
+                .font(DSFont.body)
+                .foregroundStyle(DSColor.textPrimary)
+        }
+        .padding(.horizontal, DSSpacing.md)
+        .padding(.vertical, DSSpacing.md)
+    }
+
+    // MARK: - Progress Card
+
+    private var progressCardSection: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            Text(localized("閱讀進度"))
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+
+            VStack(spacing: DSSpacing.lg) {
+                HStack(spacing: DSSpacing.md) {
+                    ProgressRingView(progress: book.currentPosition)
+                        .frame(width: 64, height: 64)
+
+                    VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                        Text("\(Int(book.currentPosition * 100))%")
+                            .font(DSFont.title2.weight(.bold))
+                            .foregroundStyle(DSColor.textPrimary)
+                        Text(localized("目前進度"))
+                            .font(DSFont.caption)
+                            .foregroundStyle(DSColor.textSecondary)
+                    }
+                    Spacer()
+                }
+
+                Divider()
+
+                HStack(spacing: DSSpacing.lg) {
+                    infoStat(icon: "calendar", label: localized("加入時間"), value: book.addedDate, style: .date)
+                    Divider().frame(height: 32)
+                    infoStat(
+                        icon: "doc.text",
+                        label: localized("來源"),
+                        value: book.source == "local" ? localized("本機文件") : localized("網頁匯入"),
+                        style: .text
+                    )
+                }
+            }
+            .padding(DSSpacing.lg)
+            .background(DSColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                    .stroke(DSColor.separator, lineWidth: 0.5)
+            )
+        }
+    }
+
+    private enum InfoStatStyle {
+        case date
+        case text
+    }
+
+    private func infoStat(icon: String, label: String, value: Any, style: InfoStatStyle) -> some View {
+        HStack(spacing: DSSpacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(DSColor.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                if style == .date, let date = value as? Date {
+                    Text(date, style: .date)
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                } else if style == .text, let text = value as? String {
+                    Text(text)
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                }
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Cover
+
+    /// Rebuilt cover section: the hero stays, but actions become a floating button row
+    /// and the URL field becomes a compact inline card — no longer a Legado-style form list.
+    private var coverSection: some View {
+        VStack(spacing: DSSpacing.lg) {
+            coverHero
+            coverActionsPanel
+            coverUrlPanel
+        }
+    }
+
+    private var coverActionsPanel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DSSpacing.md) {
+                coverActionButton(
+                    icon: "globe",
+                    label: localized("封面搜索"),
+                    isDestructive: false
+                ) {
+                    showOnlineCoverSearch = true
+                }
+                coverActionButton(
+                    icon: "books.vertical",
+                    label: localized("換封面"),
+                    isDestructive: false
+                ) {
+                    showChangeCover = true
+                }
+                ImageSourcePickerButton(
+                    accessibilityTitle: localized("選擇封面圖片"),
+                    onPick: handleCoverPick
+                ) {
+                    coverActionLabel(icon: "photo", label: localized("選擇圖片"), isDestructive: false)
                 }
                 .disabled(isApplyingCover)
+                if liveBook.hasCustomCover {
+                    coverActionButton(
+                        icon: "arrow.uturn.backward",
+                        label: localized("重設封面"),
+                        isDestructive: true
+                    ) {
+                        store.resetCover(bookId: book.id)
+                        coverUrlInput = liveBook.coverUrl ?? ""
+                    }
+                }
             }
-        } header: {
-            Text(localized("封面"))
+            .padding(.horizontal, DSSpacing.lg)
+        }
+    }
+
+    private func coverActionLabel(icon: String, label: String, isDestructive: Bool) -> some View {
+        VStack(spacing: DSSpacing.xs) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .frame(width: 48, height: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+                        .fill(isDestructive ? DSColor.destructive.opacity(0.1) : DSColor.accent.opacity(0.1))
+                )
+                .foregroundStyle(isDestructive ? DSColor.destructive : DSColor.accent)
+            Text(label)
+                .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(localized("封面搜索會上網找封面；換封面則在你已加入的書源裡，尋找同書名同作者的封面。"))
-                .dsSectionFooter()
+                .lineLimit(1)
         }
-        .interfaceSectionSurface()
+    }
 
-        Section {
-            TextField(localized("封面網址"), text: $coverUrlInput)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .accessibilityLabel(localized("封面網址"))
+    private func coverActionButton(
+        icon: String,
+        label: String,
+        isDestructive: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            coverActionLabel(icon: icon, label: label, isDestructive: isDestructive)
+        }
+        .disabled(isApplyingCover)
+        .buttonStyle(.plain)
+    }
 
-            Button {
-                applyCover(url: coverUrlInput, sourceId: liveBook.bookSourceId)
-            } label: {
-                Label(localized("套用網址"), systemImage: "arrow.down.circle")
+    private var coverUrlPanel: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            HStack(spacing: DSSpacing.sm) {
+                TextField(localized("封面網址"), text: $coverUrlInput)
+                    .font(DSFont.body)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .accessibilityLabel(localized("封面網址"))
+
+                Button {
+                    applyCover(url: coverUrlInput, sourceId: liveBook.bookSourceId)
+                } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(
+                            canApplyCoverUrl ? DSColor.accent : DSColor.textDisabled
+                        )
+                }
+                .disabled(isApplyingCover || !canApplyCoverUrl)
+                .buttonStyle(.plain)
             }
-            .disabled(isApplyingCover || !canApplyCoverUrl)
-        } footer: {
-            Text(localized("貼上圖片網址後，點「套用網址」下載為封面。"))
-                .dsSectionFooter()
+            .padding(DSSpacing.md)
+            .background(DSColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                    .stroke(DSColor.separator, lineWidth: 0.5)
+            )
+
+            Text(localized("貼上圖片網址後，點箭頭下載為封面。"))
+                .font(DSFont.caption)
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
         }
-        .interfaceSectionSurface()
     }
 
     private var canApplyCoverUrl: Bool {
@@ -1646,6 +1783,27 @@ struct EditBookSheet: View {
             return
         }
         coverUrlInput = ""
+    }
+
+    // MARK: - Progress Ring
+
+    private struct ProgressRingView: View {
+        let progress: Double
+        var lineWidth: CGFloat = 5
+
+        var body: some View {
+            ZStack {
+                Circle()
+                    .stroke(DSColor.separator.opacity(0.4), lineWidth: lineWidth)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        DSColor.accent,
+                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+            }
+        }
     }
 }
 

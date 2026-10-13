@@ -324,150 +324,16 @@ private struct AboutSupportView: View {
     let sourceCodeURL: URL?
 
     var body: some View {
-        List {
-            Section {
-                VStack(spacing: 12) {
-                    Image("ShuYueLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 82, height: 82)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
-
-                    Text(localized("書悅"))
-                        .font(DSFont.title3.weight(.semibold))
-                        .foregroundStyle(DSColor.textPrimary)
-
-                    Text(localized("聯絡方式、版本資訊與政策協議"))
-                        .font(DSFont.footnote)
-                        .foregroundColor(DSColor.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                heroCard
+                infoCard
+                linksCard
+                diagnosticsCard
+                legalCard
             }
-            .interfaceSectionSurface()
-
-            Section(header: Text(localized("版本資訊")).foregroundStyle(DSColor.textSecondary)) {
-                HStack {
-                    SettingsRowLabel(localized("版本"), systemImage: "number")
-                    Spacer(minLength: 12)
-                    Text(appVersion)
-                        .font(DSFont.caption)
-                        .foregroundColor(DSColor.textSecondary)
-                }
-            }
-            .interfaceSectionSurface()
-
-            Section(header: Text(localized("開放原始碼")).foregroundStyle(DSColor.textSecondary)) {
-                actionRow(
-                    icon: "chevron.left.forwardslash.chevron.right",
-                    title: localized("原始碼與開源授權"),
-                    detail: localized("取得本版本對應原始碼與 MPL-2.0 授權"),
-                    trailingIcon: "arrow.up.right"
-                ) {
-                    if let url = sourceCodeURL {
-                        openURL(url)
-                    }
-                }
-            }
-            .interfaceSectionSurface()
-
-            Section(header: Text(localized("聯絡方式")).foregroundStyle(DSColor.textSecondary)) {
-                actionRow(
-                    icon: "envelope.fill",
-                    title: localized("電子郵件"),
-                    detail: feedbackEmail,
-                    trailingIcon: "arrow.up.right"
-                ) {
-                    if let url = feedbackMailURL {
-                        openURL(url)
-                    }
-                }
-            }
-            .interfaceSectionSurface()
-
-            Section(header: Text(localized("帮助与诊断")).foregroundStyle(DSColor.textSecondary)) {
-                NavigationLink {
-                    DiagnosticsView()
-                } label: {
-                    HStack(spacing: 12) {
-                        DSIconBadge(
-                            systemImage: "stethoscope",
-                            gradient: DSBrandGradient.tint(for: "stethoscope"),
-                            side: 30,
-                            iconSize: 16
-                        )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(localized("帮助与诊断"))
-                                .foregroundColor(DSColor.textPrimary)
-                            Text(localized("应用诊断与问题回报"))
-                                .font(DSFont.caption)
-                                .foregroundColor(DSColor.textSecondary)
-                                .lineLimit(2)
-                        }
-                        Spacer(minLength: 12)
-                    }
-                }
-                .foregroundColor(DSColor.textPrimary)
-            }
-            .interfaceSectionSurface()
-
-            Section {
-                NavigationLink {
-                    MoYueLegalDocumentView(document: .privacy)
-                } label: {
-                    HStack(spacing: 12) {
-                        DSIconBadge(
-                            systemImage: "hand.raised.fill",
-                            gradient: DSBrandGradient.tint(for: "hand.raised.fill"),
-                            side: 30,
-                            iconSize: 16
-                        )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(localized("隱私權政策"))
-                                .foregroundColor(DSColor.textPrimary)
-                            Text(localized("書悅數據處理與隱私說明"))
-                                .font(DSFont.caption)
-                                .foregroundColor(DSColor.textSecondary)
-                                .lineLimit(2)
-                        }
-                        Spacer(minLength: 12)
-                    }
-                }
-                .foregroundColor(DSColor.textPrimary)
-
-                NavigationLink {
-                    MoYueLegalDocumentView(document: .userAgreement)
-                } label: {
-                    HStack(spacing: 12) {
-                        DSIconBadge(
-                            systemImage: "doc.text.fill",
-                            gradient: DSBrandGradient.tint(for: "doc.text.fill"),
-                            side: 30,
-                            iconSize: 16
-                        )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(localized("使用者協議"))
-                                .foregroundColor(DSColor.textPrimary)
-                            Text(localized("使用規則、書源與第三方內容責任"))
-                                .font(DSFont.caption)
-                                .foregroundColor(DSColor.textSecondary)
-                                .lineLimit(2)
-                        }
-                        Spacer(minLength: 12)
-                    }
-                }
-                .foregroundColor(DSColor.textPrimary)
-            } header: {
-                Text(localized("政策與協議"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("使用書源與第三方來源前，請先閱讀相關條款。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
         }
         .softScrollEdges()
         .navigationTitle(localized("关于书悦"))
@@ -475,38 +341,243 @@ private struct AboutSupportView: View {
         .themedAppSurface(for: .settings)
     }
 
-    private func actionRow(
-        icon: String,
-        title: String,
-        detail: String,
-        trailingIcon: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(DSFont.fixed(size: 18, weight: .medium))
-                    .frame(width: 28, height: 28)
-                    .foregroundColor(DSColor.textPrimary)
+    private var heroCard: some View {
+        VStack(spacing: DSSpacing.md) {
+            Image("ShuYueLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 96, height: 96)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
+            VStack(spacing: DSSpacing.xs) {
+                Text(localized("書悅"))
+                    .font(DSFont.title2.weight(.semibold))
+                    .foregroundStyle(DSColor.textPrimary)
+                Text(localized("聯絡方式、版本資訊與政策協議"))
+                    .font(DSFont.footnote)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DSSpacing.lg)
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
 
+    private var infoCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(localized("版本"))
+                    .font(DSFont.subheadline)
+                    .foregroundStyle(DSColor.textPrimary)
+                Spacer()
+                Text(appVersion)
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .monospacedDigit()
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var linksCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            actionRowCard(
+                icon: "chevron.left.forwardslash.chevron.right",
+                title: localized("原始碼與開源授權"),
+                detail: localized("取得本版本對應原始碼與 MPL-2.0 授權"),
+                action: {
+                    if let url = sourceCodeURL { openURL(url) }
+                }
+            )
+            cardDivider
+            actionRowCard(
+                icon: "envelope.fill",
+                title: localized("電子郵件"),
+                detail: feedbackEmail,
+                action: {
+                    if let url = feedbackMailURL { openURL(url) }
+                }
+            )
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var diagnosticsCard: some View {
+        NavigationLink {
+            DiagnosticsView()
+        } label: {
+            HStack(spacing: DSSpacing.md) {
+                DSIconBadge(
+                    systemImage: "stethoscope",
+                    gradient: DSBrandGradient.tint(for: "stethoscope"),
+                    side: 30,
+                    iconSize: 16
+                )
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .foregroundColor(DSColor.textPrimary)
-                    Text(detail)
+                    Text(localized("帮助与诊断"))
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(localized("应用诊断与问题回报"))
                         .font(DSFont.caption)
-                        .foregroundColor(DSColor.textSecondary)
+                        .foregroundStyle(DSColor.textSecondary)
                         .lineLimit(2)
                 }
-
-                Spacer(minLength: 12)
-
-                Image(systemName: trailingIcon)
-                    .font(DSFont.caption)
-                    .foregroundColor(DSColor.textSecondary)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(DSFont.caption2)
+                    .foregroundStyle(DSColor.textSecondary.opacity(0.7))
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .foregroundStyle(DSColor.textPrimary)
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var legalCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(localized("政策與協議"))
+                .font(DSFont.footnote.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.xs)
+
+            NavigationLink {
+                MoYueLegalDocumentView(document: .privacy)
+            } label: {
+                HStack(spacing: DSSpacing.md) {
+                    DSIconBadge(
+                        systemImage: "hand.raised.fill",
+                        gradient: DSBrandGradient.tint(for: "hand.raised.fill"),
+                        side: 30,
+                        iconSize: 16
+                    )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(localized("隱私權政策"))
+                            .font(DSFont.subheadline.weight(.medium))
+                            .foregroundStyle(DSColor.textPrimary)
+                        Text(localized("書悅數據處理與隱私說明"))
+                            .font(DSFont.caption)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(DSFont.caption2)
+                        .foregroundStyle(DSColor.textSecondary.opacity(0.7))
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(DSColor.textPrimary)
+
+            cardDivider
+
+            NavigationLink {
+                MoYueLegalDocumentView(document: .userAgreement)
+            } label: {
+                HStack(spacing: DSSpacing.md) {
+                    DSIconBadge(
+                        systemImage: "doc.text.fill",
+                        gradient: DSBrandGradient.tint(for: "doc.text.fill"),
+                        side: 30,
+                        iconSize: 16
+                    )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(localized("使用者協議"))
+                            .font(DSFont.subheadline.weight(.medium))
+                            .foregroundStyle(DSColor.textPrimary)
+                        Text(localized("使用規則、書源與第三方內容責任"))
+                            .font(DSFont.caption)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(DSFont.caption2)
+                        .foregroundStyle(DSColor.textSecondary.opacity(0.7))
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(DSColor.textPrimary)
+
+            Text(localized("使用書源與第三方來源前，請先閱讀相關條款。"))
+                .font(DSFont.caption2)
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.sm)
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private func actionRowCard(
+        icon: String,
+        title: String,
+        detail: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: DSSpacing.md) {
+                DSIconBadge(
+                    systemImage: icon,
+                    gradient: DSBrandGradient.tint(for: icon),
+                    side: 30,
+                    iconSize: 16
+                )
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(DSFont.subheadline.weight(.medium))
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(detail)
+                        .font(DSFont.caption)
+                        .foregroundStyle(DSColor.textSecondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right")
+                    .font(DSFont.caption2)
+                    .foregroundStyle(DSColor.textSecondary.opacity(0.7))
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(DSColor.textPrimary)
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .fill(DSColor.surface)
+            .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
+    }
+
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+    }
+
+    private var cardDivider: some View {
+        Divider()
+            .padding(.leading, DSSpacing.md)
     }
 }
 

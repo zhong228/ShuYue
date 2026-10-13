@@ -77,15 +77,9 @@ struct ReaderQuickThemePanelView: View {
             // sizes that content is taller than any detent.
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.lg) {
-                    typeAndPageTurnRow
-                    brightnessSlider
-                    readingBackgroundRow
-                        .padding(.bottom, DSSpacing.lg)
-                    // Only under 綁定閱讀主題: without it the reader follows the device by
-                    // itself and there is nothing to switch (the user's call, 2026-09-30).
-                    if settings.appearanceBindReaderTheme {
-                        followSystemAppearanceToggle
-                    }
+                    typeAndPageTurnCard
+                    brightnessCard
+                    readingBackgroundCard
                     quickActionRow
                 }
                 .padding(.horizontal, DSSpacing.xl)
@@ -155,16 +149,41 @@ struct ReaderQuickThemePanelView: View {
         .presentationDragIndicator(.visible)
     }
 
+    // MARK: - 卡片容器
+
+    /// The panel's card chrome, matching the settings cards the app now wears:
+    /// surface fill, soft shadow, hairline border.
+    private func quickPanelCard<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            content()
+        }
+        .padding(DSSpacing.lg)
+        .background(BookDetailCardStyle.background)
+        .overlay(BookDetailCardStyle.border)
+    }
+
+    /// A card's small section title, replacing a `Form` section header.
+    private func quickPanelCardHeader(_ title: String) -> some View {
+        Text(localized(title))
+            .font(DSFont.subheadline.weight(.semibold))
+            .foregroundStyle(DSColor.textSecondary)
+    }
+
     // MARK: - 字級 + 翻頁
 
-    /// One row for the two things a reader reaches for mid-page. They used to sit
+    /// One card for the two things a reader reaches for mid-page. They used to sit
     /// apart with the page-turn style behind an icon-only `Menu` — a glyph that
     /// never said which style was active.
-    private var typeAndPageTurnRow: some View {
-        HStack(spacing: DSSpacing.md) {
-            fontSizeStepper
-            pageTurnMenu
-                .frame(width: DSLayout.readerQuickPanelTopMenuWidth)
+    private var typeAndPageTurnCard: some View {
+        quickPanelCard {
+            quickPanelCardHeader("版式")
+            HStack(spacing: DSSpacing.md) {
+                fontSizeStepper
+                pageTurnMenu
+                    .frame(width: DSLayout.readerQuickPanelTopMenuWidth)
+            }
         }
     }
 
@@ -268,39 +287,48 @@ struct ReaderQuickThemePanelView: View {
 
     // MARK: - Brightness
 
-    private var brightnessSlider: some View {
-        HStack(spacing: DSSpacing.md) {
-            Image(systemName: "sun.min.fill")
-                .font(DSFont.body)
-            Slider(
-                value: Binding(
-                    get: { CGFloat(settings.readerBrightness) },
-                    set: { value in
-                        settings.followSystemBrightness = false
-                        settings.readerBrightness = Double(value)
-                        UIScreen.main.brightness = value
-                    }
-                ),
-                in: 0.05...1.0
-            )
-            .tint(DSColor.textPrimary)
-            Image(systemName: "sun.max.fill")
-                .font(DSFont.body)
+    private var brightnessCard: some View {
+        quickPanelCard {
+            quickPanelCardHeader("亮度管理")
+            HStack(spacing: DSSpacing.md) {
+                Image(systemName: "sun.min.fill")
+                    .font(DSFont.body)
+                Slider(
+                    value: Binding(
+                        get: { CGFloat(settings.readerBrightness) },
+                        set: { value in
+                            settings.followSystemBrightness = false
+                            settings.readerBrightness = Double(value)
+                            UIScreen.main.brightness = value
+                        }
+                    ),
+                    in: 0.05...1.0
+                )
+                .tint(DSColor.appAccent)
+                Image(systemName: "sun.max.fill")
+                    .font(DSFont.body)
+            }
+            .frame(minHeight: DSLayout.minimumTapTarget)
+            .foregroundStyle(DSColor.textPrimary)
+            // Only under 綁定閱讀主題: without it the reader follows the device by
+            // itself and there is nothing to switch (the user's call, 2026-09-30).
+            if settings.appearanceBindReaderTheme {
+                Divider()
+                    .overlay(DSColor.separator)
+                followSystemAppearanceToggle
+            }
         }
-        .frame(minHeight: DSLayout.minimumTapTarget)
-        .foregroundStyle(DSColor.textPrimary)
     }
 
     // MARK: - Reading backgrounds
 
-    /// One scrolling row, not the 3×2 paged grid this replaced: the four built-in
-    /// backgrounds, then every saved one, each by name, then 自定義 to make another.
-    private var readingBackgroundRow: some View {
+    /// One card, one scrolling row — not the 3×2 paged grid this replaced: the four
+    /// built-in backgrounds, then every saved one, each by name, then 自定義 to make
+    /// another.
+    private var readingBackgroundCard: some View {
         let resolution = settings.readerBackgroundResolution(mode: settings.readerMode, wornTheme: readerTheme)
-        return VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            Text(localized("閱讀背景"))
-                .font(DSFont.footnote)
-                .foregroundStyle(DSColor.textSecondary)
+        return quickPanelCard {
+            quickPanelCardHeader("閱讀背景")
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DSSpacing.md) {

@@ -232,8 +232,12 @@ struct ReaderFloatingChrome: View {
 
     /// The fixed four: 目录／听书／深色／设置. 书签 lives in the top island, so it is not
     /// repeated here; 更多菜单里的刷新/换源/下载仍按 自定義 的可见性过滤。
+    ///
+    /// The row is one band of capsules with hairline gaps, matching the app's capsule
+    /// control language. An engaged tool (深色 while night mode is on) fills its capsule
+    /// with the accent at low opacity so the whole button reads as on, not just its glyph.
     private var toolRow: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: DSSpacing.xs) {
             toolButton(
                 item: ReaderChromeToolItem.tableOfContents,
                 label: localized("目錄"),
@@ -256,6 +260,7 @@ struct ReaderFloatingChrome: View {
                 action: onOpenSettings
             )
         }
+        .animation(DSAnimation.fast, value: isDarkMode)
     }
 
     @ViewBuilder
@@ -273,6 +278,12 @@ struct ReaderFloatingChrome: View {
                     .foregroundStyle(active ? palette.bottomAccent : palette.bottomIcon)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
+            .background {
+                if active {
+                    Capsule()
+                        .fill(palette.bottomAccent.opacity(0.16))
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

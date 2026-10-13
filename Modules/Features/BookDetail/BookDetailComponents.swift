@@ -546,6 +546,28 @@ struct BookDetailIntroSection: View {
 
 // MARK: - Chapters
 
+/// Shared card chrome for the chapter lists, matching the card containers the rest
+/// of the app's 书悦-style screens use (`DSColor.surface` fill, soft shadow, hairline
+/// separator border). Keeping it in one place lets the detail preview and the full
+/// chapter list stay in lockstep.
+enum BookDetailCardStyle {
+    static var background: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .fill(DSColor.surface)
+            .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
+    }
+
+    static var border: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+    }
+
+    static var divider: some View {
+        Divider()
+            .padding(.leading, DSSpacing.md)
+    }
+}
+
 /// One chapter row, used both in the detail preview and in the full chapter list.
 struct BookDetailChapterRow: View {
     enum Trailing {
@@ -668,10 +690,12 @@ struct BookDetailChapterSection<Row: View>: View {
             let preview = Array(chapters.prefix(Self.previewLimit).enumerated())
             VStack(spacing: 0) {
                 ForEach(preview, id: \.element.id) { offset, chapter in
-                    if offset > 0 { Divider() }
+                    if offset > 0 { BookDetailCardStyle.divider }
                     row(offset, chapter)
                 }
             }
+            .background(BookDetailCardStyle.background)
+            .overlay(BookDetailCardStyle.border)
         }
     }
 }
@@ -686,23 +710,30 @@ struct BookDetailChapterListSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List {
-            Section {
-                ForEach(Array(chapters.enumerated()), id: \.element.id) { offset, chapter in
-                    BookDetailChapterRow(
-                        title: BookDetailChapterTitle.display(chapter, offset: offset),
-                        isLocked: chapter.isVip || chapter.isPay,
-                        trailing: trailing,
-                        action: { onSelect(offset) }
-                    )
-                    .listRowBackground(Color.clear)
-                }
-            } header: {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: DSSpacing.md) {
                 Text(String(format: localized("共 %d 章"), chapters.count))
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .padding(.top, DSSpacing.sm)
+                VStack(spacing: 0) {
+                    ForEach(Array(chapters.enumerated()), id: \.element.id) { offset, chapter in
+                        BookDetailChapterRow(
+                            title: BookDetailChapterTitle.display(chapter, offset: offset),
+                            isLocked: chapter.isVip || chapter.isPay,
+                            trailing: trailing,
+                            action: { onSelect(offset) }
+                        )
+                        if offset < chapters.count - 1 { BookDetailCardStyle.divider }
+                    }
+                }
+                .background(BookDetailCardStyle.background)
+                .overlay(BookDetailCardStyle.border)
             }
+            .padding(.horizontal, DSSpacing.lg)
+            .padding(.bottom, DSSpacing.xxl)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .scrollIndicators(.hidden)
         .background(PageBackgroundView(scope: .global).ignoresSafeArea())
         .pageBackgroundToolbar(for: .global)
         .navigationTitle(localized("目錄"))

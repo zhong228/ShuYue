@@ -1,11 +1,11 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Book Source Editor (Legado / MD3 6-tab layout)
+// MARK: - Book Source Editor
 
-/// Full book source editor aligned with Legado 原版 / MD3 / Sigma: six tabs
-/// (基本 / 搜索 / 發現 / 詳情 / 目錄 / 正文), every rule field exposed, each field
-/// edited in a bottom-sheet editor with an insert-chips row (`@css:`, `@js:`, …).
+/// Full book source editor: six rule groups (基本 / 搜索 / 發現 / 詳情 / 目錄 / 正文)
+/// switch through a capsule tab strip instead of a segmented control, and every rule
+/// field is edited in a bottom-sheet editor with an insert-chips row (`@css:`, `@js:`, …).
 ///
 /// Save validates 名稱 + URL, optionally runs Legado's rule auto-complete, and
 /// leaving with unsaved changes asks for confirmation (是 = keep editing, 否 = discard).
@@ -33,6 +33,17 @@ struct BookSourceEditView: View {
         case toc = "目錄"
         case content = "正文"
         var id: String { rawValue }
+        /// A distinct SF Symbol per group so the capsule strip reads at a glance.
+        var icon: String {
+            switch self {
+            case .base:    return "square.3.layers.3d"
+            case .search:  return "magnifyingglass"
+            case .explore: return "sparkles"
+            case .info:    return "info.circle"
+            case .toc:     return "list.bullet"
+            case .content: return "doc.plaintext"
+            }
+        }
     }
 
     init(source: BookSource, onSave: @escaping (BookSource) -> Void) {
@@ -46,15 +57,7 @@ struct BookSourceEditView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker(localized("編輯分頁"), selection: $selectedTab) {
-                    ForEach(EditTab.allCases) { tab in
-                        Text(localized(tab.rawValue)).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(DSColor.neutralControlFill)
+                tabStrip
 
                 tabContent
             }
@@ -169,6 +172,48 @@ struct BookSourceEditView: View {
 
     // MARK: - Tabs
 
+    /// Capsule tab strip — the segmented control is the classic editor chrome this
+    /// screen no longer shares. Each group gets its own icon + label capsule.
+    private var tabStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DSSpacing.xs) {
+                ForEach(EditTab.allCases) { tab in
+                    editorTabButton(tab)
+                }
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .background(DSColor.neutralControlFill)
+        .accessibilityLabel(localized("編輯分頁"))
+    }
+
+    private func editorTabButton(_ tab: EditTab) -> some View {
+        let selected = selectedTab == tab
+        return Button {
+            withAnimation(DSAnimation.standard) {
+                selectedTab = tab
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: tab.icon)
+                    .font(DSFont.fixed(size: 12, weight: .medium))
+                Text(localized(tab.rawValue))
+                    .font(DSFont.fixed(size: 13, weight: .medium))
+            }
+            .foregroundColor(selected ? DSColor.textOnAccent : DSColor.textSecondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Capsule().fill(selected ? DSColor.appAccent : DSColor.neutralControlFill)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
@@ -184,57 +229,101 @@ struct BookSourceEditView: View {
     // MARK: 基本
 
     private var baseTab: some View {
-        Form {
-            Section {
-                Picker(localized("類型"), selection: $source.bookSourceType) {
-                    Text(localized("文字")).tag(0)
-                    Text(localized("音頻")).tag(1)
-                    Text(localized("圖片")).tag(2)
-                    Text(localized("文件")).tag(3)
-                }
-                .pickerStyle(.menu)
-                Toggle(localized("啟用"), isOn: $source.enabled)
-                Toggle(localized("發現"), isOn: $source.enabledExplore)
-                // `enabledCookieJar` and `enabledReview` are deliberately NOT editable
-                // here: neither gates anything in this app (see their declarations in
-                // `BookSource`), so a switch for them reads as a feature toggle while
-                // changing nothing. Both fields are still decoded, encoded, and handed
-                // to the source's JS — only the misleading control is gone.
-                Toggle(isOn: $source.presentsAndroidIdentity) {
-                    VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                        Text(localized("提供裝置識別碼"))
-                            .foregroundStyle(DSColor.textPrimary)
-                        Text(localized("預設開啟，書源要裝置碼時才拿得到。只有在某個書源不能被當成 Android 時才關閉。"))
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.textSecondary)
-                    }
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                settingsCard
+                fieldCard(specs: FieldCatalog.base)
             }
-            .interfaceSectionSurface()
-
-            Section {
-                ForEach(FieldCatalog.base) { spec in
-                    fieldRow(spec)
-                }
-            }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
         }
         .softScrollEdges()
-        .listStyle(.insetGrouped)
     }
 
-    /// 搜索 / 發現 / 詳情 / 目錄 / 正文 tabs — one section per rule group.
-    private func ruleTab(specs: [BookSourceFieldSpec]) -> some View {
-        Form {
-            Section {
-                ForEach(specs) { spec in
-                    fieldRow(spec)
+    /// The 類型 picker and the source switches, on one rounded card with hairline
+    /// dividers — a settings card instead of a plain `Form` section.
+    private var settingsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Picker(localized("類型"), selection: $source.bookSourceType) {
+                Text(localized("文字")).tag(0)
+                Text(localized("音頻")).tag(1)
+                Text(localized("圖片")).tag(2)
+                Text(localized("文件")).tag(3)
+            }
+            .pickerStyle(.menu)
+            .tint(DSColor.appAccent)
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, 6)
+
+            cardDivider
+
+            settingToggle(localized("啟用"), isOn: $source.enabled)
+            cardDivider
+            settingToggle(localized("發現"), isOn: $source.enabledExplore)
+            cardDivider
+            Toggle(isOn: $source.presentsAndroidIdentity) {
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    Text(localized("提供裝置識別碼"))
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(localized("預設開啟，書源要裝置碼時才拿得到。只有在某個書源不能被當成 Android 時才關閉。"))
+                        .font(DSFont.caption)
+                        .foregroundStyle(DSColor.textSecondary)
                 }
             }
-            .interfaceSectionSurface()
+            .tint(DSColor.appAccent)
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private func settingToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .tint(DSColor.appAccent)
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+    }
+
+    /// 搜索 / 發現 / 詳情 / 目錄 / 正文 tabs — one card per rule group.
+    private func ruleTab(specs: [BookSourceFieldSpec]) -> some View {
+        ScrollView {
+            fieldCard(specs: specs)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
         }
         .softScrollEdges()
-        .listStyle(.insetGrouped)
+    }
+
+    /// A rounded card listing rule fields, separated by hairline dividers.
+    private func fieldCard(specs: [BookSourceFieldSpec]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(specs.enumerated()), id: \.element.id) { index, spec in
+                fieldRow(spec)
+                if index < specs.count - 1 {
+                    cardDivider
+                }
+            }
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .fill(DSColor.surface)
+            .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
+    }
+
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+    }
+
+    private var cardDivider: some View {
+        Divider()
+            .padding(.leading, DSSpacing.md)
     }
 
     // MARK: - Field Row
@@ -244,10 +333,10 @@ struct BookSourceEditView: View {
         Button {
             editingField = spec
         } label: {
-            HStack(alignment: .center, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: DSSpacing.md) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(localized(spec.label))
-                        .font(DSFont.caption)
+                        .font(DSFont.caption.weight(.medium))
                         .foregroundColor(DSColor.textSecondary)
                     Text(displayValue(for: spec))
                         .font(DSFont.fixed(size: 13, design: .monospaced))
@@ -257,8 +346,10 @@ struct BookSourceEditView: View {
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(DSFont.caption2)
-                    .foregroundColor(DSColor.textSecondary)
+                    .foregroundColor(DSColor.textSecondary.opacity(0.7))
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

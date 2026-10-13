@@ -101,87 +101,17 @@ struct DiagnosticsView: View {
     // MARK: - Body
 
     var body: some View {
-        Form {
-            Section {
-                if reportableCount > 0 {
-                    DiagnosticAnomalyBanner(count: reportableCount)
+        ScrollView {
+            VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                exportCard
+                if !model.uncleanSessions.isEmpty {
+                    crashSessionsCard
                 }
-
-                ShareLink(item: exportBundle, preview: SharePreview(exportBundle.filename)) {
-                    Label(
-                        reportableCount > 0 ? localized("匯出並回報") : localized("匯出紀錄"),
-                        systemImage: "square.and.arrow.up"
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .accessibilityLabel(
-                    reportableCount > 0 ? localized("匯出並回報") : localized("匯出紀錄")
-                )
-                .accessibilityIdentifier("diagnostics_export_button")
-            } footer: {
-                Text(localized("包含這次啟動的完整紀錄，不受下方篩選影響。"))
-                    .dsSectionFooter()
+                filterCard
+                logListCard
             }
-            .interfaceSectionSurface()
-
-            if !model.uncleanSessions.isEmpty {
-                Section {
-                    ForEach(model.uncleanSessions) { session in
-                        DiagnosticCrashSessionRow(session: session)
-                    }
-                } header: {
-                    Text(localized("上次未正常結束"))
-                        .foregroundStyle(DSColor.textSecondary)
-                } footer: {
-                    Text(localized("App 在使用中結束，不是被系統回收。詳細內容下次啟動後才會送達。"))
-                        .dsSectionFooter()
-                }
-                .interfaceSectionSurface()
-            }
-
-            Section {
-                Picker(localized("嚴重程度"), selection: $severityFilter) {
-                    ForEach(SeverityFilter.allCases) { filter in
-                        Text(filter.localizedName).tag(filter)
-                    }
-                }
-                Picker(localized("分類"), selection: $categoryFilter) {
-                    Text(localized("全部")).tag(DiagnosticCategory?.none)
-                    ForEach(DiagnosticCategory.allCases, id: \.self) { category in
-                        Text(category.localizedName).tag(DiagnosticCategory?.some(category))
-                    }
-                }
-                Toggle(localized("記錄詳細追蹤"), isOn: $model.isVerboseEnabled)
-            } header: {
-                Text(localized("篩選"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("記下每一次翻頁與解析步驟。關閉時仍會記錄錯誤。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
-
-            Section {
-                if model.isLoading {
-                    HStack(spacing: DSSpacing.md) {
-                        ProgressView()
-                        Text(localized("載入中…"))
-                            .font(DSFont.subheadline)
-                            .foregroundStyle(DSColor.textSecondary)
-                    }
-                } else if filteredEntries.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(filteredEntries) { entry in
-                        DiagnosticEntryRow(entry: entry)
-                    }
-                }
-            } header: {
-                Text(localized("紀錄"))
-                    .foregroundStyle(DSColor.textSecondary)
-            }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
         }
         .softScrollEdges()
         .searchable(
@@ -221,8 +151,6 @@ struct DiagnosticsView: View {
                     #if DEBUG
                     Button {
                         MetricKitDiagnosticReporter.shared.injectSampleDiagnosticForTesting()
-                        // A realistic retry loop, so the escalation and its reason
-                        // sequence can be seen without waiting for a source to misbehave.
                         ChapterRetryLog.resetForTesting()
                         ChapterRetryLog.record(.fetchCancelled, chapter: 42, bookId: "sample")
                         ChapterRetryLog.record(.fetchCancelled, chapter: 42, bookId: "sample")
@@ -264,6 +192,180 @@ struct DiagnosticsView: View {
         .task { model.loadIfNeeded() }
     }
 
+    // MARK: - Cards
+
+    private var exportCard: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            if reportableCount > 0 {
+                DiagnosticAnomalyBanner(count: reportableCount)
+                    .padding(.horizontal, DSSpacing.sm)
+            }
+            ShareLink(item: exportBundle, preview: SharePreview(exportBundle.filename)) {
+                Label(
+                    reportableCount > 0 ? localized("匯出並回報") : localized("匯出紀錄"),
+                    systemImage: "square.and.arrow.up"
+                )
+                .font(DSFont.subheadline.weight(.medium))
+                .foregroundStyle(DSColor.textOnAccent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
+                .background(DSColor.appAccent)
+                .clipShape(RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous))
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, reportableCount > 0 ? 0 : DSSpacing.sm)
+            Text(localized("包含這次啟動的完整紀錄，不受下方篩選影響。"))
+                .font(DSFont.caption2)
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.bottom, DSSpacing.sm)
+        }
+        .padding(.vertical, DSSpacing.sm)
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var crashSessionsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(localized("上次未正常結束"))
+                .font(DSFont.footnote.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.xs)
+            ForEach(model.uncleanSessions) { session in
+                DiagnosticCrashSessionRow(session: session)
+                    .padding(.horizontal, DSSpacing.md)
+                    .padding(.vertical, DSSpacing.sm)
+                if session.id != model.uncleanSessions.last?.id {
+                    cardDivider
+                }
+            }
+            Text(localized("App 在使用中結束，不是被系統回收。詳細內容下次啟動後才會送達。"))
+                .font(DSFont.caption2)
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.bottom, DSSpacing.sm)
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var filterCard: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            Text(localized("篩選"))
+                .font(DSFont.footnote.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.xs)
+
+            severityStrip
+
+            cardDivider
+
+            HStack {
+                Text(localized("分類"))
+                    .font(DSFont.subheadline)
+                    .foregroundStyle(DSColor.textPrimary)
+                Spacer()
+                Picker(localized("分類"), selection: $categoryFilter) {
+                    Text(localized("全部")).tag(DiagnosticCategory?.none)
+                    ForEach(DiagnosticCategory.allCases, id: \.self) { category in
+                        Text(category.localizedName).tag(DiagnosticCategory?.some(category))
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(DSColor.appAccent)
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+
+            cardDivider
+
+            Toggle(localized("記錄詳細追蹤"), isOn: $model.isVerboseEnabled)
+                .tint(DSColor.appAccent)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
+
+            Text(localized("記下每一次翻頁與解析步驟。關閉時仍會記錄錯誤。"))
+                .font(DSFont.caption2)
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.bottom, DSSpacing.sm)
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
+    private var severityStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DSSpacing.xs) {
+                ForEach(SeverityFilter.allCases) { filter in
+                    let selected = severityFilter == filter
+                    Button {
+                        withAnimation(DSAnimation.standard) {
+                            severityFilter = filter
+                        }
+                    } label: {
+                        Text(filter.localizedName)
+                            .font(DSFont.fixed(size: 13, weight: .medium))
+                            .foregroundColor(selected ? DSColor.textOnAccent : DSColor.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule().fill(selected ? DSColor.appAccent : DSColor.neutralControlFill)
+                            )
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+    }
+
+    private var logListCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(localized("紀錄"))
+                .font(DSFont.footnote.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.xs)
+
+            if model.isLoading {
+                HStack(spacing: DSSpacing.md) {
+                    ProgressView()
+                    Text(localized("載入中…"))
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textSecondary)
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.vertical, DSSpacing.sm)
+            } else if filteredEntries.isEmpty {
+                emptyState
+                    .padding(.horizontal, DSSpacing.md)
+                    .padding(.vertical, DSSpacing.sm)
+            } else {
+                ForEach(filteredEntries) { entry in
+                    DiagnosticEntryRow(entry: entry)
+                        .padding(.horizontal, DSSpacing.md)
+                        .padding(.vertical, DSSpacing.sm)
+                    if entry.id != filteredEntries.last?.id {
+                        cardDivider
+                    }
+                }
+            }
+        }
+        .background(cardBackground)
+        .overlay(cardBorder)
+    }
+
     private var emptyState: some View {
         ContentUnavailableView {
             UnavailableLabel(localized("沒有符合的紀錄"), systemImage: "text.magnifyingglass")
@@ -272,6 +374,22 @@ struct DiagnosticsView: View {
                  ? localized("目前沒有任何診斷紀錄。繼續使用 app，有狀況時就會出現在這裡。")
                  : localized("換一個篩選條件或搜尋字詞試試。")).foregroundStyle(DSColor.textSecondary)
         }
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .fill(DSColor.surface)
+            .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
+    }
+
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+            .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+    }
+
+    private var cardDivider: some View {
+        Divider()
+            .padding(.leading, DSSpacing.md)
     }
 }
 

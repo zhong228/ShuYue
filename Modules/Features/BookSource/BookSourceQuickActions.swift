@@ -1,55 +1,5 @@
 import SwiftUI
 
-// MARK: - Per-source actions (Legado's explore long-press menu)
-
-/// The actions Legado's explore page offers on a source — 編輯、置頂、登入、搜索、
-/// 刷新、刪除, identical across the original, legado-E and MD3 — plus 設置源變量.
-/// 探索 shows them on every source in its list; 刷新 only where there is a loaded
-/// page to reload.
-struct BookSourceActionMenuItems: View {
-    let source: BookSource
-    let onEdit: () -> Void
-    let onPinToTop: () -> Void
-    let onLogin: () -> Void
-    let onSearch: () -> Void
-    let onRefresh: (() -> Void)?
-    let onSetVariable: () -> Void
-    let onDelete: () -> Void
-
-    private var hasLogin: Bool {
-        !source.loginUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    var body: some View {
-        Button(action: onEdit) {
-            Label(localized("編輯"), systemImage: "square.and.pencil")
-        }
-        Button(action: onPinToTop) {
-            Label(localized("置頂"), systemImage: "arrow.up.to.line")
-        }
-        if hasLogin {
-            Button(action: onLogin) {
-                Label(localized("登入"), systemImage: "person.crop.circle")
-            }
-        }
-        Button(action: onSearch) {
-            Label(localized("搜索"), systemImage: "magnifyingglass")
-        }
-        if let onRefresh {
-            Button(action: onRefresh) {
-                Label(localized("刷新"), systemImage: "arrow.clockwise")
-            }
-        }
-        Button(action: onSetVariable) {
-            Label(localized("設置源變量"), systemImage: "curlybraces")
-        }
-        Divider()
-        Button(role: .destructive, action: onDelete) {
-            Label(localized("刪除"), systemImage: "trash")
-        }
-    }
-}
-
 /// A sheet a per-source action opens.
 enum BookSourceActionSheet: Identifiable {
     case edit(BookSource)
@@ -66,7 +16,8 @@ enum BookSourceActionSheet: Identifiable {
 }
 
 extension View {
-    /// Presents the sheets and the delete confirmation behind `BookSourceActionMenuItems`.
+    /// Presents the editor / login / variable sheets and the delete confirmation
+    /// a source's action sheet chain can open.
     func bookSourceActionSheets(
         sheet: Binding<BookSourceActionSheet?>,
         pendingDeletion: Binding<BookSource?>
