@@ -396,7 +396,7 @@ struct ReaderSettingsView: View {
             } label: {
                 HStack(spacing: DSSpacing.sm) {
                     SettingsRowLabel(
-                        title: localized("排版生效範圍"),
+                        localized("排版生效範圍"),
                         systemImage: "paintpalette"
                     )
                     Spacer(minLength: DSSpacing.sm)
