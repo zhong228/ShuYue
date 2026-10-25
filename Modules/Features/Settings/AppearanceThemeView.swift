@@ -134,7 +134,11 @@ struct AppearanceThemeView: View {
     }
 
     private var visionSection: some View {
-        DSSettingsGroupCard(title: localized("视觉方案")) {
+        DSSettingsGroupCard(title: localized("视觉方案"), footer: {
+            if !subscriptionStore.hasAccess(.readerThemePacks) {
+                Text(localized("自訂應用配色、閱讀配色與頁面背景需開通會員。"))
+            }
+        }) {
             themeSelectionCard
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.md)
@@ -178,10 +182,6 @@ struct AppearanceThemeView: View {
                 Text(localized("阅读器在浅色模式用浅色阅读主题，深色模式用深色阅读主题。要跟着装置的深浅色自动切换，在阅读器的「设置」面板开启「跟随装置深浅色」。"))
                     .dsSectionFooter()
                     .padding(.top, DSSpacing.sm)
-            }
-        } footer: {
-            if !subscriptionStore.hasAccess(.readerThemePacks) {
-                Text(localized("自訂應用配色、閱讀配色與頁面背景需開通會員。"))
             }
         }
         .animation(reduceMotion ? nil : DSAnimation.standard, value: settings.appearanceBindReaderTheme)
@@ -288,11 +288,11 @@ struct AppearanceThemeView: View {
     // The custom theme a pack carries still needs Pro to take effect; `ContentView`'s
     // `resolvedAppTheme` already downgrades it on its own, so nothing here has to.
     private var themeManagementSection: some View {
-        DSSettingsGroupCard(title: localized("主题库")) {
-            themeActionRows
-        } footer: {
+        DSSettingsGroupCard(title: localized("主题库"), footer: {
             Text(localized("「導出主題」包含所有自訂主題、自帶主題的配色、頁面背景圖、Tab 圖示、啟動圖與閱讀背景。"))
                 .dsSectionFooter()
+        }) {
+            themeActionRows
         }
     }
 
