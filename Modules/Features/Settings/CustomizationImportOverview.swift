@@ -487,53 +487,59 @@ struct CustomizationImportOverviewView: View {
     }
 
     private func overviewList(_ overview: CustomizationImportOverview) -> some View {
-        List {
-            if !overview.appearanceItems.isEmpty {
-                Section {
-                    ForEach(overview.appearanceItems) { itemRow($0) }
-                } header: {
-                    Text(localized("外觀"))
-                        .foregroundStyle(DSColor.textSecondary)
-                } footer: {
-                    if let name = overview.selectedThemeName {
-                        Text(String(format: localized("「%@」已設為目前的外觀主題。"), name))
-                            .dsSectionFooter()
+        // 分组卡片：外觀 / 閱讀設定 / 未完全套用 三张卡片，替代系统 List Section
+        // （2026-10-25）。行件统一为 DSSettingsGroupCard 节奏。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                if !overview.appearanceItems.isEmpty {
+                    DSSettingsGroupCard(title: localized("外觀"), footer: {
+                        if let name = overview.selectedThemeName {
+                            Text(String(format: localized("「%@」已設為目前的外觀主題。"), name))
+                                .dsSectionFooter()
+                        }
+                    }) {
+                        ForEach(overview.appearanceItems) { item in
+                            itemRow(item)
+                                .padding(.horizontal, DSSpacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(minHeight: 54)
+                        }
                     }
                 }
-                .interfaceSectionSurface()
-            }
 
-            if !overview.readingItems.isEmpty {
-                Section {
-                    ForEach(overview.readingItems) { itemRow($0) }
-                } header: {
-                    Text(localized("閱讀設定"))
-                        .foregroundStyle(DSColor.textSecondary)
-                } footer: {
-                    if let placement = overview.readingPlacement {
-                        Text(placementText(placement))
-                            .dsSectionFooter()
+                if !overview.readingItems.isEmpty {
+                    DSSettingsGroupCard(title: localized("閱讀設定"), footer: {
+                        if let placement = overview.readingPlacement {
+                            Text(placementText(placement))
+                                .dsSectionFooter()
+                        }
+                    }) {
+                        ForEach(overview.readingItems) { item in
+                            itemRow(item)
+                                .padding(.horizontal, DSSpacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(minHeight: 54)
+                        }
                     }
                 }
-                .interfaceSectionSurface()
-            }
 
-            if !overview.notes.isEmpty {
-                Section {
-                    ForEach(overview.notes, id: \.self) { note in
-                        Text(note)
-                            .font(DSFont.subheadline)
-                            .foregroundStyle(DSColor.textSecondary)
+                if !overview.notes.isEmpty {
+                    DSSettingsGroupCard(title: localized("未完全套用")) {
+                        ForEach(overview.notes, id: \.self) { note in
+                            Text(note)
+                                .font(DSFont.subheadline)
+                                .foregroundStyle(DSColor.textSecondary)
+                                .padding(.horizontal, DSSpacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(minHeight: 54)
+                        }
                     }
-                } header: {
-                    Text(localized("未完全套用"))
-                        .foregroundStyle(DSColor.textSecondary)
                 }
-                .interfaceSectionSurface()
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
         .background(DSColor.groupedBackground)
     }
 

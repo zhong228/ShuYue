@@ -20,23 +20,34 @@ struct AppearanceColorsAndFontView: View {
     @State private var paywallFeature: PremiumFeature?
 
     var body: some View {
-        Form {
-            if subscriptionStore.hasAccess(.readerThemePacks) {
-                accentSection
-                textColorSection
-                backgroundSection
-            } else {
-                Section {
-                    SettingsLockedRow(title: localized("配色"), systemImage: "paintpalette") {
-                        paywallFeature = .readerThemePacks
+        // 分组卡片：強調色 / 文字顏色 / 背景 / 全局字體 四张卡片，替代系统 Form Section
+        // （2026-10-19）。取色器行保留原控件，只给卡片节奏。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                if subscriptionStore.hasAccess(.readerThemePacks) {
+                    accentSection
+                    textColorSection
+                    backgroundSection
+                } else {
+                    // 非 Pro 的单张锁定卡：内容仍是「配色」入口，点按开付费墙。
+                    DSSettingsGroupCard(title: localized("配色")) {
+                        DSSettingsCardRow(
+                            icon: "paintpalette",
+                            title: localized("配色"),
+                            detail: localized("需要 Pro"),
+                            isLocked: true
+                        ) {
+                            paywallFeature = .readerThemePacks
+                        }
                     }
                 }
-                .interfaceSectionSurface()
+                fontSection
             }
-            fontSection
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
-        .scrollContentBackground(.hidden)
         .navigationTitle(localized("顏色與字體"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
@@ -51,51 +62,60 @@ struct AppearanceColorsAndFontView: View {
     private var accentSection: some View {
         let light = colorsBinding(for: lightTheme)
         let dark = colorsBinding(for: darkTheme)
-        return Section {
+        return DSSettingsGroupCard(title: localized("強調色"), footer: {
+            Text(localized("只用在能點或已選中的東西：按鈕、連結、開關、滑桿、選中狀態、Tab 選中圖示和設定列的圖示。"))
+                .dsSectionFooter()
+        }) {
             ColorPicker(selection: hexColor(light, \.accentHex), supportsOpacity: false) {
                 rowTitle("亮色模式")
             }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
             .accessibilityLabel(modeLabel(section: "強調色", mode: "亮色模式"))
             // The dark accent is part of the dark palette: it has its own value only
             // once 自動深色配色 is off, under 背景.
             if dark.wrappedValue.dark != nil {
+                DSSettingsCardDivider()
                 ColorPicker(selection: darkHexColor(dark, \.accentHex), supportsOpacity: false) {
                     rowTitle("深色模式")
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
                 .accessibilityLabel(modeLabel(section: "強調色", mode: "深色模式"))
             }
-        } header: {
-            Text(localized("強調色"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(localized("只用在能點或已選中的東西：按鈕、連結、開關、滑桿、選中狀態、Tab 選中圖示和設定列的圖示。"))
-                .dsSectionFooter()
         }
-        .interfaceSectionSurface()
     }
 
     private var textColorSection: some View {
         let light = colorsBinding(for: lightTheme)
         let dark = colorsBinding(for: darkTheme)
-        return Section {
+        return DSSettingsGroupCard(title: localized("文字顏色"), footer: {
+            Text(localized("主文字用在標題和列名稱，次級文字用在數值、副標和說明，弱文字用在停用和提示文字。閱讀正文的顏色在閱讀設定裡設。"))
+                .dsSectionFooter()
+        }) {
             ForEach(TextLevel.allCases) { level in
                 ColorPicker(selection: textColor(light, level, dark: false), supportsOpacity: false) {
                     rowTitle(level.titleKey(dark: false))
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
+                DSSettingsCardDivider()
             }
             ForEach(TextLevel.allCases) { level in
                 ColorPicker(selection: textColor(dark, level, dark: true), supportsOpacity: false) {
                     rowTitle(level.titleKey(dark: true))
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
+                if level != .tertiary {
+                    DSSettingsCardDivider()
+                }
             }
-        } header: {
-            Text(localized("文字顏色"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(localized("主文字用在標題和列名稱，次級文字用在數值、副標和說明，弱文字用在停用和提示文字。閱讀正文的顏色在閱讀設定裡設。"))
-                .dsSectionFooter()
         }
-        .interfaceSectionSurface()
     }
 
     /// What was 配色 until 2026-09-29. Its 文字, 工具列 and 對話高亮 only ever reached
@@ -105,52 +125,51 @@ struct AppearanceColorsAndFontView: View {
     private var backgroundSection: some View {
         let light = colorsBinding(for: lightTheme)
         let dark = colorsBinding(for: darkTheme)
-        return Section {
-            ColorPicker(selection: hexColor(light, \.backgroundHex), supportsOpacity: false) {
-                rowTitle("亮色模式")
-            }
-            .accessibilityLabel(modeLabel(section: "背景", mode: "亮色模式"))
-            Toggle(isOn: automaticDarkBinding(dark)) {
-                rowTitle("自動深色配色")
-            }
-            if dark.wrappedValue.dark != nil {
-                ColorPicker(selection: darkHexColor(dark, \.backgroundHex), supportsOpacity: false) {
-                    rowTitle("深色模式")
-                }
-                .accessibilityLabel(modeLabel(section: "背景", mode: "深色模式"))
-            }
-        } header: {
-            Text(localized("背景"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
+        return DSSettingsGroupCard(title: localized("背景"), footer: {
             Text(dark.wrappedValue.dark == nil
                 ? localized("頁面、卡片和面板的底色；閱讀主題選「跟隨外觀主題」時，閱讀頁也用它。關閉「自動深色配色」後，強調色和背景都能另外指定深色。")
                 : localized("頁面、卡片和面板的底色；閱讀主題選「跟隨外觀主題」時，閱讀頁也用它。"))
                 .dsSectionFooter()
+        }) {
+            ColorPicker(selection: hexColor(light, \.backgroundHex), supportsOpacity: false) {
+                rowTitle("亮色模式")
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
+            .accessibilityLabel(modeLabel(section: "背景", mode: "亮色模式"))
+            DSSettingsCardDivider()
+            DSSettingsCardToggle(
+                title: localized("自動深色配色"),
+                systemImage: "circle.lefthalf.filled",
+                isOn: automaticDarkBinding(dark)
+            )
+            if dark.wrappedValue.dark != nil {
+                DSSettingsCardDivider()
+                ColorPicker(selection: darkHexColor(dark, \.backgroundHex), supportsOpacity: false) {
+                    rowTitle("深色模式")
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
+                .accessibilityLabel(modeLabel(section: "背景", mode: "深色模式"))
+            }
         }
-        .interfaceSectionSurface()
     }
 
     private var fontSection: some View {
-        Section {
-            NavigationLink {
-                GlobalFontSettingsView()
-            } label: {
-                LabeledContent {
-                    Text(settings.globalFontDisplayName)
-                        .foregroundStyle(DSColor.textSecondary)
-                } label: {
-                    rowTitle("字體")
-                }
-            }
-        } header: {
-            Text(localized("全局字體"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
+        DSSettingsGroupCard(title: localized("全局字體"), footer: {
             Text(localized("介面所有文字都用這個字體，並跟著系統字級縮放；閱讀正文的字體在閱讀設定裡設。打開「粗體文字」時，沒有粗體的字體會暫時改用系統字體。"))
                 .dsSectionFooter()
+        }) {
+            DSSettingsCardNavRow(
+                icon: "textformat",
+                title: localized("字體"),
+                value: settings.globalFontDisplayName
+            ) {
+                GlobalFontSettingsView()
+            }
         }
-        .interfaceSectionSurface()
     }
 
     /// 強調色 and 背景 each have a 亮色模式 and a 深色模式 row, named as the reference the

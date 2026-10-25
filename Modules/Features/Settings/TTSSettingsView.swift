@@ -209,62 +209,81 @@ struct TTSSettingsView: View {
     // MARK: - Source list
 
     private var sourceList: some View {
-        List {
-            Section {
-                Picker(localized("预合成并行数"), selection: $gs.ttsPreSynthesisConcurrency) {
-                    ForEach(GlobalSettings.ttsPreSynthesisConcurrencyRange, id: \.self) { count in
-                        Text(count, format: .number).tag(count)
+        // 分组卡片：预合成引擎 / 内置音色 / 听书源管理 三张卡片，替代系统 List（2026-10-25）。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                DSSettingsGroupCard(
+                    title: localized("预合成引擎"),
+                    footer: {
+                        Text(localized("同時合成語音的請求數。適用於網路語音，下次開始朗讀時生效。"))
+                            .dsSectionFooter()
                     }
+                ) {
+                    Picker(localized("预合成并行数"), selection: $gs.ttsPreSynthesisConcurrency) {
+                        ForEach(GlobalSettings.ttsPreSynthesisConcurrencyRange, id: \.self) { count in
+                            Text(count, format: .number).tag(count)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("tts_pre_synthesis_concurrency")
+                    .dsSettingsCardRow()
                 }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("tts_pre_synthesis_concurrency")
-            } header: {
-                Text(localized("预合成引擎"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("同時合成語音的請求數。適用於網路語音，下次開始朗讀時生效。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
 
-            Section {
-                systemVoiceSourceRow
-                systemVoicePickerRow
-                    .frame(minHeight: DSLayout.minimumTapTarget)
-                edgeVoiceRows
-            } header: {
-                Text(localized("内置音色"))
-                    .accessibilityIdentifier("tts_builtin_section")
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                if let error = testCoordinator.errorMessage {
-                    Text(error)
-                        .dsSectionFooter(color: DSColor.destructive)
-                        .accessibilityIdentifier("tts_preview_error")
-                }
-            }
-            .interfaceSectionSurface()
+                DSSettingsGroupCard(
+                    title: localized("内置音色"),
+                    titleAccessibilityIdentifier: "tts_builtin_section",
+                    footer: {
+                        if let error = testCoordinator.errorMessage {
+                            Text(error)
+                                .dsSectionFooter(color: DSColor.destructive)
+                                .accessibilityIdentifier("tts_preview_error")
+                        }
+                    }
+                ) {
+                    systemVoiceSourceRow
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.xs)
 
-            Section {
-                if filteredSources.isEmpty {
-                    Text(localized("尚無語音源"))
-                        .foregroundStyle(DSColor.textSecondary)
+                    DSSettingsCardDivider()
+
+                    systemVoicePickerRow
                         .frame(minHeight: DSLayout.minimumTapTarget)
-                } else {
-                    ForEach(filteredSources) { source in
-                        sourceRow(source)
+                        .dsSettingsCardRow(minHeight: 0)
+
+                    DSSettingsCardDivider()
+
+                    edgeVoiceRows
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.xs)
+                }
+
+                DSSettingsGroupCard(
+                    title: localized("听书源管理"),
+                    titleAccessibilityIdentifier: "tts_imported_section"
+                ) {
+                    if filteredSources.isEmpty {
+                        Text(localized("尚無語音源"))
+                            .font(DSFont.body)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .dsSettingsCardRow()
+                    } else {
+                        ForEach(filteredSources) { source in
+                            sourceRow(source)
+                                .dsSettingsCardRow(minHeight: 0)
+                                .padding(.vertical, DSSpacing.xs)
+
+                            if source.id != filteredSources.last?.id {
+                                DSSettingsCardDivider()
+                            }
+                        }
                     }
                 }
-            } header: {
-                Text(localized("听书源管理"))
-                    .accessibilityIdentifier("tts_imported_section")
-                    .foregroundStyle(DSColor.textSecondary)
             }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
     }
 
     /// One VoiceOver element per voice source — same contract as 書源管理's row
@@ -919,32 +938,42 @@ struct TTSSourceLoginView: View {
     @ViewBuilder
     private var webLoginSection: some View {
         if let webLogin = SourceWebLogin(ttsSource: source), let onOpenWebLogin {
-            Section {
+            DSSettingsGroupCard(
+                title: "",
+                footer: {
+                    Text(String(format: localized("在 %@ 登入後，Cookie 會自動帶進朗讀請求。"), webLogin.url.host ?? webLogin.url.absoluteString))
+                        .dsSectionFooter()
+                }
+            ) {
                 Button {
                     onOpenWebLogin()
                 } label: {
                     Label(localized("網頁登入"), systemImage: "globe")
                 }
-            } footer: {
-                Text(String(format: localized("在 %@ 登入後，Cookie 會自動帶進朗讀請求。"), webLogin.url.host ?? webLogin.url.absoluteString))
-                    .dsSectionFooter()
+                .dsSettingsCardRow()
             }
         }
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                webLoginSection
-                if fields.isEmpty, SourceWebLogin(ttsSource: source) == nil {
-                    Text(localized("無可設定的欄位"))
-                        .foregroundStyle(DSColor.textSecondary)
-                }
-                if !fields.isEmpty {
-                    // The same grid the book-source login uses: rows pack by their
-                    // `style` (text/password full width, buttons/selects/toggles half
-                    // by default), inside a themed card so 分組卡片 / 卡片美術圖 apply.
-                    Section {
+            // 分组卡片：网页登入 / 登入表單各一张卡片，替代系统 Form Section（2026-10-25）。
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    webLoginSection
+
+                    if fields.isEmpty, SourceWebLogin(ttsSource: source) == nil {
+                        DSSettingsGroupCard(title: "") {
+                            Text(localized("無可設定的欄位"))
+                                .font(DSFont.body)
+                                .foregroundStyle(DSColor.textSecondary)
+                                .dsSettingsCardRow()
+                        }
+                    }
+                    if !fields.isEmpty {
+                        // The same grid the book-source login uses: rows pack by their
+                        // `style` (text/password full width, buttons/selects/toggles half
+                        // by default), inside a themed card so 分組卡片 / 卡片美術圖 apply.
                         LoginFormGrid(
                             fields: fields,
                             values: $fieldValues,
@@ -955,10 +984,11 @@ struct TTSSourceLoginView: View {
                         .interfaceCardSurface(
                             in: RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
                         )
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
                     }
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(source.name)

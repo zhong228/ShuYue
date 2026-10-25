@@ -101,36 +101,39 @@ struct SystemVoicePickerView: View {
     private var previewRate: Float { TTSCoordinator.persistedSpeechRate }
 
     var body: some View {
-        Form {
-            personalVoiceSection
+        // 分组卡片：個人語音与各语言音色各成一张卡片，替代系统 Form Section（2026-10-25）。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                personalVoiceSection
 
-            if groups.isEmpty {
-                Section {
-                    Text(localized("這台裝置上沒有可用的語音。"))
-                        .font(DSFont.subheadline)
-                        .foregroundStyle(DSColor.textSecondary)
-                } footer: {
-                    voiceListFooter
-                }
-                .interfaceSectionSurface()
-            }
-
-            ForEach(groups) { group in
-                Section {
-                    systemDefaultRow(for: group)
-                    ForEach(group.voices, id: \.identifier) { voice in
-                        voiceRow(voice, in: group)
-                    }
-                } header: {
-                    Text(group.displayName)
-                        .foregroundStyle(DSColor.textSecondary)
-                } footer: {
-                    if group.id == groups.last?.id {
+                if groups.isEmpty {
+                    DSSettingsGroupCard(title: "", footer: {
                         voiceListFooter
+                    }) {
+                        Text(localized("這台裝置上沒有可用的語音。"))
+                            .font(DSFont.subheadline)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .dsSettingsCardRow()
                     }
                 }
-                .interfaceSectionSurface()
+
+                ForEach(groups) { group in
+                    DSSettingsGroupCard(title: group.displayName, footer: {
+                        if group.id == groups.last?.id {
+                            voiceListFooter
+                        }
+                    }) {
+                        systemDefaultRow(for: group)
+                        ForEach(group.voices, id: \.identifier) { voice in
+                            DSSettingsCardDivider()
+                            voiceRow(voice, in: group)
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
         .navigationTitle(localized("系統語音音色"))
@@ -164,31 +167,32 @@ struct SystemVoicePickerView: View {
         // .unsupported = the device can't do Personal Voice at all; showing the
         // row there would only offer something that can never work.
         if personalVoiceStatus != .unsupported {
-            Section {
+            DSSettingsGroupCard(title: localized("個人語音"), footer: {
+                Text(localized("授權後，你錄製的個人語音會出現在下方。"))
+                    .dsSectionFooter()
+            }) {
                 switch personalVoiceStatus {
                 case .authorized:
                     Label(localized("已允許使用個人語音"), systemImage: "checkmark.circle")
                         .foregroundStyle(DSColor.textSecondary)
+                        .dsSettingsCardRow()
                 case .denied:
                     Text(localized("個人語音未獲授權。可到「設定 → 輔助使用 → 個人語音」重新允許。"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.sm)
                 default:
-                    Button {
+                    DSSettingsCardActionRow(
+                        title: localized("允許使用個人語音"),
+                        systemImage: "waveform.badge.mic",
+                        role: .standard
+                    ) {
                         requestPersonalVoice()
-                    } label: {
-                        Label(localized("允許使用個人語音"), systemImage: "waveform.badge.mic")
                     }
                     .disabled(isRequestingPersonalVoice)
                 }
-            } header: {
-                Text(localized("個人語音"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("授權後，你錄製的個人語音會出現在下方。"))
-                    .dsSectionFooter()
             }
-            .interfaceSectionSurface()
         }
     }
 
@@ -246,6 +250,7 @@ struct SystemVoicePickerView: View {
         .accessibilityAction {
             SystemTTSVoiceCatalog.clearSelection(forLanguage: group.id)
         }
+        .dsSettingsCardRow()
     }
 
     private func voiceRow(
@@ -323,6 +328,7 @@ struct SystemVoicePickerView: View {
         .accessibilityActions {
             Button(localized("試聽")) { preview.play(voice: voice, rate: previewRate) }
         }
+        .dsSettingsCardRow()
     }
 
     /// Everything the row shows under the name, in one spoken string — VoiceOver

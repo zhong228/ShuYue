@@ -8,60 +8,69 @@ struct AppearanceInterfaceEffectsView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        Form {
-            Section {
-                previewCard
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            } footer: {
-                Text(localized("效果套用於底部迷你播放器與閱讀器的浮動工具列、控制欄。"))
-                    .dsSectionFooter()
-            }
-
-            Section {
-                Toggle(isOn: $settings.interfaceFrostedGlass) {
-                    Text(localized("毛玻璃"))
-                        .font(DSFont.body)
-                        .foregroundStyle(DSColor.textPrimary)
-                }
-
-                if settings.interfaceFrostedGlass {
-                    transparencyRow
-                }
-            } footer: {
-                Text(localized(frostedGlassFooterKey))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
-
-            // Hidden with 毛玻璃 off: sections borrow that material, so the switch
-            // would be visibly inert. Same rule as 透明度 above.
-            if settings.interfaceFrostedGlass {
-                Section {
-                    Toggle(isOn: $settings.interfaceGlassCards) {
-                        Text(localized("分組卡片"))
-                            .font(DSFont.body)
-                            .foregroundStyle(DSColor.textPrimary)
-                    }
-                } footer: {
-                    Text(localized("系統設計建議玻璃只用於浮動控制項，所以預設關閉。"))
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("效果套用於底部迷你播放器與閱讀器的浮動工具列、控制欄。"))
                         .dsSectionFooter()
+                }) {
+                    previewCard
+                        .padding(.horizontal, DSSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(minHeight: 54)
                 }
-                .interfaceSectionSurface()
-            }
 
-            // The switches first and the glow after, as the reference the user handed over
-            // groups them (2026-09-29).
-            Section {
-                glowRow
-            } footer: {
-                Text(localized("光暈從浮動元素的邊緣向外擴散，顏色跟隨主題色。"))
-                    .dsSectionFooter()
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized(frostedGlassFooterKey))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("毛玻璃"),
+                        systemImage: "rectangle.on.rectangle",
+                        isOn: $settings.interfaceFrostedGlass
+                    )
+
+                    if settings.interfaceFrostedGlass {
+                        DSSettingsCardDivider()
+                        transparencyRow
+                            .padding(.horizontal, DSSpacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minHeight: 54)
+                    }
+                }
+
+                // Hidden with 毛玻璃 off: sections borrow that material, so the switch
+                // would be visibly inert. Same rule as 透明度 above.
+                if settings.interfaceFrostedGlass {
+                    DSSettingsGroupCard(title: "", footer: {
+                        Text(localized("系統設計建議玻璃只用於浮動控制項，所以預設關閉。"))
+                            .dsSectionFooter()
+                    }) {
+                        DSSettingsCardToggle(
+                            title: localized("分組卡片"),
+                            systemImage: "rectangle.stack",
+                            isOn: $settings.interfaceGlassCards
+                        )
+                    }
+                }
+
+                // The switches first and the glow after, as the reference the user handed over
+                // groups them (2026-09-29).
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("光暈從浮動元素的邊緣向外擴散，顏色跟隨主題色。"))
+                        .dsSectionFooter()
+                }) {
+                    glowRow
+                        .padding(.horizontal, DSSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(minHeight: 54)
+                }
             }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
-        .scrollContentBackground(.hidden)
         .navigationTitle(localized("界面效果"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)

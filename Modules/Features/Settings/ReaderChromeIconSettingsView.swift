@@ -13,20 +13,24 @@ struct ReaderChromeIconSettingsView: View {
     @State private var importError: ReaderChromeIconImportError?
 
     var body: some View {
-        Form {
-            section(
-                items: ReaderChromeToolItem.allCases,
-                headerKey: "底部工具",
-                footerKey: "關掉的按鈕會整個離開工具列。設置固定顯示——它是回到閱讀設定的唯一入口。"
-            )
-            section(
-                items: ReaderChromeActionItem.allCases,
-                headerKey: "書籍動作",
-                footerKey: "經典把刷新、換源、下載、聽書畫成浮在正文上的圓鈕，AI 助手和 AI 翻譯固定在頂部選單；現代全部放在點封面圓圈之後的書卡裡。原本就不適用這本書的動作仍然不會出現。"
-            )
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                section(
+                    items: ReaderChromeToolItem.allCases,
+                    headerKey: "底部工具",
+                    footerKey: "關掉的按鈕會整個離開工具列。設置固定顯示——它是回到閱讀設定的唯一入口。"
+                )
+                section(
+                    items: ReaderChromeActionItem.allCases,
+                    headerKey: "書籍動作",
+                    footerKey: "經典把刷新、換源、下載、聽書畫成浮在正文上的圓鈕，AI 助手和 AI 翻譯固定在頂部選單；現代全部放在點封面圓圈之後的書卡裡。原本就不適用這本書的動作仍然不會出現。"
+                )
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
-        .scrollContentBackground(.hidden)
         .navigationTitle(localized("按鈕圖示"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
@@ -44,19 +48,20 @@ struct ReaderChromeIconSettingsView: View {
         headerKey: String,
         footerKey: String
     ) -> some View {
-        Section {
-            ForEach(items) { item in
-                row(for: item)
-            }
-        } header: {
-            Text(localized(headerKey))
-                .font(DSFont.headline)
-                .foregroundStyle(DSColor.textPrimary)
-        } footer: {
+        DSSettingsGroupCard(title: localized(headerKey), footer: {
             Text(localized(footerKey))
                 .dsSectionFooter()
+        }) {
+            ForEach(items) { item in
+                row(for: item)
+                    .padding(.horizontal, DSSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 54)
+                if item.id != items.last?.id {
+                    DSSettingsCardDivider()
+                }
+            }
         }
-        .interfaceSectionSurface()
     }
 
     private func row<Item: ReaderChromeIconItem>(for item: Item) -> some View {

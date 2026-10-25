@@ -10,66 +10,75 @@ struct GlobalFontSettingsView: View {
     @State private var fontToDelete: UserFontInfo?
 
     var body: some View {
-        Form {
-            Section {
-                selectionButton(
-                    title: localized("系統字體"),
-                    postScriptName: nil,
-                    previewFont: GlobalAppTypography.font(.body, postScriptName: nil)
-                )
-            } footer: {
-                Text(localized("套用於 App 介面，閱讀正文仍使用閱讀設定。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+        // 分组卡片：当前字体 / 已匯入字體 / 匯入入口，替代系统 Form 分组（2026-10-25）。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                DSSettingsGroupCard(title: localized("全局字體"), footer: {
+                    Text(localized("套用於 App 介面，閱讀正文仍使用閱讀設定。"))
+                        .dsSectionFooter()
+                }) {
+                    selectionButton(
+                        title: localized("系統字體"),
+                        postScriptName: nil,
+                        previewFont: GlobalAppTypography.font(.body, postScriptName: nil)
+                    )
+                    .padding(.horizontal, DSSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 54)
+                }
 
-            Section(header: Text(localized("已匯入字體")).foregroundStyle(DSColor.textSecondary)) {
-                if settings.userFonts.isEmpty {
-                    Text(localized("尚未匯入字體"))
-                        .font(DSFont.subheadline)
-                        .foregroundStyle(DSColor.textSecondary)
-                } else {
-                    ForEach(settings.userFonts) { font in
-                        selectionButton(
-                            title: font.displayName,
-                            postScriptName: font.postScriptName,
-                            previewFont: GlobalAppTypography.font(
-                                .body,
-                                postScriptName: font.postScriptName
+                DSSettingsGroupCard(title: localized("已匯入字體")) {
+                    if settings.userFonts.isEmpty {
+                        Text(localized("尚未匯入字體"))
+                            .font(DSFont.subheadline)
+                            .foregroundStyle(DSColor.textSecondary)
+                            .padding(.horizontal, DSSpacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minHeight: 54)
+                    } else {
+                        ForEach(settings.userFonts) { font in
+                            selectionButton(
+                                title: font.displayName,
+                                postScriptName: font.postScriptName,
+                                previewFont: GlobalAppTypography.font(
+                                    .body,
+                                    postScriptName: font.postScriptName
+                                )
                             )
-                        )
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                fontToDelete = font
-                            } label: {
-                                Label(localized("刪除"), systemImage: "trash")
+                            // 卡片里没有 swipeActions，删除改由行内长按菜单提供，确认 alert 不变。
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    fontToDelete = font
+                                } label: {
+                                    Label(localized("刪除"), systemImage: "trash")
+                                }
                             }
+                            .padding(.horizontal, DSSpacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minHeight: 54)
                         }
                     }
                 }
-            }
-            .interfaceSectionSurface()
 
-            Section {
-                // Pro: the entry locks, fonts imported earlier stay usable.
-                let locked = !ReaderPremiumVisibilityPolicy(isProActive: subscription.isProActive).allowsFontImport
-                Button {
-                    if locked { showsPaywall = true } else { showingImporter = true }
-                } label: {
-                    HStack {
-                        Label(localized("匯入字體..."), systemImage: locked ? "lock.fill" : "plus")
-                        if locked {
-                            Spacer(minLength: DSSpacing.md)
-                            Text(localized("需要 Pro"))
-                                .foregroundStyle(DSColor.textSecondary)
-                        }
+                DSSettingsGroupCard(title: localized("字體"), footer: {
+                    Text(localized("匯入後，字體會同時出現在全局字體與閱讀設定。"))
+                        .dsSectionFooter()
+                }) {
+                    // Pro: the entry locks, fonts imported earlier stay usable.
+                    let locked = !ReaderPremiumVisibilityPolicy(isProActive: subscription.isProActive).allowsFontImport
+                    DSSettingsCardRow(
+                        icon: locked ? "lock.fill" : "plus",
+                        title: localized("匯入字體..."),
+                        detail: locked ? localized("需要 Pro") : nil,
+                        isLocked: locked
+                    ) {
+                        if locked { showsPaywall = true } else { showingImporter = true }
                     }
                 }
-            } footer: {
-                Text(localized("匯入後，字體會同時出現在全局字體與閱讀設定。"))
-                    .dsSectionFooter()
             }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
         .navigationTitle(localized("全局字體"))

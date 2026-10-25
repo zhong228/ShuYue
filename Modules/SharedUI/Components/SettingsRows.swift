@@ -294,23 +294,30 @@ struct DSSettingsCard: View {
 /// (我的 → 设置, 视觉主题, 关于, 诊断) — an alternative to `List` sections.
 struct DSSettingsGroupCard<Footer: View, Content: View>: View {
     let title: String
+    /// Carried onto the title so a rebuilt page can keep an accessibility identifier a UI
+    /// test already looks up (`tts_builtin_section`, …) — a card's title replaces the
+    /// `Section` header the identifier used to sit on.
+    let titleAccessibilityIdentifier: String?
     @ViewBuilder let footer: Footer
     @ViewBuilder let content: Content
 
-    init(title: String, @ViewBuilder footer: () -> Footer = { EmptyView() }, @ViewBuilder content: () -> Content) {
+    init(
+        title: String,
+        titleAccessibilityIdentifier: String? = nil,
+        @ViewBuilder footer: () -> Footer = { EmptyView() },
+        @ViewBuilder content: () -> Content
+    ) {
         self.title = title
+        self.titleAccessibilityIdentifier = titleAccessibilityIdentifier
         self.footer = footer()
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            Text(title)
-                .font(DSFont.subheadline.weight(.semibold))
-                .foregroundStyle(DSColor.textSecondary)
+            titleLabel
                 .padding(.horizontal, DSSpacing.sm)
                 .padding(.top, DSSpacing.xs)
-                .accessibilityAddTraits(.isHeader)
 
             VStack(spacing: 0) { content }
                 .background(cardSurface)
@@ -321,6 +328,19 @@ struct DSSettingsGroupCard<Footer: View, Content: View>: View {
                 .foregroundStyle(DSColor.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, DSSpacing.sm)
+        }
+    }
+
+    @ViewBuilder
+    private var titleLabel: some View {
+        let label = Text(title)
+            .font(DSFont.subheadline.weight(.semibold))
+            .foregroundStyle(DSColor.textSecondary)
+            .accessibilityAddTraits(.isHeader)
+        if let titleAccessibilityIdentifier {
+            label.accessibilityIdentifier(titleAccessibilityIdentifier)
+        } else {
+            label
         }
     }
 
@@ -342,6 +362,74 @@ struct DSSettingsCardDivider: View {
     var body: some View {
         Divider()
             .padding(.leading, 50)
+    }
+}
+
+/// The 54pt rhythm of a card row, for bespoke content — a preview, a slider, a
+/// label/value pair — that is not one of the shared rows: full width, horizontally
+/// inset by `DSSpacing.md`, tappable edge to edge. The frame the shared card rows
+/// (`DSSettingsCardRow`, `DSSettingsCardToggle`, …) draw for themselves.
+struct DSSettingsCardRowFrame: ViewModifier {
+    var minHeight: CGFloat = 54
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
+            .padding(.horizontal, DSSpacing.md)
+            .contentShape(Rectangle())
+    }
+}
+
+extension View {
+    /// Wraps bespoke content in a settings card's row rhythm. See `DSSettingsCardRowFrame`.
+    func dsSettingsCardRow(minHeight: CGFloat = 54) -> some View {
+        modifier(DSSettingsCardRowFrame(minHeight: minHeight))
+    }
+}
+
+/// `LabeledContent(title, value:)` inside a card row: title as 主文字 on the left,
+/// value as 次級文字 on the right, in the card's 54pt rhythm.
+struct DSSettingsCardValueRow: View {
+    let title: String
+    let value: String
+
+    init(_ title: String, value: String) {
+        self.title = title
+        self.value = value
+    }
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(DSFont.body)
+                .foregroundColor(DSColor.textPrimary)
+            Spacer(minLength: DSSpacing.sm)
+            Text(value)
+                .font(DSFont.caption)
+                .foregroundColor(DSColor.textSecondary)
+                .multilineTextAlignment(.trailing)
+        }
+        .dsSettingsCardRow()
+    }
+}
+
+/// A destructive (or tinted) action row inside a settings card: badge + title in
+/// the role's colour, in the card's 54pt rhythm. The card answer to a `List` row
+/// whose `Button` carried a `Label`.
+struct DSSettingsCardActionRow: View {
+    let title: String
+    let systemImage: String
+    var role: SettingsRowLabel.Role = .action
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            SettingsRowLabel(title, systemImage: systemImage, role: role)
+                .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, DSSpacing.md)
     }
 }
 

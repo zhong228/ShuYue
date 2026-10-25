@@ -9,79 +9,16 @@ struct LanServerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // MARK: Status section
-                Section {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(server.isRunning ? Color.green : Color.gray)
-                            .frame(width: 10, height: 10)
-                        Text(server.isRunning ? localized("運行中") : localized("已停止"))
-                            .foregroundColor(server.isRunning ? .green : DSColor.textSecondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 2)
-
-                    if server.isRunning && !server.localIPAddress.isEmpty {
-                        HStack {
-                            Text(localized("地址"))
-                                .foregroundColor(DSColor.textSecondary)
-                            Spacer()
-                            Text("http://" + server.localIPAddress + ":" + String(server.port))
-                                .font(DSFont.monospaced())
-                                .foregroundColor(DSColor.accent)
-                                .textSelection(.enabled)
-                        }
-                        if !server.accessPIN.isEmpty {
-                            HStack {
-                                Text(localized("PIN 碼"))
-                                    .foregroundColor(DSColor.textSecondary)
-                                Spacer()
-                                Text(server.accessPIN)
-                                    .font(DSFont.monospaced())
-                                    .foregroundColor(DSColor.accent)
-                                    .textSelection(.enabled)
-                            }
-                        }
-                    }
-                } header: {
-                    Text(localized("服務狀態"))
-                        .foregroundStyle(DSColor.textSecondary)
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    // 分组卡片：服务状态 / 开关 / 可用接口 三张卡片，替代系统 List Section（2026-10-25）。
+                    statusCard
+                    controlCard
+                    endpointsCard
                 }
-                .interfaceSectionSurface()
-
-                // MARK: Toggle button
-                Section {
-                    Button {
-                        if server.isRunning {
-                            server.stop()
-                        } else {
-                            server.bookProvider = store
-                            server.start()
-                        }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text(server.isRunning ? localized("停止服務") : localized("啟動服務"))
-                                .fontWeight(.semibold)
-                                .foregroundColor(server.isRunning ? .red : DSColor.accent)
-                            Spacer()
-                        }
-                    }
-                }
-                .interfaceSectionSurface()
-
-                // MARK: API endpoints
-                Section {
-                    endpointRow(method: "GET", path: "/", description: localized("書架列表"))
-                    endpointRow(method: "GET", path: "/book/:id", description: localized("書籍詳情"))
-                    endpointRow(method: "GET", path: "/api/sources", description: localized("書源列表"))
-                    endpointRow(method: "GET", path: "/health", description: localized("健康檢查"))
-                } header: {
-                    Text(localized("可用接口"))
-                        .foregroundStyle(DSColor.textSecondary)
-                }
-                .interfaceSectionSurface()
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(localized("局域传书"))
@@ -99,6 +36,85 @@ struct LanServerView: View {
             .onAppear {
                 server.bookProvider = store
             }
+        }
+    }
+
+    // MARK: - Cards
+
+    private var statusCard: some View {
+        DSSettingsGroupCard(title: localized("服務狀態")) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(server.isRunning ? Color.green : Color.gray)
+                    .frame(width: 10, height: 10)
+                Text(server.isRunning ? localized("運行中") : localized("已停止"))
+                    .foregroundColor(server.isRunning ? .green : DSColor.textSecondary)
+                Spacer()
+            }
+            .dsSettingsCardRow()
+
+            if server.isRunning && !server.localIPAddress.isEmpty {
+                DSSettingsCardDivider()
+                HStack {
+                    Text(localized("地址"))
+                        .foregroundColor(DSColor.textSecondary)
+                    Spacer()
+                    Text("http://" + server.localIPAddress + ":" + String(server.port))
+                        .font(DSFont.monospaced())
+                        .foregroundColor(DSColor.accent)
+                        .textSelection(.enabled)
+                }
+                .dsSettingsCardRow()
+
+                if !server.accessPIN.isEmpty {
+                    DSSettingsCardDivider()
+                    HStack {
+                        Text(localized("PIN 碼"))
+                            .foregroundColor(DSColor.textSecondary)
+                        Spacer()
+                        Text(server.accessPIN)
+                            .font(DSFont.monospaced())
+                            .foregroundColor(DSColor.accent)
+                            .textSelection(.enabled)
+                    }
+                    .dsSettingsCardRow()
+                }
+            }
+        }
+    }
+
+    private var controlCard: some View {
+        DSSettingsGroupCard(title: localized("局域传书")) {
+            Button {
+                if server.isRunning {
+                    server.stop()
+                } else {
+                    server.bookProvider = store
+                    server.start()
+                }
+            } label: {
+                HStack {
+                    Spacer()
+                    Text(server.isRunning ? localized("停止服務") : localized("啟動服務"))
+                        .fontWeight(.semibold)
+                        .foregroundColor(server.isRunning ? .red : DSColor.accent)
+                    Spacer()
+                }
+                .dsSettingsCardRow()
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var endpointsCard: some View {
+        DSSettingsGroupCard(title: localized("可用接口")) {
+            endpointRow(method: "GET", path: "/", description: localized("書架列表"))
+            DSSettingsCardDivider()
+            endpointRow(method: "GET", path: "/book/:id", description: localized("書籍詳情"))
+            DSSettingsCardDivider()
+            endpointRow(method: "GET", path: "/api/sources", description: localized("書源列表"))
+            DSSettingsCardDivider()
+            endpointRow(method: "GET", path: "/health", description: localized("健康檢查"))
         }
     }
 
@@ -122,6 +138,6 @@ struct LanServerView: View {
                 .font(DSFont.caption)
                 .foregroundColor(DSColor.textSecondary)
         }
-        .padding(.vertical, 2)
+        .dsSettingsCardRow(minHeight: 44)
     }
 }

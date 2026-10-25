@@ -15,15 +15,20 @@ struct LegadoMigrationView: View {
 
     var body: some View {
         NavigationStack {
-                Form {
-                    descriptionSection
-                    importSection
-                    if let result = manager.importResult {
-                        resultSection(result)
+                ScrollView {
+                    VStack(spacing: DSSpacing.lg) {
+                        descriptionSection
+                        importSection
+                        if let result = manager.importResult {
+                            resultSection(result)
+                        }
+                        if !manager.statusLog.isEmpty {
+                            logSection
+                        }
                     }
-                    if !manager.statusLog.isEmpty {
-                        logSection
-                    }
+                    .padding(.horizontal, DSSpacing.md)
+                    .padding(.top, DSSpacing.sm)
+                    .padding(.bottom, DSSpacing.xl)
                 }
                 .softScrollEdges()
             .navigationTitle(localized("导入阅读器数据"))
@@ -66,7 +71,7 @@ struct LegadoMigrationView: View {
     // MARK: - Sections
 
     private var descriptionSection: some View {
-        Section(header: Text(localized("說明")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("說明")) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(localized("支援從 Legado（閱讀）Android 應用匯入："))
                     .font(DSFont.subheadline)
@@ -83,25 +88,21 @@ struct LegadoMigrationView: View {
                     .padding(.top, 2)
             }
             .padding(.vertical, 4)
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
         }
-        .interfaceSectionSurface()
     }
 
     private var importSection: some View {
-        Section(header: Text(localized("匯入")).foregroundStyle(DSColor.textSecondary)) {
-            Button {
+        DSSettingsGroupCard(title: localized("匯入")) {
+            DSSettingsCardRow(icon: "doc.badge.plus", title: localized("選擇 JSON 檔案")) {
                 showFilePicker = true
-            } label: {
-                HStack {
-                    Image(systemName: "doc.badge.plus")
-                        .foregroundColor(DSColor.accent)
-                    Text(localized("選擇 JSON 檔案"))
-                        .foregroundColor(DSColor.accent)
-                }
             }
             .disabled(manager.isImporting)
 
             if manager.isImporting {
+                DSSettingsCardDivider()
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: manager.progress)
                         .tint(DSColor.accent)
@@ -110,14 +111,16 @@ struct LegadoMigrationView: View {
                         .foregroundColor(DSColor.textSecondary)
                 }
                 .padding(.vertical, 4)
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
         }
-        .interfaceSectionSurface()
     }
 
     @ViewBuilder
     private func resultSection(_ result: LegadoMigrationManager.ImportResult) -> some View {
-        Section(header: Text(localized("結果")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("結果")) {
             if result.sourcesImported > 0 {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
@@ -125,20 +128,35 @@ struct LegadoMigrationView: View {
                     Text(String(format: localized("書源：%d 個"), result.sourcesImported))
                         .foregroundStyle(DSColor.textPrimary)
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
             if result.booksImported > 0 {
+                if result.sourcesImported > 0 {
+                    DSSettingsCardDivider()
+                }
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                     Text(String(format: localized("書籍：%d 本"), result.booksImported))
                         .foregroundStyle(DSColor.textPrimary)
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
             if result.sourcesImported == 0 && result.booksImported == 0 && result.errors.isEmpty {
                 Text(localized("未匯入任何資料"))
                     .foregroundColor(DSColor.textSecondary)
+                    .padding(.horizontal, DSSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 54)
             }
-            ForEach(result.errors, id: \.self) { error in
+            ForEach(Array(result.errors.enumerated()), id: \.offset) { index, error in
+                if index > 0 || result.sourcesImported > 0 || result.booksImported > 0 {
+                    DSSettingsCardDivider()
+                }
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.red)
@@ -146,13 +164,15 @@ struct LegadoMigrationView: View {
                         .font(DSFont.caption)
                         .foregroundColor(.red)
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
         }
-        .interfaceSectionSurface()
     }
 
     private var logSection: some View {
-        Section(header: Text(localized("記錄")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("記錄")) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
@@ -178,7 +198,9 @@ struct LegadoMigrationView: View {
                     }
                 }
             }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
         }
-        .interfaceSectionSurface()
     }
 }

@@ -37,10 +37,17 @@ struct DownloadManagementView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                summarySection
-                activeDownloadsSection
-                downloadedBooksSection
+            // 分组卡片：总览 / 下载中 / 已下载书籍 各一张卡片，替代系统 Form（2026-10-25）。
+            // 卡片里没有 swipeActions，移除改由行内长按菜单提供。
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    summarySection
+                    activeDownloadsSection
+                    downloadedBooksSection
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(localized("离线缓存"))
@@ -101,183 +108,193 @@ struct DownloadManagementView: View {
     }
 
     private var summarySection: some View {
-        Section(header: Text(localized("總覽")).foregroundStyle(DSColor.textSecondary)) {
-            statRow(
-                title: localized("下載中"),
-                value: "\(activeDownloads.count)",
-                detail: localized("本")
+        DSSettingsGroupCard(title: localized("總覽")) {
+            DSSettingsCardValueRow(
+                localized("下載中"),
+                value: "\(activeDownloads.count) \(localized("本"))"
             )
-            statRow(
-                title: localized("已下載"),
-                value: "\(downloadedBooks.count)",
-                detail: localized("本")
+            DSSettingsCardDivider()
+            DSSettingsCardValueRow(
+                localized("已下載"),
+                value: "\(downloadedBooks.count) \(localized("本"))"
             )
-            statRow(
-                title: localized("佔用空間"),
-                value: String(format: "%.1f", totalDownloadedMegabytes),
-                detail: "MB"
+            DSSettingsCardDivider()
+            DSSettingsCardValueRow(
+                localized("佔用空間"),
+                value: "\(String(format: "%.1f", totalDownloadedMegabytes)) MB"
             )
         }
-        .interfaceSectionSurface()
     }
 
     private var activeDownloadsSection: some View {
-        Section(header: Text(localized("下載中")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("下載中")) {
             if activeDownloads.isEmpty {
                 Text(localized("目前沒有下載任務"))
+                    .font(DSFont.body)
                     .foregroundColor(DSColor.textSecondary)
+                    .dsSettingsCardRow()
             } else {
                 ForEach(activeDownloads) { book in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(book.title)
-                                .font(DSFont.body)
-                                .foregroundStyle(DSColor.textPrimary)
-                            Spacer()
-                            Text(progressLabel(for: book))
-                                .font(DSFont.caption.monospacedDigit())
-                                .foregroundColor(DSColor.textSecondary)
-                        }
-                        ProgressView(value: downloadProgress(for: book))
-                            .tint(book.offlineDownloadState == .paused ? DSColor.textSecondary : DSColor.accent)
-                        HStack {
-                            Text(String(format: "%.1f MB", cacheSizeMB(for: book)))
-                                .font(DSFont.caption)
-                                .foregroundColor(DSColor.textSecondary)
-                            Spacer()
-                            // `.bordered` makes these read as real buttons; the explicit
-                            // style also confines the tap to the button instead of the
-                            // whole Form row.
-                            if book.offlineDownloadState == .downloading {
-                                Button {
-                                    pauseDownload(for: book)
-                                } label: {
-                                    Label(localized("暫停下載"), systemImage: "pause.circle")
-                                }
-                                .font(DSFont.caption.weight(.medium))
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            } else {
-                                Button {
-                                    resumeDownload(for: book)
-                                } label: {
-                                    Label(
-                                        isRetryState(for: book)
-                                            ? localized("重試失敗章節")
-                                            : localized("繼續下載"),
-                                        systemImage: isRetryState(for: book)
-                                            ? "arrow.clockwise.circle"
-                                            : "play.circle"
-                                    )
-                                }
-                                .font(DSFont.caption.weight(.medium))
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                if isRetryState(for: book) {
-                                    Menu {
-                                        Button {
-                                            skipFailedChapters(for: book)
-                                        } label: {
-                                            Label(
-                                                localized("略過失敗章節"),
-                                                systemImage: "forward.end"
-                                            )
-                                        }
-                                        Button(role: .destructive) {
-                                            bookPendingRemoval = book
-                                        } label: {
-                                            Label(localized("移除"), systemImage: "trash")
-                                        }
-                                    } label: {
-                                        Label(localized("更多"), systemImage: "ellipsis.circle")
-                                            .labelStyle(.iconOnly)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .tint(DSColor.textSecondary)
-                                } else {
-                                    Button(role: .destructive) {
-                                        bookPendingRemoval = book
-                                    } label: {
-                                        // `Label` + `.iconOnly` keeps the button's own name for
-                                        // VoiceOver; a bare `Image(systemName:)` would stay a
-                                        // focusable element reading out "trash".
-                                        Label(localized("移除"), systemImage: "trash")
-                                            .labelStyle(.iconOnly)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    .tint(DSColor.destructive)
-                                }
+                    activeDownloadRow(for: book)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                bookPendingRemoval = book
+                            } label: {
+                                Label(localized("移除"), systemImage: "trash")
                             }
                         }
-                    }
-                    .padding(.vertical, 4)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            bookPendingRemoval = book
-                        } label: {
-                            Label(localized("移除"), systemImage: "trash")
-                        }
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.sm)
+
+                    if book.id != activeDownloads.last?.id {
+                        DSSettingsCardDivider()
                     }
                 }
             }
         }
-        .interfaceSectionSurface()
     }
 
-    private var downloadedBooksSection: some View {
-        Section(header: Text(localized("已下載書籍")).foregroundStyle(DSColor.textSecondary)) {
-            if downloadedBooks.isEmpty {
-                Text(localized("尚未下載任何書籍"))
+    private func activeDownloadRow(for book: ReadingBook) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(book.title)
+                    .font(DSFont.body)
+                    .foregroundStyle(DSColor.textPrimary)
+                Spacer()
+                Text(progressLabel(for: book))
+                    .font(DSFont.caption.monospacedDigit())
                     .foregroundColor(DSColor.textSecondary)
-            } else {
-                ForEach(downloadedBooks) { book in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(book.title)
-                            Text(
-                                "\(progressLabel(for: book)) \(localized("章"))  ·  \(rangeLabel(for: book))  ·  \(String(format: "%.1f", cacheSizeMB(for: book))) MB"
-                            )
-                            .font(DSFont.caption)
-                            .foregroundColor(DSColor.textSecondary)
+            }
+            ProgressView(value: downloadProgress(for: book))
+                .tint(book.offlineDownloadState == .paused ? DSColor.textSecondary : DSColor.accent)
+            HStack {
+                Text(String(format: "%.1f MB", cacheSizeMB(for: book)))
+                    .font(DSFont.caption)
+                    .foregroundColor(DSColor.textSecondary)
+                Spacer()
+                // `.bordered` makes these read as real buttons; the explicit
+                // style also confines the tap to the button instead of the
+                // whole row.
+                if book.offlineDownloadState == .downloading {
+                    Button {
+                        pauseDownload(for: book)
+                    } label: {
+                        Label(localized("暫停下載"), systemImage: "pause.circle")
+                    }
+                    .font(DSFont.caption.weight(.medium))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                } else {
+                    Button {
+                        resumeDownload(for: book)
+                    } label: {
+                        Label(
+                            isRetryState(for: book)
+                                ? localized("重試失敗章節")
+                                : localized("繼續下載"),
+                            systemImage: isRetryState(for: book)
+                                ? "arrow.clockwise.circle"
+                                : "play.circle"
+                        )
+                    }
+                    .font(DSFont.caption.weight(.medium))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    if isRetryState(for: book) {
+                        Menu {
+                            Button {
+                                skipFailedChapters(for: book)
+                            } label: {
+                                Label(
+                                    localized("略過失敗章節"),
+                                    systemImage: "forward.end"
+                                )
+                            }
+                            Button(role: .destructive) {
+                                bookPendingRemoval = book
+                            } label: {
+                                Label(localized("移除"), systemImage: "trash")
+                            }
+                        } label: {
+                            Label(localized("更多"), systemImage: "ellipsis.circle")
+                                .labelStyle(.iconOnly)
                         }
-                        Spacer()
-                        // `.bordered` confines the tap to the button. Without an
-                        // explicit style this row's single button swallowed the whole
-                        // row, so tapping the book title removed the download outright.
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(DSColor.textSecondary)
+                    } else {
                         Button(role: .destructive) {
                             bookPendingRemoval = book
                         } label: {
+                            // `Label` + `.iconOnly` keeps the button's own name for
+                            // VoiceOver; a bare `Image(systemName:)` would stay a
+                            // focusable element reading out "trash".
                             Label(localized("移除"), systemImage: "trash")
+                                .labelStyle(.iconOnly)
                         }
-                        .font(DSFont.caption.weight(.medium))
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .tint(DSColor.destructive)
                     }
-                    .padding(.vertical, 2)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            bookPendingRemoval = book
-                        } label: {
-                            Label(localized("移除"), systemImage: "trash")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var downloadedBooksSection: some View {
+        DSSettingsGroupCard(title: localized("已下載書籍")) {
+            if downloadedBooks.isEmpty {
+                Text(localized("尚未下載任何書籍"))
+                    .font(DSFont.body)
+                    .foregroundColor(DSColor.textSecondary)
+                    .dsSettingsCardRow()
+            } else {
+                ForEach(downloadedBooks) { book in
+                    downloadedBookRow(for: book)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                bookPendingRemoval = book
+                            } label: {
+                                Label(localized("移除"), systemImage: "trash")
+                            }
                         }
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.sm)
+
+                    if book.id != downloadedBooks.last?.id {
+                        DSSettingsCardDivider()
                     }
                 }
             }
         }
-        .interfaceSectionSurface()
     }
 
-    private func statRow(title: String, value: String, detail: String) -> some View {
-        HStack {
-            Text(title)
-                .foregroundStyle(DSColor.textPrimary)
-            Spacer()
-            Text("\(value) \(detail)")
+    private func downloadedBookRow(for book: ReadingBook) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(book.title)
+                Text(
+                    "\(progressLabel(for: book)) \(localized("章"))  ·  \(rangeLabel(for: book))  ·  \(String(format: "%.1f", cacheSizeMB(for: book))) MB"
+                )
+                .font(DSFont.caption)
                 .foregroundColor(DSColor.textSecondary)
+            }
+            Spacer()
+            // `.bordered` confines the tap to the button. Without an
+            // explicit style this row's single button swallowed the whole
+            // row, so tapping the book title removed the download outright.
+            Button(role: .destructive) {
+                bookPendingRemoval = book
+            } label: {
+                Label(localized("移除"), systemImage: "trash")
+            }
+            .font(DSFont.caption.weight(.medium))
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(DSColor.destructive)
         }
+        .padding(.vertical, 2)
     }
 
     private func chapterTotal(for book: ReadingBook) -> Int {

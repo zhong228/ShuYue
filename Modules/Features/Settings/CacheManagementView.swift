@@ -88,56 +88,68 @@ struct CacheManagementView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if viewModel.isLoading && viewModel.snapshot.total == 0 {
-                    Section {
-                        HStack {
-                            Spacer()
-                            ProgressView(localized("正在讀取快取大小…"))
-                            Spacer()
+            // 分组卡片：每个快取分类各成一张卡片，替代系统 Form Section（2026-10-25）。
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    if viewModel.isLoading && viewModel.snapshot.total == 0 {
+                        DSSettingsGroupCard(title: "") {
+                            HStack {
+                                Spacer()
+                                ProgressView(localized("正在讀取快取大小…"))
+                                Spacer()
+                            }
+                            .dsSettingsCardRow(minHeight: 0)
+                            .padding(.vertical, DSSpacing.sm)
                         }
                     }
-                    .interfaceSectionSurface()
-                }
 
-                if viewModel.errorMessage != nil {
-                    Section {
-                        Label(
-                            localized("快取操作失敗"),
-                            systemImage: "exclamationmark.triangle"
-                        )
-                        .foregroundColor(DSColor.warning)
+                    if viewModel.errorMessage != nil {
+                        DSSettingsGroupCard(title: "") {
+                            Label(
+                                localized("快取操作失敗"),
+                                systemImage: "exclamationmark.triangle"
+                            )
+                            .foregroundColor(DSColor.warning)
+                            .dsSettingsCardRow()
 
-                        Button(localized("重試")) {
-                            Task { await viewModel.refresh() }
-                        }
-                        .foregroundColor(DSColor.accent)
-                    }
-                    .interfaceSectionSurface()
-                }
+                            DSSettingsCardDivider()
 
-                ForEach(CacheCategory.allCases) { category in
-                    cacheSection(for: category)
-                }
-
-                Section {
-                    Button {
-                        pendingConfirmation = .all
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text(localized("清除全部快取"))
-                                .foregroundColor(DSColor.destructive)
-                            Spacer()
+                            DSSettingsCardActionRow(
+                                title: localized("重試"),
+                                systemImage: "arrow.clockwise",
+                                role: .standard
+                            ) {
+                                Task { await viewModel.refresh() }
+                            }
                         }
                     }
-                    .disabled(viewModel.isLoading || viewModel.snapshot.total == 0)
-                    .accessibilityHint(localized("將清除所有可重新下載的快取內容"))
-                } footer: {
-                    Text(localized("書籍、設定與備份同步資料不會受影響。"))
-                        .dsSectionFooter()
+
+                    ForEach(CacheCategory.allCases) { category in
+                        cacheSection(for: category)
+                    }
+
+                    DSSettingsGroupCard(title: "", footer: {
+                        Text(localized("書籍、設定與備份同步資料不會受影響。"))
+                            .dsSectionFooter()
+                    }) {
+                        Button {
+                            pendingConfirmation = .all
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text(localized("清除全部快取"))
+                                    .foregroundColor(DSColor.destructive)
+                                Spacer()
+                            }
+                        }
+                        .disabled(viewModel.isLoading || viewModel.snapshot.total == 0)
+                        .accessibilityHint(localized("將清除所有可重新下載的快取內容"))
+                        .dsSettingsCardRow()
+                    }
                 }
-                .interfaceSectionSurface()
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(localized("存储清理"))
@@ -199,29 +211,26 @@ struct CacheManagementView: View {
     }
 
     private func cacheSection(for category: CacheCategory) -> some View {
-        Section {
-            HStack {
-                Label(localized(category.titleKey), systemImage: category.systemImage)
-                    .foregroundColor(DSColor.textPrimary)
-                Spacer(minLength: DSSpacing.md)
-                Text(formattedByteCount(viewModel.snapshot[category]))
-                    .font(DSFont.body)
-                    .foregroundColor(DSColor.textSecondary)
-                    .monospacedDigit()
-            }
-
-            Button {
-                pendingConfirmation = .category(category)
-            } label: {
-                Text(localized(category.clearTitleKey))
-                    .foregroundColor(DSColor.textPrimary)
-            }
-            .disabled(viewModel.isLoading || viewModel.snapshot[category] == 0)
-        } footer: {
+        DSSettingsGroupCard(title: localized(category.titleKey), footer: {
             Text(localized(category.detailKey))
                 .dsSectionFooter()
+        }) {
+            DSSettingsCardValueRow(
+                localized("佔用空間"),
+                value: formattedByteCount(viewModel.snapshot[category])
+            )
+
+            DSSettingsCardDivider()
+
+            DSSettingsCardActionRow(
+                title: localized(category.clearTitleKey),
+                systemImage: "trash",
+                role: .standard
+            ) {
+                pendingConfirmation = .category(category)
+            }
+            .disabled(viewModel.isLoading || viewModel.snapshot[category] == 0)
         }
-        .interfaceSectionSurface()
     }
 
     private func formattedByteCount(_ bytes: Int64) -> String {

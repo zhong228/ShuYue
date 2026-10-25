@@ -12,48 +12,55 @@ struct AppearancePageBackgroundView: View {
     @State private var importFailure: String?
 
     var body: some View {
-        Form {
-            Section {
-                Picker(selection: $pageBackgroundScope) {
-                    ForEach(AppearancePageBackgroundScope.allCases) { scope in
-                        Text(scope.localizedTitle).tag(scope)
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                // 分组卡片：页面背景设置与预览各成卡片，替代系统 Form Section（2026-10-25）。
+                DSSettingsGroupCard(title: localized("頁面背景"), footer: {
+                    Text(localized("沒有單獨設定的分頁，用「全域預設」的背景。"))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardPicker(
+                        title: localized("編輯範圍"),
+                        systemImage: "rectangle.stack",
+                        selection: $pageBackgroundScope
+                    ) {
+                        ForEach(AppearancePageBackgroundScope.allCases) { scope in
+                            Text(scope.localizedTitle).tag(scope)
+                        }
                     }
-                } label: {
-                    Text(localized("編輯範圍"))
-                        .foregroundStyle(DSColor.textPrimary)
+                    DSSettingsCardDivider()
+                    colorRow(titleKey: "亮色主色調", scheme: .light, slot: .primary)
+                    DSSettingsCardDivider()
+                    colorRow(titleKey: "亮色輔色調", scheme: .light, slot: .secondary)
+                    DSSettingsCardDivider()
+                    colorRow(titleKey: "深色主色調", scheme: .dark, slot: .primary)
+                    DSSettingsCardDivider()
+                    colorRow(titleKey: "深色輔色調", scheme: .dark, slot: .secondary)
+                    DSSettingsCardDivider()
+                    imagePickerRow(scheme: .light)
+                    if hasBackgroundImage(scheme: .light) {
+                        DSSettingsCardDivider()
+                        imageOpacityRow(scheme: .light)
+                    }
+                    DSSettingsCardDivider()
+                    imagePickerRow(scheme: .dark)
+                    if hasBackgroundImage(scheme: .dark) {
+                        DSSettingsCardDivider()
+                        imageOpacityRow(scheme: .dark)
+                    }
                 }
-                colorRow(titleKey: "亮色主色調", scheme: .light, slot: .primary)
-                colorRow(titleKey: "亮色輔色調", scheme: .light, slot: .secondary)
-                colorRow(titleKey: "深色主色調", scheme: .dark, slot: .primary)
-                colorRow(titleKey: "深色輔色調", scheme: .dark, slot: .secondary)
-                imagePickerRow(scheme: .light)
-                if hasBackgroundImage(scheme: .light) {
-                    imageOpacityRow(scheme: .light)
-                }
-                imagePickerRow(scheme: .dark)
-                if hasBackgroundImage(scheme: .dark) {
-                    imageOpacityRow(scheme: .dark)
-                }
-            } header: {
-                Text(localized("頁面背景"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("沒有單獨設定的分頁，用「全域預設」的背景。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
 
-            Section {
-                previewCard
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            } header: {
-                Text(localized("預覽"))
-                    .foregroundStyle(DSColor.textSecondary)
+                DSSettingsGroupCard(title: localized("預覽")) {
+                    previewCard
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.sm)
+                }
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
-        .scrollContentBackground(.hidden)
         .navigationTitle(localized("頁面背景"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
@@ -77,6 +84,7 @@ struct AppearancePageBackgroundView: View {
             Text(localized(titleKey))
                 .foregroundStyle(DSColor.textPrimary)
         }
+        .dsSettingsCardRow()
     }
 
     private func colorBinding(scheme: ColorScheme, slot: PageBackgroundColorSlot) -> Binding<Color> {
@@ -175,6 +183,7 @@ struct AppearancePageBackgroundView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .dsSettingsCardRow()
     }
 
     private func imageOpacityRow(scheme: ColorScheme) -> some View {
@@ -186,6 +195,7 @@ struct AppearancePageBackgroundView: View {
             range: 0...1,
             step: 0.05
         )
+        .dsSettingsCardRow(minHeight: 0)
     }
 
     private func opacityBinding(scheme: ColorScheme) -> Binding<Double> {

@@ -25,38 +25,55 @@ struct ReplaceRuleListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if store.rules.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "text.magnifyingglass")
-                            .font(DSFont.fixed(size: 48))
-                            .foregroundStyle(DSColor.textSecondary)
-                        Text(localized("尚無替換規則"))
-                            .foregroundStyle(DSColor.textSecondary)
-                        Button(localized("新增規則")) { showingAdd = true }
-                            .buttonStyle(.bordered)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(store.rules) { rule in
-                            ReplaceRuleRow(rule: rule) {
-                                editingRule = rule
+            // 分组卡片：规则列表合成一张卡片，替代系统 List（2026-10-25）。卡片里没有
+            // swipeActions，编辑与删除改由行内长按菜单提供。
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    if store.rules.isEmpty {
+                        VStack(spacing: DSSpacing.lg) {
+                            Image(systemName: "text.magnifyingglass")
+                                .font(DSFont.fixed(size: 48))
+                                .foregroundStyle(DSColor.textSecondary)
+                            Text(localized("尚無替換規則"))
+                                .foregroundStyle(DSColor.textSecondary)
+                            Button(localized("新增規則")) { showingAdd = true }
+                                .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DSSpacing.xxl)
+                    } else {
+                        DSSettingsGroupCard(title: "") {
+                            ForEach(store.rules) { rule in
+                                ReplaceRuleRow(rule: rule) {
+                                    editingRule = rule
+                                }
+                                .contextMenu {
+                                    Button {
+                                        editingRule = rule
+                                    } label: {
+                                        Label(localized("編輯"), systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive) {
+                                        store.delete(id: rule.id)
+                                    } label: {
+                                        Label(localized("刪除"), systemImage: "trash")
+                                    }
+                                }
+                                .dsSettingsCardRow(minHeight: 0)
+                                .padding(.vertical, DSSpacing.xs)
+
+                                if rule.id != store.rules.last?.id {
+                                    DSSettingsCardDivider()
+                                }
                             }
-                            .interfaceSectionSurface()
                         }
-                        .onDelete { offsets in
-                            offsets.map { store.rules[$0].id }.forEach { store.delete(id: $0) }
-                        }
-                        .onMove { store.move(fromOffsets: $0, toOffset: $1) }
                     }
-                    .softScrollEdges()
-                    .listStyle(.plain)
-                    // `themedAppSurface` below only hides the *list's* background; a `.plain`
-                    // row still paints its own opaque `systemBackground` unless handed one.
-                    // Same fix as 書源管理 / 語音朗讀設定.
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
+            .softScrollEdges()
             .navigationTitle(localized("文字修正"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
@@ -271,35 +288,60 @@ struct ReplaceRuleEditView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text(localized("基本")).foregroundStyle(DSColor.textSecondary)) {
-                    TextField(localized("規則名稱"), text: $rule.name)
-                    Toggle(localized("啟用"), isOn: $rule.enabled)
-                }
-                .interfaceSectionSurface()
+            // 分组卡片：基本 / 匹配 / 作用範圍 三张卡片，替代系统 Form Section（2026-10-25）。
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    DSSettingsGroupCard(title: localized("基本")) {
+                        TextField(localized("規則名稱"), text: $rule.name)
+                            .dsSettingsCardRow()
 
-                Section(header: Text(localized("匹配")).foregroundStyle(DSColor.textSecondary)) {
-                    Toggle(localized("正則表達式"), isOn: $rule.isRegex)
-                    TextField(localized("匹配模式"), text: $rule.pattern)
-                        .font(DSFont.fixed(size: 14, design: .monospaced))
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                    TextField(localized("替換為（空白=刪除）"), text: $rule.replacement)
-                        .font(DSFont.fixed(size: 14, design: .monospaced))
-                        .autocapitalization(.none)
-                }
-                .interfaceSectionSurface()
+                        DSSettingsCardDivider()
 
-                Section(header: Text(localized("作用範圍")).foregroundStyle(DSColor.textSecondary)) {
-                    Picker(localized("範圍"), selection: $rule.scope) {
-                        Text(localized("全局")).tag("global")
-                        if rule.scope != "global" {
-                            Text(rule.scope).tag(rule.scope)
-                        }
+                        DSSettingsCardToggle(
+                            title: localized("啟用"),
+                            systemImage: "checkmark.circle",
+                            isOn: $rule.enabled
+                        )
                     }
-                    .pickerStyle(.inline)
+
+                    DSSettingsGroupCard(title: localized("匹配")) {
+                        DSSettingsCardToggle(
+                            title: localized("正則表達式"),
+                            systemImage: "asterisk",
+                            isOn: $rule.isRegex
+                        )
+
+                        DSSettingsCardDivider()
+
+                        TextField(localized("匹配模式"), text: $rule.pattern)
+                            .font(DSFont.fixed(size: 14, design: .monospaced))
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .dsSettingsCardRow()
+
+                        DSSettingsCardDivider()
+
+                        TextField(localized("替換為（空白=刪除）"), text: $rule.replacement)
+                            .font(DSFont.fixed(size: 14, design: .monospaced))
+                            .autocapitalization(.none)
+                            .dsSettingsCardRow()
+                    }
+
+                    DSSettingsGroupCard(title: localized("作用範圍")) {
+                        Picker(localized("範圍"), selection: $rule.scope) {
+                            Text(localized("全局")).tag("global")
+                            if rule.scope != "global" {
+                                Text(rule.scope).tag(rule.scope)
+                            }
+                        }
+                        .pickerStyle(.inline)
+                        .dsSettingsCardRow(minHeight: 0)
+                        .padding(.vertical, DSSpacing.xs)
+                    }
                 }
-                .interfaceSectionSurface()
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(rule.name.isEmpty ? localized("新增規則") : rule.name)

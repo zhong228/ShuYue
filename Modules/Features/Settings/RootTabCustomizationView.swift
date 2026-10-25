@@ -12,24 +12,32 @@ struct RootTabCustomizationView: View {
     }
 
     var body: some View {
-        Form {
-            if !canCustomize {
-                Section {
-                    Button {
-                        showPaywall = true
-                    } label: {
-                        Label(localized("底部 Tab 自定義需要 Pro"), systemImage: "lock.fill")
+        // 分组卡片：付费锁 / 顯示頁面 / Tab 圖標 / 各 Tab 图标 成卡片，替代系统 Form Section
+        // （2026-10-19）。行内自定义视图（滑桿、图片选择）保留原控件，只给卡片节奏。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                if !canCustomize {
+                    DSSettingsGroupCard(title: localized("底部 Tab")) {
+                        DSSettingsCardRow(
+                            icon: "lock.fill",
+                            title: localized("底部 Tab 自定義需要 Pro"),
+                            isLocked: true
+                        ) {
+                            showPaywall = true
+                        }
                     }
                 }
-                .interfaceSectionSurface()
-            }
 
-            visibleTabsSection
-            tabPresentationSection
+                visibleTabsSection
+                tabPresentationSection
 
-            ForEach(RootTabItem.allCases) { tab in
-                iconSection(for: tab)
+                ForEach(RootTabItem.allCases) { tab in
+                    iconSection(for: tab)
+                }
             }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
         .navigationTitle(localized("底部 Tab"))
@@ -49,7 +57,10 @@ struct RootTabCustomizationView: View {
     }
 
     private var visibleTabsSection: some View {
-        Section {
+        DSSettingsGroupCard(title: localized("顯示頁面"), footer: {
+            Text(localized("至少保留一個內容頁，設定固定顯示，避免無法恢復頁面。"))
+                .dsSectionFooter()
+        }) {
             ForEach(RootTabItem.allCases) { tab in
                 if tab.isAlwaysVisible {
                     HStack {
@@ -59,25 +70,27 @@ struct RootTabCustomizationView: View {
                             .font(DSFont.caption)
                             .foregroundStyle(DSColor.textSecondary)
                     }
+                    .dsSettingsCardRow()
                 } else {
-                    Toggle(isOn: visibleBinding(for: tab)) {
-                        SettingsRowLabel(localized(tab.titleKey), systemImage: tab.defaultSystemImage)
-                    }
+                    DSSettingsCardToggle(
+                        title: localized(tab.titleKey),
+                        systemImage: tab.defaultSystemImage,
+                        isOn: visibleBinding(for: tab)
+                    )
                     .disabled(!canCustomize)
                 }
+                if tab != RootTabItem.allCases.last {
+                    DSSettingsCardDivider()
+                }
             }
-        } header: {
-            Text(localized("顯示頁面"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(localized("至少保留一個內容頁，設定固定顯示，避免無法恢復頁面。"))
-                .dsSectionFooter()
         }
-        .interfaceSectionSurface()
     }
 
     private var tabPresentationSection: some View {
-        Section {
+        DSSettingsGroupCard(title: localized("Tab 圖標"), footer: {
+            Text(localized("不調整時保持系統 Tab 默認大小；開啟自訂大小後才套用滑桿。"))
+                .dsSectionFooter()
+        }) {
             Toggle(isOn: hidesLabelsBinding) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     Text(localized("隱藏標籤文字"))
@@ -88,6 +101,10 @@ struct RootTabCustomizationView: View {
                 }
             }
             .disabled(!canCustomize)
+            .dsSettingsCardRow(minHeight: 0)
+            .padding(.vertical, DSSpacing.sm)
+
+            DSSettingsCardDivider()
 
             Toggle(isOn: customIconSizeEnabledBinding) {
                 HStack {
@@ -100,8 +117,11 @@ struct RootTabCustomizationView: View {
                 }
             }
             .disabled(!canCustomize)
+            .dsSettingsCardRow()
 
             if settings.usesCustomRootTabIconSize {
+                DSSettingsCardDivider()
+
                 VStack(alignment: .leading, spacing: DSSpacing.sm) {
                     HStack {
                         Text(localized("圖標大小"))
@@ -123,24 +143,21 @@ struct RootTabCustomizationView: View {
                     .accessibilityLabel(localized("圖標大小"))
                     .accessibilityValue(iconSizeText)
                 }
+                .dsSettingsCardRow(minHeight: 0)
+                .padding(.vertical, DSSpacing.sm)
             }
-        } header: {
-            Text(localized("Tab 圖標"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(localized("不調整時保持系統 Tab 默認大小；開啟自訂大小後才套用滑桿。"))
-                .dsSectionFooter()
         }
-        .interfaceSectionSurface()
     }
 
     private func iconSection(for tab: RootTabItem) -> some View {
-        Section(header: Text(localized(tab.titleKey)).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized(tab.titleKey)) {
             ForEach(RootTabIconSlot.allCases) { slot in
                 iconRow(tab: tab, slot: slot)
+                if slot != RootTabIconSlot.allCases.last {
+                    DSSettingsCardDivider()
+                }
             }
         }
-        .interfaceSectionSurface()
     }
 
     private func iconRow(tab: RootTabItem, slot: RootTabIconSlot) -> some View {
@@ -178,7 +195,7 @@ struct RootTabCustomizationView: View {
             .buttonStyle(.bordered)
             .disabled(!canCustomize)
         }
-        .frame(minHeight: 52)
+        .dsSettingsCardRow()
     }
 
     @ViewBuilder

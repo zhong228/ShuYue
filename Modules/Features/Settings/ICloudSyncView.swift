@@ -13,12 +13,17 @@ struct ICloudSyncView: View {
     private var iCloudReady: Bool { manager.accountStatus == .available }
 
     var body: some View {
-        Form {
-            accountSection
-            autoSyncSection
-            actionsSection
-            statusSection
-            deleteSection
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                accountSection
+                autoSyncSection
+                actionsSection
+                statusSection
+                deleteSection
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
         .navigationTitle(localized("iCloud 同步"))
@@ -41,7 +46,12 @@ struct ICloudSyncView: View {
     }
 
     private var accountSection: some View {
-        Section {
+        DSSettingsGroupCard(title: localized("帳號狀態"), footer: {
+            if !iCloudReady {
+                Text(localized("請確認系統設定中已登入 iCloud，且 iCloud Drive/CloudKit 可用"))
+                    .dsSectionFooter()
+            }
+        }) {
             HStack {
                 Label(manager.statusTitle(isAppSignedIn: true), systemImage: statusIcon)
                     .foregroundColor(statusColor)
@@ -51,54 +61,46 @@ struct ICloudSyncView: View {
                         .foregroundColor(.green)
                 }
             }
-        } header: {
-            Text(localized("帳號狀態"))
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            if !iCloudReady {
-                Text(localized("請確認系統設定中已登入 iCloud，且 iCloud Drive/CloudKit 可用"))
-                    .dsSectionFooter()
-            }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
         }
-        .interfaceSectionSurface()
     }
 
     private var autoSyncSection: some View {
-        Section {
-            Toggle(localized("自動同步"), isOn: $gs.iCloudAutoSync)
-                .tint(DSColor.accent)
-                .onChange(of: gs.iCloudAutoSync) { _, on in
-                    if on, iCloudReady { Task { try? await manager.sync(reason: "toggle-on") } }
-                }
-        } footer: {
+        DSSettingsGroupCard(title: "", footer: {
             Text(localized("啟動與切背景時自動同步書庫、書源、替換規則、書檔、閱讀設定、氣泡樣式與自訂閱讀背景。多台裝置會合併，不會互相覆蓋。"))
                 .dsSectionFooter()
+        }) {
+            DSSettingsCardToggle(
+                title: localized("自動同步"),
+                systemImage: "arrow.triangle.2.circlepath",
+                isOn: $gs.iCloudAutoSync
+            )
+            .tint(DSColor.accent)
+            .onChange(of: gs.iCloudAutoSync) { _, on in
+                if on, iCloudReady { Task { try? await manager.sync(reason: "toggle-on") } }
+            }
         }
-        .interfaceSectionSurface()
     }
 
     private var actionsSection: some View {
-        Section(header: Text(localized("操作")).foregroundStyle(DSColor.textSecondary)) {
-            Button {
+        DSSettingsGroupCard(title: localized("操作")) {
+            DSSettingsCardRow(icon: "arrow.triangle.2.circlepath.icloud", title: localized("立即同步")) {
                 Task { await runSync() }
-            } label: {
-                Label(localized("立即同步"), systemImage: "arrow.triangle.2.circlepath.icloud")
-                    .foregroundColor(DSColor.accent)
             }
             .disabled(!iCloudReady)
 
-            Button {
+            DSSettingsCardDivider()
+
+            DSSettingsCardRow(icon: "checkmark.icloud", title: localized("檢查 iCloud 狀態")) {
                 Task { await refreshStatus() }
-            } label: {
-                Label(localized("檢查 iCloud 狀態"), systemImage: "checkmark.icloud")
-                    .foregroundColor(DSColor.accent)
             }
         }
-        .interfaceSectionSurface()
     }
 
     private var statusSection: some View {
-        Section(header: Text(localized("狀態")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("狀態")) {
             if let date = manager.lastSyncDate {
                 HStack {
                     Text(localized("上次同步"))
@@ -107,28 +109,33 @@ struct ICloudSyncView: View {
                     Text(date, style: .relative)
                         .foregroundColor(DSColor.textPrimary)
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
 
             if !manager.statusMessage.isEmpty {
+                if manager.lastSyncDate != nil {
+                    DSSettingsCardDivider()
+                }
                 Text(manager.statusMessage)
                     .foregroundColor(DSColor.textSecondary)
                     .font(DSFont.footnote)
+                    .padding(.horizontal, DSSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 54)
             }
         }
-        .interfaceSectionSurface()
     }
 
     /// Apart from the other actions, at the bottom: it cannot be undone.
     private var deleteSection: some View {
-        Section {
-            Button(role: .destructive) {
+        DSSettingsGroupCard(title: "") {
+            DSSettingsCardRow(icon: "trash", title: localized("刪除 iCloud 上的資料")) {
                 showDeleteConfirmation = true
-            } label: {
-                Label(localized("刪除 iCloud 上的資料"), systemImage: "trash")
             }
             .disabled(!iCloudReady)
         }
-        .interfaceSectionSurface()
         .alert(localized("刪除 iCloud 上的資料？"), isPresented: $showDeleteConfirmation) {
             Button(localized("刪除"), role: .destructive) {
                 Task { await runDeleteRemoteData() }

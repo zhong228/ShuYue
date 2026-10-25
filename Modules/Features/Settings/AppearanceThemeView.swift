@@ -927,13 +927,18 @@ private struct AppearanceReaderInterfaceView: View {
     }
 
     var body: some View {
-        Form {
-            // ShuYue 只保留「极简悬浮控制」单套方案：点屏幕中央呼出顶部与底部
-            // 控制岛，不再提供 classic / modern / Apple Books 三套 chrome 切换。
-            customizationSection(for: .classic)
+        // 分组卡片：「自定義」一张卡片，替代系统 Form Section（2026-10-25）。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                // ShuYue 只保留「极简悬浮控制」单套方案：点屏幕中央呼出顶部与底部
+                // 控制岛，不再提供 classic / modern / Apple Books 三套 chrome 切换。
+                customizationSection(for: .classic)
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
-        .scrollContentBackground(.hidden)
         .navigationTitle(localized("阅读器样式"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
@@ -942,12 +947,25 @@ private struct AppearanceReaderInterfaceView: View {
     /// Only the slots the chosen interface actually paints — 現代's navigation bar is
     /// system glass with no fill of ours, and only 經典 floats circles over the page.
     private func customizationSection(for interface: ReaderChromeInterface) -> some View {
-        Section {
+        DSSettingsGroupCard(
+            title: localized("自定義"),
+            footer: {
+                Text(localized("点按屏幕中央呼出顶部与底部控制岛。顶部是返回／章节名／书签／搜索，右侧「更多」收纳刷新、换源、下载与网页打开；底部是进度滑条、上一章、下一章，以及目录、设置、听书、深色。未调整的部分跟随目前的阅读主题。"))
+                    .dsSectionFooter()
+            }
+        ) {
             chromePreview(for: interface)
+                .dsSettingsCardRow(minHeight: 0)
+                .padding(.vertical, DSSpacing.sm)
 
             ForEach(ReaderChromeSlot.slots(for: interface)) { slot in
+                DSSettingsCardDivider()
                 colorRow(slot, interface: interface)
+                    .dsSettingsCardRow(minHeight: 0)
+                    .padding(.vertical, DSSpacing.xs)
             }
+
+            DSSettingsCardDivider()
 
             NavigationLink {
                 ReaderChromeIconSettingsView()
@@ -962,23 +980,18 @@ private struct AppearanceReaderInterfaceView: View {
                         .foregroundStyle(DSColor.textSecondary)
                 }
             }
+            .dsSettingsCardRow()
 
             if settings.hasReaderChromeOverride(interface: interface) {
+                DSSettingsCardDivider()
                 Button {
                     settings.resetReaderChrome(interface: interface)
                 } label: {
                     Label(localized("跟隨閱讀主題"), systemImage: "arrow.counterclockwise")
                 }
+                .dsSettingsCardRow()
             }
-        } header: {
-            Text(localized("自定義"))
-                .font(DSFont.headline)
-                .foregroundStyle(DSColor.textPrimary)
-        } footer: {
-            Text(localized("点按屏幕中央呼出顶部与底部控制岛。顶部是返回／章节名／书签／搜索，右侧「更多」收纳刷新、换源、下载与网页打开；底部是进度滑条、上一章、下一章，以及目录、设置、听书、深色。未调整的部分跟随目前的阅读主题。"))
-                .dsSectionFooter()
         }
-        .interfaceSectionSurface()
     }
 
     /// 目錄／書籤／深色／設置 and 刷新／換源／下載／聽書 status, so the row says

@@ -16,90 +16,95 @@ struct DefaultCoverSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(
-                    localized("強制使用預設封面"),
-                    isOn: $settings.useDefaultCoverForAllBooks
-                )
-            } footer: {
-                Text(localized("開啟後所有書籍都使用預設封面，忽略書籍自帶的封面圖。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
-
-            Section {
-                VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    HStack {
-                        Text(localized("封面圓角"))
-                            .foregroundStyle(DSColor.textPrimary)
-                        Spacer()
-                        Text(cornerRadiusText)
-                            .font(DSFont.subheadline)
-                            .foregroundStyle(DSColor.textSecondary)
-                            // The slider below speaks this value; read on its own
-                            // it is just a loose number.
-                            .accessibilityHidden(true)
-                    }
-                    Slider(
-                        value: $settings.bookshelfCoverCornerRadius,
-                        in: GlobalSettings.bookshelfCoverCornerRadiusRange,
-                        step: 1
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                // 分组卡片：预設封面各 Section 合为卡片，替代系统 Form Section（2026-10-25）。
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("開啟後所有書籍都使用預設封面，忽略書籍自帶的封面圖。"))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("強制使用預設封面"),
+                        systemImage: "photo.on.rectangle.angled",
+                        isOn: $settings.useDefaultCoverForAllBooks
                     )
-                    // A Slider has no label of its own and would otherwise
-                    // announce a bare percentage of its range.
-                    .accessibilityLabel(localized("封面圓角"))
-                    .accessibilityValue(cornerRadiusText)
                 }
-                .padding(.vertical, DSSpacing.xs)
-            } footer: {
-                Text(localized("用於書架卡片中的封面裁切，不影響卡片背景圓角。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
 
-            Section {
-                Toggle(
-                    localized("探索頁啟用預設封面"),
-                    isOn: $settings.exploreUsesDefaultCover
-                )
-            } footer: {
-                Text(localized("開啟後，探索頁中沒有封面的書卡也使用隨機預設封面圖（列表和網格均生效）。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("用於書架卡片中的封面裁切，不影響卡片背景圓角。"))
+                        .dsSectionFooter()
+                }) {
+                    VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                        HStack {
+                            Text(localized("封面圓角"))
+                                .foregroundStyle(DSColor.textPrimary)
+                            Spacer()
+                            Text(cornerRadiusText)
+                                .font(DSFont.subheadline)
+                                .foregroundStyle(DSColor.textSecondary)
+                                // The slider below speaks this value; read on its own
+                                // it is just a loose number.
+                                .accessibilityHidden(true)
+                        }
+                        Slider(
+                            value: $settings.bookshelfCoverCornerRadius,
+                            in: GlobalSettings.bookshelfCoverCornerRadiusRange,
+                            step: 1
+                        )
+                        // A Slider has no label of its own and would otherwise
+                        // announce a bare percentage of its range.
+                        .accessibilityLabel(localized("封面圓角"))
+                        .accessibilityValue(cornerRadiusText)
+                    }
+                    .dsSettingsCardRow(minHeight: 0)
+                    .padding(.vertical, DSSpacing.xs)
+                }
 
-            Section {
-                Toggle(
-                    localized("匯入書籍後自動刮削封面"),
-                    isOn: $settings.autoScrapeCovers
-                )
-            } footer: {
-                Text(localized("開啟後，匯入本地書籍時會自動搜索並替無封面書籍套用網路封面。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("開啟後，探索頁中沒有封面的書卡也使用隨機預設封面圖（列表和網格均生效）。"))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("探索頁啟用預設封面"),
+                        systemImage: "sparkles.rectangle.stack",
+                        isOn: $settings.exploreUsesDefaultCover
+                    )
+                }
 
-            Section {
-                Toggle(
-                    localized("封面顯示書名"),
-                    isOn: $settings.defaultCoverDrawsBookName
-                )
-                Toggle(
-                    localized("封面顯示作者"),
-                    isOn: $settings.defaultCoverDrawsBookAuthor
-                )
-            } header: {
-                Text(localized("自動生成的封面"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("只影響自動生成的封面，你匯入的封面圖不受影響。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+                DSSettingsGroupCard(title: "", footer: {
+                    Text(localized("開啟後，匯入本地書籍時會自動搜索並替無封面書籍套用網路封面。"))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("匯入書籍後自動刮削封面"),
+                        systemImage: "wand.and.stars",
+                        isOn: $settings.autoScrapeCovers
+                    )
+                }
 
-            coverLibrarySection(for: .light)
-            coverLibrarySection(for: .dark)
+                DSSettingsGroupCard(title: localized("自動生成的封面"), footer: {
+                    Text(localized("只影響自動生成的封面，你匯入的封面圖不受影響。"))
+                        .dsSectionFooter()
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("封面顯示書名"),
+                        systemImage: "textformat",
+                        isOn: $settings.defaultCoverDrawsBookName
+                    )
+                    DSSettingsCardDivider()
+                    DSSettingsCardToggle(
+                        title: localized("封面顯示作者"),
+                        systemImage: "person.text.rectangle",
+                        isOn: $settings.defaultCoverDrawsBookAuthor
+                    )
+                }
+
+                coverLibrarySection(for: .light)
+                coverLibrarySection(for: .dark)
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
         .navigationTitle(localized("預設封面"))
@@ -122,7 +127,14 @@ struct DefaultCoverSettingsView: View {
     private func coverLibrarySection(for scheme: DefaultCoverScheme) -> some View {
         let fileNames = settings.defaultCoverFileNames(for: scheme)
 
-        Section {
+        DSSettingsGroupCard(title: scheme.title, footer: {
+            Text(
+                scheme == .dark
+                    ? localized("深色模式下優先使用這裡的封面，未設置時跟隨亮色封面。")
+                    : localized("書籍沒有封面時隨機使用其中一張作為預設封面。")
+            )
+            .dsSectionFooter()
+        }) {
             if fileNames.isEmpty {
                 Text(
                     scheme == .dark
@@ -131,6 +143,8 @@ struct DefaultCoverSettingsView: View {
                 )
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textSecondary)
+                .dsSettingsCardRow(minHeight: 0)
+                .padding(.vertical, DSSpacing.sm)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DSSpacing.md) {
@@ -139,8 +153,12 @@ struct DefaultCoverSettingsView: View {
                         }
                     }
                     .padding(.vertical, DSSpacing.xs)
+                    .padding(.horizontal, DSSpacing.md)
                 }
+                .dsSettingsCardRow(minHeight: 0)
             }
+
+            DSSettingsCardDivider()
 
             ImageSourcePickerButton(
                 accessibilityTitle: scheme == .dark
@@ -153,18 +171,8 @@ struct DefaultCoverSettingsView: View {
                     systemImage: "photo.badge.plus"
                 )
             }
-        } header: {
-            Text(scheme.title)
-                .foregroundStyle(DSColor.textSecondary)
-        } footer: {
-            Text(
-                scheme == .dark
-                    ? localized("深色模式下優先使用這裡的封面，未設置時跟隨亮色封面。")
-                    : localized("書籍沒有封面時隨機使用其中一張作為預設封面。")
-            )
-            .dsSectionFooter()
+            .dsSettingsCardRow(minHeight: 44)
         }
-        .interfaceSectionSurface()
     }
 
     @ViewBuilder

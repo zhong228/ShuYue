@@ -7,32 +7,30 @@ struct BackupSyncView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    NavigationLink {
-                        ICloudSyncView()
-                    } label: {
-                        syncRow(
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    // 分组卡片：iCloud 与 WebDAV 两个同步入口合为一张卡片（2026-10-25）。
+                    DSSettingsGroupCard(title: localized("備份與同步方式")) {
+                        DSSettingsCardNavRow(
                             icon: "icloud.fill",
                             title: localized("iCloud 同步"),
                             detail: iCloudManager.statusTitle(isAppSignedIn: true)
-                        )
-                    }
-
-                    NavigationLink {
-                        WebDAVSyncView()
-                    } label: {
-                        syncRow(
+                        ) {
+                            ICloudSyncView()
+                        }
+                        DSSettingsCardDivider()
+                        DSSettingsCardNavRow(
                             icon: "icloud.and.arrow.up.fill",
                             title: localized("WebDAV 同步"),
                             detail: webDAVDetail
-                        )
+                        ) {
+                            WebDAVSyncView()
+                        }
                     }
-                } header: {
-                    Text(localized("備份與同步方式"))
-                        .foregroundStyle(DSColor.textSecondary)
-                } 
-                .interfaceSectionSurface()
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
             .softScrollEdges()
             .navigationTitle(localized("云备份"))
@@ -62,26 +60,8 @@ struct BackupSyncView: View {
             ? localized("已設定，尚未同步")
             : localized("已設定")
     }
-
-    private func syncRow(icon: String, title: String, detail: String) -> some View {
-        HStack(spacing: DSSpacing.md) {
-            Image(systemName: icon)
-                .foregroundColor(DSColor.accent)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                Text(title)
-                    .foregroundColor(DSColor.textPrimary)
-                Text(detail)
-                    .font(DSFont.caption)
-                    .foregroundColor(DSColor.textSecondary)
-                    .lineLimit(2)
-            }
-        }
-    }
 }
 
 #Preview {
     BackupSyncView()
 }
-

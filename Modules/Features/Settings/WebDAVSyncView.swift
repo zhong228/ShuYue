@@ -14,10 +14,15 @@ struct WebDAVSyncView: View {
     // MARK: - Body
 
     var body: some View {
-        Form {
-            serverSection
-            actionsSection
-            statusSection
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                serverSection
+                actionsSection
+                statusSection
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.sm)
+            .padding(.bottom, DSSpacing.xl)
         }
         .softScrollEdges()
         .navigationTitle(localized("WebDAV 同步"))
@@ -62,7 +67,7 @@ struct WebDAVSyncView: View {
     // MARK: - Sections
 
     private var serverSection: some View {
-        Section(header: Text(localized("伺服器設定")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("伺服器設定")) {
             HStack {
                 Text(localized("網址"))
                     .foregroundColor(DSColor.textSecondary)
@@ -71,6 +76,12 @@ struct WebDAVSyncView: View {
                     .disableAutocorrection(true)
                     .keyboardType(.URL)
             }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
+
+            DSSettingsCardDivider()
+
             HStack {
                 Text(localized("帳號"))
                     .foregroundColor(DSColor.textSecondary)
@@ -78,43 +89,45 @@ struct WebDAVSyncView: View {
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
             }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
+
+            DSSettingsCardDivider()
+
             HStack {
                 Text(localized("密碼"))
                     .foregroundColor(DSColor.textSecondary)
                 SecureField(localized("密碼"), text: $manager.password)
             }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
         }
-        .interfaceSectionSurface()
     }
 
     private var actionsSection: some View {
-        Section(header: Text(localized("操作")).foregroundStyle(DSColor.textSecondary)) {
-            Button {
+        DSSettingsGroupCard(title: localized("操作")) {
+            DSSettingsCardRow(icon: "network", title: localized("測試連線")) {
                 Task { await testConnection() }
-            } label: {
-                Label(localized("測試連線"), systemImage: "network")
-                    .foregroundColor(DSColor.accent)
             }
 
-            Button {
+            DSSettingsCardDivider()
+
+            DSSettingsCardRow(icon: "icloud.and.arrow.up", title: localized("備份到雲端")) {
                 Task { await runBackup() }
-            } label: {
-                Label(localized("備份到雲端"), systemImage: "icloud.and.arrow.up")
-                    .foregroundColor(DSColor.accent)
             }
 
-            Button {
+            DSSettingsCardDivider()
+
+            DSSettingsCardRow(icon: "icloud.and.arrow.down", title: localized("從雲端還原")) {
                 Task { await runRestore() }
-            } label: {
-                Label(localized("從雲端還原"), systemImage: "icloud.and.arrow.down")
-                    .foregroundColor(DSColor.accent)
             }
         }
-        .interfaceSectionSurface()
     }
 
     private var statusSection: some View {
-        Section(header: Text(localized("狀態")).foregroundStyle(DSColor.textSecondary)) {
+        DSSettingsGroupCard(title: localized("狀態")) {
             if let date = manager.lastSyncDate {
                 HStack {
                     Text(localized("上次同步"))
@@ -123,14 +136,22 @@ struct WebDAVSyncView: View {
                     Text(date, style: .relative)
                         .foregroundColor(DSColor.textPrimary)
                 }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 54)
             }
             if !manager.statusMessage.isEmpty {
+                if manager.lastSyncDate != nil {
+                    DSSettingsCardDivider()
+                }
                 Text(manager.statusMessage)
                     .foregroundColor(DSColor.textSecondary)
                     .font(DSFont.footnote)
+                    .padding(.horizontal, DSSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 54)
             }
         }
-        .interfaceSectionSurface()
     }
 
     private var syncingOverlay: some View {

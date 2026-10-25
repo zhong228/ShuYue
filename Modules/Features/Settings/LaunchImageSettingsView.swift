@@ -14,41 +14,42 @@ struct LaunchImageSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(localized("啟用啟動圖"), isOn: $settings.launchImageEnabled)
-            } footer: {
-                if settings.launchImageEnabled && !hasAnyLaunchImage {
-                    Text(localized("尚未導入任何啟動圖，請在下方選擇圖片。"))
-                        .dsSectionFooter(color: .orange)
-                } else {
-                    Text(localized("開啟後，每次啟動 App 會短暫顯示你設定的啟動圖。"))
+        // 分组卡片：开关与两张启动图各成一张卡片，替代系统 Form Section（2026-10-25）。
+        ScrollView {
+            VStack(spacing: DSSpacing.lg) {
+                DSSettingsGroupCard(title: localized("啟動圖"), footer: {
+                    if settings.launchImageEnabled && !hasAnyLaunchImage {
+                        Text(localized("尚未導入任何啟動圖，請在下方選擇圖片。"))
+                            .dsSectionFooter(color: .orange)
+                    } else {
+                        Text(localized("開啟後，每次啟動 App 會短暫顯示你設定的啟動圖。"))
+                            .dsSectionFooter()
+                    }
+                }) {
+                    DSSettingsCardToggle(
+                        title: localized("啟用啟動圖"),
+                        systemImage: "iphone",
+                        isOn: $settings.launchImageEnabled
+                    )
+                }
+
+                DSSettingsGroupCard(title: localized("淺色啟動圖"), footer: {
+                    Text(localized("淺色模式啟動時顯示。"))
                         .dsSectionFooter()
+                }) {
+                    launchImageSlot(.light)
+                }
+
+                DSSettingsGroupCard(title: localized("深色啟動圖"), footer: {
+                    Text(localized("深色模式啟動時顯示。若只設定一張，另一模式會沿用。"))
+                        .dsSectionFooter()
+                }) {
+                    launchImageSlot(.dark)
                 }
             }
-            .interfaceSectionSurface()
-
-            Section {
-                launchImageSlot(.light)
-            } header: {
-                Text(localized("淺色啟動圖"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("淺色模式啟動時顯示。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
-
-            Section {
-                launchImageSlot(.dark)
-            } header: {
-                Text(localized("深色啟動圖"))
-                    .foregroundStyle(DSColor.textSecondary)
-            } footer: {
-                Text(localized("深色模式啟動時顯示。若只設定一張，另一模式會沿用。"))
-                    .dsSectionFooter()
-            }
-            .interfaceSectionSurface()
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.xs)
+            .padding(.bottom, DSSpacing.xxl * 2)
         }
         .softScrollEdges()
         .navigationTitle(localized("啟動圖"))
@@ -83,7 +84,10 @@ struct LaunchImageSettingsView: View {
                     .foregroundStyle(DSColor.textSecondary)
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, DSSpacing.xs)
+            .padding(.vertical, DSSpacing.sm)
+            .dsSettingsCardRow(minHeight: 0)
+
+            DSSettingsCardDivider()
         }
 
         ImageSourcePickerButton(
@@ -97,13 +101,16 @@ struct LaunchImageSettingsView: View {
                 systemImage: "photo"
             )
         }
+        .dsSettingsCardRow()
 
         if image != nil {
+            DSSettingsCardDivider()
             Button(role: .destructive) {
                 settings.clearLaunchImage(for: scheme)
             } label: {
                 Label(localized("移除"), systemImage: "trash")
             }
+            .dsSettingsCardRow()
         }
     }
 
