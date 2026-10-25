@@ -85,7 +85,7 @@ Most readers wrap content in a WebView. 书悦 renders every page with CoreText,
 
 <div align="center">
 
-  **[Download ShuYue v1.3.2](https://github.com/zhong228/ShuYue/releases/download/v1.3.2/ShuYue-v1.3.2.ipa)** (unsigned IPA)
+  **[Download ShuYue v1.3.3](https://github.com/zhong228/ShuYue/releases/download/v1.3.3/ShuYue-v1.3.3.ipa)** (unsigned IPA)
 
 </div>
 
