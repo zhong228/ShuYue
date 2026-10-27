@@ -88,6 +88,28 @@ echo "App bundle: $APP"
 rm -rf build/unsigned build/ShuYue-*.ipa
 mkdir -p build/unsigned/Payload
 cp -R "$APP" build/unsigned/Payload/
+
+# 3b. Strip restricted entitlements so the UNSIGNED IPA launches under
+#     TrollStore / self-signing.
+#
+#     Root cause of Issue #1 (TrollStore and self-sign both crash on launch):
+#     the app's default entitlements request App Groups, CloudKit, and
+#     Sign-in-with-Apple. An unsigned IPA has NO provisioning profile to
+#     authorize those capabilities, so iOS rejects the launch at
+#     entitlements-validation time and the app exits immediately.
+#
+#     Removing the embedded entitlements lets TrollStore re-sign and run the
+#     app. In this sideloaded build, iCloud sync / App Group sharing / SiWA
+#     are unavailable — acceptable for a sideloaded build. If a fully
+#     featured signed build is needed later, supply a provisioning profile
+#     that authorizes these capabilities and sign the IPA instead.
+APP_IN_PAYLOAD="build/unsigned/Payload/$(basename "$APP")"
+if [ -f "$APP_IN_PAYLOAD/archived-expanded-entitlements.xcent" ]; then
+  rm -f "$APP_IN_PAYLOAD/archived-expanded-entitlements.xcent"
+  echo "Removed embedded restricted entitlements (archived-expanded-entitlements.xcent)"
+fi
+rm -f "$APP_IN_PAYLOAD/Entitlements.plist"
+
 cd build/unsigned
 zip -qry "../ShuYue-v${VERSION}.ipa" Payload
 cd "$PROJECT_DIR"
