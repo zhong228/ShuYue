@@ -1515,7 +1515,7 @@ struct EditBookSheet: View {
     private func infoStat(icon: String, label: String, value: Any, style: InfoStatStyle) -> some View {
         HStack(spacing: DSSpacing.sm) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
+                .font(DSFont.fixed(size: 14, weight: .medium))
                 .foregroundStyle(DSColor.accent)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
@@ -1589,7 +1589,7 @@ struct EditBookSheet: View {
     private func coverActionLabel(icon: String, label: String, isDestructive: Bool) -> some View {
         VStack(spacing: DSSpacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 20, weight: .medium))
+                .font(DSFont.fixed(size: 20, weight: .medium))
                 .frame(width: 48, height: 48)
                 .background(
                     RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
@@ -1630,7 +1630,7 @@ struct EditBookSheet: View {
                     applyCover(url: coverUrlInput, sourceId: liveBook.bookSourceId)
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 28))
+                        .font(DSFont.fixed(size: 28))
                         .foregroundStyle(
                             canApplyCoverUrl ? DSColor.accent : DSColor.textDisabled
                         )

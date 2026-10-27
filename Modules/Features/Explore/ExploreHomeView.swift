@@ -243,7 +243,7 @@ struct ExploreHomeView: View {
                         }
                     } label: {
                         Image(systemName: layout.systemImage)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(DSFont.fixed(size: 14, weight: .semibold))
                             .frame(width: DSLayout.capsuleControlHeight, height: DSLayout.capsuleControlHeight)
                             .background {
                                 Capsule().fill(sourcePageLayout == layout ? DSColor.accent : DSColor.surface)
@@ -343,7 +343,7 @@ struct ExploreHomeView: View {
                 Button { openBrowser(.resume) } label: {
                     HStack(spacing: DSSpacing.xs) {
                         Image(systemName: "safari")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(DSFont.fixed(size: 13, weight: .semibold))
                         Text(localized("打开浏览器"))
                             .font(DSFont.footnote.weight(.semibold))
                     }
@@ -750,7 +750,7 @@ struct QuickAccessCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(DSFont.fixed(size: 20, weight: .semibold))
                     .foregroundStyle(color)
                     .frame(width: 36, height: 36)
                     .background(DSColor.appAccentSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))

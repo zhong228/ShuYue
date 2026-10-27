@@ -352,7 +352,7 @@ private struct AboutSupportView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 96, height: 96)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
                 .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
             VStack(spacing: DSSpacing.xs) {
                 Text(localized("書悅"))

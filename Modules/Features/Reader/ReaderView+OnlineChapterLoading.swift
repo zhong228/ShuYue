@@ -288,7 +288,7 @@ extension ReaderView {
         let repairSource = androidIdentityRepairCandidate(failureMessage: message)
         VStack(spacing: DSSpacing.md) {
             Image(systemName: "wifi.exclamationmark")
-                .font(.system(size: 34))
+                .font(DSFont.fixed(size: 34))
                 .foregroundStyle(DSColor.textSecondary)
                 .accessibilityHidden(true)
             Text(localized("章節載入失敗"))

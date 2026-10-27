@@ -134,7 +134,7 @@ struct AudiobookReaderView: View {
             }
         }
         .frame(width: 260, height: 260)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous))
         .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 12)
         .overlay {
             if player.isLoading {
