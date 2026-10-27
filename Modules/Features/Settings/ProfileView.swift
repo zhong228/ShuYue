@@ -60,21 +60,18 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: DSSpacing.lg) {
-                    // ── Brand Header + quick feedback ──
+                    // ── Brand hero ──
                     ShuYueBrandHeaderCard(appVersion: appVersion, feedbackURL: feedbackMailURL)
                         .rootTabTitleScrollAnchor()
 
-                    // ── 界面语言 ──
-                    DSSettingsGroupCard(title: localized("界面语言"), footer: { Text(appLanguageFooter) }) {
+                    // ── 界面与外观 ──
+                    DSSettingsGroupCard(title: localized("界面与外观"), footer: { Text(appLanguageFooter) }) {
                         DSSettingsCardRow(icon: "globe", title: localized("语言")) {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 openURL(url)
                             }
                         }
-                    }
-
-                    // ── 外观与主题 ──
-                    DSSettingsGroupCard(title: localized("外观与主题")) {
+                        DSSettingsCardDivider()
                         DSSettingsCardNavRow(
                             icon: "paintpalette.fill",
                             title: localized("视觉主题"),
@@ -84,8 +81,8 @@ struct SettingsView: View {
                         }
                     }
 
-                    // ── 数据与书源 ──
-                    DSSettingsGroupCard(title: localized("数据与书源")) {
+                    // ── 书库与数据 ──
+                    DSSettingsGroupCard(title: localized("书库与数据")) {
                         DSSettingsCardRow(icon: "books.vertical.fill", title: localized("书源库")) { showSourceList = true }
                         DSSettingsCardDivider()
                         DSSettingsCardRow(
@@ -93,8 +90,6 @@ struct SettingsView: View {
                             title: localized("离线缓存"),
                             value: "\(downloadedBooksCount) \(localized("本"))"
                         ) { showDownloadManager = true }
-                        DSSettingsCardDivider()
-                        DSSettingsCardRow(icon: "network", title: localized("网络连接")) { showNetworkSettings = true }
                         DSSettingsCardDivider()
                         DSSettingsCardRow(
                             icon: "arrow.triangle.2.circlepath.icloud",
@@ -104,9 +99,14 @@ struct SettingsView: View {
                         DSSettingsCardDivider()
                         DSSettingsCardRow(icon: "externaldrive.fill", title: localized("存储清理")) { showCacheManagement = true }
                         DSSettingsCardDivider()
-                        DSSettingsCardRow(icon: "wifi", title: localized("局域传书")) { showLanServer = true }
-                        DSSettingsCardDivider()
                         DSSettingsCardRow(icon: "arrow.down.doc.fill", title: localized("导入阅读器数据")) { showLegadoMigration = true }
+                    }
+
+                    // ── 连接与传输 ──
+                    DSSettingsGroupCard(title: localized("连接与传输")) {
+                        DSSettingsCardRow(icon: "network", title: localized("网络连接")) { showNetworkSettings = true }
+                        DSSettingsCardDivider()
+                        DSSettingsCardRow(icon: "wifi", title: localized("局域传书")) { showLanServer = true }
                     }
 
                     // ── 阅读与声音 ──
@@ -125,8 +125,8 @@ struct SettingsView: View {
                         DSSettingsCardRow(icon: "text.magnifyingglass", title: localized("文字修正")) { showReplaceRules = true }
                     }
 
-                    // ── 应用信息 ──
-                    DSSettingsGroupCard(title: localized("应用信息")) {
+                    // ── 关于与帮助 ──
+                    DSSettingsGroupCard(title: localized("关于与帮助")) {
                         DSSettingsCardNavRow(icon: "stethoscope", title: localized("帮助与诊断")) {
                             DiagnosticsView()
                         }
@@ -256,47 +256,68 @@ private struct ShuYueBrandHeaderCard: View {
     let feedbackURL: URL?
 
     var body: some View {
-        HStack(spacing: DSSpacing.md) {
-            Image("ShuYueLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 58, height: 58)
-                .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
-                .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            HStack(spacing: DSSpacing.md) {
+                Image("ShuYueLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                Text(localized("書悅"))
-                    .font(DSFont.title3.weight(.bold))
-                    .foregroundStyle(DSColor.textPrimary)
-                Text(localized("自由開源 · 純淨的書源閱讀器"))
-                    .font(DSFont.footnote)
-                    .foregroundStyle(DSColor.textSecondary)
-                    .lineLimit(2)
-                Text(String(format: localized("版本 %@"), appVersion))
-                    .font(DSFont.caption2)
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    Text(localized("書悅"))
+                        .font(DSFont.title2.weight(.bold))
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(localized("自由開源 · 純淨的書源閱讀器"))
+                        .font(DSFont.footnote)
+                        .foregroundStyle(DSColor.textSecondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 0)
+
+                if let feedbackURL {
+                    Button {
+                        openURL(feedbackURL)
+                    } label: {
+                        Image(systemName: "envelope.fill")
+                            .font(DSFont.body.weight(.medium))
+                            .foregroundStyle(DSColor.appAccent)
+                            .frame(width: 40, height: 40)
+                            .background(DSColor.appAccentSoft, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(localized("反馈"))
+                }
+            }
+
+            Divider()
+                .overlay(DSColor.separator)
+
+            HStack(spacing: DSSpacing.sm) {
+                Text(localized("當前版本"))
+                    .font(DSFont.caption)
                     .foregroundStyle(DSColor.textTertiary)
+                Spacer(minLength: 0)
+                Text(String(format: localized("版本 %@"), appVersion))
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
                     .monospacedDigit()
             }
-
-            Spacer(minLength: 0)
-
-            if let feedbackURL {
-                Button {
-                    openURL(feedbackURL)
-                } label: {
-                    Image(systemName: "envelope.fill")
-                        .font(DSFont.body.weight(.medium))
-                        .foregroundStyle(DSColor.textPrimary)
-                        .frame(width: 38, height: 38)
-                        .background(DSColor.surface, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(localized("反馈"))
-            }
         }
-        .padding(.vertical, DSSpacing.sm)
+        .padding(DSSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.xxxl, style: .continuous)
+                .fill(DSColor.surface)
+                .shadow(color: DSColor.shadow, radius: 6, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.xxxl, style: .continuous)
+                .stroke(DSColor.appAccent.opacity(0.15), lineWidth: 1)
+        )
     }
 }
 
