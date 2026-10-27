@@ -8,6 +8,7 @@ struct BackupSyncView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     // 分组卡片：iCloud 与 WebDAV 两个同步入口合为一张卡片（2026-10-25）。
                     DSSettingsGroupCard(title: localized("備份與同步方式")) {
@@ -31,6 +32,7 @@ struct BackupSyncView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(localized("云备份"))

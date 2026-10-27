@@ -103,6 +103,7 @@ struct SystemVoicePickerView: View {
     var body: some View {
         // 分组卡片：個人語音与各语言音色各成一张卡片，替代系统 Form Section（2026-10-25）。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 personalVoiceSection
 
@@ -134,6 +135,7 @@ struct SystemVoicePickerView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.xs)
             .padding(.bottom, DSSpacing.xxl * 2)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("系統語音音色"))

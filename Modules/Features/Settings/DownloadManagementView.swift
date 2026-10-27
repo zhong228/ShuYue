@@ -40,6 +40,7 @@ struct DownloadManagementView: View {
             // 分组卡片：总览 / 下载中 / 已下载书籍 各一张卡片，替代系统 Form（2026-10-25）。
             // 卡片里没有 swipeActions，移除改由行内长按菜单提供。
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     summarySection
                     activeDownloadsSection
@@ -48,6 +49,7 @@ struct DownloadManagementView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(localized("离线缓存"))

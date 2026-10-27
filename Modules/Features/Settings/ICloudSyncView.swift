@@ -14,6 +14,7 @@ struct ICloudSyncView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 accountSection
                 autoSyncSection
@@ -24,6 +25,7 @@ struct ICloudSyncView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("iCloud 同步"))

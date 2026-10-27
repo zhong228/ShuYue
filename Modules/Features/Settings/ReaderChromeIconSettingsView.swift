@@ -14,6 +14,7 @@ struct ReaderChromeIconSettingsView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 section(
                     items: ReaderChromeToolItem.allCases,
@@ -29,6 +30,7 @@ struct ReaderChromeIconSettingsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("按鈕圖示"))

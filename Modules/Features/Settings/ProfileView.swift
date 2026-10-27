@@ -59,6 +59,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     // ── Brand hero ──
                     ShuYueBrandHeaderCard(appVersion: appVersion, feedbackURL: feedbackMailURL)
@@ -148,6 +149,7 @@ struct SettingsView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xl)
+            }
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
@@ -330,6 +332,7 @@ private struct AboutSupportView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 heroCard
                 infoCard
@@ -339,6 +342,7 @@ private struct AboutSupportView: View {
             }
             .padding(.horizontal, DSSpacing.md)
             .padding(.vertical, DSSpacing.sm)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("关于书悦"))

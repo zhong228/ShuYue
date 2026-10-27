@@ -15,6 +15,7 @@ struct WebDAVSyncView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 serverSection
                 actionsSection
@@ -23,6 +24,7 @@ struct WebDAVSyncView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("WebDAV 同步"))

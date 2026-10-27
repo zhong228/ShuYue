@@ -15,6 +15,7 @@ struct RootTabCustomizationView: View {
         // 分组卡片：付费锁 / 顯示頁面 / Tab 圖標 / 各 Tab 图标 成卡片，替代系统 Form Section
         // （2026-10-19）。行内自定义视图（滑桿、图片选择）保留原控件，只给卡片节奏。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 if !canCustomize {
                     DSSettingsGroupCard(title: localized("底部 Tab")) {
@@ -38,6 +39,7 @@ struct RootTabCustomizationView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("底部 Tab"))

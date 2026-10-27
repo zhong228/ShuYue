@@ -490,6 +490,7 @@ struct CustomizationImportOverviewView: View {
         // 分组卡片：外觀 / 閱讀設定 / 未完全套用 三张卡片，替代系统 List Section
         // （2026-10-25）。行件统一为 DSSettingsGroupCard 节奏。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 if !overview.appearanceItems.isEmpty {
                     DSSettingsGroupCard(title: localized("外觀"), footer: {
@@ -539,6 +540,7 @@ struct CustomizationImportOverviewView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .background(DSColor.groupedBackground)
     }

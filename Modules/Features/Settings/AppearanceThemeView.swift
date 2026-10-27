@@ -89,19 +89,21 @@ struct AppearanceThemeView: View {
         // row wears `SettingsRowLabel`, as 設定 and 閱讀設定 do.
         // 分组卡片：视觉方案 / 界面 / 外观 / 主题库 四张卡片，替代系统 List Section
         // （2026-10-19）。网格本身保持卡片，行件统一为 DSSettingsGroupCard 节奏。
-        ScrollView {
-            VStack(spacing: DSSpacing.lg) {
-                visionSection
-                interfaceSection
-                appearanceSection
-                themeManagementSection
+        AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    visionSection
+                    interfaceSection
+                    appearanceSection
+                    themeManagementSection
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
-            .padding(.horizontal, DSSpacing.md)
-            .padding(.top, DSSpacing.xs)
-            .padding(.bottom, DSSpacing.xxl * 2)
+            .softScrollEdges()
+            .themedAppSurface(for: .settings)
         }
-        .softScrollEdges()
-        .themedAppSurface(for: .settings)
         .navigationTitle(localized("视觉主题"))
         .toolbarTitleDisplayMode(.inline)
         .tint(activeTheme.isClassic ? nil : activeTheme.accentColor)
@@ -928,20 +930,22 @@ private struct AppearanceReaderInterfaceView: View {
 
     var body: some View {
         // 分组卡片：「自定義」一张卡片，替代系统 Form Section（2026-10-25）。
-        ScrollView {
-            VStack(spacing: DSSpacing.lg) {
-                // ShuYue 只保留「极简悬浮控制」单套方案：点屏幕中央呼出顶部与底部
-                // 控制岛，不再提供 classic / modern / Apple Books 三套 chrome 切换。
-                customizationSection(for: .classic)
+        AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
+            ScrollView {
+                VStack(spacing: DSSpacing.lg) {
+                    // ShuYue 只保留「极简悬浮控制」单套方案：点屏幕中央呼出顶部与底部
+                    // 控制岛，不再提供 classic / modern / Apple Books 三套 chrome 切换。
+                    customizationSection(for: .classic)
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xs)
+                .padding(.bottom, DSSpacing.xxl * 2)
             }
-            .padding(.horizontal, DSSpacing.md)
-            .padding(.top, DSSpacing.xs)
-            .padding(.bottom, DSSpacing.xxl * 2)
+            .softScrollEdges()
+            .themedAppSurface(for: .settings)
         }
-        .softScrollEdges()
         .navigationTitle(localized("阅读器样式"))
         .toolbarTitleDisplayMode(.inline)
-        .themedAppSurface(for: .settings)
     }
 
     /// Only the slots the chosen interface actually paints — 現代's navigation bar is

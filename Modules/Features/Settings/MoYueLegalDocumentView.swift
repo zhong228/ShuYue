@@ -121,6 +121,7 @@ struct MoYueLegalDocumentView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(alignment: .leading, spacing: 20) {
                 ForEach(Array(document.sections.enumerated()), id: \.offset) { _, section in
                     VStack(alignment: .leading, spacing: 8) {
@@ -135,6 +136,7 @@ struct MoYueLegalDocumentView: View {
                 }
             }
             .padding(20)
+        }
         }
         .softScrollEdges()
         .navigationTitle(document.navigationTitle)

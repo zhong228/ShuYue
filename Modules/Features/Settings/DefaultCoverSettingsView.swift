@@ -17,6 +17,7 @@ struct DefaultCoverSettingsView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 // 分组卡片：预設封面各 Section 合为卡片，替代系统 Form Section（2026-10-25）。
                 DSSettingsGroupCard(title: "", footer: {
@@ -105,6 +106,7 @@ struct DefaultCoverSettingsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.xs)
             .padding(.bottom, DSSpacing.xxl * 2)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("預設封面"))

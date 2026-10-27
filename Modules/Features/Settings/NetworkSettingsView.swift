@@ -7,6 +7,7 @@ struct NetworkSettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     // 分组卡片：网络请求的四个设置合为一张卡片，替代系统 Form Section（2026-10-25）。
                     DSSettingsGroupCard(title: localized("网络连接"), footer: {
@@ -47,6 +48,7 @@ struct NetworkSettingsView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)

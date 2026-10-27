@@ -9,6 +9,7 @@ struct AppearanceInterfaceEffectsView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 DSSettingsGroupCard(title: "", footer: {
                     Text(localized("效果套用於底部迷你播放器與閱讀器的浮動工具列、控制欄。"))
@@ -69,6 +70,7 @@ struct AppearanceInterfaceEffectsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("界面效果"))
