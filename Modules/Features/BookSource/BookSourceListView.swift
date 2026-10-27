@@ -1062,7 +1062,7 @@ struct BookSourceListView: View {
                     Label(localized("從文件選取 .json"), systemImage: "doc.badge.plus")
                         .frame(maxWidth: .infinity).padding()
                         .background(DSColor.neutralControlFill.opacity(0.6))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
                         .padding(.horizontal)
                 }
                 .buttonStyle(.plain)

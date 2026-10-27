@@ -170,10 +170,10 @@ struct UnavailableLabel: View {
                 .frame(width: 52, height: 52)
                 .background(
                     DSColor.appAccentSoft,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
                         .stroke(DSColor.appAccentOutline, lineWidth: 1)
                 }
         }

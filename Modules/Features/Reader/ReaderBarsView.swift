@@ -165,7 +165,7 @@ private struct ReaderBarsPreviewHost: View {
                 bar(.header, padding: ReaderLayoutMetrics.defaultHeaderHorizontalPadding)
                 Spacer()
                 Text("正文……")
-                    .font(.system(size: 17))
+                    .font(DSFont.fixed(size: 17))
                     .foregroundStyle(Color(uiColor: theme.uiTextColor))
                 Spacer()
                 bar(.footer, padding: ReaderLayoutMetrics.defaultFooterHorizontalPadding)

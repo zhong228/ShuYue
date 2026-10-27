@@ -96,7 +96,7 @@ struct EditRSSSourceSheet: View {
                 if isSaving {
                     ProgressView(localized("正在驗證網址…"))
                         .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.lg))
                 }
             }
             .alert(localized("無法解析此網址"), isPresented: $showUnreachableConfirm) {
@@ -468,7 +468,7 @@ struct RSSFolderSourcesView: View {
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.lg))
             }
         }
     }

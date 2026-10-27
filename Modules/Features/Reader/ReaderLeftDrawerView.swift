@@ -288,7 +288,7 @@ struct ReaderLeftDrawerView: View {
             .padding(.horizontal, 30)
             .background {
                 if chapter.id == currentChapterID {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                         .fill(DSColor.appAccent.opacity(0.08))
                 }
             }

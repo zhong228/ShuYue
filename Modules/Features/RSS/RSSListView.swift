@@ -655,7 +655,7 @@ private struct ImportLegadoJSONURLSheet: View {
                 if isLoading {
                     ProgressView(localized("匯入中，請稍候…"))
                         .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.lg))
                 }
             }
         }

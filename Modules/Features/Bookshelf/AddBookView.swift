@@ -220,7 +220,7 @@ struct URLImportTab: View {
                         Label(localized("抓取頁面"), systemImage: "arrow.down.circle")
                             .frame(maxWidth: .infinity).padding()
                             .background(DSColor.accent).foregroundColor(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
                     }
                     .disabled(urlInput.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
                 } else {
@@ -230,7 +230,7 @@ struct URLImportTab: View {
                         Label(localized("加入書架"), systemImage: "books.vertical")
                             .frame(maxWidth: .infinity).padding()
                             .background(Color.green).foregroundColor(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
                     }
                     .disabled(titleInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -337,7 +337,7 @@ struct HintCard: View {
         }
         .padding()
         .background(DSColor.accent.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
     }
 }
 #Preview{

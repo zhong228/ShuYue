@@ -101,7 +101,7 @@ struct BookSourceImportConfirmSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(DSSpacing.sm)
             .interfaceCardSurface()
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
 
             Spacer()
 
@@ -143,7 +143,7 @@ struct BookSourceImportConfirmSheet: View {
             Spacer()
             VStack(spacing: DSSpacing.sm) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 48))
+                    .font(DSFont.fixed(size: 48))
                     .foregroundStyle(tint)
                 Text(message)
                     .font(DSFont.subheadline)

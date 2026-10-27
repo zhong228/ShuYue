@@ -216,12 +216,12 @@ struct BookSourceRow: View {
         .padding(.vertical, DSSpacing.lg)
         .padding(.horizontal, DSSpacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
                 .fill(DSColor.surface)
                 .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
                 .stroke(
                     isSelected ? rowAccent.opacity(0.5) : Color.clear,
                     lineWidth: isSelected ? 2.5 : 0
@@ -239,7 +239,7 @@ struct BookSourceRow: View {
     private var avatarBlock: some View {
         ZStack {
             // Colourful initial avatar — rounded-rect like an app icon, not a circle
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                 .fill(avatarColor)
                 .frame(width: 48, height: 48)
             Text(avatarInitial)

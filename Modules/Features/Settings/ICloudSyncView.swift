@@ -175,7 +175,7 @@ struct ICloudSyncView: View {
             }
             .padding(24)
             .background(.ultraThinMaterial)
-            .cornerRadius(16)
+            .cornerRadius(DSRadius.xl)
         }
     }
 
