@@ -138,6 +138,15 @@ struct ExploreHomeView: View {
                 exploreSources = DiscoverViewModel.exploreSources(in: sourceStore)
                 restorePersistedSourceIfNeeded()
             }
+            .onChange(of: discoverVM.sections.map(\.id)) { _, sectionIDs in
+                // 今日推荐依赖多个分类的第一页书单，而列表布局只加载选中分类。
+                // 书源分类就绪后主动预加载前几个分类，推荐位无需在杂志/列表间
+                // 切换才生效（今日推荐反馈 #1）。
+                guard selectedChannel == .featured, selectedSource != nil else { return }
+                for id in sectionIDs.prefix(4) {
+                    discoverVM.loadSection(id)
+                }
+            }
             .sheet(isPresented: $showSourceManager) {
                 BookSourceListView()
             }
@@ -264,12 +273,36 @@ struct ExploreHomeView: View {
         }
     }
 
-    /// 选中的书源加载完成后，从各分类的第一页收集书作今日推荐（最多 6 本）。
+    /// 选中的书源加载完成后，从各分类的第一页轮流收集书作今日推荐（最多 6 本）。
+    /// 每个分类先各取一本再进入第二轮，保证推荐覆盖多个分类而不是堆在同一分类；
+    /// 名字含「推荐」的分类排在最前；同一本书（按 bookUrl）只推荐一次。
     private var todayRecommendations: [TodayRecommendation]? {
-        let items = discoverVM.sections.flatMap { section in
-            section.books.map { TodayRecommendation(book: $0.book, section: section) }
+        let loaded = discoverVM.sections
+            .filter { !$0.books.isEmpty }
+            .sorted { lhs, rhs in
+                let lhsRecommended = lhs.title.contains("推荐")
+                let rhsRecommended = rhs.title.contains("推荐")
+                guard lhsRecommended != rhsRecommended else { return false }
+                return lhsRecommended
+            }
+        guard !loaded.isEmpty else { return nil }
+        var picks: [TodayRecommendation] = []
+        var seenURLs = Set<String>()
+        var cursors = loaded.map { (section: $0, index: 0) }
+        while picks.count < 6 {
+            var progressed = false
+            for i in cursors.indices where picks.count < 6 {
+                guard cursors[i].index < cursors[i].section.books.count else { continue }
+                let item = cursors[i].section.books[cursors[i].index]
+                cursors[i].index += 1
+                if seenURLs.insert(item.book.bookUrl).inserted {
+                    picks.append(TodayRecommendation(book: item.book, section: cursors[i].section))
+                }
+                progressed = true
+            }
+            if !progressed { break }
         }
-        return items.isEmpty ? nil : Array(items.prefix(6))
+        return picks.isEmpty ? nil : picks
     }
 
     /// 品牌欢迎卡：没有可轮播推荐时展示的渐变卡，保留浏览器入口。
