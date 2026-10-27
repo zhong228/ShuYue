@@ -102,6 +102,7 @@ struct DiagnosticsView: View {
 
     var body: some View {
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(alignment: .leading, spacing: DSSpacing.lg) {
                 exportCard
                 if !model.uncleanSessions.isEmpty {
@@ -112,6 +113,7 @@ struct DiagnosticsView: View {
             }
             .padding(.horizontal, DSSpacing.md)
             .padding(.vertical, DSSpacing.sm)
+        }
         }
         .softScrollEdges()
         .searchable(

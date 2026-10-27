@@ -211,6 +211,7 @@ struct TTSSettingsView: View {
     private var sourceList: some View {
         // 分组卡片：预合成引擎 / 内置音色 / 听书源管理 三张卡片，替代系统 List（2026-10-25）。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 DSSettingsGroupCard(
                     title: localized("预合成引擎"),
@@ -282,6 +283,7 @@ struct TTSSettingsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.xs)
             .padding(.bottom, DSSpacing.xxl * 2)
+        }
         }
         .softScrollEdges()
     }
@@ -959,6 +961,7 @@ struct TTSSourceLoginView: View {
         NavigationStack {
             // 分组卡片：网页登入 / 登入表單各一张卡片，替代系统 Form Section（2026-10-25）。
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     webLoginSection
 
@@ -989,6 +992,7 @@ struct TTSSourceLoginView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(source.name)

@@ -28,6 +28,7 @@ struct ReplaceRuleListView: View {
             // 分组卡片：规则列表合成一张卡片，替代系统 List（2026-10-25）。卡片里没有
             // swipeActions，编辑与删除改由行内长按菜单提供。
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     if store.rules.isEmpty {
                         VStack(spacing: DSSpacing.lg) {
@@ -72,6 +73,7 @@ struct ReplaceRuleListView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(localized("文字修正"))
@@ -290,6 +292,7 @@ struct ReplaceRuleEditView: View {
         NavigationStack {
             // 分组卡片：基本 / 匹配 / 作用範圍 三张卡片，替代系统 Form Section（2026-10-25）。
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     DSSettingsGroupCard(title: localized("基本")) {
                         TextField(localized("規則名稱"), text: $rule.name)
@@ -342,6 +345,7 @@ struct ReplaceRuleEditView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(rule.name.isEmpty ? localized("新增規則") : rule.name)

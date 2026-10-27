@@ -16,6 +16,7 @@ struct LaunchImageSettingsView: View {
     var body: some View {
         // 分组卡片：开关与两张启动图各成一张卡片，替代系统 Form Section（2026-10-25）。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 DSSettingsGroupCard(title: localized("啟動圖"), footer: {
                     if settings.launchImageEnabled && !hasAnyLaunchImage {
@@ -50,6 +51,7 @@ struct LaunchImageSettingsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.xs)
             .padding(.bottom, DSSpacing.xxl * 2)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("啟動圖"))

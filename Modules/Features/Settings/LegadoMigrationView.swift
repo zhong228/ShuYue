@@ -16,6 +16,7 @@ struct LegadoMigrationView: View {
     var body: some View {
         NavigationStack {
                 ScrollView {
+                    AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                     VStack(spacing: DSSpacing.lg) {
                         descriptionSection
                         importSection
@@ -29,6 +30,7 @@ struct LegadoMigrationView: View {
                     .padding(.horizontal, DSSpacing.md)
                     .padding(.top, DSSpacing.sm)
                     .padding(.bottom, DSSpacing.xl)
+                }
                 }
                 .softScrollEdges()
             .navigationTitle(localized("导入阅读器数据"))
@@ -175,6 +177,7 @@ struct LegadoMigrationView: View {
         DSSettingsGroupCard(title: localized("記錄")) {
             ScrollViewReader { proxy in
                 ScrollView {
+                    AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(
                             Array(manager.statusLog.suffix(20).enumerated()),
@@ -188,6 +191,7 @@ struct LegadoMigrationView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                }
                 }
                 .softScrollEdges()
                 .frame(maxHeight: 200)

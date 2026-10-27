@@ -10,6 +10,7 @@ struct LanServerView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     // 分组卡片：服务状态 / 开关 / 可用接口 三张卡片，替代系统 List Section（2026-10-25）。
                     statusCard
@@ -19,6 +20,7 @@ struct LanServerView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.top, DSSpacing.xs)
                 .padding(.bottom, DSSpacing.xxl * 2)
+            }
             }
             .softScrollEdges()
             .navigationTitle(localized("局域传书"))

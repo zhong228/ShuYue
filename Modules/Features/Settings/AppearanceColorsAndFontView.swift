@@ -23,6 +23,7 @@ struct AppearanceColorsAndFontView: View {
         // 分组卡片：強調色 / 文字顏色 / 背景 / 全局字體 四张卡片，替代系统 Form Section
         // （2026-10-19）。取色器行保留原控件，只给卡片节奏。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 if subscriptionStore.hasAccess(.readerThemePacks) {
                     accentSection
@@ -46,6 +47,7 @@ struct AppearanceColorsAndFontView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("顏色與字體"))

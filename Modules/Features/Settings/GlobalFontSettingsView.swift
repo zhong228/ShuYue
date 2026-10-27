@@ -12,6 +12,7 @@ struct GlobalFontSettingsView: View {
     var body: some View {
         // 分组卡片：当前字体 / 已匯入字體 / 匯入入口，替代系统 Form 分组（2026-10-25）。
         ScrollView {
+            AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 DSSettingsGroupCard(title: localized("全局字體"), footer: {
                     Text(localized("套用於 App 介面，閱讀正文仍使用閱讀設定。"))
@@ -79,6 +80,7 @@ struct GlobalFontSettingsView: View {
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xl)
+        }
         }
         .softScrollEdges()
         .navigationTitle(localized("全局字體"))
