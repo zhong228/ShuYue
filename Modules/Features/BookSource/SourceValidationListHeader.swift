@@ -74,10 +74,11 @@ struct SourceValidationListHeader: View {
         .padding(.vertical, DSSpacing.sm)
     }
 
-    /// Modern dashboard-style stat strip: 总数／启用数／异常数. Replaces the classic
-    /// vertical list so the header no longer reads as the Legado / 閱讀 management screen.
+    /// Modern dashboard-style stat strip: 总数／启用数／异常数, consolidated into one
+    /// cohesive card with tinted icon badges and dividers — reads as a contemporary
+    /// dashboard rather than the classic Legado / 閱讀 management screen.
     private var statsCard: some View {
-        HStack(spacing: DSSpacing.md) {
+        HStack(spacing: DSSpacing.sm) {
             statTile(
                 icon: "tray.full.fill",
                 title: localized("总数"),
@@ -85,6 +86,9 @@ struct SourceValidationListHeader: View {
                 total: nil,
                 tint: DSColor.appAccent
             )
+            Divider()
+                .frame(maxHeight: 34)
+                .overlay(DSColor.separator)
             statTile(
                 icon: "checkmark.circle.fill",
                 title: localized("启用数"),
@@ -92,6 +96,9 @@ struct SourceValidationListHeader: View {
                 total: counts.total,
                 tint: DSColor.success
             )
+            Divider()
+                .frame(maxHeight: 34)
+                .overlay(DSColor.separator)
             statTile(
                 icon: "exclamationmark.triangle.fill",
                 title: localized("异常数"),
@@ -101,15 +108,29 @@ struct SourceValidationListHeader: View {
             )
         }
         .padding(.horizontal, DSSpacing.md)
-        .padding(.vertical, DSSpacing.sm)
+        .padding(.vertical, DSSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .fill(DSColor.surface)
+                .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+        )
     }
 
     private func statTile(icon: String, title: String, value: String, total: Int?, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
             HStack(spacing: DSSpacing.xs) {
                 Image(systemName: icon)
-                    .font(DSFont.fixed(size: 14))
-                    .foregroundColor(tint)
+                    .font(DSFont.fixed(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(tint)
+                    )
                 Text(title)
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
@@ -128,18 +149,7 @@ struct SourceValidationListHeader: View {
                 }
             }
         }
-        .padding(.horizontal, DSSpacing.md)
-        .padding(.vertical, DSSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
-                .fill(DSColor.surface)
-                .shadow(color: DSColor.shadow, radius: 3, x: 0, y: 1)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
-                .stroke(tint.opacity(0.15), lineWidth: 1)
-        )
     }
 
     /// Modern pill-style segmented page filter. Replaces the classic glass buttons
