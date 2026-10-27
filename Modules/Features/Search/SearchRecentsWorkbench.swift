@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - 最近区域工作台
 
-/// The 检索 page's recents, laid out as a workbench instead of the old list:
-/// 最近搜索 as a wrapping tag cloud on the left and 最近閱讀 as a rail of cover
-/// cards on the right, two columns side by side on every width. A missing
-/// column's area is left blank so its neighbour still anchors the row.
+/// The 检索 page's recents, laid out as a workbench instead of the old list.
+/// On a phone the two sections stack vertically, each full width — the side-by-side
+/// columns crammed the tag cloud and the cover rail into half-width slivers
+/// (v1.3.6 feedback). On a regular-width canvas (iPad) the two columns remain.
 struct SearchRecentsWorkbench: View {
     let queries: [String]
     let books: [RecentReadingSelection.Entry]
@@ -15,48 +15,74 @@ struct SearchRecentsWorkbench: View {
     let onClearBooks: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        HStack(alignment: .top, spacing: DSSpacing.lg) {
-            VStack(alignment: .leading, spacing: DSSpacing.md) {
-                SearchRecentsWorkbenchHeader(
-                    title: localized("最近搜索"),
-                    clearAccessibilityLabel: localized("清除最近搜索"),
-                    onClear: onClearQueries
-                )
-                if queries.isEmpty {
-                    Spacer(minLength: 0)
-                } else {
-                    QueryTagCloud(queries: queries, onSearch: onSearch)
+        Group {
+            if horizontalSizeClass == .compact {
+                VStack(alignment: .leading, spacing: DSSpacing.xl) {
+                    queriesSection
+                    booksSection
+                }
+            } else {
+                HStack(alignment: .top, spacing: DSSpacing.xl) {
+                    queriesSection
+                    booksSection
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
 
-            VStack(alignment: .leading, spacing: DSSpacing.md) {
-                SearchRecentsWorkbenchHeader(
-                    title: localized("最近閱讀"),
-                    clearAccessibilityLabel: localized("清除最近閱讀"),
-                    onClear: onClearBooks
+    /// 最近搜索：通栏标签云；空态给出轻量占位而不是留白。
+    private var queriesSection: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            SearchRecentsWorkbenchHeader(
+                title: localized("最近搜索"),
+                clearAccessibilityLabel: localized("清除最近搜索"),
+                onClear: onClearQueries
+            )
+            if queries.isEmpty {
+                EmptyRecentsHint(
+                    text: localized("搜索过的关键词会显示在这里"),
+                    systemImage: "clock.arrow.circlepath"
                 )
-                if books.isEmpty {
-                    Spacer(minLength: 0)
-                } else {
-                    RecentBooksRail(
-                        books: books,
-                        colorScheme: colorScheme,
-                        onOpenBook: onOpenBook,
-                        onSearch: onSearch
-                    )
-                }
+            } else {
+                QueryTagCloud(queries: queries, onSearch: onSearch)
             }
-            .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    /// 最近閱讀：通栏封面轨道；空态同样给出轻量占位。
+    private var booksSection: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            SearchRecentsWorkbenchHeader(
+                title: localized("最近閱讀"),
+                clearAccessibilityLabel: localized("清除最近閱讀"),
+                onClear: onClearBooks
+            )
+            if books.isEmpty {
+                EmptyRecentsHint(
+                    text: localized("读过的书会显示在这里，方便继续"),
+                    systemImage: "book"
+                )
+            } else {
+                RecentBooksRail(
+                    books: books,
+                    colorScheme: colorScheme,
+                    onOpenBook: onOpenBook,
+                    onSearch: onSearch
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
 /// A section head of the workbench: title in bold serif, 清除 on the same
-/// baseline at the trailing end.
+/// baseline at the trailing end, in the secondary color so it reads as a
+/// quiet utility rather than a competing action.
 private struct SearchRecentsWorkbenchHeader: View {
     let title: String
     /// 清除 alone does not say which list it empties.
@@ -72,11 +98,41 @@ private struct SearchRecentsWorkbenchHeader: View {
             Spacer(minLength: 0)
             Button(localized("清除"), action: onClear)
                 .buttonStyle(.borderless)
-                .font(DSFont.body)
-                .foregroundStyle(DSColor.textPrimary)
+                .font(DSFont.footnote)
+                .foregroundStyle(DSColor.textSecondary)
                 .contentShape(Rectangle().inset(by: -DSSpacing.sm))
                 .accessibilityLabel(clearAccessibilityLabel)
         }
+    }
+}
+
+/// 空区块的轻量占位：图标加一行说明，让空态保持结构感而不是一片留白。
+private struct EmptyRecentsHint: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: DSSpacing.sm) {
+            Image(systemName: systemImage)
+                .font(DSFont.subheadline)
+                .foregroundStyle(DSColor.textSecondary)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(DSFont.subheadline)
+                .foregroundStyle(DSColor.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.horizontal, DSSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .fill(DSColor.surface.opacity(0.6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .stroke(DSColor.border.opacity(0.6), lineWidth: 1)
+        )
     }
 }
 
@@ -100,7 +156,7 @@ private struct QueryTag: View {
     }
 }
 
-/// The 最近搜索 tags wrapped into however many lines fit the column, using a
+/// The 最近搜索 tags wrapped into however many lines fit the width, using a
 /// custom `FlowLayout` so a long list never scrolls away under a horizontal
 /// rail.
 private struct QueryTagCloud: View {
@@ -139,6 +195,7 @@ private struct RecentBooksRail: View {
                     coverCard(entry)
                 }
             }
+            .padding(.vertical, DSSpacing.xs)
             .padding(.trailing, DSSpacing.lg)
         }
         .scrollDismissesKeyboard(.immediately)
@@ -165,6 +222,11 @@ private struct RecentBooksRail: View {
                         height: DSLayout.searchResultCoverHeight
                     )
                     .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+                    .shadow(
+                        color: DSColor.searchListCoverShadow,
+                        radius: DSLayout.searchListCoverShadowRadius,
+                        y: DSLayout.searchListCoverShadowY
+                    )
                     Text(book.title)
                         .font(DSFont.footnote)
                         .foregroundStyle(DSColor.textPrimary)
