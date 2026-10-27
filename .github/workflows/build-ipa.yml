@@ -10,6 +10,9 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -36,14 +39,35 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Resolve version
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+              VERSION="${GITHUB_REF_NAME#v}"
+            else
+              VERSION="0.0.0-pr"
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build unsigned IPA
         run: |
           chmod +x scripts/build_ipa.sh
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
+          scripts/build_ipa.sh "${{ steps.version.outputs.version }}"
+
+      # Guardrail (Issue #1): an unsigned IPA must NOT embed the restricted
+      # entitlements (App Groups / CloudKit / Sign-in-with-Apple). Without a
+      # provisioning profile those cause an immediate launch crash under
+      # TrollStore / self-signing. Fail the build if they are still present.
+      - name: Verify IPA has no restricted entitlements
+        run: |
+          if unzip -l build/ShuYue-*.ipa | grep -q "archived-expanded-entitlements.xcent"; then
+            echo "::error::Restricted entitlements still embedded in IPA (Issue #1 fix regressed)"
+            exit 1
           fi
-          scripts/build_ipa.sh "$VERSION"
+          echo "OK: unsigned IPA contains no embedded restricted entitlements"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
