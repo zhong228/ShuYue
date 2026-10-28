@@ -33,6 +33,22 @@ enum AppConfig {
     /// rapidly. Reasonable range: 120–600.
     static let autoRefreshMinInterval: TimeInterval = 300
 
+    /// Minimum seconds before a *foreground-return* table-of-contents refresh may
+    /// run again. Cold launch uses the tighter `autoRefreshMinInterval`; this wider
+    /// window keeps a quick background-and-return from re-scanning the entire
+    /// online library (every book's TOC) just because the user peeked back in.
+    /// Manual pull-to-refresh ignores both. Reasonable range: 900–3600.
+    static let autoRefreshForegroundMinInterval: TimeInterval = 1800
+
+    /// Minimum seconds between foreground *entitlement* refreshes (CloudKit mirror
+    /// read + StoreKit `Transaction.currentEntitlements`). These run on every
+    /// scene-`.active` today, which wakes the CloudKit daemon and hits StoreKit on
+    /// each app-open — the main avoidable foreground cost. The first activation
+    /// since launch always runs; later ones within this window are skipped. A
+    /// purchase refreshes entitlements on its own path, so this never blocks a
+    /// real entitlement change. Reasonable range: 900–3600.
+    static let entitlementForegroundRefreshMinInterval: TimeInterval = 1800
+
     /// How long a cached table of contents / book-info package may be served without
     /// going back to the source.
     ///
