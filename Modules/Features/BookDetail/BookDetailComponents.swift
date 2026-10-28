@@ -832,29 +832,37 @@ struct BookDetailChapterListSheet: View {
     let onSelect: (_ offset: Int) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var search = ""
+
+    /// 章节序号 → 章节的配对，搜索时保留原始序号。
+    private var indexedChapters: [(offset: Int, chapter: OnlineChapterRef)] {
+        Array(chapters.enumerated())
+    }
+
+    private var filteredChapters: [(offset: Int, chapter: OnlineChapterRef)] {
+        let base = indexedChapters
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return base }
+        return base.filter {
+            $0.chapter.title.localizedCaseInsensitiveContains(query)
+                || String($0.offset + 1).contains(query)
+        }
+    }
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: DSSpacing.md) {
-                Text(String(format: localized("共 %d 章"), chapters.count))
-                    .font(DSFont.caption)
-                    .foregroundStyle(DSColor.textSecondary)
-                    .padding(.top, DSSpacing.sm)
-                VStack(spacing: 0) {
-                    ForEach(Array(chapters.enumerated()), id: \.element.id) { offset, chapter in
-                        BookDetailChapterRow(
-                            title: BookDetailChapterTitle.display(chapter, offset: offset),
-                            isLocked: chapter.isVip || chapter.isPay,
-                            trailing: trailing,
-                            action: { onSelect(offset) }
-                        )
-                        if offset < chapters.count - 1 { BookDetailCardStyle.divider }
+            LazyVStack(alignment: .leading, spacing: DSSpacing.sm) {
+                header
+                if filteredChapters.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(filteredChapters, id: \.element.id) { offset, chapter in
+                        row(offset: offset, chapter: chapter)
                     }
                 }
-                .background(BookDetailCardStyle.background)
-                .overlay(BookDetailCardStyle.border)
             }
             .padding(.horizontal, DSSpacing.lg)
+            .padding(.top, DSSpacing.sm)
             .padding(.bottom, DSSpacing.xxl)
         }
         .scrollIndicators(.hidden)
@@ -872,6 +880,99 @@ struct BookDetailChapterListSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: Header
+
+    /// 总数 + 搜索框：646 章的长目录也能一键直达。
+    private var header: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            Text(String(format: localized("共 %d 章"), chapters.count))
+                .font(DSFont.caption)
+                .foregroundStyle(DSColor.textSecondary)
+            HStack(spacing: DSSpacing.xs) {
+                Image(systemName: "magnifyingglass")
+                    .font(DSFont.subheadline)
+                    .foregroundStyle(DSColor.textTertiary)
+                    .accessibilityHidden(true)
+                TextField(localized("搜索章節"), text: $search)
+                    .textFieldStyle(.plain)
+                    .font(DSFont.subheadline)
+                    .autocorrectionDisabled()
+                if !search.isEmpty {
+                    Button {
+                        search = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(DSFont.subheadline)
+                            .foregroundStyle(DSColor.textTertiary)
+                    }
+                    .accessibilityLabel(localized("清空搜索"))
+                }
+            }
+            .padding(.horizontal, DSSpacing.sm)
+            .padding(.vertical, 9)
+            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous))
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: DSSpacing.xs) {
+            Image(systemName: "magnifyingglass")
+                .font(DSFont.title3)
+                .foregroundStyle(DSColor.textTertiary)
+            Text(localized("沒有符合的章節"))
+                .font(DSFont.subheadline)
+                .foregroundStyle(DSColor.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DSSpacing.xxl)
+    }
+
+    // MARK: Row
+
+    /// 索引式行：衬线序号 + 单行标题 + 尾部动作图标，去掉旧的整卡分隔线。
+    private func row(offset: Int, chapter: OnlineChapterRef) -> some View {
+        Button {
+            onSelect(offset)
+        } label: {
+            HStack(spacing: DSSpacing.md) {
+                Text("\(offset + 1)")
+                    .font(DSFont.fixed(size: 13, weight: .semibold, design: .serif))
+                    .monospacedDigit()
+                    .foregroundStyle(DSColor.textTertiary)
+                    .frame(minWidth: 32, alignment: .leading)
+                    .accessibilityHidden(true)
+                Text(BookDetailChapterTitle.display(chapter, offset: offset))
+                    .font(DSFont.subheadline)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .lineLimit(1)
+                Spacer(minLength: DSSpacing.sm)
+                if chapter.isVip || chapter.isPay {
+                    Image(systemName: "lock.fill")
+                        .font(DSFont.caption2)
+                        .foregroundStyle(DSColor.textTertiary)
+                        .accessibilityLabel(localized("付費章節"))
+                } else {
+                    switch trailing {
+                    case .play:
+                        Image(systemName: "play.circle")
+                            .font(DSFont.footnote.weight(.medium))
+                            .foregroundStyle(DSColor.appAccent)
+                            .accessibilityLabel(localized("播放"))
+                    case .disclosure:
+                        Image(systemName: "chevron.right")
+                            .font(DSFont.caption.weight(.semibold))
+                            .foregroundStyle(DSColor.textTertiary)
+                            .accessibilityLabel(localized("閱讀"))
+                    }
+                }
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, DSSpacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

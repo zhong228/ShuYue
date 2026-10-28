@@ -33,24 +33,20 @@ struct AudiobookReaderView: View {
                 topBar
                 Spacer(minLength: DSSpacing.sm)
                 coverArt
-                Spacer(minLength: DSSpacing.sm)
                 titleBlock
                     .padding(.horizontal, DSSpacing.xl)
-                chapterChip
-                    .padding(.top, DSSpacing.sm)
+                    .padding(.top, DSSpacing.lg)
                 if let message = player.error {
                     errorBlock(message)
                 }
+                functionRow
+                    .padding(.top, DSSpacing.lg)
+                Spacer(minLength: DSSpacing.md)
                 progressSection
-                    .padding(.top, DSSpacing.lg)
                 transportRow
-                    .padding(.top, DSSpacing.lg)
-                volumeSection
-                    .padding(.top, DSSpacing.md)
-                bottomRow
-                    .padding(.top, DSSpacing.md)
-                    .padding(.bottom, DSSpacing.lg)
+                    .padding(.top, DSSpacing.sm)
             }
+            .padding(.bottom, DSSpacing.lg)
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
         // whole window, which flipped the bookshelf dark for an instant during the
@@ -117,122 +113,187 @@ struct AudiobookReaderView: View {
         HStack {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.down")
-                    .font(DSFont.fixed(size: 18, weight: .semibold))
+                    .font(DSFont.fixed(size: 16, weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Color.white.opacity(0.14)))
+                    .contentShape(Circle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(localized("收合"))
             Spacer()
-            Text(localized("有聲書"))
-                .font(DSFont.fixed(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.85))
+            // 截图样式：页点 + 「N / M」章节索引，点按直达目录。
+            Button { showChapterList = true } label: {
+                VStack(spacing: 5) {
+                    HStack(spacing: 5) {
+                        Circle().fill(Color.white).frame(width: 5, height: 5)
+                        Circle().fill(Color.white.opacity(0.35)).frame(width: 5, height: 5)
+                    }
+                    Text("\(player.chapterIndex + 1) / \(max(player.chapters.count, 1))")
+                        .font(DSFont.fixed(size: 13, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundColor(.white.opacity(0.9))
+                        .contentShape(Rectangle())
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(player.chapters.isEmpty)
+            .accessibilityLabel(localized("目錄"))
+            .accessibilityValue(String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count))
             Spacer()
             // Symmetry spacer matching the close button width.
-            Color.clear.frame(width: 44, height: 44)
+            Color.clear.frame(width: 40, height: 40)
         }
-        .padding(.horizontal, DSSpacing.sm)
+        .padding(.horizontal, DSSpacing.md)
         .padding(.top, DSSpacing.sm)
     }
 
     // MARK: Cover
 
     private var coverArt: some View {
-        Group {
-            if let image = player.coverImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                ZStack {
-                    Rectangle().fill(.white.opacity(0.12))
-                    Image(systemName: "headphones")
-                        .font(DSFont.fixed(size: 64))
-                        .foregroundColor(.white.opacity(0.7))
+        // 截图样式：接近全宽的大圆角封面，外面套一圈留缝的玻璃圆角框，
+        // 底部中央一枚播放均衡器。自适应屏幕宽度，小屏自动缩小。
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay { coverContent.scaledToFill() }
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay {
+                if player.isLoading {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.white)
                 }
             }
-        }
-        .frame(width: 208, height: 208)
-        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
-        }
-        .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 14)
-        .overlay {
-            if player.isLoading {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(.white)
+            .overlay(alignment: .bottom) {
+                coverEqualizer
+                    .padding(.bottom, 14)
             }
-        }
+            .background {
+                RoundedRectangle(cornerRadius: 36, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .padding(-10)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 36, style: .continuous)
+                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                    .padding(-10)
+            }
+            .shadow(color: .black.opacity(0.4), radius: 26, x: 0, y: 14)
+            .padding(.horizontal, 52)
         // 封面/背景下滑 = 收起播放页回到迷你播放条：边听边逛其他页面。
         .gesture(minimizeDrag)
+    }
+
+    @ViewBuilder
+    private var coverContent: some View {
+        if let image = player.coverImage {
+            Image(uiImage: image)
+                .resizable()
+        } else {
+            ZStack {
+                Rectangle().fill(.white.opacity(0.12))
+                Image(systemName: "headphones")
+                    .font(DSFont.fixed(size: 64))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+        }
+    }
+
+    /// 封面底部的小均衡器：播放时波形逐格流动（系统 symbol 动效）。
+    private var coverEqualizer: some View {
+        Image(systemName: "waveform")
+            .font(DSFont.fixed(size: 15, weight: .semibold))
+            .symbolEffect(
+                .variableColor.iterative,
+                options: .repeating,
+                isActive: player.isPlaying
+            )
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.35), in: Capsule())
+            .accessibilityHidden(true)
     }
 
     // MARK: Title
 
     private var titleBlock: some View {
-        VStack(spacing: 6) {
+        // 截图样式：章节标题加粗左对齐，书名/作者一行小字在下。
+        VStack(alignment: .leading, spacing: 6) {
             Text(player.currentChapterTitle.isEmpty ? player.bookTitle : player.currentChapterTitle)
-                .font(DSFont.serifSectionTitle.weight(.bold))
+                .font(DSFont.fixed(size: 22, weight: .bold, design: .serif))
                 .foregroundColor(.white)
-                .multilineTextAlignment(.center)
                 .lineLimit(2)
             Text(player.bookTitle)
                 .font(DSFont.fixed(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(.white.opacity(0.65))
                 .lineLimit(1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: Chapter position
+    // MARK: Function row
 
-    /// 「第 N / M 章」胶囊：一眼看到进度，点按直达目录。
-    private var chapterChip: some View {
-        Button { showChapterList = true } label: {
-            Label(
-                String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count),
-                systemImage: "list.number"
-            )
-            .font(DSFont.caption.weight(.semibold))
-            .foregroundColor(.white.opacity(0.88))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.white.opacity(0.14), in: Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.6))
-            .contentShape(Rectangle())
+    /// 截图样式：封面下方一排五个功能位——模式 / 定时 / 倍速 / 音频列表 / 更多。
+    private var functionRow: some View {
+        HStack(spacing: 0) {
+            Button { cyclePlayMode() } label: {
+                functionLabel(icon: player.playMode.systemImage, text: localized("模式"))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(localized("播放模式"))
+            .accessibilityValue(player.playMode.localizedTitle)
+
+            Button { showSleepTimer = true } label: {
+                functionLabel(icon: "timer", text: sleepLabel)
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                ForEach([Float(0.5), 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0], id: \.self) { rate in
+                    Button {
+                        player.setRate(rate)
+                    } label: {
+                        if player.playbackRate == rate {
+                            Label(Self.rateLabel(rate), systemImage: "checkmark")
+                        } else {
+                            Text(Self.rateLabel(rate))
+                        }
+                    }
+                }
+            } label: {
+                functionLabel(icon: "speedometer", text: Self.rateLabel(player.playbackRate))
+            }
+
+            Button { showChapterList = true } label: {
+                functionLabel(icon: "list.bullet", text: localized("音频列表"))
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                Button {
+                    showSkipCredits = true
+                } label: {
+                    Label(localized("片頭片尾"), systemImage: skipsCredits ? "forward.fill" : "forward")
+                }
+            } label: {
+                functionLabel(icon: "ellipsis", text: localized("更多"))
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(player.chapters.isEmpty)
-        .padding(.top, DSSpacing.xs)
-        .accessibilityLabel(localized("目錄"))
-        .accessibilityValue(String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count))
+        .padding(.horizontal, DSSpacing.lg)
     }
 
-    // MARK: Volume
-
-    /// App 内音量：只缩放播放器输出，不依赖系统音量面板。
-    private var volumeSection: some View {
-        HStack(spacing: DSSpacing.sm) {
-            Image(systemName: "speaker.wave.1.fill")
-                .font(DSFont.caption)
-                .foregroundColor(.white.opacity(0.7))
-                .accessibilityHidden(true)
-            Slider(
-                value: Binding(
-                    get: { player.volume },
-                    set: { player.setVolume($0) }
-                ),
-                in: 0...1
-            )
-            .tint(.white.opacity(0.85))
-            .accessibilityLabel(localized("音量"))
-            Image(systemName: "speaker.wave.3.fill")
-                .font(DSFont.caption)
-                .foregroundColor(.white.opacity(0.7))
-                .accessibilityHidden(true)
+    private func functionLabel(icon: String, text: String) -> some View {
+        VStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(DSFont.fixed(size: 19, weight: .medium))
+            Text(text)
+                .font(DSFont.fixed(size: 11, weight: .medium))
+                .lineLimit(1)
         }
-        .padding(.horizontal, DSSpacing.xl)
+        .foregroundColor(.white.opacity(0.92))
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .contentShape(Rectangle())
     }
 
     /// 下滑收起：封面或背景上向下滑动即收起到迷你播放条，播放不中断。
@@ -300,107 +361,49 @@ struct AudiobookReaderView: View {
     // MARK: Transport
 
     private var transportRow: some View {
-        HStack {
-            transportButton("backward.end.fill", size: 24, enabled: player.hasPreviousChapter) {
-                player.previousChapter()
+        HStack(spacing: 0) {
+            // 截图样式：±15 秒为无底圈的系统图标，主键为白色圆环。
+            Button { player.skipBackward(15) } label: {
+                Image(systemName: "gobackward.15")
+                    .font(DSFont.fixed(size: 30, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 64, height: 64)
+                    .contentShape(Rectangle())
             }
-            .accessibilityLabel(localized("上一章"))
-            Spacer()
-            // ±15 秒跳转：半透明圆底，与主播放键的实心圆区分层级。
-            transportButton("gobackward.15", size: 26) { player.skipBackward(15) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(localized("后退 15 秒"))
             Spacer()
             Button { player.togglePlayPause() } label: {
                 ZStack {
-                    // 品牌朱砂主键：实心圆 + 细白描边，取代旧的白色系统大图标。
                     Circle()
-                        .fill(DSColor.appAccent)
-                        .frame(width: 78, height: 78)
+                        .fill(Color.white.opacity(0.10))
                     Circle()
-                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
-                        .frame(width: 78, height: 78)
+                        .stroke(Color.white, lineWidth: 2.5)
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(DSFont.fixed(size: 32, weight: .semibold))
+                        .font(DSFont.fixed(size: 34, weight: .semibold))
                         .foregroundColor(.white)
                         .offset(x: player.isPlaying ? 0 : 2)
                 }
-                .shadow(color: DSColor.appAccent.opacity(0.45), radius: 14, x: 0, y: 6)
+                .frame(width: 88, height: 88)
+                .contentShape(Circle())
             }
+            .buttonStyle(.plain)
             .disabled(player.isLoading)
             Spacer()
-            transportButton("goforward.15", size: 26) { player.skipForward(15) }
-            Spacer()
-            transportButton("forward.end.fill", size: 24, enabled: player.hasNextChapter) {
-                player.nextChapter()
+            Button { player.skipForward(15) } label: {
+                Image(systemName: "goforward.15")
+                    .font(DSFont.fixed(size: 30, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 64, height: 64)
+                    .contentShape(Rectangle())
             }
-            .accessibilityLabel(localized("下一章"))
+            .buttonStyle(.plain)
+            .accessibilityLabel(localized("前进 15 秒"))
         }
         .padding(.horizontal, DSSpacing.xl)
-    }
-
-    private func transportButton(
-        _ systemName: String, size: CGFloat, enabled: Bool = true, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(DSFont.fixed(size: size, weight: .medium))
-                .foregroundColor(.white.opacity(enabled ? 1 : 0.3))
-                .frame(width: 50, height: 50)
-                .background(
-                    Circle().fill(Color.white.opacity(0.12))
-                )
-        }
-        .disabled(!enabled)
     }
 
     // MARK: Bottom row
-
-    private var bottomRow: some View {
-        HStack {
-            Menu {
-                ForEach([Float(0.5), 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0], id: \.self) { rate in
-                    Button {
-                        player.setRate(rate)
-                    } label: {
-                        if player.playbackRate == rate {
-                            Label(Self.rateLabel(rate), systemImage: "checkmark")
-                        } else {
-                            Text(Self.rateLabel(rate))
-                        }
-                    }
-                }
-            } label: {
-                bottomItem(text: Self.rateLabel(player.playbackRate), systemImage: "speedometer")
-            }
-            Spacer()
-            // legado's play-mode button: each tap moves on to the next mode.
-            Button { cyclePlayMode() } label: {
-                bottomItem(text: player.playMode.localizedTitle, systemImage: player.playMode.systemImage)
-            }
-            .accessibilityLabel(localized("播放模式"))
-            .accessibilityValue(player.playMode.localizedTitle)
-            Spacer()
-            Button { showChapterList = true } label: {
-                bottomItem(text: localized("目錄"), systemImage: "list.bullet")
-            }
-            Spacer()
-            Button { showSleepTimer = true } label: {
-                bottomItem(text: sleepLabel, systemImage: "moon.zzz")
-            }
-            Spacer()
-            Button { showSkipCredits = true } label: {
-                // Filled while this book skips credits: a cue that is not colour.
-                bottomItem(
-                    text: localized("片頭片尾"),
-                    systemImage: skipsCredits ? "forward.fill" : "forward"
-                )
-            }
-            .accessibilityLabel(localized("跳過片頭片尾"))
-            .accessibilityValue(skipCreditsValue)
-        }
-        // Five items: the narrower inset of the transport row above keeps them on one line
-        // on a 375 pt screen.
-        .padding(.horizontal, DSSpacing.xl)
-    }
 
     private func cyclePlayMode() {
         player.cyclePlayMode()
@@ -410,28 +413,6 @@ struct AudiobookReaderView: View {
 
     private var skipsCredits: Bool {
         player.openingCreditsSeconds > 0 || player.closingCreditsSeconds > 0
-    }
-
-    private var skipCreditsValue: String {
-        guard skipsCredits else { return localized("關閉") }
-        return String(
-            format: localized("片頭 %d 秒，片尾 %d 秒"),
-            player.openingCreditsSeconds,
-            player.closingCreditsSeconds
-        )
-    }
-
-    private func bottomItem(text: String, systemImage: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(DSFont.fixed(size: 18, weight: .medium))
-            Text(text)
-                .font(DSFont.fixed(size: 11, weight: .medium))
-        }
-        .foregroundColor(.white.opacity(0.9))
-        // Reader chrome keeps a 44 pt target (docs/design.md); icon and caption are shorter.
-        .frame(minWidth: 56, minHeight: 44)
-        .contentShape(Rectangle())
     }
 
     private var sleepLabel: String {
