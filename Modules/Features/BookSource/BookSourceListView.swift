@@ -603,6 +603,22 @@ struct BookSourceListView: View {
             drawsCellSurface: { _ in false },
             // Native swipe: swipe-left reveals 啟用/停用 + 刪除; swipe-right reveals 編輯 + 置頂.
             // Header / group rows return nil so they do not swipe.
+            leadingSwipeActions: { [model, rowActions] item in
+                guard case .source(let id) = item, let source = model.source(for: id) else {
+                    return nil
+                }
+                let edit = UIContextualAction(style: .normal, title: localized("編輯")) { _, _, done in
+                    rowActions.edit(source)
+                    done(true)
+                }
+                edit.backgroundColor = UIColor(Color(DSColor.appAccent))
+                let pin = UIContextualAction(style: .normal, title: localized("置頂")) { _, _, done in
+                    rowActions.pinToTop(source)
+                    done(true)
+                }
+                pin.backgroundColor = UIColor(Color(DSColor.warning))
+                return UISwipeActionsConfiguration(actions: [pin, edit])
+            },
             trailingSwipeActions: { [model, rowActions] item in
                 guard case .source(let id) = item, let source = model.source(for: id) else {
                     return nil
@@ -620,22 +636,6 @@ struct BookSourceListView: View {
                     done(true)
                 }
                 return UISwipeActionsConfiguration(actions: [remove, toggle])
-            },
-            leadingSwipeActions: { [model, rowActions] item in
-                guard case .source(let id) = item, let source = model.source(for: id) else {
-                    return nil
-                }
-                let edit = UIContextualAction(style: .normal, title: localized("編輯")) { _, _, done in
-                    rowActions.edit(source)
-                    done(true)
-                }
-                edit.backgroundColor = UIColor(Color(DSColor.appAccent))
-                let pin = UIContextualAction(style: .normal, title: localized("置頂")) { _, _, done in
-                    rowActions.pinToTop(source)
-                    done(true)
-                }
-                pin.backgroundColor = UIColor(Color(DSColor.warning))
-                return UISwipeActionsConfiguration(actions: [pin, edit])
             }
         ) { item in
             switch item {
