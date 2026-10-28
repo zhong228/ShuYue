@@ -32,7 +32,7 @@ struct AudiobookReaderView: View {
             // 顶出屏幕（底部播放键被挤出、功能行只露出几项）的溢出问题。
             let coverSize = min(geo.size.width - 104, geo.size.height * 0.46)
             ZStack {
-                backgroundGradient
+                backgroundGradient(size: geo.size)
 
                 VStack(spacing: 0) {
                     topBar
@@ -54,6 +54,11 @@ struct AudiobookReaderView: View {
                 .padding(.bottom, DSSpacing.lg)
                 .frame(maxWidth: geo.size.width, maxHeight: geo.size.height)
             }
+            // 钉死 ZStack 的布局尺寸：背景图 scaledToFill 会把布局撑得比屏幕宽
+            // （竖版封面填满高度后宽度溢出），GeometryReader 又是顶左对齐摆放，
+            // 内容就会被推向右侧偏离屏幕中心。显式 frame 后布局恒等于可用屏幕，
+            // 背景图只负责「画」，不再参与撑大布局。
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
         // whole window, which flipped the bookshelf dark for an instant during the
@@ -90,12 +95,15 @@ struct AudiobookReaderView: View {
 
     /// 全屏封面模糊底（Apple Music 式）：封面放大虚化铺满，再压一层主色到黑的渐变，
     /// 让播放页由这本书自己的封面「发光」，而非一块通用黑底。
-    private var backgroundGradient: some View {
+    /// `scaledToFill` 会按填充后的真实尺寸参与布局（竖版封面宽度会超出屏幕），
+    /// 必须先用显式 frame 把布局尺寸约束到屏幕大小，模糊/放大只作为渲染溢出。
+    private func backgroundGradient(size: CGSize) -> some View {
         ZStack {
             if let image = player.coverImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+                    .frame(width: size.width, height: size.height)
                     .blur(radius: 64, opaque: true)
                     .scaleEffect(1.4)
                     .opacity(0.45)
