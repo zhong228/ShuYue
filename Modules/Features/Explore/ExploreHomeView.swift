@@ -265,7 +265,7 @@ struct ExploreHomeView: View {
         if let recommendations = todayRecommendations, !recommendations.isEmpty {
             TodayRecommendationBanner(
                 items: recommendations,
-                onOpenBook: { book in openBrowser(.open(book.bookUrl)) },
+                onOpenBook: { book in navigation.push(.book(book)) },
                 onResumeBrowser: { openBrowser(.resume) }
             )
         } else {
@@ -764,15 +764,6 @@ private struct TodayRecommendationCard: View {
                             .background(.white.opacity(0.18), in: Capsule())
                             .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 0.6))
                         Spacer(minLength: 0)
-                        Button(action: onResumeBrowser) {
-                            Image(systemName: "safari")
-                                .font(DSFont.subheadline.weight(.semibold))
-                                .padding(6)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.white.opacity(0.9))
-                        .accessibilityLabel(localized("打开浏览器"))
                     }
 
                     Text(item.book.name)
@@ -796,13 +787,26 @@ private struct TodayRecommendationCard: View {
                             .lineLimit(1)
                     }
 
-                    HStack(spacing: 0) {
+                    // 行动行：主行动进详情页，浏览器入口降为次级胶囊，避免误触。
+                    HStack(spacing: DSSpacing.sm) {
                         Text(localized("立即阅读"))
                             .font(DSFont.caption.weight(.semibold))
                             .foregroundStyle(DSColor.appAccentDark)
                             .padding(.horizontal, DSSpacing.sm)
                             .padding(.vertical, 5)
                             .background(Color.white.opacity(0.92), in: Capsule())
+                        Button(action: onResumeBrowser) {
+                            Label(localized("浏览器"), systemImage: "safari")
+                                .font(DSFont.caption2.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.92))
+                                .padding(.horizontal, DSSpacing.sm)
+                                .padding(.vertical, 5)
+                                .background(.white.opacity(0.16), in: Capsule())
+                                .overlay(Capsule().stroke(.white.opacity(0.30), lineWidth: 0.6))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(localized("打开浏览器"))
                         Spacer(minLength: 0)
                     }
                     .padding(.top, 2)

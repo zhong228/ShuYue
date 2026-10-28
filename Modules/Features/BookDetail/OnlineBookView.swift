@@ -230,15 +230,9 @@ struct OnlineBookView: View {
                 errorMessage: tocError,
                 latestChapter: displayLatestChapter,
                 onRetry: { Task { await loadTOC() } },
+                onSelect: { offset in openReader(chapterIndex: chapters[offset].index) },
                 onShowAll: { showChapterList = true }
-            ) { offset, chapter in
-                BookDetailChapterRow(
-                    title: BookDetailChapterTitle.display(chapter, offset: offset),
-                    isLocked: chapter.isVip || chapter.isPay,
-                    trailing: .disclosure,
-                    action: { openReader(chapterIndex: chapter.index) }
-                )
-            }
+            )
         }
         .environment(\.locale, Locale(identifier: gs.localeIdentifier))
         .toolbar {

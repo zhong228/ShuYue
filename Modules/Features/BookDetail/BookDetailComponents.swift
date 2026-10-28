@@ -648,40 +648,71 @@ struct BookDetailChapterRow: View {
     }
 }
 
-/// The chapter section: a header with 「查看全部」, the latest chapter, and the first
-/// few chapters, with loading, error and empty states in place of the rows.
-struct BookDetailChapterSection<Row: View>: View {
+/// The chapter section, redrawn as a chapter launcher: the newest chapter as a
+/// highlighted banner, the first chapters as a two-column grid of numbered chips,
+/// and a full-width 「查看全部目录」 card that names the total. Loading, error and
+/// empty states stand in place of the grid.
+struct BookDetailChapterSection: View {
     let title: String
     let chapters: [OnlineChapterRef]
     let isLoading: Bool
     let errorMessage: String?
     let latestChapter: String
     let onRetry: () -> Void
+    /// Opens the chapter at its offset in `chapters`.
+    let onSelect: (_ offset: Int) -> Void
     let onShowAll: () -> Void
-    @ViewBuilder let row: (_ offset: Int, _ chapter: OnlineChapterRef) -> Row
 
-    /// Enough to show what the list holds; the rest is one tap away, as Podcasts
-    /// shows a show's newest few episodes above 「查看全部」.
-    static var previewLimit: Int { 5 }
+    /// Six chips fill the two-column grid with three rows; the rest is one tap
+    /// away through the 「查看全部目录」 card.
+    static var previewLimit: Int { 6 }
+
+    private static let columns = [
+        GridItem(.flexible(), spacing: DSSpacing.sm),
+        GridItem(.flexible(), spacing: DSSpacing.sm),
+    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            BookDetailSectionHeader(
-                title: title,
-                actionTitle: chapters.isEmpty ? nil : localized("查看全部"),
-                action: chapters.isEmpty ? nil : onShowAll
-            )
-            if !latestChapter.isEmpty {
-                Label(latestChapter, systemImage: "clock.arrow.circlepath")
-                    .font(DSFont.footnote)
-                    .foregroundStyle(DSColor.textSecondary)
-                    .lineLimit(1)
-                    .accessibilityLabel(localized("最新章節"))
-                    .accessibilityValue(latestChapter)
+            BookDetailSectionHeader(title: title)
+            if !latestChapter.isEmpty, !isLoading || !chapters.isEmpty {
+                latestBanner
             }
             content
         }
         .padding(.horizontal, DSSpacing.lg)
+    }
+
+    /// The newest chapter, pulled out of the grid into an accent-tinted banner so
+    /// serial readers can see the update at a glance.
+    private var latestBanner: some View {
+        HStack(spacing: DSSpacing.sm) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.appAccent)
+                .frame(width: 28, height: 28)
+                .background(DSColor.appAccentSoft, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(localized("最新章節"))
+                    .font(DSFont.caption2.weight(.semibold))
+                    .foregroundStyle(DSColor.appAccent)
+                Text(latestChapter)
+                    .font(DSFont.footnote)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, DSSpacing.md)
+        .padding(.vertical, DSSpacing.sm)
+        .background(
+            DSColor.appAccentSoft.opacity(0.55),
+            in: RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+                .stroke(DSColor.appAccent.opacity(0.18), lineWidth: 0.6)
+        )
     }
 
     @ViewBuilder
@@ -709,16 +740,87 @@ struct BookDetailChapterSection<Row: View>: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DSSpacing.lg)
         } else {
-            let preview = Array(chapters.prefix(Self.previewLimit).enumerated())
-            VStack(spacing: 0) {
-                ForEach(preview, id: \.element.id) { offset, chapter in
-                    if offset > 0 { BookDetailCardStyle.divider }
-                    row(offset, chapter)
-                }
+            VStack(spacing: DSSpacing.sm) {
+                chipGrid
+                showAllCard
             }
+        }
+    }
+
+    private var chipGrid: some View {
+        LazyVGrid(columns: Self.columns, spacing: DSSpacing.sm) {
+            ForEach(
+                Array(chapters.prefix(Self.previewLimit).enumerated()),
+                id: \.element.id
+            ) { offset, chapter in
+                Button {
+                    onSelect(offset)
+                } label: {
+                    chip(offset, chapter)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// One numbered chapter chip: a serif index badge, the title, and a lock when
+    /// the chapter is paid. Whole chip is the tap target.
+    private func chip(_ offset: Int, _ chapter: OnlineChapterRef) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+        return HStack(spacing: DSSpacing.xs) {
+            Text("\(offset + 1)")
+                .font(DSFont.fixed(size: 13, weight: .bold, design: .serif))
+                .foregroundStyle(DSColor.appAccent)
+                .frame(width: 30, height: 30)
+                .background(DSColor.appAccentSoft, in: shape)
+            Text(BookDetailChapterTitle.display(chapter, offset: offset))
+                .font(DSFont.footnote)
+                .foregroundStyle(DSColor.textPrimary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if chapter.isVip || chapter.isPay {
+                Image(systemName: "lock.fill")
+                    .font(DSFont.caption2)
+                    .foregroundStyle(DSColor.warning)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget - 14)
+        .background(BookDetailCardStyle.background)
+        .overlay(BookDetailCardStyle.border)
+        .contentShape(Rectangle())
+    }
+
+    /// The full-list entry: brand-iconed, names the total, one row, always reachable.
+    private var showAllCard: some View {
+        Button(action: onShowAll) {
+            HStack(spacing: DSSpacing.sm) {
+                Image(systemName: "list.bullet.rectangle")
+                    .font(DSFont.subheadline.weight(.semibold))
+                    .foregroundStyle(DSColor.textOnAccent)
+                    .frame(width: 30, height: 30)
+                    .background(DSColor.appAccent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Text(localized("查看全部目录"))
+                    .font(DSFont.subheadline.weight(.semibold))
+                    .foregroundStyle(DSColor.textPrimary)
+                Spacer(minLength: 0)
+                Text(String(format: localized("共 %d 章"), chapters.count))
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                Image(systemName: "chevron.right")
+                    .font(DSFont.caption.weight(.semibold))
+                    .foregroundStyle(DSColor.textTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.vertical, DSSpacing.sm)
+            .frame(minHeight: DSLayout.minimumTapTarget)
             .background(BookDetailCardStyle.background)
             .overlay(BookDetailCardStyle.border)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
