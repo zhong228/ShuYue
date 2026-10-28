@@ -15,6 +15,12 @@ struct yuedu_appApp: App {
     @StateObject private var bookSourceDeepLinkHandler = BookSourceDeepLinkHandler()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Last time the foreground entitlement / CloudKit / StoreKit refresh ran. Keeps the
+    /// scene-`.active` path from waking the CloudKit daemon and hitting StoreKit on every
+    /// single app-open — the main avoidable foreground battery cost. `nil` means "never",
+    /// so the first activation since launch always refreshes.
+    private static var lastForegroundEntitlementRefresh: Date?
+
     #if DEBUG
     /// UI-test hook: imports the Documents-relative EPUB named by
     /// `-auto-import-epub` once (idempotent — skips when already on the shelf).
@@ -213,8 +219,21 @@ struct yuedu_appApp: App {
                     if newPhase != .active { bookStore.flushPendingMetadataSave() }
                     // Pick up sources shared while the app was backgrounded.
                     if newPhase == .active {
-                        Task { await subscriptionStore.refreshAllEntitlements() }
-                        Task { await subscriptionStore.reloadProductsIfStorefrontChanged() }
+                        // Entitlement / CloudKit / StoreKit re-check: only when it has been a
+                        // while since the last one. Cold launch (lastRefresh == nil) always
+                        // runs; a quick background-and-return within the window is skipped so we
+                        // don't wake the CloudKit daemon and hit StoreKit on every app-open.
+                        // Purchases refresh entitlements on their own path, so this never
+                        // blocks a real entitlement change.
+                        let runEntitlementRefresh: Bool = {
+                            guard let last = Self.lastForegroundEntitlementRefresh else { return true }
+                            return Date().timeIntervalSince(last) >= AppConfig.entitlementForegroundRefreshMinInterval
+                        }()
+                        if runEntitlementRefresh {
+                            Self.lastForegroundEntitlementRefresh = Date()
+                            Task { await subscriptionStore.refreshAllEntitlements() }
+                            Task { await subscriptionStore.reloadProductsIfStorefrontChanged() }
+                        }
                         Task { await SharedImportQueueDrainer.shared.drain() }
                         // A button tap while the app was suspended is waiting in the queue.
                         Task { await DownloadActivityCommandApplier.drainObserved() }
@@ -223,10 +242,14 @@ struct yuedu_appApp: App {
                                 .reconcileInterruptedDownloads(store: bookStore)
                         }
                         // Returning to the foreground also checks online books for
-                        // new chapters (throttled). Cold launch already kicked one
-                        // off in onAppear; the throttle skips the duplicate.
+                        // new chapters — on a wider cooldown than cold launch, so a
+                        // quick peek back in doesn't re-scan the entire library.
                         Task(priority: .utility) {
-                            await ChapterUpdater.refreshAll(bookStore: bookStore, auto: true)
+                            await ChapterUpdater.refreshAll(
+                                bookStore: bookStore,
+                                auto: true,
+                                minInterval: AppConfig.autoRefreshForegroundMinInterval
+                            )
                         }
                     }
                     // Seamless iCloud: push/merge when leaving the app.
@@ -248,9 +271,11 @@ enum ChapterUpdater {
 
     /// Returns true (and records the time) when an automatic refresh is allowed
     /// under the throttle window; false when one ran too recently.
-    @MainActor private static func consumeAutoRefreshAllowance() -> Bool {
+    @MainActor private static func consumeAutoRefreshAllowance(
+        minInterval: TimeInterval = AppConfig.autoRefreshMinInterval
+    ) -> Bool {
         let now = Date()
-        if let last = lastAutoRefresh, now.timeIntervalSince(last) < AppConfig.autoRefreshMinInterval {
+        if let last = lastAutoRefresh, now.timeIntervalSince(last) < minInterval {
             return false
         }
         lastAutoRefresh = now
@@ -261,9 +286,16 @@ enum ChapterUpdater {
     /// - Parameter auto: `true` for launch / foreground refreshes (throttled by
     ///   `AppConfig.autoRefreshMinInterval`); `false` for explicit pull-to-refresh,
     ///   which always runs.
-    static func refreshAll(bookStore: BookStore, auto: Bool = false) async {
+    /// - Parameter minInterval: throttle window for `auto` refreshes. Foreground returns
+    ///   pass the wider `AppConfig.autoRefreshForegroundMinInterval` so a quick
+    ///   background-and-return doesn't re-scan the whole library.
+    static func refreshAll(
+        bookStore: BookStore,
+        auto: Bool = false,
+        minInterval: TimeInterval = AppConfig.autoRefreshMinInterval
+    ) async {
         if auto {
-            let allowed = await MainActor.run { consumeAutoRefreshAllowance() }
+            let allowed = await MainActor.run { consumeAutoRefreshAllowance(minInterval: minInterval) }
             guard allowed else { return }
         }
 
