@@ -67,6 +67,11 @@ final class EPUBBackgroundAudioCoordinator {
         queuePlayer = nil
         looper = nil
         currentSource = nil
+        // Tear down the .playback session this coordinator activated in `activateAudioSession()`.
+        // Leaving it active keeps the device awake and the audio session "on" even after the reader
+        // closes — a measurable idle battery drain for any book with authored background audio. The
+        // deactivation runs on the same serial queue as the earlier activation, so order is preserved.
+        AudioSessionActivator.setActive(false, options: [.notifyOthersOnDeactivation])
     }
 
     private func activateAudioSession() {
