@@ -836,7 +836,7 @@ struct BookDetailChapterListSheet: View {
 
     /// 章节序号 → 章节的配对，搜索时保留原始序号。
     private var indexedChapters: [(offset: Int, chapter: OnlineChapterRef)] {
-        Array(chapters.enumerated())
+        chapters.enumerated().map { (offset: $0.offset, chapter: $0.element) }
     }
 
     private var filteredChapters: [(offset: Int, chapter: OnlineChapterRef)] {
@@ -856,7 +856,7 @@ struct BookDetailChapterListSheet: View {
                 if filteredChapters.isEmpty {
                     emptyState
                 } else {
-                    ForEach(filteredChapters, id: \.element.id) { offset, chapter in
+                    ForEach(filteredChapters, id: \.chapter.id) { offset, chapter in
                         row(offset: offset, chapter: chapter)
                     }
                 }
