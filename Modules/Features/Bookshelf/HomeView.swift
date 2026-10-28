@@ -149,7 +149,21 @@ struct HomeView: View {
     @State private var showScrapeView = false
     @State private var showAIPaywall = false
     @ObservedObject private var subscription = SubscriptionStore.shared
-    @AppStorage("bookLayoutIsGrid") private var isGridMode = false
+    // 书库版式：列表 / 宫格 / 书架。旧的单开关（bookLayoutIsGrid）在读取时迁移，
+    // 已发布用户的宫格设置不丢失。
+    @AppStorage("bookshelfLayoutMode") private var bookshelfLayoutRaw = ""
+    private var bookshelfLayout: BookshelfLayoutMode {
+        if bookshelfLayoutRaw.isEmpty {
+            return UserDefaults.standard.bool(forKey: "bookLayoutIsGrid") ? .grid : .list
+        }
+        return BookshelfLayoutMode(rawValue: bookshelfLayoutRaw) ?? .list
+    }
+    private var bookshelfLayoutBinding: Binding<BookshelfLayoutMode> {
+        Binding(
+            get: { bookshelfLayout },
+            set: { bookshelfLayoutRaw = $0.rawValue }
+        )
+    }
     @AppStorage("bookSortOrder") private var sortOrder = BookSortOrder.manual.rawValue
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Namespace private var bookTransition
@@ -810,9 +824,10 @@ struct HomeView: View {
 
             Divider()
 
-            Picker("", selection: $isGridMode) {
-                Label(localized("列表"), systemImage: "list.bullet").tag(false)
-                Label(localized("方格"), systemImage: "square.grid.2x2").tag(true)
+            Picker("", selection: bookshelfLayoutBinding) {
+                Label(localized("列表"), systemImage: "list.bullet").tag(BookshelfLayoutMode.list)
+                Label(localized("方格"), systemImage: "square.grid.2x2").tag(BookshelfLayoutMode.grid)
+                Label(localized("书架"), systemImage: "books.vertical.fill").tag(BookshelfLayoutMode.shelf)
             }
             .pickerStyle(.inline)
             .labelsHidden()
@@ -954,14 +969,17 @@ struct HomeView: View {
         .accessibilityIdentifier("home_group_switcher")
     }
 
-    /// One page as the shelf shows it, in a list or a grid. `isInView`: the page on screen,
-    /// not one the pager has laid out beside it.
+    /// One page as the shelf shows it, in a list, a grid, or on wooden planks. `isInView`:
+    /// the page on screen, not one the pager has laid out beside it.
     @ViewBuilder
     private func shelfContent(_ page: ShelfPage, isInView: Bool) -> some View {
         let listed = entries(onPage: page)
-        if isGridMode {
+        switch bookshelfLayout {
+        case .grid:
             bookGrid(entries: listed, page: page, isInView: isInView)
-        } else {
+        case .shelf:
+            bookShelfPlanks(entries: listed, page: page, isInView: isInView)
+        case .list:
             bookList(entries: listed, page: page, isInView: isInView)
         }
     }
@@ -1184,6 +1202,100 @@ struct HomeView: View {
             proxy.size.width
         } action: { width in
             gridContainerWidth = width
+        }
+    }
+
+    // MARK: - Bookshelf Planks (书架版式)
+
+    /// 书架版式：直立封面成排立在木纹层板上（列表 / 宫格之外的第三种书库版式）。
+    /// 交互与宫格一致：点按打开、编辑态点按切换选中、长按呼出菜单（含进入多选）。
+    private func bookShelfPlanks(entries: [ShelfEntry], page: ShelfPage, isInView: Bool) -> some View {
+        let isSelecting = editMode == .active
+        let folderEntries = entries.filter {
+            if case .folder = $0 { return true }
+            return false
+        }
+        let books = entries.compactMap(\.book)
+        // 书架每层 3–4 本：比宫格更大更接近实体书；仍尊重「书库密度」的档位上限。
+        let columns = max(3, min(gs.bookshelfGridColumnCount, 4))
+        let spacing = DSSpacing.md
+        let available = gridContainerWidth - gridHorizontalInset * 2 - spacing * CGFloat(columns - 1)
+        let coverWidth = available > 0 ? available / CGFloat(columns) : 0
+        let coverDisplaySize = coverWidth > 0
+            ? CGSize(width: coverWidth, height: coverWidth * 3 / 2)
+            : .zero
+        let rows = stride(from: 0, to: books.count, by: columns).map { offset in
+            Array(books[offset..<min(offset + columns, books.count)])
+        }
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: DSSpacing.xl) {
+                    if !folderEntries.isEmpty {
+                        LazyVGrid(columns: gridColumns, spacing: DSSpacing.lg) {
+                            ForEach(folderEntries) { entry in
+                                if case .folder(let name, let folderBooks) = entry {
+                                    BookshelfFolderGridCell(
+                                        name: name,
+                                        books: folderBooks,
+                                        isCompactLayout: isCompactFiveColumnGrid,
+                                        coverDisplaySize: gridCoverDisplaySize,
+                                        isSelecting: isSelecting
+                                    ) {
+                                        openedFolder = name
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, gridHorizontalInset)
+                    }
+                    ForEach(rows.indices, id: \.self) { rowIndex in
+                        BookshelfPlankRow(
+                            books: rows[rowIndex],
+                            columnCount: columns,
+                            coverDisplaySize: coverDisplaySize,
+                            isSelecting: isSelecting,
+                            selectedBookIds: selectedBookIds,
+                            transitionNamespace: bookTransition,
+                            onOpen: { book, geometry in
+                                openBook(book, from: page, sourceGeometry: geometry)
+                            },
+                            onToggleSelection: { toggleSelection(of: $0.id) },
+                            onCoverFrameChange: { book, frame in
+                                readerGeometryStore.update(frame, for: book.id, onPage: page)
+                            },
+                            onEdit: { editingBook = $0 },
+                            onDelete: { bookToDelete = $0 },
+                            onShowDetail: { book in
+                                canShowOnlineBookDetail(for: book) ? { showOnlineBookDetail(for: book) } : nil
+                            },
+                            onLongPressSelection: { enterSelectionMode() }
+                        )
+                    }
+                }
+                .padding(.vertical, DSSpacing.md)
+                .background {
+                    if isInView, page.isOnPager {
+                        Color.clear.rootTabTitleScrollAnchor()
+                    }
+                }
+                .id(Self.gridTopAnchorID)
+            }
+            .onChange(of: shelfScrollToTopRequest) {
+                if shelfScrollToTopPage == page {
+                    proxy.scrollTo(Self.gridTopAnchorID, anchor: .top)
+                }
+            }
+            .accessibilityIdentifier(shelfAccessibilityIdentifier(for: page, isInView: isInView, grid: true))
+            .softScrollEdges()
+            .animation(reduceMotion ? nil : DSAnimation.standard, value: entries.map(\.id))
+            .refreshable {
+                await ChapterUpdater.refreshAll(bookStore: store)
+            }
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                gridContainerWidth = width
+            }
         }
     }
 
@@ -2319,6 +2431,241 @@ struct BookGridCell: View {
 }
 
 // MARK: - Group Folder
+
+/// 书库版式：列表 / 宫格 / 书架（木纹层板上的直立封面）。
+enum BookshelfLayoutMode: String {
+    case list
+    case grid
+    case shelf
+}
+
+/// 书架版式的一层：一排直立封面 + 通栏木纹层板。
+struct BookshelfPlankRow: View {
+    let books: [ReadingBook]
+    let columnCount: Int
+    let coverDisplaySize: CGSize
+    let isSelecting: Bool
+    let selectedBookIds: Set<UUID>
+    var transitionNamespace: Namespace.ID? = nil
+    let onOpen: (ReadingBook, ReaderCardGeometry?) -> Void
+    var onToggleSelection: (ReadingBook) -> Void = { _ in }
+    var onCoverFrameChange: ((ReadingBook, CGRect) -> Void)? = nil
+    var onEdit: (ReadingBook) -> Void = { _ in }
+    var onDelete: (ReadingBook) -> Void = { _ in }
+    var onShowDetail: ((ReadingBook) -> (() -> Void)?)? = nil
+    var onLongPressSelection: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: DSSpacing.md) {
+                ForEach(books) { book in
+                    BookshelfPlankCell(
+                        book: book,
+                        coverDisplaySize: coverDisplaySize,
+                        isSelecting: isSelecting,
+                        isSelected: selectedBookIds.contains(book.id),
+                        transitionNamespace: transitionNamespace,
+                        onOpen: { onOpen(book, $0) },
+                        onToggleSelection: { onToggleSelection(book) },
+                        onCoverFrameChange: { onCoverFrameChange?(book, $0) },
+                        onEdit: { onEdit(book) },
+                        onDelete: { onDelete(book) },
+                        onShowDetail: onShowDetail?(book),
+                        onLongPressSelection: onLongPressSelection
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                // 最后一排不满时补空位：封面靠左，层板仍通栏。
+                ForEach(0..<(columnCount - books.count), id: \.self) { _ in
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, DSSpacing.lg)
+            plank
+        }
+    }
+
+    /// 木纹层板：暖棕色渐变 + 顶缘高光 + 底部落影，封面像立在实体书架上。
+    private var plank: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.white.opacity(0.25))
+                .frame(height: 1)
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.63, green: 0.47, blue: 0.33),
+                            Color(red: 0.47, green: 0.34, blue: 0.23)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(height: 9)
+        }
+        .padding(.horizontal, DSSpacing.lg)
+        .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 3)
+    }
+}
+
+/// 书架版式的单本书：直立封面（无标题文字，信息走无障碍标签与长按菜单），
+/// 交互与宫格 cell 一致（阅读进度、更新角标、选中标记、开书转场）。
+struct BookshelfPlankCell: View {
+    let book: ReadingBook
+    var coverDisplaySize: CGSize = .zero
+    var isSelecting: Bool = false
+    var isSelected: Bool = false
+    var transitionNamespace: Namespace.ID? = nil
+    let onOpen: (ReaderCardGeometry?) -> Void
+    var onToggleSelection: () -> Void = {}
+    var onCoverFrameChange: ((CGRect) -> Void)? = nil
+    var onEdit: () -> Void = {}
+    var onDelete: () -> Void = {}
+    var onShowDetail: (() -> Void)? = nil
+    var onLongPressSelection: (() -> Void)? = nil
+
+    @State private var liveCoverFrame: CGRect = .zero
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var readerCardGeometry: ReaderCardGeometry? {
+        liveCoverFrame.isEmpty
+            ? nil
+            : ReaderCardGeometry(frame: liveCoverFrame, cornerRadius: BookshelfCoverStyle.cornerRadius)
+    }
+
+    var body: some View {
+        Button(action: activate) {
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if #available(iOS 18.0, *), let ns = transitionNamespace {
+                        coverView.matchedTransitionSource(id: book.id, in: ns)
+                    } else {
+                        coverView
+                    }
+                }
+                .reportBookshelfCoverFrame($liveCoverFrame)
+                if book.currentPosition > 0.01 && book.currentPosition < 0.99 {
+                    Text("\(Int(book.currentPosition * 100))%")
+                        .font(DSFont.fixed(size: 10, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(DSColor.appAccent.opacity(0.9))
+                        .clipShape(Capsule())
+                        .padding(6)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if book.hasNewChapterUpdate {
+                    Text(localized("更新"))
+                        .font(DSFont.fixed(size: 10, weight: .bold))
+                        .foregroundColor(DSColor.textOnAccent)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(DSColor.appAccent)
+                        .clipShape(Capsule())
+                        .padding(6)
+                        .accessibilityLabel(localized("有新章節"))
+                }
+            }
+            .opacity(isSelecting && !isSelected ? DSLayout.bookshelfUnselectedCoverOpacity : 1)
+            .overlay(alignment: .bottomTrailing) {
+                if isSelecting {
+                    BookshelfSelectionMark(isSelected: isSelected)
+                        .padding(DSSpacing.xs)
+                        .transition(.opacity)
+                }
+            }
+            .animation(DSAnimation.standard, value: isSelected)
+        }
+        .buttonStyle(.plain)
+        // 长按呼出菜单（编辑 / 详情 / 多选 / 删除），与宫格的每书菜单等价。
+        .contextMenu(menuItems: {
+            Button {
+                onLongPressSelection?()
+            } label: {
+                Label(localized("多選"), systemImage: "checkmark.circle")
+            }
+            Button {
+                onEdit()
+            } label: {
+                Label(localized("編輯書籍資訊"), systemImage: "info.circle")
+            }
+            if let onShowDetail {
+                Button {
+                    onShowDetail()
+                } label: {
+                    Label(localized("書籍詳情"), systemImage: "globe")
+                }
+            }
+            Divider()
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label(localized("刪除書籍"), systemImage: "trash")
+            }
+        })
+        .onChange(of: liveCoverFrame) { _, frame in
+            if !frame.isEmpty { onCoverFrameChange?(frame) }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(BookshelfAccessibility.description(for: book))
+        .accessibilityAddTraits(isSelecting && isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { activate() }
+    }
+
+    /// Opens the book, or while selecting, puts it in or out of the selection.
+    private func activate() {
+        if isSelecting {
+            onToggleSelection()
+        } else {
+            onOpen(readerCardGeometry)
+        }
+    }
+
+    private var coverView: some View {
+        Color.clear
+            .aspectRatio(2/3, contentMode: .fit)
+            .overlay(
+                BookshelfCoverStyle.artwork(
+                    for: book,
+                    colorScheme: colorScheme,
+                    displaySize: coverDisplaySize
+                )
+            )
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius))
+            .overlay(alignment: .leading) {
+                // 书脊高光：左缘一条竖直亮线，让封面读作立在层板上的实体书。
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.14 : 0.30),
+                                Color.white.opacity(0.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 6)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius))
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.4 : 0.22), radius: 4, x: 1, y: 3)
+            .overlay {
+                RoundedRectangle(cornerRadius: BookshelfCoverStyle.cornerRadius)
+                    .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if book.resolvedPipelineKind == .audio && !isSelecting {
+                    AudiobookCoverBadge(glyphSize: 11)
+                }
+            }
+    }
+}
 
 /// A group on 全部: the covers of its first four books, two by two, in the frame a book's
 /// cover takes — a folder, as iOS gathers apps. A group of fewer books leaves the rest of
