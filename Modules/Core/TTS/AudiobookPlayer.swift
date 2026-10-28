@@ -400,6 +400,18 @@ final class AudiobookPlayer: NSObject, ObservableObject {
         updateNowPlaying()
     }
 
+    // MARK: - Volume
+
+    /// In-app loudness (0…1), scaling the player's output independently of the
+    /// system volume so the page can offer a volume control without MPVolumeView.
+    @Published private(set) var volume: Float = 1.0
+
+    func setVolume(_ value: Float) {
+        let clamped = min(max(value, 0), 1)
+        volume = clamped
+        player?.volume = clamped
+    }
+
     // MARK: - Chapter navigation
 
     func selectChapter(_ index: Int) {
@@ -887,6 +899,7 @@ final class AudiobookPlayer: NSObject, ObservableObject {
         if let player { return player }
         let queuePlayer = AVQueuePlayer()
         queuePlayer.actionAtItemEnd = .pause
+        queuePlayer.volume = volume
         player = queuePlayer
 
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)

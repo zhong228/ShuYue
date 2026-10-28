@@ -203,16 +203,9 @@ struct AudiobookDetailView: View {
                 errorMessage: loadError,
                 latestChapter: displayLatestChapter,
                 onRetry: { load() },
+                onSelect: { offset in play(chapterIndex: offset) },
                 onShowAll: { showChapterList = true }
-            ) { offset, chapter in
-                BookDetailChapterRow(
-                    title: BookDetailChapterTitle.display(chapter, offset: offset),
-                    caption: String(format: localized("第 %d 章"), offset + 1),
-                    isLocked: chapter.isVip || chapter.isPay,
-                    trailing: .play,
-                    action: { play(chapterIndex: offset) }
-                )
-            }
+            )
         }
         .environment(\.locale, Locale(identifier: gs.localeIdentifier))
         .toolbar {

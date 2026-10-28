@@ -31,21 +31,25 @@ struct AudiobookReaderView: View {
 
             VStack(spacing: 0) {
                 topBar
-                Spacer(minLength: DSSpacing.lg)
+                Spacer(minLength: DSSpacing.sm)
                 coverArt
-                Spacer(minLength: DSSpacing.lg)
+                Spacer(minLength: DSSpacing.sm)
                 titleBlock
                     .padding(.horizontal, DSSpacing.xl)
+                chapterChip
+                    .padding(.top, DSSpacing.sm)
                 if let message = player.error {
                     errorBlock(message)
                 }
                 progressSection
                     .padding(.top, DSSpacing.lg)
                 transportRow
-                    .padding(.top, DSSpacing.xl)
-                bottomRow
                     .padding(.top, DSSpacing.lg)
-                    .padding(.bottom, DSSpacing.xl)
+                volumeSection
+                    .padding(.top, DSSpacing.md)
+                bottomRow
+                    .padding(.top, DSSpacing.md)
+                    .padding(.bottom, DSSpacing.lg)
             }
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
@@ -99,6 +103,8 @@ struct AudiobookReaderView: View {
             )
         }
         .ignoresSafeArea()
+        // 背景下滑 = 收起播放页：手势落在空白处同样有效。
+        .gesture(minimizeDrag)
     }
 
     private func updateBaseColor() {
@@ -145,7 +151,7 @@ struct AudiobookReaderView: View {
                 }
             }
         }
-        .frame(width: 232, height: 232)
+        .frame(width: 208, height: 208)
         .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
@@ -159,6 +165,8 @@ struct AudiobookReaderView: View {
                     .tint(.white)
             }
         }
+        // 封面/背景下滑 = 收起播放页回到迷你播放条：边听边逛其他页面。
+        .gesture(minimizeDrag)
     }
 
     // MARK: Title
@@ -175,6 +183,66 @@ struct AudiobookReaderView: View {
                 .foregroundColor(.white.opacity(0.7))
                 .lineLimit(1)
         }
+    }
+
+    // MARK: Chapter position
+
+    /// 「第 N / M 章」胶囊：一眼看到进度，点按直达目录。
+    private var chapterChip: some View {
+        Button { showChapterList = true } label: {
+            Label(
+                String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count),
+                systemImage: "list.number"
+            )
+            .font(DSFont.caption.weight(.semibold))
+            .foregroundColor(.white.opacity(0.88))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.white.opacity(0.14), in: Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(player.chapters.isEmpty)
+        .padding(.top, DSSpacing.xs)
+        .accessibilityLabel(localized("目錄"))
+        .accessibilityValue(String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count))
+    }
+
+    // MARK: Volume
+
+    /// App 内音量：只缩放播放器输出，不依赖系统音量面板。
+    private var volumeSection: some View {
+        HStack(spacing: DSSpacing.sm) {
+            Image(systemName: "speaker.wave.1.fill")
+                .font(DSFont.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .accessibilityHidden(true)
+            Slider(
+                value: Binding(
+                    get: { player.volume },
+                    set: { player.setVolume($0) }
+                ),
+                in: 0...1
+            )
+            .tint(.white.opacity(0.85))
+            .accessibilityLabel(localized("音量"))
+            Image(systemName: "speaker.wave.3.fill")
+                .font(DSFont.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, DSSpacing.xl)
+    }
+
+    /// 下滑收起：封面或背景上向下滑动即收起到迷你播放条，播放不中断。
+    private var minimizeDrag: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { value in
+                if value.translation.height > 90, abs(value.translation.width) < 120 {
+                    dismiss()
+                }
+            }
     }
 
     private func errorBlock(_ message: String) -> some View {
@@ -289,7 +357,7 @@ struct AudiobookReaderView: View {
     private var bottomRow: some View {
         HStack {
             Menu {
-                ForEach([Float(0.75), 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
+                ForEach([Float(0.5), 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0], id: \.self) { rate in
                     Button {
                         player.setRate(rate)
                     } label: {
