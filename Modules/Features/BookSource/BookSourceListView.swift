@@ -582,94 +582,21 @@ struct BookSourceListView: View {
 
     // MARK: - Source List
 
-    /// Rows are built only while on screen — see `HostedCollectionList` for why this is not
-    /// a SwiftUI `List` any more. The rows themselves are unchanged SwiftUI views.
+    /// Redesigned as a card grid (see `BookSourceGrid.swift`): a slim header strip plus a
+    /// responsive grid of source cards. The data still comes from `model`; only the
+    /// presentation changed from a vertical list to a grid. Operations stay reachable via
+    /// the inline 啟用/停用 switch, the 「⋯」 menu, the long-press context menu, and the
+    /// swipe-left / swipe-right reveals on each card.
     private var sourceList: some View {
-        let rowActions = self.rowActions
-        let groupActions = self.groupActions
-        return HostedCollectionList(
-            items: model.items,
-            contentVersion: model.contentVersion,
-            animatesItemChanges: model.animatesItemChange,
-            scrollRequest: model.scrollRequest,
-            showsSeparator: { item in
-                if case .source = item { return true }
-                return false
-            },
-            usesSystemMargins: { $0 == .header },
-            // Flat compact list: drop the per-cell grouped-card surface so rows read as a
-            // clean list separated by hairlines instead of floating cards. Headers and
-            // group rows paint their own backgrounds.
-            drawsCellSurface: { _ in false },
-            // Native swipe: swipe-left reveals 啟用/停用 + 刪除; swipe-right reveals 編輯 + 置頂.
-            // Header / group rows return nil so they do not swipe.
-            leadingSwipeActions: { [model, rowActions] item in
-                guard case .source(let id) = item, let source = model.source(for: id) else {
-                    return nil
-                }
-                let edit = UIContextualAction(style: .normal, title: localized("編輯")) { _, _, done in
-                    rowActions.edit(source)
-                    done(true)
-                }
-                edit.backgroundColor = UIColor(Color(DSColor.appAccent))
-                let pin = UIContextualAction(style: .normal, title: localized("置頂")) { _, _, done in
-                    rowActions.pinToTop(source)
-                    done(true)
-                }
-                pin.backgroundColor = UIColor(Color(DSColor.warning))
-                return UISwipeActionsConfiguration(actions: [pin, edit])
-            },
-            trailingSwipeActions: { [model, rowActions] item in
-                guard case .source(let id) = item, let source = model.source(for: id) else {
-                    return nil
-                }
-                let toggle = UIContextualAction(
-                    style: .normal,
-                    title: source.enabled ? localized("停用") : localized("启用")
-                ) { _, _, done in
-                    rowActions.toggleEnabled(id)
-                    done(true)
-                }
-                toggle.backgroundColor = UIColor(Color(source.enabled ? DSColor.textTertiary : DSColor.success))
-                let remove = UIContextualAction(style: .destructive, title: localized("刪除")) { _, _, done in
-                    rowActions.delete(source)
-                    done(true)
-                }
-                return UISwipeActionsConfiguration(actions: [remove, toggle])
-            }
-        ) { item in
-            switch item {
-            case .header:
-                SourceValidationListHeader(
-                    counts: model.counts,
-                    filter: $model.filter,
-                    grouped: $gs.bookSourceListGrouped
-                )
-            case .group(let id):
-                if let group = model.group(id) {
-                    BookSourceGroupHeaderRow(
-                        group: group,
-                        expanded: model.isExpanded(id),
-                        actions: groupActions
-                    )
-                    .padding(.horizontal, DSSpacing.md)
-                }
-            case .source(let id):
-                if let source = model.source(for: id) {
-                    BookSourceRow(
-                        source: source,
-                        isSelected: model.isSelected(id),
-                        pin: model.pin(for: id),
-                        health: healthChecker.healthById[id],
-                        defaultGroupName: defaultGroupName,
-                        actions: rowActions
-                    )
-                }
-            }
-        }
-        // Scroll under the navigation and search bars like a `List` does; the collection
-        // view insets its content by the safe area it now overlaps.
-        .ignoresSafeArea(.container, edges: .top)
+        BookSourceListGrid(
+            model: model,
+            rowActions: rowActions,
+            groupActions: groupActions,
+            healthById: healthChecker.healthById,
+            defaultGroupName: defaultGroupName,
+            filter: $model.filter,
+            grouped: $gs.bookSourceListGrouped
+        )
     }
 
     // MARK: - Row & Group Actions
