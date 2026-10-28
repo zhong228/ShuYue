@@ -6,7 +6,7 @@ struct BookshelfGridLayoutSettingsTests {
     @Test("grid column options include 2 through 5")
     func gridColumnOptionsAreTwoThroughFive() {
         #expect(GlobalSettings.bookshelfGridColumnCountOptions == [2, 3, 4, 5])
-        #expect(GlobalSettings.defaultBookshelfGridColumnCount == 3)
+        #expect(GlobalSettings.defaultBookshelfGridColumnCount == 4)
     }
 
     @Test("grid column count is clamped to supported options")

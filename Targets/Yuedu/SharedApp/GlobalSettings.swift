@@ -507,8 +507,11 @@ class GlobalSettings: ObservableObject {
     static let defaultReaderPageMarginV = 16.0
     static let defaultReaderPageTurnStyle: PageTurnStyle = .slide
     static let bookshelfGridColumnCountOptions = [2, 3, 4, 5]
-    static let defaultBookshelfGridColumnCount = 3
+    static let defaultBookshelfGridColumnCount = 4
     private static let bookshelfGridColumnCountKey = "yd_bookshelf_grid_column_count"
+    /// One-shot migration: 3 used to be the default; bump those to 4 (每行 4 本)
+    /// once, unless the user picked a non-default density (2 or 5), which stays.
+    private static let bookshelfGridColumnsMigratedKey = "yd_bookshelf_grid_columns_migrated_v4"
     /// After a local import, look online for a missing cover (書坊刮削).
     private static let autoScrapeCoversKey = "yd_auto_scrape_covers"
 
@@ -1554,6 +1557,22 @@ class GlobalSettings: ObservableObject {
         return min(max(value, minimum), maximum)
     }
 
+    /// Stored density, with the one-shot 3→4 migration folded in: the old default
+    /// (3, 有点大) reads as "never chosen", so it moves to the new 4-per-row default;
+    /// an explicit non-default choice (2 or 5) is left alone.
+    private static func loadedBookshelfGridColumnCount() -> Int {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: bookshelfGridColumnsMigratedKey) else {
+            return (defaults.object(forKey: bookshelfGridColumnCountKey) as? Int)
+                ?? defaultBookshelfGridColumnCount
+        }
+        defaults.set(true, forKey: bookshelfGridColumnsMigratedKey)
+        guard let stored = defaults.object(forKey: bookshelfGridColumnCountKey) as? Int else {
+            return defaultBookshelfGridColumnCount
+        }
+        return stored == 3 ? defaultBookshelfGridColumnCount : stored
+    }
+
     /// Scrape a cover from the open web when an imported book has none.
     /// Off by default because scraping after every import costs network traffic;
     /// the manual 刮削 button in the shelf menu works regardless.
@@ -2237,8 +2256,7 @@ class GlobalSettings: ObservableObject {
         }
 
         bookshelfGridColumnCount = Self.sanitizedBookshelfGridColumnCount(
-            (UserDefaults.standard.object(forKey: Self.bookshelfGridColumnCountKey) as? Int)
-            ?? Self.defaultBookshelfGridColumnCount
+            Self.loadedBookshelfGridColumnCount()
         )
         useDefaultCoverForAllBooks = UserDefaults.standard.bool(forKey: Self.useDefaultCoverForAllBooksKey)
         bookshelfCoverCornerRadius = Self.clampedBookshelfCoverCornerRadius(
