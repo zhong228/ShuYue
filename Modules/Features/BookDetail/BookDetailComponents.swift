@@ -129,21 +129,52 @@ struct BookDetailHero<Cover: View>: View {
     private var artworkSize: CGSize {
         switch artworkShape {
         case .book:
-            CGSize(width: DSLayout.bookCoverHeroWidth, height: DSLayout.bookCoverHeroHeight)
+            // 左右版式：封面收窄到 2:3 的 116×174，给书名与标签留出阅读宽度。
+            CGSize(width: 116, height: 174)
         case .square:
-            CGSize(width: DSLayout.bookDetailSquareArtworkSide, height: DSLayout.bookDetailSquareArtworkSide)
+            CGSize(width: 150, height: 150)
         }
     }
 
     var body: some View {
-        VStack(spacing: DSSpacing.lg) {
-            artwork
-            titleBlock
+        VStack(alignment: .leading, spacing: DSSpacing.lg) {
+            // 封面在左、信息在右的落地版式（App Store 风格），取代旧的居中纵排。
+            HStack(alignment: .top, spacing: DSSpacing.lg) {
+                artwork
+                VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                    Text(title)
+                        .font(DSFont.serifSectionTitle.weight(.bold))
+                        .foregroundStyle(DSColor.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Label(author, systemImage: "person.crop.circle")
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textSecondary)
+                        .lineLimit(1)
+                    if !meta.isEmpty {
+                        // 分类标签收拢为强调色小胶囊，最多三个，避免长串文字。
+                        HStack(spacing: DSSpacing.xs) {
+                            ForEach(Array(meta.components(separatedBy: " · ").prefix(3).enumerated()), id: \.offset) { _, tag in
+                                Text(tag)
+                                    .font(DSFont.caption2.weight(.medium))
+                                    .foregroundStyle(DSColor.appAccent)
+                                    .padding(.horizontal, DSSpacing.sm)
+                                    .padding(.vertical, 3)
+                                    .background(DSColor.appAccentSoft, in: Capsule())
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             actions
         }
         .padding(.horizontal, DSSpacing.lg)
         .padding(.top, DSSpacing.lg)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(alignment: .top) { backdrop }
     }
 
@@ -160,28 +191,6 @@ struct BookDetailHero<Cover: View>: View {
             )
             // The title below names the book; the artwork would only repeat it.
             .accessibilityHidden(true)
-    }
-
-    private var titleBlock: some View {
-        VStack(spacing: DSSpacing.xs) {
-            Text(title)
-                .font(DSFont.title2.weight(.bold))
-                .foregroundStyle(DSColor.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            Text(author)
-                .font(DSFont.subheadline)
-                .foregroundStyle(DSColor.textSecondary)
-                .lineLimit(1)
-            if !meta.isEmpty {
-                Text(meta)
-                    .font(DSFont.footnote)
-                    .foregroundStyle(DSColor.textSecondary)
-                    .lineLimit(2)
-            }
-        }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
     }
 
     /// Side by side as Apple Books shows them; stacked once the text size no longer
@@ -308,24 +317,25 @@ struct BookDetailInfoItem: Identifiable {
     }
 }
 
-/// Apple Books' strip of short facts under the hero: equal columns separated by
-/// hairlines, scrolling sideways only once the text size no longer fits them.
+/// Apple Books' strip of short facts under the hero, redrawn as one surface card:
+/// equal columns separated by hairlines, scrolling sideways only once the text size
+/// no longer fits them.
 struct BookDetailInfoStrip: View {
     let items: [BookDetailInfoItem]
 
     var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-            ViewThatFits(in: .horizontal) {
-                row(equalWidths: true)
-                ScrollView(.horizontal) {
-                    row(equalWidths: false)
-                }
-                .scrollIndicators(.hidden)
+        ViewThatFits(in: .horizontal) {
+            row(equalWidths: true)
+            ScrollView(.horizontal) {
+                row(equalWidths: false)
             }
-            .padding(.vertical, DSSpacing.md)
-            Divider()
+            .scrollIndicators(.hidden)
         }
+        .padding(.vertical, DSSpacing.sm)
+        .padding(.horizontal, DSSpacing.lg)
+        .frame(maxWidth: .infinity)
+        .background(BookDetailCardStyle.background)
+        .overlay(BookDetailCardStyle.border)
         .padding(.horizontal, DSSpacing.lg)
     }
 
@@ -334,6 +344,7 @@ struct BookDetailInfoStrip: View {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 if index > 0 {
                     Divider()
+                        .frame(maxHeight: 34)
                 }
                 cell(item)
                     .frame(maxWidth: equalWidths ? .infinity : nil)
@@ -394,6 +405,7 @@ struct BookDetailInfoStrip: View {
 // MARK: - Section header
 
 /// A section title in Apple's store style, with an optional trailing 「查看全部」.
+/// 书悦式侧标：标题左缘一条品牌色圆头短竖条，与书架列表行的书卷饰条同源。
 struct BookDetailSectionHeader: View {
     let title: String
     var actionTitle: String?
@@ -405,6 +417,13 @@ struct BookDetailSectionHeader: View {
                 .font(DSFont.title3.weight(.bold))
                 .foregroundStyle(DSColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
+                .padding(.leading, 10)
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(DSColor.appAccent)
+                        .frame(width: 4, height: 16)
+                        .offset(x: -8)
+                }
             Spacer(minLength: DSSpacing.sm)
             if let actionTitle, let action {
                 Button(action: action) {
@@ -469,7 +488,10 @@ struct BookDetailIntroSection: View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
             BookDetailSectionHeader(title: localized("簡介"))
             introBody
+                .padding(DSSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .background(BookDetailCardStyle.background)
+                .overlay(BookDetailCardStyle.border)
             if mayOverflow {
                 Button {
                     withAnimation(reduceMotion ? nil : DSAnimation.standard) {

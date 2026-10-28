@@ -637,18 +637,74 @@ private struct TodayRecommendation: Identifiable {
     let section: DiscoverShowcaseSection
 }
 
-/// 精选频道英雄位的大卡：自动轮播推荐书封面、书名与分类，圆点指示条。
+/// 精选频道英雄位的大卡：可横滑的分页轮播（自动轮换 + 手势滑动），圆点指示条。
 private struct TodayRecommendationBanner: View {
     let items: [TodayRecommendation]
     let onOpenBook: (OnlineBook) -> Void
     let onResumeBrowser: () -> Void
     @State private var index = 0
-    @State private var timer = Timer.publish(every: 3.5, on: .main, in: .common).autoconnect()
-
-    private var current: TodayRecommendation { items[index % items.count] }
+    @State private var timer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        TabView(selection: $index) {
+            ForEach(Array(items.enumerated()), id: \.offset) { offset, item in
+                TodayRecommendationCard(
+                    item: item,
+                    onOpenBook: onOpenBook,
+                    onResumeBrowser: onResumeBrowser
+                )
+                .tag(offset)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .frame(height: 192)
+        .overlay(alignment: .bottomTrailing) {
+            HStack(spacing: 5) {
+                ForEach(0..<items.count, id: \.self) { dot in
+                    Capsule()
+                        .fill(.white.opacity(dot == index ? 0.95 : 0.35))
+                        .frame(width: dot == index ? 16 : 6, height: 6)
+                    // Active page reads as a small bar; the rest stay round dots.
+                        .animation(.easeInOut(duration: 0.25), value: index)
+                }
+            }
+            .padding(.trailing, DSSpacing.md)
+            .padding(.bottom, DSSpacing.xs)
+            .accessibilityHidden(true)
+        }
+        .onReceive(timer) { _ in
+            withAnimation(.easeInOut(duration: 0.4)) {
+                index = (index + 1) % items.count
+            }
+        }
+    }
+}
+
+/// 单页推荐卡：分层品牌渐变 + 封面 + 标题/作者/简介 + 「立即阅读」行动按钮。
+private struct TodayRecommendationCard: View {
+    let item: TodayRecommendation
+    let onOpenBook: (OnlineBook) -> Void
+    let onResumeBrowser: () -> Void
+
+    /// 作者与来源分类拼成一行元信息；作者缺失时退回分类名。
+    private var metaLine: String {
+        [item.book.author, item.section.title]
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+
+    /// 简介压成一行文案；缺失时不再占位。
+    private var introLine: String? {
+        let trimmed = item.book.intro
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var body: some View {
+        ZStack {
+            // ── Layered backdrop ──
             RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -658,35 +714,55 @@ private struct TodayRecommendationBanner: View {
                     )
                 )
                 .shadow(color: DSColor.appAccent.opacity(0.24), radius: 12, x: 0, y: 6)
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .fill(
+                    RadialGradient(
+                        colors: [.white.opacity(0.16), .clear],
+                        center: .topTrailing,
+                        startRadius: 8,
+                        endRadius: 220
+                    )
+                )
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.20)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
             // 书卷印章装饰：右上角一枚半透明白色书页纹理。
             GeometryReader { proxy in
                 VStack(alignment: .trailing, spacing: -4) {
                     Text("书")
                         .font(DSFont.fixed(size: 76, weight: .bold, design: .serif))
-                        .foregroundStyle(.white.opacity(0.16))
+                        .foregroundStyle(.white.opacity(0.14))
                     Text("SHUYUE")
                         .font(DSFont.fixed(size: 9, weight: .semibold))
                         .tracking(3)
-                        .foregroundStyle(.white.opacity(0.22))
+                        .foregroundStyle(.white.opacity(0.20))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .padding(.top, 6)
                 .padding(.trailing, 14)
                 .accessibilityHidden(true)
             }
+
+            // ── Content ──
             HStack(spacing: DSSpacing.md) {
                 DiscoverCover(
-                    display: DiscoverBookDisplay(book: current.book, intro: "", isAudiobook: false),
-                    section: current.section,
-                    size: CGSize(width: 84, height: 126)
+                    display: DiscoverBookDisplay(book: item.book, intro: "", isAudiobook: false),
+                    section: item.section,
+                    size: CGSize(width: 92, height: 138)
                 )
-                .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.35), radius: 7, x: 0, y: 5)
+
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .font(DSFont.caption.weight(.semibold))
-                        Text(localized("今日推荐"))
-                            .font(DSFont.caption.weight(.semibold))
+                        Label(localized("今日推荐"), systemImage: "sparkles")
+                            .font(DSFont.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(.white.opacity(0.18), in: Capsule())
+                            .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 0.6))
                         Spacer(minLength: 0)
                         Button(action: onResumeBrowser) {
                             Image(systemName: "safari")
@@ -698,42 +774,48 @@ private struct TodayRecommendationBanner: View {
                         .foregroundStyle(.white.opacity(0.9))
                         .accessibilityLabel(localized("打开浏览器"))
                     }
-                    Text(current.book.name)
+
+                    Text(item.book.name)
                         .font(DSFont.fixed(size: 20, weight: .bold, design: .serif))
                         .foregroundStyle(.white)
                         .lineLimit(2)
+                        .minimumScaleFactor(0.85)
                         .multilineTextAlignment(.leading)
-                    Text(current.section.title)
-                        .font(DSFont.callout)
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+
+                    if !metaLine.isEmpty {
+                        Label(metaLine, systemImage: "person.crop.circle")
+                            .font(DSFont.caption)
+                            .foregroundStyle(.white.opacity(0.88))
+                            .lineLimit(1)
+                    }
+
+                    if let intro = introLine {
+                        Text(intro)
+                            .font(DSFont.caption2)
+                            .foregroundStyle(.white.opacity(0.72))
+                            .lineLimit(1)
+                    }
+
+                    HStack(spacing: 0) {
+                        Text(localized("立即阅读"))
+                            .font(DSFont.caption.weight(.semibold))
+                            .foregroundStyle(DSColor.appAccentDark)
+                            .padding(.horizontal, DSSpacing.sm)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.92), in: Capsule())
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.top, 2)
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, DSSpacing.md)
             .padding(.vertical, DSSpacing.sm)
-            HStack(spacing: 6) {
-                ForEach(0..<items.count, id: \.self) { dot in
-                    Circle()
-                        .fill(dot == index ? Color.white : Color.white.opacity(0.35))
-                        .frame(width: 6, height: 6)
-                }
-            }
-            .padding(.trailing, DSSpacing.md)
-            .padding(.bottom, DSSpacing.sm)
-            .accessibilityHidden(true)
         }
-        .frame(height: 176)
         .contentShape(Rectangle())
-        .onTapGesture { onOpenBook(current.book) }
+        .onTapGesture { onOpenBook(item.book) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(localized("今日推荐"))：\(current.book.name)，\(current.section.title)")
-        .onReceive(timer) { _ in
-            withAnimation(.easeInOut(duration: 0.35)) {
-                index = (index + 1) % items.count
-            }
-        }
+        .accessibilityLabel("\(localized("今日推荐"))：\(item.book.name)，\(item.section.title)")
     }
 }
 

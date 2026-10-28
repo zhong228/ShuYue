@@ -22,14 +22,13 @@ struct SettingsView: View {
     @State private var autoOpenDiagnostics = false
     #endif
     private let feedbackEmail = "172803068@qq.com"
-    private let sourceCodeURL = URL(string: "https://github.com/zhong228/ShuYue/releases")
 
     private var feedbackMailURL: URL? {
         var components = URLComponents()
         components.scheme = "mailto"
         components.path = feedbackEmail
         components.queryItems = [
-            URLQueryItem(name: "subject", value: localized("書悅 app 反饋"))
+            URLQueryItem(name: "subject", value: localized("书悦 app 反馈"))
         ]
         return components.url
     }
@@ -41,7 +40,7 @@ struct SettingsView: View {
         let appName = Bundle.main.localizedInfoDictionary?["CFBundleDisplayName"] as? String
             ?? Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
             ?? "ShuYue"
-        let template = localized("跟隨系統語言。可在「設定 → %@ → 語言」單獨設定")
+        let template = localized("跟随系统语言。可在「设置 → %@ → 语言」中单独设定")
         return String(format: template, appName)
     }
 
@@ -137,12 +136,7 @@ struct SettingsView: View {
                             title: localized("关于书悦"),
                             value: appVersion
                         ) {
-                            AboutSupportView(
-                                appVersion: appVersion,
-                                feedbackEmail: feedbackEmail,
-                                feedbackMailURL: feedbackMailURL,
-                                sourceCodeURL: sourceCodeURL
-                            )
+                            AboutSupportView(appVersion: appVersion)
                         }
                     }
                 }
@@ -245,7 +239,7 @@ struct SettingsView: View {
     /// Says whether AI is usable at a glance. A reader who has not set it up should not have
     /// to open the screen to find out that.
     private var aiAssistantDetail: String {
-        AIProviderStore.shared.hasConfiguredProfile ? localized("已啟用") : localized("未設定")
+        AIProviderStore.shared.hasConfiguredProfile ? localized("已启用") : localized("未设置")
     }
 }
 
@@ -268,14 +262,25 @@ private struct ShuYueBrandHeaderCard: View {
                     .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
                     .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    Text(localized("書悅"))
-                        .font(DSFont.title2.weight(.bold))
+                VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                    Text(localized("书悦"))
+                        .font(DSFont.serifSectionTitle.weight(.bold))
                         .foregroundStyle(DSColor.textPrimary)
-                    Text(localized("自由開源 · 純淨的書源閱讀器"))
-                        .font(DSFont.footnote)
-                        .foregroundStyle(DSColor.textSecondary)
-                        .lineLimit(2)
+                    // One-line promise redesigned as three accent capsules: reads as a
+                    // brand statement instead of a plain (traditionally-set) caption.
+                    HStack(spacing: DSSpacing.xs) {
+                        ForEach(
+                            [localized("自由开源"), localized("海量书源"), localized("纯净阅读")],
+                            id: \.self
+                        ) { word in
+                            Text(word)
+                                .font(DSFont.caption2.weight(.medium))
+                                .foregroundStyle(DSColor.appAccent)
+                                .padding(.horizontal, DSSpacing.sm)
+                                .padding(.vertical, 3)
+                                .background(DSColor.appAccentSoft, in: Capsule())
+                        }
+                    }
                 }
 
                 Spacer(minLength: 0)
@@ -299,7 +304,7 @@ private struct ShuYueBrandHeaderCard: View {
                 .overlay(DSColor.separator)
 
             HStack(spacing: DSSpacing.sm) {
-                Text(localized("當前版本"))
+                Text(localized("当前版本"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textTertiary)
                 Spacer(minLength: 0)
@@ -324,11 +329,7 @@ private struct ShuYueBrandHeaderCard: View {
 }
 
 private struct AboutSupportView: View {
-    @Environment(\.openURL) private var openURL
     let appVersion: String
-    let feedbackEmail: String
-    let feedbackMailURL: URL?
-    let sourceCodeURL: URL?
 
     var body: some View {
         ScrollView {
@@ -336,8 +337,6 @@ private struct AboutSupportView: View {
             VStack(spacing: DSSpacing.lg) {
                 heroCard
                 infoCard
-                linksCard
-                diagnosticsCard
                 legalCard
             }
             .padding(.horizontal, DSSpacing.md)
@@ -359,10 +358,10 @@ private struct AboutSupportView: View {
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
                 .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
             VStack(spacing: DSSpacing.xs) {
-                Text(localized("書悅"))
+                Text(localized("书悦"))
                     .font(DSFont.title2.weight(.semibold))
                     .foregroundStyle(DSColor.textPrimary)
-                Text(localized("聯絡方式、版本資訊與政策協議"))
+                Text(localized("联系方式、版本信息与政策协议"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -394,68 +393,9 @@ private struct AboutSupportView: View {
         .overlay(cardBorder)
     }
 
-    private var linksCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            actionRowCard(
-                icon: "chevron.left.forwardslash.chevron.right",
-                title: localized("原始碼與開源授權"),
-                detail: localized("取得本版本對應原始碼與 MPL-2.0 授權"),
-                action: {
-                    if let url = sourceCodeURL { openURL(url) }
-                }
-            )
-            cardDivider
-            actionRowCard(
-                icon: "envelope.fill",
-                title: localized("電子郵件"),
-                detail: feedbackEmail,
-                action: {
-                    if let url = feedbackMailURL { openURL(url) }
-                }
-            )
-        }
-        .background(cardBackground)
-        .overlay(cardBorder)
-    }
-
-    private var diagnosticsCard: some View {
-        NavigationLink {
-            DiagnosticsView()
-        } label: {
-            HStack(spacing: DSSpacing.md) {
-                DSIconBadge(
-                    systemImage: "stethoscope",
-                    gradient: DSBrandGradient.tint(for: "stethoscope"),
-                    side: 30,
-                    iconSize: 16
-                )
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(localized("帮助与诊断"))
-                        .font(DSFont.subheadline.weight(.medium))
-                        .foregroundStyle(DSColor.textPrimary)
-                    Text(localized("应用诊断与问题回报"))
-                        .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textSecondary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(DSFont.caption2)
-                    .foregroundStyle(DSColor.textSecondary.opacity(0.7))
-            }
-            .padding(.horizontal, DSSpacing.md)
-            .padding(.vertical, DSSpacing.sm)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(DSColor.textPrimary)
-        .background(cardBackground)
-        .overlay(cardBorder)
-    }
-
     private var legalCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(localized("政策與協議"))
+            Text(localized("政策与协议"))
                 .font(DSFont.footnote.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -473,10 +413,10 @@ private struct AboutSupportView: View {
                         iconSize: 16
                     )
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(localized("隱私權政策"))
+                        Text(localized("隐私权政策"))
                             .font(DSFont.subheadline.weight(.medium))
                             .foregroundStyle(DSColor.textPrimary)
-                        Text(localized("書悅數據處理與隱私說明"))
+                        Text(localized("书悦数据处理与隐私说明"))
                             .font(DSFont.caption)
                             .foregroundStyle(DSColor.textSecondary)
                             .lineLimit(2)
@@ -506,10 +446,10 @@ private struct AboutSupportView: View {
                         iconSize: 16
                     )
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(localized("使用者協議"))
+                        Text(localized("用户协议"))
                             .font(DSFont.subheadline.weight(.medium))
                             .foregroundStyle(DSColor.textPrimary)
-                        Text(localized("使用規則、書源與第三方內容責任"))
+                        Text(localized("使用规则、书源与第三方内容责任"))
                             .font(DSFont.caption)
                             .foregroundStyle(DSColor.textSecondary)
                             .lineLimit(2)
@@ -526,7 +466,7 @@ private struct AboutSupportView: View {
             .buttonStyle(.plain)
             .foregroundStyle(DSColor.textPrimary)
 
-            Text(localized("使用書源與第三方來源前，請先閱讀相關條款。"))
+            Text(localized("使用书源与第三方来源前，请先阅读相关条款。"))
                 .font(DSFont.caption2)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -535,42 +475,6 @@ private struct AboutSupportView: View {
         }
         .background(cardBackground)
         .overlay(cardBorder)
-    }
-
-    private func actionRowCard(
-        icon: String,
-        title: String,
-        detail: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: DSSpacing.md) {
-                DSIconBadge(
-                    systemImage: icon,
-                    gradient: DSBrandGradient.tint(for: icon),
-                    side: 30,
-                    iconSize: 16
-                )
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(DSFont.subheadline.weight(.medium))
-                        .foregroundStyle(DSColor.textPrimary)
-                    Text(detail)
-                        .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textSecondary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "arrow.up.right")
-                    .font(DSFont.caption2)
-                    .foregroundStyle(DSColor.textSecondary.opacity(0.7))
-            }
-            .padding(.horizontal, DSSpacing.md)
-            .padding(.vertical, DSSpacing.sm)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(DSColor.textPrimary)
     }
 
     private var cardBackground: some View {

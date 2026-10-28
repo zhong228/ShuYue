@@ -27,8 +27,7 @@ struct AudiobookReaderView: View {
 
     var body: some View {
         ZStack {
-            backgroundGradient.ignoresSafeArea()
-            Color.black.opacity(0.18).ignoresSafeArea()
+            backgroundGradient
 
             VStack(spacing: 0) {
                 topBar
@@ -45,7 +44,7 @@ struct AudiobookReaderView: View {
                 transportRow
                     .padding(.top, DSSpacing.xl)
                 bottomRow
-                    .padding(.top, DSSpacing.xl)
+                    .padding(.top, DSSpacing.lg)
                     .padding(.bottom, DSSpacing.xl)
             }
         }
@@ -82,11 +81,24 @@ struct AudiobookReaderView: View {
 
     // MARK: Background
 
-    private var backgroundGradient: LinearGradient {
-        LinearGradient(
-            colors: [baseColor, baseColor.opacity(0.55), Color.black.opacity(0.92)],
-            startPoint: .top, endPoint: .bottom
-        )
+    /// 全屏封面模糊底（Apple Music 式）：封面放大虚化铺满，再压一层主色到黑的渐变，
+    /// 让播放页由这本书自己的封面「发光」，而非一块通用黑底。
+    private var backgroundGradient: some View {
+        ZStack {
+            if let image = player.coverImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 64, opaque: true)
+                    .scaleEffect(1.4)
+                    .opacity(0.45)
+            }
+            LinearGradient(
+                colors: [baseColor.opacity(0.72), Color.black.opacity(0.88)],
+                startPoint: .top, endPoint: .bottom
+            )
+        }
+        .ignoresSafeArea()
     }
 
     private func updateBaseColor() {
@@ -133,9 +145,13 @@ struct AudiobookReaderView: View {
                 }
             }
         }
-        .frame(width: 260, height: 260)
-        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous))
-        .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 12)
+        .frame(width: 232, height: 232)
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 14)
         .overlay {
             if player.isLoading {
                 ProgressView()
@@ -150,13 +166,13 @@ struct AudiobookReaderView: View {
     private var titleBlock: some View {
         VStack(spacing: 6) {
             Text(player.currentChapterTitle.isEmpty ? player.bookTitle : player.currentChapterTitle)
-                .font(DSFont.fixed(size: 18, weight: .bold))
+                .font(DSFont.serifSectionTitle.weight(.bold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
             Text(player.bookTitle)
-                .font(DSFont.fixed(size: 14))
-                .foregroundColor(.white.opacity(0.75))
+                .font(DSFont.fixed(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
                 .lineLimit(1)
         }
     }
@@ -222,16 +238,28 @@ struct AudiobookReaderView: View {
             }
             .accessibilityLabel(localized("上一章"))
             Spacer()
-            transportButton("gobackward.15", size: 30) { player.skipBackward(15) }
+            // ±15 秒跳转：半透明圆底，与主播放键的实心圆区分层级。
+            transportButton("gobackward.15", size: 26) { player.skipBackward(15) }
             Spacer()
             Button { player.togglePlayPause() } label: {
-                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(DSFont.fixed(size: 64))
-                    .foregroundColor(.white)
+                ZStack {
+                    // 品牌朱砂主键：实心圆 + 细白描边，取代旧的白色系统大图标。
+                    Circle()
+                        .fill(DSColor.appAccent)
+                        .frame(width: 78, height: 78)
+                    Circle()
+                        .stroke(Color.white.opacity(0.22), lineWidth: 1)
+                        .frame(width: 78, height: 78)
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(DSFont.fixed(size: 32, weight: .semibold))
+                        .foregroundColor(.white)
+                        .offset(x: player.isPlaying ? 0 : 2)
+                }
+                .shadow(color: DSColor.appAccent.opacity(0.45), radius: 14, x: 0, y: 6)
             }
             .disabled(player.isLoading)
             Spacer()
-            transportButton("goforward.15", size: 30) { player.skipForward(15) }
+            transportButton("goforward.15", size: 26) { player.skipForward(15) }
             Spacer()
             transportButton("forward.end.fill", size: 24, enabled: player.hasNextChapter) {
                 player.nextChapter()
@@ -249,6 +277,9 @@ struct AudiobookReaderView: View {
                 .font(DSFont.fixed(size: size, weight: .medium))
                 .foregroundColor(.white.opacity(enabled ? 1 : 0.3))
                 .frame(width: 50, height: 50)
+                .background(
+                    Circle().fill(Color.white.opacity(0.12))
+                )
         }
         .disabled(!enabled)
     }

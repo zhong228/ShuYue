@@ -141,7 +141,7 @@ private struct DiscoverEmptyState: View {
 // MARK: - Filters and page links
 
 /// The source's own controls above its categories, in one scrolling row: each filter
-/// it emits (线路、类型、频道、平台) as a menu of its options, then the categories that
+/// it emits (类型、频道、平台) as a menu of its options, then the categories that
 /// open a web page. legado-E draws the same `select` kinds inline on its explore page.
 private struct DiscoverControlsRow: View {
     @ObservedObject var discover: DiscoverViewModel
@@ -151,7 +151,9 @@ private struct DiscoverControlsRow: View {
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: DSSpacing.sm) {
-                ForEach(discover.filters) { filter in
+                // The 线路 (mirror host) filter stays hidden: it is a source-management
+                // concern, and a raw CDN host in the explore row read as clutter.
+                ForEach(discover.filters.filter { !Self.isLineFilter($0) }) { filter in
                     filterMenu(filter)
                 }
                 ForEach(pageItems) { item in
@@ -197,6 +199,12 @@ private struct DiscoverControlsRow: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityValue(value)
+    }
+
+    /// The 线路 (mirror host) filter, matched on the raw Legado `select` title so both
+    /// simplified and traditional sources are covered.
+    static func isLineFilter(_ filter: DiscoverFilter) -> Bool {
+        filter.title == "线路" || filter.title == "線路"
     }
 
     static func filterTitle(_ title: String) -> String {
