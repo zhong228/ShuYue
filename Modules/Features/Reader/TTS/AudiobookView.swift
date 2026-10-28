@@ -26,27 +26,34 @@ struct AudiobookReaderView: View {
     @State private var baseColor: Color = DSColor.coverGradients[0][0]
 
     var body: some View {
-        ZStack {
-            backgroundGradient
+        GeometryReader { geo in
+            // 钉在安全区内：内容宽高 = 可用屏幕宽高，封面按「屏幕宽度 − 边距」与
+            // 「可用高度的比例」取小来限高，杜绝封面按整屏宽度撑成正方形后整体
+            // 顶出屏幕（底部播放键被挤出、功能行只露出几项）的溢出问题。
+            let coverSize = min(geo.size.width - 104, geo.size.height * 0.46)
+            ZStack {
+                backgroundGradient
 
-            VStack(spacing: 0) {
-                topBar
-                Spacer(minLength: DSSpacing.sm)
-                coverArt
-                titleBlock
-                    .padding(.horizontal, DSSpacing.xl)
-                    .padding(.top, DSSpacing.lg)
-                if let message = player.error {
-                    errorBlock(message)
+                VStack(spacing: 0) {
+                    topBar
+                    Spacer(minLength: DSSpacing.sm)
+                    coverArt(size: coverSize)
+                    titleBlock
+                        .padding(.horizontal, DSSpacing.xl)
+                        .padding(.top, DSSpacing.lg)
+                    if let message = player.error {
+                        errorBlock(message)
+                    }
+                    functionRow
+                        .padding(.top, DSSpacing.lg)
+                    Spacer(minLength: DSSpacing.md)
+                    progressSection
+                    transportRow
+                        .padding(.top, DSSpacing.sm)
                 }
-                functionRow
-                    .padding(.top, DSSpacing.lg)
-                Spacer(minLength: DSSpacing.md)
-                progressSection
-                transportRow
-                    .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.lg)
+                .frame(maxWidth: geo.size.width, maxHeight: geo.size.height)
             }
-            .padding(.bottom, DSSpacing.lg)
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
         // whole window, which flipped the bookshelf dark for an instant during the
@@ -150,11 +157,11 @@ struct AudiobookReaderView: View {
 
     // MARK: Cover
 
-    private var coverArt: some View {
-        // 截图样式：接近全宽的大圆角封面，外面套一圈留缝的玻璃圆角框，
-        // 底部中央一枚播放均衡器。自适应屏幕宽度，小屏自动缩小。
+    /// 截图样式：接近全宽的大圆角封面，外面套一圈留缝的玻璃圆角框，
+    /// 底部中央一枚播放均衡器。封面尺寸由调用方按屏幕宽高取小传入，保证不溢出。
+    private func coverArt(size: CGFloat) -> some View {
         Color.clear
-            .aspectRatio(1, contentMode: .fit)
+            .frame(width: size, height: size)
             .overlay { coverContent.scaledToFill() }
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay {
@@ -179,7 +186,6 @@ struct AudiobookReaderView: View {
                     .padding(-10)
             }
             .shadow(color: .black.opacity(0.4), radius: 26, x: 0, y: 14)
-            .padding(.horizontal, 52)
         // 封面/背景下滑 = 收起播放页回到迷你播放条：边听边逛其他页面。
         .gesture(minimizeDrag)
     }
