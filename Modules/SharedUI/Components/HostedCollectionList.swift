@@ -41,12 +41,20 @@ struct HostedCollectionList<Item: Hashable, Row: View>: UIViewControllerRepresen
     /// Items drawn on the 毛玻璃／分組卡片 surface across the full cell — what a `List`
     /// section's `interfaceSectionSurface()` painted behind its rows.
     var drawsCellSurface: (Item) -> Bool = { _ in false }
+    /// Optional native swipe actions. `trailingSwipeActions` reveals on swipe-left
+    /// (actions sit on the right); `leadingSwipeActions` on swipe-right. The provider
+    /// receives the row's `Item` and returns a `UISwipeActionsConfiguration?`; return
+    /// `nil` for items that should not swipe (e.g. headers, groups). Defaults to `nil`,
+    /// so existing callers are unaffected.
+    var leadingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil
+    var trailingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil
     @ViewBuilder let row: (Item) -> Row
 
     func makeUIViewController(context: Context) -> HostedCollectionListController<Item, Row> {
         HostedCollectionListController(
             row: row, showsSeparator: showsSeparator, usesSystemMargins: usesSystemMargins,
-            drawsCellSurface: drawsCellSurface)
+            drawsCellSurface: drawsCellSurface,
+            leadingSwipeActions: leadingSwipeActions, trailingSwipeActions: trailingSwipeActions)
     }
 
     func updateUIViewController(
@@ -60,7 +68,8 @@ struct HostedCollectionList<Item: Hashable, Row: View>: UIViewControllerRepresen
             row: row,
             showsSeparator: showsSeparator,
             usesSystemMargins: usesSystemMargins,
-            drawsCellSurface: drawsCellSurface
+            drawsCellSurface: drawsCellSurface,
+            leadingSwipeActions: leadingSwipeActions, trailingSwipeActions: trailingSwipeActions
         )
         if let scrollRequest {
             controller.scroll(
@@ -88,6 +97,8 @@ final class HostedCollectionListController<Item: Hashable, Row: View>: UIViewCon
     private var showsSeparator: (Item) -> Bool
     private var usesSystemMargins: (Item) -> Bool
     private var drawsCellSurface: (Item) -> Bool
+    private var leadingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)?
+    private var trailingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)?
     /// How many times a row view was built — the evidence that only visible rows are.
     private(set) var rowBuildCount = 0
 
@@ -95,12 +106,16 @@ final class HostedCollectionListController<Item: Hashable, Row: View>: UIViewCon
         row: @escaping (Item) -> Row,
         showsSeparator: @escaping (Item) -> Bool,
         usesSystemMargins: @escaping (Item) -> Bool = { _ in false },
-        drawsCellSurface: @escaping (Item) -> Bool = { _ in false }
+        drawsCellSurface: @escaping (Item) -> Bool = { _ in false },
+        leadingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil,
+        trailingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil
     ) {
         self.row = row
         self.showsSeparator = showsSeparator
         self.usesSystemMargins = usesSystemMargins
         self.drawsCellSurface = drawsCellSurface
+        self.leadingSwipeActions = leadingSwipeActions
+        self.trailingSwipeActions = trailingSwipeActions
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -115,6 +130,22 @@ final class HostedCollectionListController<Item: Hashable, Row: View>: UIViewCon
 
         var configuration = UICollectionLayoutListConfiguration(appearance: .plain)
         configuration.backgroundColor = .clear
+        if leadingSwipeActions != nil {
+            configuration.leadingSwipeActionsConfigurationProvider = { [weak self] indexPath in
+                guard let self, let item = self.dataSource.itemIdentifier(for: indexPath)?.item else {
+                    return nil
+                }
+                return self.leadingSwipeActions?(item)
+            }
+        }
+        if trailingSwipeActions != nil {
+            configuration.trailingSwipeActionsConfigurationProvider = { [weak self] indexPath in
+                guard let self, let item = self.dataSource.itemIdentifier(for: indexPath)?.item else {
+                    return nil
+                }
+                return self.trailingSwipeActions?(item)
+            }
+        }
         configuration.itemSeparatorHandler = { [weak self] indexPath, separator in
             var separator = separator
             separator.topSeparatorVisibility = .hidden
@@ -168,13 +199,17 @@ final class HostedCollectionListController<Item: Hashable, Row: View>: UIViewCon
         row: @escaping (Item) -> Row,
         showsSeparator: @escaping (Item) -> Bool,
         usesSystemMargins: @escaping (Item) -> Bool,
-        drawsCellSurface: @escaping (Item) -> Bool
+        drawsCellSurface: @escaping (Item) -> Bool,
+        leadingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil,
+        trailingSwipeActions: ((Item) -> UISwipeActionsConfiguration?)? = nil
     ) {
         loadViewIfNeeded()
         self.row = row
         self.showsSeparator = showsSeparator
         self.usesSystemMargins = usesSystemMargins
         self.drawsCellSurface = drawsCellSurface
+        self.leadingSwipeActions = leadingSwipeActions
+        self.trailingSwipeActions = trailingSwipeActions
 
         if newItems != items || contentVersion == nil {
             let startedAt = SourcePerfTrace.now
