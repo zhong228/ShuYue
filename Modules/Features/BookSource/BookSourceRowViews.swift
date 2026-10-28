@@ -153,8 +153,8 @@ struct BookSourceRow: View {
 
     private var content: some View {
         HStack(spacing: DSSpacing.md) {
-            // ── Leading avatar + selection ──
-            avatarBlock
+            // ── Leading glyph + selection ──
+            leadingGlyph
 
             // ── Text block ──
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
@@ -213,21 +213,8 @@ struct BookSourceRow: View {
                 menu
             }
         }
-        .padding(.vertical, DSSpacing.lg)
-        .padding(.horizontal, DSSpacing.lg)
-        .background(
-            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
-                .fill(DSColor.surface)
-                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
-                .stroke(
-                    isSelected ? rowAccent.opacity(0.5) : Color.clear,
-                    lineWidth: isSelected ? 2.5 : 0
-                )
-        )
-        .opacity(source.enabled ? 1 : 0.55)
+        .padding(.vertical, DSSpacing.sm)
+        .opacity(source.enabled ? 1 : 0.5)
         .padding(.horizontal, DSSpacing.md)
         .padding(.vertical, DSSpacing.xs)
         // Long-press opens the same operation panel as the trailing ellipsis menu.
@@ -236,26 +223,28 @@ struct BookSourceRow: View {
 
     // MARK: Avatar block
 
-    private var avatarBlock: some View {
+    /// Compact monogram in a tinted rounded square — a quiet leading glyph, not the
+    /// old bold coloured block. Tap toggles selection.
+    private var leadingGlyph: some View {
         ZStack {
-            // Colourful initial avatar — rounded-rect like an app icon, not a circle
-            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
-                .fill(avatarColor)
-                .frame(width: 48, height: 48)
+            RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+                .fill(avatarColor.opacity(isSelected ? 0.30 : 0.15))
+                .frame(width: 38, height: 38)
             Text(avatarInitial)
-                .font(DSFont.fixed(size: 18, weight: .bold))
-                .foregroundColor(.white)
-
-            // Selection ring
+                .font(DSFont.fixed(size: 15, weight: .semibold))
+                .foregroundStyle(avatarColor)
             if isSelected {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(rowAccent, lineWidth: 2.5)
-                    .frame(width: 52, height: 52)
+                RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+                    .stroke(rowAccent, lineWidth: 2)
+                    .frame(width: 42, height: 42)
             }
         }
+        .frame(width: 42, height: 42)
+        .contentShape(Rectangle())
         .onTapGesture {
             actions.toggleSelection(source.id)
         }
+        .accessibilityHidden(true)
     }
 
     /// A warm, saturated colour derived from the source URL so the same source always
