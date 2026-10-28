@@ -733,3 +733,598 @@ private let previewGroupActions = BookSourceGroupActions(
     .softScrollEdges()
     .listStyle(.plain)
 }
+
+// MARK: - Redesigned card-grid presentation (book-source management)
+
+// MARK: - Book-source management, redesigned as a card grid
+//
+// The previous screen was a `UICollectionView` list: a full-width dashboard card on top,
+// then one text row per source with hairline separators. This rebuilds the same data
+// (the `BookSourceManagementModel` is untouched) as a responsive card grid so the
+// management surface reads as a library of sources, not a settings list — while keeping
+// every operation reachable: an inline 啟用/停用 switch, a 「⋯」 menu, a long-press
+// context menu, and a swipe-left reveal (啟用/停用 + 刪除) plus a swipe-right reveal
+// (編輯 + 置頂).
+
+/// Slim header strip: a row of count chips + filter pills + the grouped toggle. Replaces
+/// the old full-width stat card so the chrome no longer reads as a dashboard.
+struct BookSourceListHeaderBar: View {
+    let counts: BookSourceManagementModel.Counts
+    @Binding var filter: ValidationListFilter
+    @Binding var grouped: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            HStack(spacing: DSSpacing.md) {
+                countChip(
+                    icon: "tray.full.fill",
+                    title: localized("总数"),
+                    value: counts.total,
+                    tint: DSColor.appAccent
+                )
+                countChip(
+                    icon: "checkmark.circle.fill",
+                    title: localized("启用数"),
+                    value: counts.enabled,
+                    tint: DSColor.success
+                )
+                countChip(
+                    icon: "exclamationmark.triangle.fill",
+                    title: localized("异常数"),
+                    value: counts.fetchError + counts.contentError,
+                    tint: DSColor.warning
+                )
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: DSSpacing.sm) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DSSpacing.sm) {
+                        filterPill(.all, label: localized("全部"), count: counts.total)
+                        filterPill(.fetchError, label: localized("抓取異常"), count: counts.fetchError)
+                        filterPill(.contentError, label: localized("正文異常"), count: counts.contentError)
+                    }
+                    .padding(.vertical, DSSpacing.xs)
+                }
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                Spacer(minLength: 0)
+                groupingToggle
+            }
+        }
+        .padding(.horizontal, DSSpacing.md)
+        .padding(.top, DSSpacing.sm)
+    }
+
+    private func countChip(icon: String, title: String, value: Int, tint: Color) -> some View {
+        HStack(spacing: DSSpacing.xs) {
+            Image(systemName: icon)
+                .font(DSFont.fixed(size: 12, weight: .semibold))
+                .foregroundStyle(tint)
+            Text(title)
+                .font(DSFont.caption)
+                .foregroundStyle(DSColor.textSecondary)
+            Text("\(value)")
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textPrimary)
+                .monospacedDigit()
+        }
+    }
+
+    private func filterPill(_ value: ValidationListFilter, label: String, count: Int) -> some View {
+        let selected = filter == value
+        return Button {
+            filter = value
+        } label: {
+            Text("\(label) \(count)")
+                .font(DSFont.subheadline)
+                .monospacedDigit()
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(selected ? DSColor.appAccent.opacity(0.15) : DSColor.neutralControlFill)
+                )
+                .foregroundStyle(selected ? DSColor.appAccent : DSColor.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var groupingToggle: some View {
+        Button {
+            grouped.toggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: grouped ? "rectangle.grid.1x2" : "square.grid.2x2")
+                    .font(DSFont.fixed(size: 13))
+                Text(grouped ? localized("分組") : localized("網格"))
+                    .font(DSFont.fixed(size: 12, weight: .medium))
+            }
+            .foregroundStyle(grouped ? DSColor.appAccent : DSColor.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(grouped ? DSColor.appAccent.opacity(0.12) : DSColor.neutralControlFill))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(localized("書源排列方式"))
+    }
+}
+
+/// The grid itself: a compact header followed by grouped or flat card sections. Lazily
+/// builds only the cards near the viewport, so a 50,000-source library still scrolls.
+struct BookSourceListGrid: View {
+    let model: BookSourceManagementModel
+    let rowActions: BookSourceRowActions
+    let groupActions: BookSourceGroupActions
+    let healthById: [UUID: SourceValidationSummary]
+    let defaultGroupName: String
+    @Binding var filter: ValidationListFilter
+    @Binding var grouped: Bool
+
+    private struct GridSection: Identifiable {
+        let id: String
+        var sourceIDs: [UUID]
+    }
+
+    /// Grouping is reflected in `model.items` (it carries `.group` entries only when
+    /// grouped and not searching), so derive the layout from the data, not a setting.
+    private var isGrouped: Bool {
+        model.items.contains {
+            if case .group = $0 { return true }
+            return false
+        }
+    }
+
+    private var sections: [GridSection] {
+        var result: [GridSection] = []
+        var current: GridSection?
+        for item in model.items {
+            switch item {
+            case .header:
+                continue
+            case .group(let id):
+                if let cur = current { result.append(cur) }
+                current = GridSection(id: id, sourceIDs: [])
+            case .source(let id):
+                current?.sourceIDs.append(id)
+            }
+        }
+        if let cur = current { result.append(cur) }
+        return result
+    }
+
+    private var flatSourceIDs: [UUID] {
+        model.items.compactMap {
+            if case .source(let id) = $0 { return id }
+            return nil
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: DSSpacing.lg) {
+                BookSourceListHeaderBar(
+                    counts: model.counts,
+                    filter: $filter,
+                    grouped: $grouped
+                )
+                if isGrouped {
+                    ForEach(sections) { section in
+                        groupBlock(section)
+                    }
+                } else {
+                    grid(for: flatSourceIDs)
+                }
+            }
+            .padding(DSSpacing.md)
+        }
+    }
+
+    private func groupBlock(_ section: GridSection) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            if let group = model.group(section.id) {
+                BookSourceGroupCard(
+                    group: group,
+                    expanded: model.isExpanded(section.id),
+                    actions: groupActions
+                )
+                if model.isExpanded(section.id) {
+                    grid(for: section.sourceIDs)
+                }
+            }
+        }
+    }
+
+    private func grid(for ids: [UUID]) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 158, maximum: 200), spacing: DSSpacing.md)],
+            spacing: DSSpacing.md
+        ) {
+            ForEach(ids, id: \.self) { id in
+                if let source = model.source(for: id) {
+                    BookSourceGridCard(
+                        source: source,
+                        isSelected: model.isSelected(id),
+                        pin: model.pin(for: id),
+                        health: healthById[id],
+                        defaultGroupName: defaultGroupName,
+                        actions: rowActions
+                    )
+                }
+            }
+        }
+    }
+}
+
+/// A compact group divider card. Tapping toggles expansion; the trailing 「⋯」 opens the
+/// group's rename / merge / enable-all / delete actions.
+struct BookSourceGroupCard: View {
+    let group: BookSourceRowGroup
+    let expanded: Bool
+    let actions: BookSourceGroupActions
+
+    var body: some View {
+        HStack(spacing: DSSpacing.sm) {
+            Button {
+                actions.toggleExpansion(group.id)
+            } label: {
+                HStack(spacing: DSSpacing.sm) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(DSFont.fixed(size: 13, weight: .semibold))
+                        .foregroundStyle(DSColor.appAccent)
+                    Text(group.name)
+                        .font(DSFont.headline)
+                        .foregroundStyle(DSColor.textPrimary)
+                        .lineLimit(1)
+                    Text("\(group.sourceIDs.count)")
+                        .font(DSFont.caption.weight(.semibold))
+                        .foregroundStyle(DSColor.textSecondary)
+                        .monospacedDigit()
+                }
+            }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
+            if !group.isPinGroup {
+                Menu {
+                    groupMenu
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(DSFont.fixed(size: 16, weight: .semibold))
+                        .foregroundStyle(DSColor.textSecondary)
+                        .padding(6)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, DSSpacing.md)
+        .padding(.vertical, DSSpacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .fill(DSColor.surface)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(group.name)
+    }
+
+    private var groupMenu: some View {
+        Group {
+            Button {
+                actions.select(group.sourceIds)
+            } label: {
+                Label(localized("全選"), systemImage: "checkmark")
+            }
+            Button {
+                actions.setEnabled(group.sourceIds, true)
+            } label: {
+                Label(localized("啟用全部"), systemImage: "checkmark.circle")
+            }
+            Button {
+                actions.setEnabled(group.sourceIds, false)
+            } label: {
+                Label(localized("停用全部"), systemImage: "xmark.circle")
+            }
+            Divider()
+            Button {
+                actions.rename(group)
+            } label: {
+                Label(localized("重命名分組"), systemImage: "pencil")
+            }
+            Button {
+                actions.pickMergeTarget(group)
+            } label: {
+                Label(localized("合併到其他分組"), systemImage: "arrow.merge")
+            }
+            Button {
+                actions.copyToPasteboard(group)
+            } label: {
+                Label(localized("複製到剪貼板"), systemImage: "doc.on.clipboard")
+            }
+            Divider()
+            Button(role: .destructive) {
+                actions.delete(group)
+            } label: {
+                Label(localized("刪除該分組"), systemImage: "trash")
+            }
+        }
+    }
+}
+
+/// A single source as a card in the grid. Shows the monogram, name, group pill, URL,
+/// validation badge and an inline 啟用/停用 switch. Operations: inline switch, 「⋯」 menu,
+/// long-press context menu, and swipe reveals (left: 啟用/停用 + 刪除; right: 編輯 + 置頂).
+struct BookSourceGridCard: View {
+    let source: BookSource
+    let isSelected: Bool
+    let pin: SourcePinPosition?
+    let health: SourceValidationSummary?
+    let defaultGroupName: String
+    let actions: BookSourceRowActions
+
+    @State private var offset: CGFloat = 0
+    @State private var dragging = false
+
+    private let rowAccent = DSColor.appAccent
+    private let revealWidth: CGFloat = 140
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            // Swipe-left reveal: 啟用/停用 + 刪除.
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Button {
+                    actions.toggleEnabled(source.id)
+                } label: {
+                    revealButtonContents(
+                        systemImage: source.enabled ? "poweroff" : "power",
+                        title: source.enabled ? localized("停用") : localized("启用"),
+                        color: Color(source.enabled ? DSColor.textTertiary : DSColor.success)
+                    )
+                }
+                .buttonStyle(.plain)
+                Button {
+                    actions.delete(source)
+                } label: {
+                    revealButtonContents(
+                        systemImage: "trash",
+                        title: localized("刪除"),
+                        color: Color.red
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxHeight: .infinity)
+
+            card
+                .offset(x: offset)
+                .animation(dragging ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragging = true
+                            offset = min(0, max(-revealWidth, value.translation.width))
+                        }
+                        .onEnded { value in
+                            dragging = false
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                offset = value.translation.width < -revealWidth / 2 ? -revealWidth : 0
+                            }
+                        }
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
+        .contextMenu { cardMenu }
+    }
+
+    private func revealButtonContents(systemImage: String, title: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: systemImage)
+            Text(title)
+        }
+        .font(DSFont.fixed(size: 11, weight: .semibold))
+        .foregroundStyle(.white)
+        .frame(width: revealWidth / 2, height: 64)
+        .frame(maxHeight: .infinity)
+        .background(color)
+    }
+
+    // MARK: Card face
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            HStack(alignment: .top, spacing: DSSpacing.sm) {
+                leadingGlyph
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(nameText)
+                        .font(DSFont.subheadline.weight(.semibold))
+                        .foregroundStyle(source.enabled ? DSColor.textPrimary : DSColor.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !source.bookSourceGroup.isEmpty {
+                        TagPill(text: source.bookSourceGroup, accent: rowAccent)
+                    }
+                }
+                Spacer(minLength: 0)
+                // Inline 啟用/停用 switch.
+                Button {
+                    actions.toggleEnabled(source.id)
+                } label: {
+                    Image(systemName: source.enabled ? "power" : "poweroff")
+                        .font(DSFont.fixed(size: 13, weight: .semibold))
+                        .foregroundStyle(source.enabled ? rowAccent : DSColor.textTertiary)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(source.enabled ? rowAccent.opacity(0.12) : DSColor.neutralControlFill))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !source.bookSourceUrl.isEmpty {
+                Text(source.bookSourceUrl)
+                    .font(DSFont.fixed(size: 11))
+                    .foregroundStyle(DSColor.textTertiary)
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: DSSpacing.sm) {
+                SourceValidationBadge(summary: health)
+                if let pin {
+                    PinPill(pin: pin)
+                }
+                Spacer(minLength: 0)
+                Menu {
+                    cardMenu
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(DSFont.fixed(size: 16, weight: .semibold))
+                        .foregroundStyle(DSColor.textSecondary)
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(DSSpacing.md)
+        .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .fill(DSColor.surface)
+                .shadow(color: DSColor.shadow, radius: 4, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                .stroke(isSelected ? rowAccent : DSColor.separator.opacity(0.6), lineWidth: isSelected ? 2 : 0.5)
+        )
+        .opacity(source.enabled ? 1 : 0.55)
+    }
+
+    private var nameText: String {
+        source.bookSourceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? localized("未命名書源")
+            : source.bookSourceName
+    }
+
+    private var leadingGlyph: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
+                .fill(avatarColor.opacity(0.15))
+                .frame(width: 40, height: 40)
+            Text(avatarInitial)
+                .font(DSFont.fixed(size: 16, weight: .semibold))
+                .foregroundStyle(avatarColor)
+        }
+        .frame(width: 40, height: 40)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            actions.toggleSelection(source.id)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var avatarColor: Color {
+        let hash = source.bookSourceUrl.hashValue
+        let hue = abs(Double(hash) / Double(Int.max)).truncatingRemainder(dividingBy: 1.0)
+        return Color(hue: hue, saturation: 0.65, brightness: 0.75)
+    }
+
+    private var avatarInitial: String {
+        let name = source.bookSourceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = name.first else { return "?" }
+        return String(first).uppercased()
+    }
+
+    // MARK: Menus
+
+    @ViewBuilder
+    private var cardMenu: some View {
+        Button {
+            actions.showInfo(source)
+        } label: {
+            Label(localized("查看詳情"), systemImage: "info.circle")
+        }
+        Button {
+            actions.test(source)
+        } label: {
+            Label(localized("測試書源"), systemImage: "antenna.radiowaves.left.and.right")
+        }
+        Divider()
+        Button {
+            actions.edit(source)
+        } label: {
+            Label(localized("編輯"), systemImage: "square.and.pencil")
+        }
+        Button {
+            actions.copyJSON(source)
+        } label: {
+            Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+        }
+        BookSourceExportShareLink(
+            label: localized("匯出"),
+            filenameLabel: source.bookSourceName,
+            sources: { [source] in [source] },
+            onHandoff: actions.export
+        )
+        if !source.loginUrl.isEmpty {
+            Button {
+                actions.login(source)
+            } label: {
+                Label(localized("Cookie 驗證登入"), systemImage: "person.badge.key")
+            }
+        }
+        Button {
+            actions.editVariables(source)
+        } label: {
+            Label(localized("設置源變量"), systemImage: "slider.horizontal.3")
+        }
+        Divider()
+        Button {
+            actions.pickGroup(source)
+        } label: {
+            Label(localized("移動到分組"), systemImage: "folder")
+        }
+        Button {
+            actions.moveToNewGroup(source)
+        } label: {
+            Label(localized("移動到新分組"), systemImage: "folder.badge.plus")
+        }
+        if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Button {
+                actions.applyGroupName(defaultGroupName, [source.id])
+            } label: {
+                Label(localized("移出分組"), systemImage: "folder.badge.minus")
+            }
+        }
+        Divider()
+        if pin == .top {
+            Button {
+                actions.unpin(source, localized("已取消置頂"))
+            } label: {
+                Label(localized("取消置頂"), systemImage: "pin.slash")
+            }
+        } else {
+            Button {
+                actions.pinToTop(source)
+            } label: {
+                Label(localized("置頂"), systemImage: "pin")
+            }
+        }
+        if pin == .bottom {
+            Button {
+                actions.unpin(source, localized("已取消置底"))
+            } label: {
+                Label(localized("取消置底"), systemImage: "pin.slash.fill")
+            }
+        } else {
+            Button {
+                actions.pinToBottom(source)
+            } label: {
+                Label(localized("置底"), systemImage: "pin.fill")
+            }
+        }
+        Divider()
+        Button(role: .destructive) {
+            actions.delete(source)
+        } label: {
+            Label(localized("刪除"), systemImage: "trash")
+        }
+    }
+}
