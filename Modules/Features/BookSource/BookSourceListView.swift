@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum BookSourceImportPresentationRoute: Hashable {
     /// 手動新增 — an empty source in the editor. Sequenced with the imports because it is now
@@ -596,10 +597,46 @@ struct BookSourceListView: View {
                 return false
             },
             usesSystemMargins: { $0 == .header },
-            // Every row wears the 毛玻璃／分組卡片／透明度 surface across the whole cell, like
-            // a `List` row's `interfaceSectionSurface()`. The header stays clear: its stats
-            // card and page buttons paint their own.
-            drawsCellSurface: { $0 != .header }
+            // Flat compact list: drop the per-cell grouped-card surface so rows read as a
+            // clean list separated by hairlines instead of floating cards. Headers and
+            // group rows paint their own backgrounds.
+            drawsCellSurface: { _ in false },
+            // Native swipe: swipe-left reveals 啟用/停用 + 刪除; swipe-right reveals 編輯 + 置頂.
+            // Header / group rows return nil so they do not swipe.
+            trailingSwipeActions: { [model, rowActions] item in
+                guard case .source(let id) = item, let source = model.source(for: id) else {
+                    return nil
+                }
+                let toggle = UIContextualAction(
+                    style: .normal,
+                    title: source.enabled ? localized("停用") : localized("启用")
+                ) { _, _, done in
+                    rowActions.toggleEnabled(id)
+                    done(true)
+                }
+                toggle.backgroundColor = UIColor(Color(source.enabled ? DSColor.textTertiary : DSColor.success))
+                let remove = UIContextualAction(style: .destructive, title: localized("刪除")) { _, _, done in
+                    rowActions.delete(source)
+                    done(true)
+                }
+                return UISwipeActionsConfiguration(actions: [remove, toggle])
+            },
+            leadingSwipeActions: { [model, rowActions] item in
+                guard case .source(let id) = item, let source = model.source(for: id) else {
+                    return nil
+                }
+                let edit = UIContextualAction(style: .normal, title: localized("編輯")) { _, _, done in
+                    rowActions.edit(source)
+                    done(true)
+                }
+                edit.backgroundColor = UIColor(Color(DSColor.appAccent))
+                let pin = UIContextualAction(style: .normal, title: localized("置頂")) { _, _, done in
+                    rowActions.pinToTop(source)
+                    done(true)
+                }
+                pin.backgroundColor = UIColor(Color(DSColor.warning))
+                return UISwipeActionsConfiguration(actions: [pin, edit])
+            }
         ) { item in
             switch item {
             case .header:
