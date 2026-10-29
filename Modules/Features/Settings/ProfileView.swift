@@ -21,7 +21,7 @@ struct SettingsView: View {
     #if DEBUG
     @State private var autoOpenDiagnostics = false
     #endif
-    private let feedbackEmail = "172803068@qq.com"
+    private let feedbackEmail = "z37910057@outlook.com"
 
     private var feedbackMailURL: URL? {
         var components = URLComponents()
