@@ -46,12 +46,12 @@ struct ToolbarTitleAndIconLabel: View {
                     .accessibilityLabel(localized("加入分組"))
                     Button {} label: {
                         ToolbarTitleAndIconLabel(
-                            title: "グループに追加",
+                            title: localized("加入分組"),
                             systemImage: "text.badge.plus",
                             width: DSLayout.bookshelfAddToGroupLabelWidth
                         )
                     }
-                    .accessibilityLabel("グループに追加")
+                    .accessibilityLabel(localized("加入分組"))
                 }
             }
     }
