@@ -41,12 +41,14 @@ enum EdgeTTSProtocol {
 
     static func request(date: Date = Date(), connectionID: UUID = UUID()) -> URLRequest {
         var components = URLComponents()
+        // 2026-10：微软下线了 speech.platform.bing.com 的 consumer 合成端点（一律 403），
+        // 迁移到 api.msedgeservices.com；TrustedClientToken 改经 Ocp-Apim-Subscription-Key
+        // 传递，Sec-MS-GEC 令牌算法不变（rany2/edge-tts、SchneeHertz/node-edge-tts#14）。
         components.scheme = "wss"
-        components.host = "speech.platform.bing.com"
-        components.path = "/consumer/speech/synthesize/readaloud/edge/v1"
+        components.host = "api.msedgeservices.com"
+        components.path = "/tts/cognitiveservices/websocket/v1"
         components.queryItems = [
-            URLQueryItem(name: "TrustedClientToken", value: trustedClientToken),
-            URLQueryItem(name: "ConnectionId", value: compactID(connectionID)),
+            URLQueryItem(name: "Ocp-Apim-Subscription-Key", value: trustedClientToken),
             URLQueryItem(name: "Sec-MS-GEC", value: securityToken(date: date)),
             URLQueryItem(name: "Sec-MS-GEC-Version", value: "1-" + clientVersion),
         ]
