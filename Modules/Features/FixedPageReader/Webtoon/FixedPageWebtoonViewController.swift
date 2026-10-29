@@ -375,8 +375,10 @@ final class FixedPageWebtoonViewController: UIViewController, FixedPageModeReade
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(
-            withReuseIdentifier: FixedPageWebtoonCell.reuseID, for: indexPath) as! FixedPageWebtoonCell
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: FixedPageWebtoonCell.reuseID, for: indexPath) as? FixedPageWebtoonCell else {
+            return UICollectionViewCell()
+        }
         cell.configure(
             page: pages[indexPath.item],
             index: indexPath.item,
