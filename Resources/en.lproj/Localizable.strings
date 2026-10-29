@@ -3795,3 +3795,7 @@
 "%1$lld 小時 %2$lld 分鐘" = "%1$lld hr %2$lld min";
 "%lld 分鐘" = "%lld min";
 "雲端備份來自裝置「%@」（%@）。本裝置上次同步：%@。請選擇要使用哪個版本。" = "The cloud backup is from device \"%@\" (%@). This device last synced: %@. Choose which version to use.";
+
+/* 新增键：书城移除新建频道后的空态 (2026-10-29) */
+"暫無自定義頁面" = "No custom pages yet";
+"書城頁面暫時只有精選頻道。" = "The bookstore currently offers the Featured feed only.";
