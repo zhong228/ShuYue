@@ -36,6 +36,9 @@ struct ExploreHomeView: View {
     @State private var selectedSource: BookSource?
     /// 书城当前显示的频道（精选/排行榜/新书/分类/我的页面）。
     @State private var selectedChannel: BookstoreChannel = .featured
+    /// 分类条选中的分类：置中后下方内容只显示该分类，再点一次取消。
+    @State private var selectedCategory: String?
+    @State private var showsCategoryPicker = false
     /// 右上角书源图标打开的底部书源抽屉。
     @State private var showsSourceDrawer = false
     /// 书城选中书源的 URL，持久化后关闭 App 再打开仍保持选中（`ExploreSettings.selectedSourceURLKey`）。
@@ -96,6 +99,9 @@ struct ExploreHomeView: View {
                 // (and every remote cover) at once (v1.0.25 feedback).
                 LazyVStack(alignment: .leading, spacing: DSSpacing.xl) {
                     channelBar
+                    if selectedChannel != .myPages, selectedSource != nil, !categoryTitles.isEmpty {
+                        categoryBar
+                    }
                     if selectedChannel == .featured {
                         heroBanner
                     }
@@ -131,6 +137,14 @@ struct ExploreHomeView: View {
                 }
             }
             .sheet(isPresented: $showsSourceDrawer) { sourceDrawer }
+            .sheet(isPresented: $showsCategoryPicker) {
+                ExploreCategoryPickerSheet(
+                    categories: categoryTitles,
+                    selected: selectedCategory
+                ) { title in
+                    withAnimation(.easeInOut(duration: 0.2)) { selectedCategory = title }
+                }
+            }
             .sheet(isPresented: $showsSettings) {
                 ExploreSettingsSheet()
             }
@@ -254,6 +268,52 @@ struct ExploreHomeView: View {
                     .accessibilityLabel(localized(layout.titleKey))
                 }
             }
+        }
+    }
+
+    // MARK: - Category Bar
+
+    /// 当前来源的全部分类名（去重、保持发现顺序）。
+    private var categoryTitles: [String] {
+        var seen = Set<String>()
+        return discoverVM.sections.compactMap { section in
+            seen.insert(section.title).inserted ? section.title : nil
+        }
+    }
+
+    /// 分类条：横滑分类胶囊置于今日推荐上方，右侧按钮打开完整分类选择页。
+    /// 点击胶囊切换到该分类（再点一次取消），点击右侧按钮从网格页选择。
+    private var categoryBar: some View {
+        HStack(spacing: DSSpacing.sm) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DSSpacing.sm) {
+                    ForEach(categoryTitles, id: \.self) { title in
+                        DSChip(
+                            title: title,
+                            isSelected: selectedCategory == title,
+                            minWidth: DSLayout.capsuleControlMinWidth,
+                            usesGlassSurface: false
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedCategory = selectedCategory == title ? nil : title
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, DSSpacing.xs)
+            }
+            .scrollIndicators(.hidden)
+            Button { showsCategoryPicker = true } label: {
+                Image(systemName: "square.grid.2x2")
+                    .font(DSFont.fixed(size: 14, weight: .semibold))
+                    .frame(width: DSLayout.capsuleControlHeight, height: DSLayout.capsuleControlHeight)
+                    .background {
+                        Capsule().fill(DSColor.surface)
+                    }
+                    .foregroundStyle(DSColor.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(localized("全部分類"))
         }
     }
 
@@ -384,19 +444,25 @@ struct ExploreHomeView: View {
                         discover: discoverVM,
                         onOpenPage: { address in openBrowser(.open(address)) },
                         embedsScrollView: false,
-                        sectionFilter: { selectedChannel.matches($0) }
+                        sectionFilter: { section in
+                            if let selectedCategory { return section.title == selectedCategory }
+                            return selectedChannel.matches(section)
+                        }
                     )
                 case .list:
                     DiscoverListLayoutView(
                         discover: discoverVM,
                         onOpenPage: { address in openBrowser(.open(address)) },
                         embedsScrollView: false,
-                        sectionFilter: { selectedChannel.matches($0) }
+                        sectionFilter: { section in
+                            if let selectedCategory { return section.title == selectedCategory }
+                            return selectedChannel.matches(section)
+                        }
                     )
                 }
             }
-            // 切换频道时重建选中分类、轮播索引等频道内状态。
-            .id(selectedChannel)
+            // 切换频道或选中分类时重建：选中分类、轮播索引等频道内状态。
+            .id("\(selectedChannel.rawValue)|\(selectedCategory ?? "-")")
         } else if !exploreSources.isEmpty {
             ContentUnavailableView {
                 Label(localized("请先选择来源"), systemImage: "books.vertical")
@@ -534,6 +600,7 @@ struct ExploreHomeView: View {
         withAnimation(.easeInOut(duration: 0.25)) {
             selectedSource = source
             selectedSourceURL = source.bookSourceUrl
+            selectedCategory = nil
             discoverVM.selectSource(source)
             discoverVM.reload()
         }
@@ -867,4 +934,56 @@ struct QuickAccessCard: View {
 #Preview {
     ExploreHomeView(browser: BrowserState())
         .environmentObject(BookStore())
+}
+
+// MARK: - Category Picker Sheet
+
+/// 全部分类选择页：网格胶囊列出当前来源的所有分类，点选即切换并关闭。
+struct ExploreCategoryPickerSheet: View {
+    let categories: [String]
+    let selected: String?
+    var onPick: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [GridItem(.adaptive(minimum: 96), spacing: DSSpacing.sm)]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: DSSpacing.sm) {
+                    ForEach(categories, id: \.self) { title in
+                        Button {
+                            onPick(title)
+                            dismiss()
+                        } label: {
+                            Text(title)
+                                .font(DSFont.subheadline.weight(selected == title ? .semibold : .regular))
+                                .lineLimit(1)
+                                .padding(.horizontal, DSSpacing.sm)
+                                .frame(maxWidth: .infinity, minHeight: 40)
+                                .background {
+                                    Capsule().fill(selected == title ? DSColor.accent : DSColor.surface)
+                                }
+                                .foregroundStyle(selected == title ? DSColor.textOnAccent : DSColor.textPrimary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, DSSpacing.lg)
+                .padding(.vertical, DSSpacing.md)
+            }
+            .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
+            .navigationTitle(localized("全部分類"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(localized("關閉"))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
 }

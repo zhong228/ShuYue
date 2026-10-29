@@ -250,3 +250,38 @@ final class CacheManagementService: @unchecked Sendable {
         }
     }
 }
+
+// MARK: - Auto Cache Cleanup
+
+/// 自动清理：开启后每次启动检查一次快取总量，达到设定阈值即在后台清除
+/// 可重新下載的快取（診斷紀錄除外——排查问题需要它们，且体积很小）。
+enum AutoCacheCleanup {
+    static let enabledKey = "yd_auto_cache_cleanup_enabled"
+    static let thresholdKey = "yd_auto_cache_cleanup_threshold_mb"
+    static let thresholdOptions = [200, 500, 1000, 2000]
+    static let defaultThresholdMB = 500
+
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: enabledKey)
+    }
+
+    static var thresholdMB: Int {
+        let stored = UserDefaults.standard.integer(forKey: thresholdKey)
+        return thresholdOptions.contains(stored) ? stored : defaultThresholdMB
+    }
+
+    /// App 启动时调用一次。任何失败都只记 breadcrumb，绝不影响启动流程。
+    static func runIfNeeded(service: CacheManagementService = CacheManagementService()) {
+        guard isEnabled else { return }
+        let threshold = Int64(thresholdMB) * 1024 * 1024
+        Task.detached(priority: .utility) {
+            var measurable = service.snapshot()
+            measurable.diagnostics = 0
+            guard measurable.total >= threshold else { return }
+            for category in CacheCategory.allCases where category != .diagnostics {
+                try? service.clear(category)
+            }
+            CrashContext.breadcrumb("auto cache cleanup ran")
+        }
+    }
+}

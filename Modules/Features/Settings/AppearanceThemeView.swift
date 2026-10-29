@@ -226,16 +226,38 @@ struct AppearanceThemeView: View {
             // In view without Pro too, locked (2026-09-27).
             rootTabRow
             DSSettingsCardDivider()
-            DSSettingsCardPicker(
-                title: localized("书库密度"),
-                systemImage: "square.grid.3x3.fill",
-                selection: $settings.bookshelfGridColumnCount
-            ) {
+            // 自绘菜单行：系统 menu picker 的 label 在卡片容器里不渲染，
+            // 导致只剩居中的「4 列」，观感突兀。改为与相邻行一致的
+            // 左图标标题 + 右侧当前值 + 下拉箭头。
+            Menu {
                 ForEach(GlobalSettings.bookshelfGridColumnCountOptions, id: \.self) { columnCount in
-                    Text(String(format: localized("%d 欄"), columnCount))
-                        .tag(columnCount)
+                    Button {
+                        settings.bookshelfGridColumnCount = columnCount
+                    } label: {
+                        if settings.bookshelfGridColumnCount == columnCount {
+                            Label(String(format: localized("%d 欄"), columnCount), systemImage: "checkmark")
+                        } else {
+                            Text(String(format: localized("%d 欄"), columnCount))
+                        }
+                    }
                 }
+            } label: {
+                HStack {
+                    SettingsRowLabel(localized("书库密度"), systemImage: "square.grid.3x3.fill")
+                    Spacer()
+                    HStack(spacing: 5) {
+                        Text(String(format: localized("%d 欄"), settings.bookshelfGridColumnCount))
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(DSFont.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(DSColor.textSecondary)
+                }
+                .padding(.horizontal, DSSpacing.md)
+                .frame(minHeight: 54)
+                .contentShape(Rectangle())
             }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             DSSettingsCardDivider()
             DSSettingsCardNavRow(icon: "photo.stack.fill", title: localized("默认书封")) {
                 DefaultCoverSettingsView()

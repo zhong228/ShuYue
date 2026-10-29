@@ -92,6 +92,8 @@ struct CacheManagementView: View {
             ScrollView {
                 AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
+                    autoCleanupSection
+
                     if viewModel.isLoading && viewModel.snapshot.total == 0 {
                         DSSettingsGroupCard(title: "") {
                             HStack {
@@ -209,6 +211,54 @@ struct CacheManagementView: View {
             } message: {
                 Text(viewModel.errorMessage ?? localized("快取操作失敗"))
             }
+        }
+    }
+
+    /// 自动清理：开关 + 触发阈值。设置直接走 UserDefaults（AutoCacheCleanup），
+    /// 与页面其余的手动清理卡片互不影响。
+    private var autoCleanupSection: some View {
+        DSSettingsGroupCard(title: localized("自动清理"), footer: {
+            Text(localized("开启后每次启动检查一次：快取总量（不含診斷紀錄）达到设定值时自动清除，无需手动操作。"))
+                .dsSectionFooter()
+        }) {
+            Toggle(isOn: Binding(
+                get: { UserDefaults.standard.bool(forKey: AutoCacheCleanup.enabledKey) },
+                set: { UserDefaults.standard.set($0, forKey: AutoCacheCleanup.enabledKey) }
+            )) {
+                SettingsRowLabel(localized("自动清理"), systemImage: "sparkles")
+            }
+            .tint(DSColor.appAccent)
+            .dsSettingsCardRow()
+
+            DSSettingsCardDivider()
+
+            HStack {
+                SettingsRowLabel(localized("清理阈值"), systemImage: "gauge.with.dots.needle.67percent")
+                Spacer()
+                Menu {
+                    ForEach(AutoCacheCleanup.thresholdOptions, id: \.self) { mb in
+                        Button {
+                            UserDefaults.standard.set(mb, forKey: AutoCacheCleanup.thresholdKey)
+                        } label: {
+                            if AutoCacheCleanup.thresholdMB == mb {
+                                Label("\(mb) MB", systemImage: "checkmark")
+                            } else {
+                                Text("\(mb) MB")
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text("\(AutoCacheCleanup.thresholdMB) MB")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(DSFont.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(DSColor.textSecondary)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+            }
+            .dsSettingsCardRow()
         }
     }
 
