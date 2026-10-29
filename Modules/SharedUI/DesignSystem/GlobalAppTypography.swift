@@ -11,6 +11,21 @@ enum GlobalAppTypography {
     /// `effectivePostScriptName(_:boldText:)` sets it aside for the system font meanwhile.
     nonisolated(unsafe) static var isBoldTextActive = false
     nonisolated(unsafe) private static var bolderFaceCache: [String: Bool] = [:]
+    /// Whether a postscript name resolves at all. Asked on every `DSFont` call —
+    /// thousands of times while a page scrolls — and the answer never changes while a
+    /// font is installed, so it is cached like `bolderFaceCache`. Cleared in
+    /// `activate`, when the interface font itself is switched. (EPUB-embedded fonts
+    /// register through CoreText with their own aliases and never route here.)
+    nonisolated(unsafe) private static var fontAvailabilityCache: [String: Bool] = [:]
+
+    /// Whether `UIFont(name:size:)` resolves this name. Existence does not depend on
+    /// the size, so one lookup per name suffices.
+    static func hasFont(_ postScriptName: String) -> Bool {
+        if let known = fontAvailabilityCache[postScriptName] { return known }
+        let exists = UIFont(name: postScriptName, size: 17) != nil
+        fontAvailabilityCache[postScriptName] = exists
+        return exists
+    }
 
     enum Style {
         case caption2
@@ -107,6 +122,8 @@ enum GlobalAppTypography {
         let trimmed = postScriptName?.trimmingCharacters(in: .whitespacesAndNewlines)
         activePostScriptName = trimmed.flatMap { $0.isEmpty ? nil : $0 }
         isBoldTextActive = boldText
+        // The availability answers belong to the previous font's family.
+        fontAvailabilityCache.removeAll()
     }
 
     /// The global font to draw with: the one chosen, except that while Bold Text is on a
@@ -174,7 +191,7 @@ enum GlobalAppTypography {
         systemDesign: Font.Design = .default
     ) -> Font {
         guard let postScriptName,
-              UIFont(name: postScriptName, size: style.basePointSize) != nil else {
+              hasFont(postScriptName) else {
             let system = systemDesign == .default
                 ? style.systemFont
                 : .system(style.swiftUIStyle, design: systemDesign)
@@ -202,7 +219,7 @@ enum GlobalAppTypography {
             return .system(size: size, weight: weight, design: systemDesign)
         }
         guard let activePostScriptName,
-              UIFont(name: activePostScriptName, size: size) != nil else {
+              hasFont(activePostScriptName) else {
             return .system(size: size, weight: weight, design: systemDesign)
         }
         return Font.custom(activePostScriptName, fixedSize: size)
