@@ -89,26 +89,60 @@ rm -rf build/unsigned build/ShuYue-*.ipa
 mkdir -p build/unsigned/Payload
 cp -R "$APP" build/unsigned/Payload/
 
-# 3b. Strip restricted entitlements so the UNSIGNED IPA launches under
-#     TrollStore / self-signing.
+# 3b. Fake-sign the binaries with ldid, embedding the project's entitlements,
+#     so the sideloaded IPA keeps iCloud (CloudKit) and App Group capabilities.
 #
-#     Root cause of Issue #1 (TrollStore and self-sign both crash on launch):
-#     the app's default entitlements request App Groups, CloudKit, and
-#     Sign-in-with-Apple. An unsigned IPA has NO provisioning profile to
-#     authorize those capabilities, so iOS rejects the launch at
-#     entitlements-validation time and the app exits immediately.
+#     History: Issue #1 — a build whose entitlements blob requested App Groups /
+#     CloudKit / SiWA but had NO provisioning profile was rejected at launch
+#     (entitlements validation) and crashed on start under every install path.
+#     The old workaround stripped the entitlements blob entirely, which also
+#     stripped iCloud: every install then showed 「iCloud 状态待确认」 and sync
+#     stayed off.
 #
-#     Removing the embedded entitlements lets TrollStore re-sign and run the
-#     app. In this sideloaded build, iCloud sync / App Group sharing / SiWA
-#     are unavailable — acceptable for a sideloaded build. If a fully
-#     featured signed build is needed later, supply a provisioning profile
-#     that authorizes these capabilities and sign the IPA instead.
+#     Now: each Mach-O is fake-signed with ldid carrying its target's
+#     entitlements (the same signer TrollStore uses). TrollStore's CoreTrust
+#     validation accepts the fake signature and preserves the embedded
+#     entitlements, so constructing CKContainer(identifier:) no longer triggers
+#     the CloudKit os_crash and iCloud sync works when the device is signed
+#     into iCloud. Self-signing tools (Sideloadly / AltStore) re-sign with
+#     their own free profile; its embedded.mobileprovision lacks the iCloud
+#     container, CloudKitAvailability keeps CloudKit off there, and the app
+#     still launches — crash-free in every path (see CloudKitAvailability.swift
+#     for the runtime gates).
 APP_IN_PAYLOAD="build/unsigned/Payload/$(basename "$APP")"
+# Xcode's archive-time expanded entitlements are meaningless in an unsigned
+# build and the CI guardrail requires them gone.
 if [ -f "$APP_IN_PAYLOAD/archived-expanded-entitlements.xcent" ]; then
   rm -f "$APP_IN_PAYLOAD/archived-expanded-entitlements.xcent"
-  echo "Removed embedded restricted entitlements (archived-expanded-entitlements.xcent)"
+  echo "Removed archive-time expanded entitlements (archived-expanded-entitlements.xcent)"
 fi
 rm -f "$APP_IN_PAYLOAD/Entitlements.plist"
+
+if ! command -v ldid > /dev/null 2>&1; then
+  echo "Installing ldid..."
+  brew install ldid
+fi
+
+# Main app binary: App Group + iCloud (CloudKit) + SiWA entitlements.
+MAIN_EXECUTABLE="$(plutil -extract CFBundleExecutable raw -o - "$APP_IN_PAYLOAD/Info.plist")"
+ldid -S"$PROJECT_DIR/Resources/Yuedu-Reader.entitlements" "$APP_IN_PAYLOAD/$MAIN_EXECUTABLE"
+echo "Injected entitlements into $MAIN_EXECUTABLE (iCloud + App Group)"
+
+# Extensions: App Group entitlements so the widget / share extension keep
+# reading the shared container alongside the main app.
+shopt -s nullglob
+for APPCX in "$APP_IN_PAYLOAD"/PlugIns/*.appex; do
+  EXEC="$(plutil -extract CFBundleExecutable raw -o - "$APPCX/Info.plist")"
+  case "$(basename "$APPCX")" in
+    *ShareExtension*) ENT="$PROJECT_DIR/ShareExtension/Yuedu-Reader-ShareExtension.entitlements" ;;
+    *Widget*)         ENT="$PROJECT_DIR/Widget/Yuedu-Reader-Widget.entitlements" ;;
+    *)                ENT="$PROJECT_DIR/ShareExtension/Yuedu-Reader-ShareExtension.entitlements" ;;
+  esac
+  if [ -n "$ENT" ] && [ -f "$ENT" ]; then
+    ldid -S"$ENT" "$APPCX/$EXEC"
+    echo "Injected entitlements into $(basename "$APPCX")"
+  fi
+done
 
 cd build/unsigned
 zip -qry "../ShuYue-v${VERSION}.ipa" Payload
