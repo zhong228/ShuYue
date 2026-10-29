@@ -62,6 +62,10 @@ enum ICloudSyncPayload {
 
 enum ICloudSyncError: LocalizedError {
     case accountUnavailable(CKAccountStatus)
+    /// This install cannot use CloudKit at all: its signature carries no iCloud
+    /// container entitlement (free-profile / stripped self-sign installs), the
+    /// app runs inside a LiveContainer host, or the device is signed out.
+    case cloudKitUnavailable
     case missingRemoteBackup
     case missingAsset(String)
     /// A sync blob in neither the merge format nor a plain array.
@@ -84,6 +88,8 @@ enum ICloudSyncError: LocalizedError {
             @unknown default:
                 return localized("iCloud 無法使用")
             }
+        case .cloudKitUnavailable:
+            return localized("此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。")
         case .missingRemoteBackup:
             return localized("iCloud 尚未找到可還原的備份")
         case .missingAsset(let name):
@@ -1058,6 +1064,22 @@ final class ICloudSyncManager: ObservableObject {
 
     func statusTitle(isAppSignedIn: Bool) -> String {
         guard isAppSignedIn else { return localized("尚未開啟同步") }
+        // No container means CloudKit never came up in this process; say WHY
+        // instead of the misleading generic "待確認" (v1.3.22 self-sign feedback):
+        // a free-profile self-sign install sits here forever, and the old text
+        // pointed users at their iCloud sign-in, which was not the problem.
+        if container == nil {
+            switch CloudKitAvailability.unavailabilityReason {
+            case .liveContainer:
+                return localized("目前執行環境不支援 iCloud")
+            case .iCloudNotSignedIn:
+                return localized("請先登入 iCloud")
+            case .entitlementMissing:
+                return localized("此安裝未啟用 iCloud 權限")
+            case nil:
+                break
+            }
+        }
         switch accountStatus {
         case .available:
             return localized("iCloud 同步已開啟")
@@ -1072,6 +1094,15 @@ final class ICloudSyncManager: ObservableObject {
         @unknown default:
             return localized("iCloud 狀態待確認")
         }
+    }
+
+    /// Footer guidance for the sync page's account section: reason-specific when
+    /// CloudKit is off in this install, else the generic check-sign-in reminder.
+    var unavailableFooterText: String {
+        if container == nil, CloudKitAvailability.unavailabilityReason == .entitlementMissing {
+            return localized("此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。")
+        }
+        return localized("請確認系統設定中已登入 iCloud，且 iCloud Drive/CloudKit 可用")
     }
 
     private func performSignInSync() async throws {
@@ -1145,6 +1176,10 @@ final class ICloudSyncManager: ObservableObject {
     }
 
     private func ensureAccountAvailable() async throws {
+        // CloudKit never came up in this install (no entitlement / LiveContainer /
+        // signed out): fail with the actionable message instead of the generic
+        // "couldNotDetermine, try again later".
+        guard container != nil else { throw ICloudSyncError.cloudKitUnavailable }
         let status = await refreshAccountStatus()
         guard status == .available else {
             throw ICloudSyncError.accountUnavailable(status)
