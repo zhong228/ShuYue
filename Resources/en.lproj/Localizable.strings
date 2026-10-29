@@ -3799,3 +3799,8 @@
 /* 新增键：书城移除新建频道后的空态 (2026-10-29) */
 "暫無自定義頁面" = "No custom pages yet";
 "書城頁面暫時只有精選頻道。" = "The bookstore currently offers the Featured feed only.";
+
+/* 新增键：iCloud 自签安装状态细分 (2026-10-29) */
+"此安裝未啟用 iCloud 權限" = "iCloud is not enabled for this install";
+"目前執行環境不支援 iCloud" = "iCloud is not supported in this environment";
+"此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。" = "This install lacks the iCloud entitlement. Install the original IPA via TrollStore, or re-sign with iCloud enabled in your signing tool, to use iCloud sync.";
