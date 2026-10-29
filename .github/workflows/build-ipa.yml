@@ -57,10 +57,11 @@ jobs:
           chmod +x scripts/build_ipa.sh
           scripts/build_ipa.sh "${{ steps.version.outputs.version }}"
 
-      # Guardrail (Issue #1): an unsigned IPA must NOT embed the restricted
-      # entitlements (App Groups / CloudKit / Sign-in-with-Apple). Without a
-      # provisioning profile those cause an immediate launch crash under
-      # TrollStore / self-signing. Fail the build if they are still present.
+      # Guardrail (Issue #1): the IPA must NOT embed Xcode's archive-time
+      # expanded entitlements (archived-expanded-entitlements.xcent). Real
+      # entitlements are instead fake-signed into the Mach-O binaries with ldid
+      # by scripts/build_ipa.sh (TrollStore-safe). Fail the build if the
+      # archive-time file is still present.
       - name: Verify IPA has no restricted entitlements
         run: |
           if unzip -l build/ShuYue-*.ipa | grep -q "archived-expanded-entitlements.xcent"; then
