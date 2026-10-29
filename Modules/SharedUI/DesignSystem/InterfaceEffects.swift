@@ -348,6 +348,10 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
             .fill(resolvedTint)
             .blur(radius: radius * intensity)
             .opacity(opacity * intensity)
+            // Rasterize: the blur is static per (shape, tint, intensity), so it is
+            // rendered once into a bitmap instead of Core Animation recomputing two
+            // live blurs every frame while the page under the surface scrolls.
+            .drawingGroup()
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
