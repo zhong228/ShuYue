@@ -157,6 +157,8 @@ struct yuedu_appApp: App {
                 }
                 .onAppear {
                     CoreTextFontRegistrationService.cleanupStaleTemporaryFonts()
+                    // 自动清理：开启后启动时检查一次快取总量，超阈值后台清除。
+                    AutoCacheCleanup.runIfNeeded()
                     // Remove the retired discover-page cache directory written by
                     // earlier test builds; nothing reads it anymore. No-op once gone.
                     Task.detached(priority: .background) {
