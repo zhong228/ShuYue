@@ -94,7 +94,7 @@ struct LaunchImageSplashOverlay: View {
             (colorScheme == .dark ? DSColor.inkBackgroundDark : DSColor.paperBackgroundLight)
                 .ignoresSafeArea()
             VStack(spacing: DSSpacing.md) {
-                Text("书悦")
+                Text(localized("书悦"))
                     .font(.system(size: 56, weight: .bold, design: .serif))
                     .foregroundStyle(DSColor.appAccent)
                     .accessibilityHidden(true)
