@@ -79,6 +79,10 @@ struct CacheManagementView: View {
     @StateObject private var viewModel: CacheManagementViewModel
     @State private var pendingConfirmation: CacheConfirmation?
     @State private var showError = false
+    // 自动清理设置走 @AppStorage：值变化即触发 SwiftUI 重绘。裸 UserDefaults
+    // 写入没有可观察状态，阈值选定后界面不刷新（"阈值无法切换"的根因）。
+    @AppStorage(AutoCacheCleanup.enabledKey) private var autoCleanupEnabled = false
+    @AppStorage(AutoCacheCleanup.thresholdKey) private var thresholdMB: Int = AutoCacheCleanup.defaultThresholdMB
 
     init(service: CacheManagementService = CacheManagementService()) {
         _viewModel = StateObject(
@@ -221,10 +225,7 @@ struct CacheManagementView: View {
             Text(localized("开启后每次启动检查一次：快取总量（不含診斷紀錄）达到设定值时自动清除，无需手动操作。"))
                 .dsSectionFooter()
         }) {
-            Toggle(isOn: Binding(
-                get: { UserDefaults.standard.bool(forKey: AutoCacheCleanup.enabledKey) },
-                set: { UserDefaults.standard.set($0, forKey: AutoCacheCleanup.enabledKey) }
-            )) {
+            Toggle(isOn: $autoCleanupEnabled) {
                 SettingsRowLabel(localized("自动清理"), systemImage: "sparkles")
             }
             .tint(DSColor.appAccent)
@@ -238,9 +239,9 @@ struct CacheManagementView: View {
                 Menu {
                     ForEach(AutoCacheCleanup.thresholdOptions, id: \.self) { mb in
                         Button {
-                            UserDefaults.standard.set(mb, forKey: AutoCacheCleanup.thresholdKey)
+                            thresholdMB = mb
                         } label: {
-                            if AutoCacheCleanup.thresholdMB == mb {
+                            if thresholdMB == mb {
                                 Label("\(mb) MB", systemImage: "checkmark")
                             } else {
                                 Text("\(mb) MB")
@@ -249,7 +250,7 @@ struct CacheManagementView: View {
                     }
                 } label: {
                     HStack(spacing: 5) {
-                        Text("\(AutoCacheCleanup.thresholdMB) MB")
+                        Text("\(thresholdMB) MB")
                         Image(systemName: "chevron.up.chevron.down")
                             .font(DSFont.caption2.weight(.semibold))
                     }
