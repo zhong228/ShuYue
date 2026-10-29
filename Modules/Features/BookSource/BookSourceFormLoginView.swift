@@ -872,7 +872,10 @@ struct BookSourceFormLoginView: View {
                 }
                 semaphore.signal()
             }.resume()
-            let timedOut = semaphore.wait(timeout: .now() + 30) == .timedOut
+            // 同步闭包需返回网络结果，以信号量等待（上限 20s，原 30s）。
+            // 调用方为 JSCoreEngine 的 JS 求值流程（非主线程 UI 路径）；
+            // 彻底去除阻塞需将 sourceBridge.analyzeUrlHandler 改为异步模型（后续专项）。
+            let timedOut = semaphore.wait(timeout: .now() + 20) == .timedOut
             // Menu actions are the one place a source's API failure has no other way
             // to reach the user: the rule JS returns early on a bad reply, so the
             // button just looks dead. `runButtonJS` reports whatever lands here.
