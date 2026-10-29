@@ -109,7 +109,9 @@ struct AudiobookReaderView: View {
                     .opacity(0.45)
             }
             LinearGradient(
-                colors: [baseColor.opacity(0.72), Color.black.opacity(0.88)],
+                // 底部必须不透明：半透明黑渐变会在收起动画中与下层页面混合，
+                // 屏幕最底部闪出一块「黑色透明区域」。纯黑收尾则过渡无缝。
+                colors: [baseColor.opacity(0.72), .black],
                 startPoint: .top, endPoint: .bottom
             )
         }
@@ -137,24 +139,7 @@ struct AudiobookReaderView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(localized("收合"))
             Spacer()
-            // 截图样式：页点 + 「N / M」章节索引，点按直达目录。
-            Button { showChapterList = true } label: {
-                VStack(spacing: 5) {
-                    HStack(spacing: 5) {
-                        Circle().fill(Color.white).frame(width: 5, height: 5)
-                        Circle().fill(Color.white.opacity(0.35)).frame(width: 5, height: 5)
-                    }
-                    Text("\(player.chapterIndex + 1) / \(max(player.chapters.count, 1))")
-                        .font(DSFont.fixed(size: 13, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundColor(.white.opacity(0.9))
-                        .contentShape(Rectangle())
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(player.chapters.isEmpty)
-            .accessibilityLabel(localized("目錄"))
-            .accessibilityValue(String(format: localized("第 %d / %d 章"), player.chapterIndex + 1, player.chapters.count))
+            // 中间的章节索引「N / M」按反馈移除：顶部只保留收合按钮。
             Spacer()
             // Symmetry spacer matching the close button width.
             Color.clear.frame(width: 40, height: 40)
@@ -252,7 +237,8 @@ struct AudiobookReaderView: View {
     private var functionRow: some View {
         HStack(spacing: 0) {
             Button { cyclePlayMode() } label: {
-                functionLabel(icon: player.playMode.systemImage, text: localized("模式"))
+                // 文字随模式联动：顺序播放 / 单曲循环 / 随机播放 / 列表循环。
+                functionLabel(icon: player.playMode.systemImage, text: player.playMode.localizedTitle)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(localized("播放模式"))
@@ -377,6 +363,18 @@ struct AudiobookReaderView: View {
     private var transportRow: some View {
         HStack(spacing: 0) {
             // 截图样式：±15 秒为无底圈的系统图标，主键为白色圆环。
+            // 两端新增章节切换：上一章 / 下一章。
+            Button { player.previousChapter() } label: {
+                Image(systemName: "backward.end.fill")
+                    .font(DSFont.fixed(size: 21, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 46, height: 64)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(player.isLoading)
+            .accessibilityLabel(localized("上一章"))
+            Spacer()
             Button { player.skipBackward(15) } label: {
                 Image(systemName: "gobackward.15")
                     .font(DSFont.fixed(size: 30, weight: .medium))
@@ -413,6 +411,17 @@ struct AudiobookReaderView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(localized("前进 15 秒"))
+            Spacer()
+            Button { player.nextChapter() } label: {
+                Image(systemName: "forward.end.fill")
+                    .font(DSFont.fixed(size: 21, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 46, height: 64)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(player.isLoading)
+            .accessibilityLabel(localized("下一章"))
         }
         .padding(.horizontal, DSSpacing.xl)
     }
