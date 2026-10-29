@@ -268,9 +268,10 @@ private struct ShuYueBrandHeaderCard: View {
                         .foregroundStyle(DSColor.textPrimary)
                     // One-line promise redesigned as three accent capsules: reads as a
                     // brand statement instead of a plain (traditionally-set) caption.
+                    // 按反馈只介绍软件本身：去掉「自由开源」「海量书源」。
                     HStack(spacing: DSSpacing.xs) {
                         ForEach(
-                            [localized("自由开源"), localized("海量书源"), localized("纯净阅读")],
+                            [localized("沉浸阅读"), localized("听书")],
                             id: \.self
                         ) { word in
                             Text(word)
