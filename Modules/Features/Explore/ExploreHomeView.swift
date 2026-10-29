@@ -28,7 +28,8 @@ struct ExploreHomeView: View {
     @State private var browserPresentation: BrowserPresentation?
     @State private var showsSettings = false
     @ObservedObject private var pageStore = CustomExplorePageStore.shared
-    /// 新建频道's or 重命名频道's name prompt, and the name typed into it.
+    /// 重命名频道的 name prompt, and the name typed into it. 新建频道已按反馈移除，
+    /// 只保留重命名一个入口。
     @State private var pageNamePrompt: PageNamePrompt?
     @State private var pageName = ""
     @State private var pagePendingDeletion: CustomExplorePage?
@@ -51,21 +52,18 @@ struct ExploreHomeView: View {
         let entry: BrowserEntry
     }
 
-    /// One alert for both prompts: two on one view compete for one presenter.
+    /// One alert for the rename prompt: two on one view compete for one presenter.
     private enum PageNamePrompt: Identifiable {
-        case create
         case rename(CustomExplorePage)
 
         var id: String {
             switch self {
-            case .create: "create"
             case .rename(let page): page.id.uuidString
             }
         }
 
         var title: String {
             switch self {
-            case .create: localized("新建频道")
             case .rename: localized("重命名频道")
             }
         }
@@ -186,8 +184,6 @@ struct ExploreHomeView: View {
             ) { prompt in
                 TextField(localized("名稱"), text: $pageName)
                 switch prompt {
-                case .create:
-                    Button(localized("新建")) { pageStore.createPage(named: pageName) }
                 case .rename(let page):
                     Button(localized("確定")) { pageStore.renamePage(id: page.id, to: pageName) }
                 }
@@ -563,19 +559,15 @@ struct ExploreHomeView: View {
         }
     }
 
-    /// 我的页面频道：用户自建的自定义页网格，加号胶囊新建。
+    /// 我的页面频道：用户自建的自定义页网格。新建频道已按反馈移除，只展示已有页面。
     @ViewBuilder
     private var myPagesSection: some View {
         if pageStore.pages.isEmpty {
-            ContentUnavailableView {
-                Label(localized("新建频道"), systemImage: "plus.circle")
-            } actions: {
-                Button(localized("新建频道")) {
-                    pageName = ""
-                    pageNamePrompt = .create
-                }
-                .buttonStyle(.borderedProminent)
-            }
+            ContentUnavailableView(
+                localized("暫無自定義頁面"),
+                systemImage: "doc.text",
+                description: Text(localized("書城頁面暫時只有精選頻道。"))
+            )
         } else {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 140), spacing: DSSpacing.md)],
@@ -594,38 +586,6 @@ struct ExploreHomeView: View {
                     .buttonStyle(PlainButtonStyle())
                     .contextMenu { pageActions(page) }
                 }
-                // 新建入口：顶栏的加号胶囊移除后收在这里，空态与有页两态都有。
-                Button {
-                    pageName = ""
-                    pageNamePrompt = .create
-                } label: {
-                    VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                        Image(systemName: "plus")
-                            .font(DSFont.fixed(size: 20, weight: .semibold))
-                            .foregroundStyle(DSColor.textSecondary)
-                            .frame(width: 36, height: 36)
-                            .background(DSColor.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        Spacer()
-                        Text(localized("新建频道"))
-                            .font(DSFont.fixed(size: 15, weight: .semibold, design: .serif))
-                            .foregroundStyle(DSColor.textSecondary)
-                            .lineLimit(1)
-                        Text(localized("自定义页面"))
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.textTertiary)
-                            .lineLimit(1)
-                    }
-                    .padding(DSSpacing.md)
-                    .frame(width: 140, height: 108, alignment: .topLeading)
-                    .background(DSColor.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                            .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityLabel(localized("新建频道"))
             }
         }
     }
