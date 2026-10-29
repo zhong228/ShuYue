@@ -1791,7 +1791,7 @@ class BookStore: ObservableObject, BookProvider {
         guard let source = BookSourceStore.shared.sources.first(where: { $0.id == origin.sourceId })
         else {
             throw NSError(
-                domain: "BookStore", code: -1, userInfo: [NSLocalizedDescriptionKey: "找不到書源"])
+                domain: "BookStore", code: -1, userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
         }
         let tocPackage: TOCPackage
         if let preparedTOC {
@@ -1862,7 +1862,7 @@ class BookStore: ObservableObject, BookProvider {
             records.first(where: { $0.id == bookId }).flatMap { $0.isOnline ? $0 : nil }
         }) else {
             throw NSError(
-                domain: "BookStore", code: -2, userInfo: [NSLocalizedDescriptionKey: "找不到線上書籍"])
+                domain: "BookStore", code: -2, userInfo: [NSLocalizedDescriptionKey: localized("找不到線上書籍")])
         }
 
         // Snapshot of what the user has already seen, so the final merge can tell
@@ -1883,13 +1883,13 @@ class BookStore: ObservableObject, BookProvider {
             BookSourceStore.shared.sources.first(where: { $0.id == sourceId })
         }) else {
             throw NSError(
-                domain: "BookStore", code: -3, userInfo: [NSLocalizedDescriptionKey: "找不到書源"])
+                domain: "BookStore", code: -3, userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
         }
 
         let bookURL = normalizedOnlineValue(snapshot.bookInfoURL ?? snapshot.source)
         guard !bookURL.isEmpty else {
             throw NSError(
-                domain: "BookStore", code: -4, userInfo: [NSLocalizedDescriptionKey: "缺少書籍詳情頁 URL"])
+                domain: "BookStore", code: -4, userInfo: [NSLocalizedDescriptionKey: localized("缺少書籍詳情頁 URL")])
         }
 
         var runtimeVariables = snapshot.runtimeVariables
