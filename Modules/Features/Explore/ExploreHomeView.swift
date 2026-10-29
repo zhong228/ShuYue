@@ -209,8 +209,9 @@ struct ExploreHomeView: View {
     // MARK: - Top Control Bar
 
     /// 顶部控制条：精选频道胶囊 + 书源筛选菜单（类型/频道/平台/字数/排序…，
-    /// 从发现内容区上移而来）+ 站外链接，右侧固定「我的页面」图标与卡片/列表
-    /// 布局切换。精选之外不再陈列频道胶囊，筛选与频道不再分居两处。
+    /// 从发现内容区上移而来）+ 站外链接，右侧固定卡片/列表布局切换。
+    /// 精选之外不再陈列频道胶囊，筛选与频道不再分居两处；
+    /// 「我的页面」入口已按反馈移除（自定义页面功能整体下线）。
     private var channelBar: some View {
         HStack(spacing: DSSpacing.sm) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -248,28 +249,8 @@ struct ExploreHomeView: View {
                 .padding(.vertical, DSSpacing.xs)
             }
             .scrollIndicators(.hidden)
-            myPagesButton
             layoutToggle
         }
-    }
-
-    /// 「我的页面」频道入口：一枚图标胶囊，激活时 accent 填充。
-    private var myPagesButton: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selectedChannel = selectedChannel == .myPages ? .featured : .myPages
-            }
-        } label: {
-            Image(systemName: "rectangle.stack")
-                .font(DSFont.fixed(size: 14, weight: .semibold))
-                .frame(width: DSLayout.capsuleControlHeight, height: DSLayout.capsuleControlHeight)
-                .background {
-                    Capsule().fill(selectedChannel == .myPages ? DSColor.accent : DSColor.surface)
-                }
-                .foregroundStyle(selectedChannel == .myPages ? DSColor.textOnAccent : DSColor.textSecondary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(localized("我的頁面"))
     }
 
     /// 书源筛选菜单：胶囊显示「类型：小说」，点开即选；偏离默认项时 accent
