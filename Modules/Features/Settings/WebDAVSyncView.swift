@@ -63,7 +63,10 @@ struct WebDAVSyncView: View {
         fmt.dateStyle = .short; fmt.timeStyle = .short
         let remoteDate = fmt.string(from: c.remote.backupDate)
         let localDate  = fmt.string(from: c.localLastSync)
-        return localized("雲端備份來自裝置「\(c.remote.deviceName)」（\(remoteDate)）。本裝置上次同步：\(localDate)。請選擇要使用哪個版本。")
+        return String(
+            format: localized("雲端備份來自裝置「%@」（%@）。本裝置上次同步：%@。請選擇要使用哪個版本。"),
+            c.remote.deviceName, remoteDate, localDate
+        )
     }
 
     // MARK: - Sections
