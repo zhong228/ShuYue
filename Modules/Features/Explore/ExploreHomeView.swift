@@ -34,7 +34,8 @@ struct ExploreHomeView: View {
     @State private var pagePendingDeletion: CustomExplorePage?
     /// Currently selected source for the unified discover page.
     @State private var selectedSource: BookSource?
-    /// 书城当前显示的频道（精选/排行榜/新书/分类/我的页面）。
+    /// 书城当前显示的频道：顶端只剩「精选」与「我的页面」两个入口，精选之外
+    /// 的原频道胶囊（排行榜/新书/分类）由书源筛选（类型/频道/平台…）替代。
     @State private var selectedChannel: BookstoreChannel = .featured
     /// 分类条选中的分类：置中后下方内容只显示该分类，再点一次取消。
     @State private var selectedCategory: String?
@@ -98,9 +99,12 @@ struct ExploreHomeView: View {
                 // stack — nesting them under an eager VStack materialized every row
                 // (and every remote cover) at once (v1.0.25 feedback).
                 LazyVStack(alignment: .leading, spacing: DSSpacing.xl) {
-                    channelBar
-                    if selectedChannel != .myPages, selectedSource != nil, !categoryTitles.isEmpty {
-                        categoryBar
+                    // 两条控制条并成一组（小间距），与下方内容（大间距）拉开层次。
+                    VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                        channelBar
+                        if selectedChannel == .featured, selectedSource != nil, !categoryTitles.isEmpty {
+                            categoryBar
+                        }
                     }
                     if selectedChannel == .featured {
                         heroBanner
@@ -206,43 +210,122 @@ struct ExploreHomeView: View {
         }
     }
 
-    // MARK: - Channel Bar
+    // MARK: - Top Control Bar
 
-    /// 频道胶囊条：五个频道 + 末尾加号胶囊（新建频道），右侧是卡片/列表布局切换。
+    /// 顶部控制条：精选频道胶囊 + 书源筛选菜单（类型/频道/平台/字数/排序…，
+    /// 从发现内容区上移而来）+ 站外链接，右侧固定「我的页面」图标与卡片/列表
+    /// 布局切换。精选之外不再陈列频道胶囊，筛选与频道不再分居两处。
     private var channelBar: some View {
         HStack(spacing: DSSpacing.sm) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DSSpacing.sm) {
-                    ForEach(BookstoreChannel.allCases) { channel in
-                        DSChip(
-                            title: localized(channel.titleKey),
-                            isSelected: selectedChannel == channel,
-                            minWidth: DSLayout.capsuleControlMinWidth,
-                            usesGlassSurface: false
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                if selectedChannel != channel { selectedChannel = channel }
-                            }
+                    DSChip(
+                        title: localized("精选"),
+                        isSelected: selectedChannel == .featured,
+                        minWidth: DSLayout.capsuleControlMinWidth,
+                        usesGlassSurface: false
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedChannel = .featured
                         }
                     }
-                    Button {
-                        pageName = ""
-                        pageNamePrompt = .create
-                    } label: {
-                        DSCapsuleLabel(
-                            title: localized("新建频道"),
-                            systemImage: "plus",
-                            usesGlassSurface: false
-                        )
+                    if selectedSource != nil {
+                        // 线路（镜像站）筛选不上屏：属于书源维护信息。
+                        ForEach(discoverVM.filters.filter { !Self.isLineFilter($0) }) { filter in
+                            discoverFilterMenu(filter)
+                        }
+                        ForEach(discoverVM.pageItems) { item in
+                            Button {
+                                if let url = item.actionURL { openBrowser(.open(url)) }
+                            } label: {
+                                DSCapsuleLabel(
+                                    title: item.title,
+                                    trailingSystemImage: "arrow.up.right",
+                                    usesGlassSurface: false
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint(localized("在瀏覽器中開啟"))
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(localized("新建频道"))
                 }
                 .padding(.vertical, DSSpacing.xs)
             }
             .scrollIndicators(.hidden)
+            myPagesButton
             layoutToggle
         }
+    }
+
+    /// 「我的页面」频道入口：一枚图标胶囊，激活时 accent 填充。
+    private var myPagesButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedChannel = selectedChannel == .myPages ? .featured : .myPages
+            }
+        } label: {
+            Image(systemName: "rectangle.stack")
+                .font(DSFont.fixed(size: 14, weight: .semibold))
+                .frame(width: DSLayout.capsuleControlHeight, height: DSLayout.capsuleControlHeight)
+                .background {
+                    Capsule().fill(selectedChannel == .myPages ? DSColor.accent : DSColor.surface)
+                }
+                .foregroundStyle(selectedChannel == .myPages ? DSColor.textOnAccent : DSColor.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(localized("我的頁面"))
+    }
+
+    /// 书源筛选菜单：胶囊显示「类型：小说」，点开即选；偏离默认项时 accent
+    /// 高亮，当前生效的筛选一眼可辨（与发现内容区的旧样式一致，仅位置上移）。
+    private func discoverFilterMenu(_ filter: DiscoverFilter) -> some View {
+        let isActive = filter.selected != filter.options.first
+        let title = Self.filterTitle(filter.title)
+        let value = Self.filterValueName(filter.selected)
+        return Menu {
+            Picker(title, selection: Binding(
+                get: { filter.selected },
+                set: { discoverVM.selectFilter(filter, value: $0) }
+            )) {
+                ForEach(filter.options, id: \.self) { option in
+                    Text(Self.filterValueName(option)).tag(option)
+                }
+            }
+        } label: {
+            DSCapsuleLabel(
+                title: value.isEmpty ? title : String(format: localized("%@：%@"), title, value),
+                trailingSystemImage: "chevron.down",
+                isSelected: isActive,
+                usesGlassSurface: false
+            )
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+    }
+
+    /// 线路（镜像站）筛选，按 Legado 原始 `select` 标题匹配，繁简书源都覆盖。
+    private static func isLineFilter(_ filter: DiscoverFilter) -> Bool {
+        filter.title == "线路" || filter.title == "線路"
+    }
+
+    private static func filterTitle(_ title: String) -> String {
+        switch title {
+        case "线路", "線路": localized("線路")
+        case "类型", "類型": localized("類型")
+        case "频道", "頻道": localized("頻道")
+        case "平台": localized("平台")
+        default: title
+        }
+    }
+
+    /// 选项值是 URL 时只显示域名以后的部分。
+    private static func filterValueName(_ value: String) -> String {
+        guard value.hasPrefix("http") else { return value }
+        return value
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
     }
 
     /// 频道工具条右侧的卡片/列表布局切换（书城设置 › 布局）。
@@ -446,7 +529,7 @@ struct ExploreHomeView: View {
                         embedsScrollView: false,
                         sectionFilter: { section in
                             if let selectedCategory { return section.title == selectedCategory }
-                            return selectedChannel.matches(section)
+                            return true
                         }
                     )
                 case .list:
@@ -456,7 +539,7 @@ struct ExploreHomeView: View {
                         embedsScrollView: false,
                         sectionFilter: { section in
                             if let selectedCategory { return section.title == selectedCategory }
-                            return selectedChannel.matches(section)
+                            return true
                         }
                     )
                 }
@@ -511,6 +594,38 @@ struct ExploreHomeView: View {
                     .buttonStyle(PlainButtonStyle())
                     .contextMenu { pageActions(page) }
                 }
+                // 新建入口：顶栏的加号胶囊移除后收在这里，空态与有页两态都有。
+                Button {
+                    pageName = ""
+                    pageNamePrompt = .create
+                } label: {
+                    VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                        Image(systemName: "plus")
+                            .font(DSFont.fixed(size: 20, weight: .semibold))
+                            .foregroundStyle(DSColor.textSecondary)
+                            .frame(width: 36, height: 36)
+                            .background(DSColor.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        Spacer()
+                        Text(localized("新建频道"))
+                            .font(DSFont.fixed(size: 15, weight: .semibold, design: .serif))
+                            .foregroundStyle(DSColor.textSecondary)
+                            .lineLimit(1)
+                        Text(localized("自定义页面"))
+                            .font(DSFont.caption)
+                            .foregroundStyle(DSColor.textTertiary)
+                            .lineLimit(1)
+                    }
+                    .padding(DSSpacing.md)
+                    .frame(width: 140, height: 108, alignment: .topLeading)
+                    .background(DSColor.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                            .stroke(DSColor.appAccentOutline, lineWidth: 0.6)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel(localized("新建频道"))
             }
         }
     }
