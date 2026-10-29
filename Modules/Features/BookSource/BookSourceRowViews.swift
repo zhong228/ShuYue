@@ -123,6 +123,9 @@ struct BookSourceRow: View {
     /// Display label of the built-in group for sources with no `bookSourceGroup`.
     let defaultGroupName: String
     let actions: BookSourceRowActions
+    /// 紧凑列表模式（书源工坊列表布局）：小头像、小字号，健康徽章只在异常或
+    /// 置顶/置底时出现，正常源的行高压到两行文字以内。
+    var compact: Bool = false
 
     /// Brand vermilion accent from the design tokens, re-used on this management surface so
     /// the screen stays part of the same brand system as the rest of the app.
@@ -152,16 +155,16 @@ struct BookSourceRow: View {
     // MARK: Visible content
 
     private var content: some View {
-        HStack(spacing: DSSpacing.md) {
+        HStack(spacing: compact ? DSSpacing.sm : DSSpacing.md) {
             // ── Leading glyph + selection ──
             leadingGlyph
 
             // ── Text block ──
-            VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            VStack(alignment: .leading, spacing: compact ? 2 : DSSpacing.xs) {
                 HStack(spacing: DSSpacing.sm) {
                     Text(source.bookSourceName.isEmpty
                         ? localized("未命名書源") : source.bookSourceName)
-                        .font(DSFont.bodyBold)
+                        .font(compact ? DSFont.subheadline.weight(.semibold) : DSFont.bodyBold)
                         .foregroundColor(source.enabled ? DSColor.textPrimary : DSColor.textSecondary)
                         .lineLimit(1)
 
@@ -172,15 +175,18 @@ struct BookSourceRow: View {
 
                 if !source.bookSourceUrl.isEmpty {
                     Text(source.bookSourceUrl)
-                        .font(DSFont.fixed(size: 12))
+                        .font(DSFont.fixed(size: compact ? 11 : 12))
                         .foregroundColor(DSColor.textTertiary)
                         .lineLimit(1)
                 }
 
-                HStack(spacing: DSSpacing.sm) {
-                    SourceValidationBadge(summary: health)
-                    if pin != nil {
-                        PinPill(pin: pin!)
+                // 紧凑模式下正常源不渲染这一行（行高更小）；异常或置顶/置底才出现。
+                if showsStatusLine {
+                    HStack(spacing: DSSpacing.sm) {
+                        SourceValidationBadge(summary: health)
+                        if pin != nil {
+                            PinPill(pin: pin!)
+                        }
                     }
                 }
             }
@@ -201,8 +207,8 @@ struct BookSourceRow: View {
                             .font(DSFont.fixed(size: 11, weight: .semibold))
                     }
                     .foregroundColor(source.enabled ? rowAccent : DSColor.textTertiary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, compact ? 10 : 12)
+                    .padding(.vertical, compact ? 4 : 6)
                     .background(
                         Capsule()
                             .fill(source.enabled ? rowAccent.opacity(0.12) : DSColor.neutralControlFill)
@@ -213,7 +219,7 @@ struct BookSourceRow: View {
                 menu
             }
         }
-        .padding(.vertical, DSSpacing.sm)
+        .padding(.vertical, compact ? 6 : DSSpacing.sm)
         .opacity(source.enabled ? 1 : 0.5)
         .padding(.horizontal, DSSpacing.md)
         .padding(.vertical, DSSpacing.xs)
@@ -221,25 +227,36 @@ struct BookSourceRow: View {
         .contextMenu { rowMenuContent }
     }
 
+    /// 紧凑模式下的状态行显示条件：有异常（抓取/正文）或被置顶/置底。
+    private var showsStatusLine: Bool {
+        if !compact { return true }
+        switch health?.health {
+        case .fetchError, .contentError: return true
+        default: break
+        }
+        return pin != nil
+    }
+
     // MARK: Avatar block
 
     /// Compact monogram in a tinted rounded square — a quiet leading glyph, not the
     /// old bold coloured block. Tap toggles selection.
     private var leadingGlyph: some View {
-        ZStack {
+        let side: CGFloat = compact ? 30 : 42
+        return ZStack {
             RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
                 .fill(avatarColor.opacity(isSelected ? 0.30 : 0.15))
-                .frame(width: 38, height: 38)
+                .frame(width: side - 4, height: side - 4)
             Text(avatarInitial)
-                .font(DSFont.fixed(size: 15, weight: .semibold))
+                .font(DSFont.fixed(size: compact ? 12 : 15, weight: .semibold))
                 .foregroundStyle(avatarColor)
             if isSelected {
                 RoundedRectangle(cornerRadius: DSRadius.md, style: .continuous)
                     .stroke(rowAccent, lineWidth: 2)
-                    .frame(width: 42, height: 42)
+                    .frame(width: side, height: side)
             }
         }
-        .frame(width: 42, height: 42)
+        .frame(width: side, height: side)
         .contentShape(Rectangle())
         .onTapGesture {
             actions.toggleSelection(source.id)
@@ -837,7 +854,7 @@ struct BookSourceListHeaderBar: View {
             HStack(spacing: 4) {
                 Image(systemName: grouped ? "rectangle.grid.1x2" : "square.grid.2x2")
                     .font(DSFont.fixed(size: 13))
-                Text(grouped ? localized("分組") : localized("網格"))
+                Text(grouped ? localized("分組") : localized("列表"))
                     .font(DSFont.fixed(size: 12, weight: .medium))
             }
             .foregroundStyle(grouped ? DSColor.appAccent : DSColor.textSecondary)
@@ -913,7 +930,7 @@ struct BookSourceListGrid: View {
                         groupBlock(section)
                     }
                 } else {
-                    grid(for: flatSourceIDs)
+                    rows(for: flatSourceIDs)
                 }
             }
             .padding(DSSpacing.md)
@@ -929,30 +946,35 @@ struct BookSourceListGrid: View {
                     actions: groupActions
                 )
                 if model.isExpanded(section.id) {
-                    grid(for: section.sourceIDs)
+                    rows(for: section.sourceIDs)
                 }
             }
         }
     }
 
-    private func grid(for ids: [UUID]) -> some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 158, maximum: 200), spacing: DSSpacing.md)],
-            spacing: DSSpacing.md
-        ) {
+    /// 紧凑列表行（列表反馈：卡片网格不如列表顺手，行高要小）：细线分隔的
+    /// 单列行，沿用卡片的全部操作（开关、菜单、长按、多选）。
+    private func rows(for ids: [UUID]) -> some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(ids, id: \.self) { id in
                 if let source = model.source(for: id) {
-                    BookSourceGridCard(
+                    BookSourceRow(
                         source: source,
                         isSelected: model.isSelected(id),
                         pin: model.pin(for: id),
                         health: healthById[id],
                         defaultGroupName: defaultGroupName,
-                        actions: rowActions
+                        actions: rowActions,
+                        compact: true
                     )
+                    Divider()
+                        .overlay(DSColor.separator)
+                        .padding(.leading, DSSpacing.xl)
                 }
             }
         }
+        .background(DSColor.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
     }
 }
 
