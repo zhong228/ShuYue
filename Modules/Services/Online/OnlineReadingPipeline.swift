@@ -250,7 +250,7 @@ actor ChapterFetchManager {
         guard let refs = book.onlineChapters, refs.indices.contains(chapterIndex) else {
             throw NSError(
                 domain: "OnlineReadingPipeline", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "找不到章節"])
+                userInfo: [NSLocalizedDescriptionKey: localized("找不到章節")])
         }
 
         // Clean up HTML fragment URLs that may remain from old caches (e.g. <a href="...">Chapter 1</a>)
@@ -396,7 +396,7 @@ actor ChapterFetchManager {
                 else {
                     throw NSError(
                         domain: "OnlineReadingPipeline", code: -2,
-                        userInfo: [NSLocalizedDescriptionKey: "找不到書源"])
+                        userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
                 }
                 return try await bookSourceFetcher.fetchChapterPackage(
                     ref: ref,
