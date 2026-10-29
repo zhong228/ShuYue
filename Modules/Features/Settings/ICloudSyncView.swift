@@ -50,7 +50,7 @@ struct ICloudSyncView: View {
     private var accountSection: some View {
         DSSettingsGroupCard(title: localized("帳號狀態"), footer: {
             if !iCloudReady {
-                Text(localized("請確認系統設定中已登入 iCloud，且 iCloud Drive/CloudKit 可用"))
+                Text(manager.unavailableFooterText)
                     .dsSectionFooter()
             }
         }) {
