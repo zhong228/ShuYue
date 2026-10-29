@@ -3804,3 +3804,6 @@
 "此安裝未啟用 iCloud 權限" = "iCloud is not enabled for this install";
 "目前執行環境不支援 iCloud" = "iCloud is not supported in this environment";
 "此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。" = "This install lacks the iCloud entitlement. Install the original IPA via TrollStore, or re-sign with iCloud enabled in your signing tool, to use iCloud sync.";
+
+/* 新增键：AI 流式 idle 超时 (2026-10-29) */
+"連線逾時：服務端長時間未傳送資料" = "Connection timed out: the server stopped sending data";
