@@ -82,7 +82,7 @@ final class FixedPageTransitionViewController: UIViewController {
         container.addArrangedSubview(icon)
         container.addArrangedSubview(headerLabel)
         container.addArrangedSubview(titleLabel)
-        if !hintLabel.text!.isEmpty {
+        if !(hintLabel.text ?? "").isEmpty {
             container.addArrangedSubview(hintLabel)
         }
 
