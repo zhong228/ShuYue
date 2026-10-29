@@ -30,7 +30,8 @@ struct DiscoverShowcaseView: View {
 
     private var content: some View {
         LazyVStack(alignment: .leading, spacing: DSSpacing.xl) {
-            if !discover.filters.isEmpty || (onOpenPage != nil && !pageItems.isEmpty) {
+            // 嵌入书城（embedsScrollView == false）时筛选由书城顶栏渲染，不在此重复。
+            if embedsScrollView, !discover.filters.isEmpty || (onOpenPage != nil && !pageItems.isEmpty) {
                 DiscoverControlsRow(
                     discover: discover,
                     pageItems: onOpenPage == nil ? [] : pageItems,
@@ -930,16 +931,20 @@ struct DiscoverListLayoutView: View {
 
     @ViewBuilder
     private var layoutContent: some View {
-        if !discover.filters.isEmpty || !pageItems.isEmpty {
-            DiscoverControlsRow(
-                discover: discover,
-                pageItems: pageItems,
-                onOpenPage: { onOpenPage?($0) }
-            )
-            .padding(.top, DSSpacing.sm)
-        }
-        if !filteredSections.isEmpty {
-            categoryChips
+        // 嵌入书城（embedsScrollView == false）时筛选与分类 chips 都由书城顶栏
+        // 渲染（筛选在控制条、分类在分类条），这里只出书单，避免两处重复。
+        if embedsScrollView {
+            if !discover.filters.isEmpty || !pageItems.isEmpty {
+                DiscoverControlsRow(
+                    discover: discover,
+                    pageItems: pageItems,
+                    onOpenPage: { onOpenPage?($0) }
+                )
+                .padding(.top, DSSpacing.sm)
+            }
+            if !filteredSections.isEmpty {
+                categoryChips
+            }
         }
         contentArea
     }
