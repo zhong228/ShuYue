@@ -18,11 +18,17 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
     private let apiKey: String
     private let session: URLSession
 
-    /// Read-idle timeout. A proxy that returns `200` and then says nothing — a hung gateway, a
-    /// wrong model name answering with non-SSE, a half-open connection — would otherwise leave
-    /// `for try await line in bytes.lines` blocked forever and the UI spinning. Only silence
-    /// after the response arrives trips it, so a long answer streaming token by token is fine.
-    static let firstByteTimeout: TimeInterval = 60
+    /// Request timeout: how long to wait for the first response (headers) before giving up.
+    /// Raised from 60 to 120 so slow gateways and reasoning models that think before the first
+    /// token are not killed prematurely.
+    static let firstByteTimeout: TimeInterval = 120
+
+    /// Idle timeout for the streaming body. A proxy that answers `200` and then says nothing,
+    /// a hung gateway, or a half-open connection would otherwise leave
+    /// `for try await line in bytes.lines` blocked forever — URLSession's stream handling does
+    /// not reliably trip `timeoutIntervalForRequest` on silence after the response arrives, so
+    /// the UI spins forever with no result. A watchdog cancels and surfaces a clear error.
+    static let idleTimeout: TimeInterval = 90
 
     private static let defaultSession: URLSession = {
         let configuration = URLSessionConfiguration.default
@@ -197,38 +203,50 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
     /// Reasoning may take longer than a non-streaming request's idle deadline. Receive the
     /// provider's SSE activity throughout generation, retaining only final text and usage.
     private func generateDeepSeek(_ request: LLMGenerationRequest, model: String) async throws -> LLMRawResponse {
-        do {
-            let wire = try makeURLRequest(for: request, model: model, stream: true)
-            let (bytes, response) = try await session.bytes(for: wire)
-            guard let http = response as? HTTPURLResponse else { throw LLMError.networkError(localized("非 HTTP 回應")) }
-            AIDiagnostics.current?.event("http", ["status": "\(http.statusCode)", "transport": "sse"])
-            guard (200...299).contains(http.statusCode) else {
-                if http.statusCode == 401 { throw LLMError.unauthorized }
-                if http.statusCode == 429 { throw LLMError.rateLimited }
-                var data = Data()
-                for try await byte in bytes { data.append(byte); if data.count >= 4096 { break } }
-                throw LLMError.providerError(Self.extractErrorMessage(from: data) ?? "HTTP \(http.statusCode)")
+        let activity = LastActivity()
+        let task = Task<LLMRawResponse, Error> {
+            let watchdog = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    if activity.secondsSince() >= Self.idleTimeout { task.cancel() }
+                }
             }
-            var content = "", servedModel = model
-            var usage: LLMUsage?, reason: String?
-            var done = false
-            for try await line in bytes.lines {
-                try Task.checkCancellation()
-                if LLMStreamDecoding.isDone(line) { done = true; break }
-                guard let payload = LLMStreamDecoding.payload(ofDataLine: line), !payload.isEmpty else { continue }
-                guard let chunk = try? JSONDecoder().decode(GenerationChunk.self, from: Data(payload.utf8)),
-                      chunk.choices != nil else { throw LLMError.providerError(localized("回應解析失敗")) }
-                if let text = chunk.choices?.first?.delta?.content { content += text }
-                if let finish = chunk.choices?.first?.finish_reason { reason = finish }
-                if let value = chunk.usage { usage = value }
-                if let value = chunk.model { servedModel = value }
-            }
-            guard done else { throw LLMError.networkError(localized("串流回應在完成標記前中斷")) }
-            return .init(content: content, provider: identifier, model: servedModel, finishReason: reason, usage: usage, httpStatus: http.statusCode)
-        } catch is CancellationError { throw CancellationError() }
-        catch let error as URLError where error.code == .cancelled { throw CancellationError() }
-        catch let error as LLMError { throw error }
-        catch { throw LLMError.networkError(error.localizedDescription) }
+            defer { watchdog.cancel() }
+            do {
+                let wire = try makeURLRequest(for: request, model: model, stream: true)
+                let (bytes, response) = try await session.bytes(for: wire)
+                guard let http = response as? HTTPURLResponse else { throw LLMError.networkError(localized("非 HTTP 回應")) }
+                AIDiagnostics.current?.event("http", ["status": "\(http.statusCode)", "transport": "sse"])
+                guard (200...299).contains(http.statusCode) else {
+                    if http.statusCode == 401 { throw LLMError.unauthorized }
+                    if http.statusCode == 429 { throw LLMError.rateLimited }
+                    var data = Data()
+                    for try await byte in bytes { data.append(byte); if data.count >= 4096 { break } }
+                    throw LLMError.providerError(Self.extractErrorMessage(from: data) ?? "HTTP \(http.statusCode)")
+                }
+                var content = "", servedModel = model
+                var usage: LLMUsage?, reason: String?
+                var done = false
+                for try await line in bytes.lines {
+                    activity.touch()
+                    try Task.checkCancellation()
+                    if LLMStreamDecoding.isDone(line) { done = true; break }
+                    guard let payload = LLMStreamDecoding.payload(ofDataLine: line), !payload.isEmpty else { continue }
+                    guard let chunk = try? JSONDecoder().decode(GenerationChunk.self, from: Data(payload.utf8)),
+                          chunk.choices != nil else { throw LLMError.providerError(localized("回應解析失敗")) }
+                    if let text = chunk.choices?.first?.delta?.content { content += text }
+                    if let finish = chunk.choices?.first?.finish_reason { reason = finish }
+                    if let value = chunk.usage { usage = value }
+                    if let value = chunk.model { servedModel = value }
+                }
+                guard done else { throw LLMError.networkError(localized("串流回應在完成標記前中斷")) }
+                return .init(content: content, provider: identifier, model: servedModel, finishReason: reason, usage: usage, httpStatus: http.statusCode)
+            } catch is CancellationError { throw CancellationError() }
+            catch let error as URLError where error.code == .cancelled { throw CancellationError() }
+            catch let error as LLMError { throw error }
+            catch { throw LLMError.networkError(error.localizedDescription) }
+        }
+        return try await task.value
     }
 
     /// Streaming via SSE. Cancelling the stream cancels the URLSession task.
@@ -248,9 +266,30 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
 
         return AsyncThrowingStream { continuation in
             let task = Task {
+                let activity = LastActivity()
+                let ended = StreamEnded()
+                // Idle watchdog: a silent SSE connection — a hung gateway, a closed
+                // half-open link, a proxy that answers 200 and then sends nothing — would
+                // otherwise leave `for await line in bytes.lines` blocked forever under
+                // URLSession's stream handling, spinning the UI with no result. We cancel
+                // the request and surface a clear timeout instead.
+                let watchdog = Task {
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        if activity.secondsSince() >= Self.idleTimeout, ended.mark() {
+                            task.cancel()
+                            continuation.finish(
+                                throwing: LLMError.networkError(localized("連線逾時：服務端長時間未傳送資料"))
+                            )
+                            return
+                        }
+                    }
+                }
                 do {
                     let (bytes, response) = try await session.bytes(for: sendableRequest)
+                    activity.touch()
                     guard let http = response as? HTTPURLResponse else {
+                        ended.mark()
                         continuation.finish(throwing: LLMError.networkError(localized("非 HTTP 回應")))
                         return
                     }
@@ -258,9 +297,11 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                     case 200...299:
                         break
                     case 401:
+                        ended.mark()
                         continuation.finish(throwing: LLMError.unauthorized)
                         return
                     case 429:
+                        ended.mark()
                         continuation.finish(throwing: LLMError.rateLimited)
                         return
                     default:
@@ -271,6 +312,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                             errorBody.append(byte)
                             if errorBody.count > 4_096 { break }
                         }
+                        ended.mark()
                         continuation.finish(
                             throwing: LLMError.providerError(
                                 Self.extractErrorMessage(from: errorBody) ?? "HTTP \(http.statusCode)"
@@ -280,6 +322,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                     }
                     var receivedDone = false
                     for try await line in bytes.lines {
+                        activity.touch()
                         try Task.checkCancellation()
                         if LLMStreamDecoding.isDone(line) {
                             receivedDone = true
@@ -290,24 +333,31 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                             continuation.yield(delta)
                         }
                     }
-                    // A stream that ends without `[DONE]` was cut off. Finishing normally here
-                    // would present a truncated answer as a complete one, so this is a hard
-                    // error — deliberately not a retry, and deliberately not silence.
+                    watchdog.cancel()
+                    // A stream that ends without `[DONE]` was cut off. Finishing normally
+                    // here would present a truncated answer as a complete one, so this is a
+                    // hard error — deliberately not a retry, and deliberately not silence.
                     guard receivedDone else {
-                        continuation.finish(
-                            throwing: LLMError.networkError(localized("串流回應在完成標記前中斷"))
-                        )
+                        if ended.mark() {
+                            continuation.finish(
+                                throwing: LLMError.networkError(localized("串流回應在完成標記前中斷"))
+                            )
+                        }
                         return
                     }
-                    continuation.finish()
+                    if ended.mark() { continuation.finish() }
                 } catch is CancellationError {
-                    continuation.finish(throwing: CancellationError())
+                    watchdog.cancel()
+                    if ended.mark() { continuation.finish(throwing: CancellationError()) }
                 } catch let error as URLError where error.code == .cancelled {
-                    continuation.finish(throwing: CancellationError())
+                    watchdog.cancel()
+                    if ended.mark() { continuation.finish(throwing: CancellationError()) }
                 } catch let error as LLMError {
-                    continuation.finish(throwing: error)
+                    watchdog.cancel()
+                    if ended.mark() { continuation.finish(throwing: error) }
                 } catch {
-                    continuation.finish(throwing: LLMError.networkError(error.localizedDescription))
+                    watchdog.cancel()
+                    if ended.mark() { continuation.finish(throwing: LLMError.networkError(error.localizedDescription)) }
                 }
             }
             continuation.onTermination = { _ in task.cancel() }
@@ -354,5 +404,29 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         }
         guard !normalized.isEmpty else { return nil }
         return String(normalized.prefix(240))
+    }
+}
+
+/// 線程安全的最近活動時間戳，供 idle 看門狗測量距上次收到資料的靜默時間。
+private final class LastActivity: @unchecked Sendable {
+    private var value = Date()
+    private let lock = NSLock()
+    func touch() { lock.lock(); value = Date(); lock.unlock() }
+    func secondsSince() -> TimeInterval {
+        lock.lock(); defer { lock.unlock() }
+        return Date().timeIntervalSince(value)
+    }
+}
+
+/// 標記串流是否已結束，避免看門狗與主迴圈對同一 continuation 重複結束。
+private final class StreamEnded: @unchecked Sendable {
+    private var ended = false
+    private let lock = NSLock()
+    /// 尚未結束時標記為已結束並回傳 true；已結束則回傳 false（呼叫方應忽略）。
+    func mark() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if ended { return false }
+        ended = true
+        return true
     }
 }
