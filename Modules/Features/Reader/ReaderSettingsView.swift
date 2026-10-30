@@ -1307,7 +1307,7 @@ struct ReaderSettingsView: View {
         .frame(maxWidth: .infinity, minHeight: previewTextHeight, maxHeight: previewTextHeight)
         .background(
             RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
-                .fill(theme.wrappedValue.backgroundColor)
+                .fill(theme.backgroundColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
