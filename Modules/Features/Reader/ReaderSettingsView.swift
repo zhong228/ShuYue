@@ -95,13 +95,10 @@ struct ReaderSettingsView: View {
         NavigationStack {
             VStack(spacing: 0) {
             previewPanel
-            Divider()
 
-            // 三页横向面板：版式 / 视觉 / 习惯。胶囊图标标签条与页面滑动双向同步，
-            // 替代原来一条长 Form 的顺序分区（2026-10-12）。
+            // 三页横向面板：版式 / 视觉 / 习惯。下划线式顶部 Tab 与页面滑动双向同步，
+            // 替代原来的胶囊标签条与一条长 Form 的顺序分区（2026-10-30）。
             settingsTabStrip
-                .padding(.horizontal, DSSpacing.lg)
-                .padding(.vertical, DSSpacing.md)
 
             TabView(selection: $selectedPage) {
                 layoutPage
@@ -197,21 +194,21 @@ struct ReaderSettingsView: View {
 
     // MARK: - 标签切换器
 
-    /// 三页胶囊标签条：版式 / 视觉 / 习惯，每页一个图标 + 文字胶囊。与下方 TabView
-    /// 双向同步，替代系统分段控件（2026-10-12）。
+    /// 三页下划线式顶部 Tab：版式 / 视觉 / 习惯，等宽三段、文字 + 小图标。选中项文字
+    /// 用 `DSColor.textPrimary` 并配底部 3pt 圆角强调色下划线，未选中 `DSColor.textSecondary`，
+    /// 废弃原来的胶囊填充样式（2026-10-30）。与下方 TabView 双向同步。
     private var settingsTabStrip: some View {
-        HStack(spacing: DSSpacing.xs) {
-            ForEach(ReaderSettingsPage.allCases) { page in
-                settingsTabButton(page)
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(ReaderSettingsPage.allCases) { page in
+                    settingsTabButton(page)
+                }
             }
+            Divider()
+                .background(DSColor.separator)
         }
-        .padding(4)
-        .background(
-            Capsule().fill(DSColor.surface)
-        )
-        .overlay(
-            Capsule().stroke(DSColor.separator, lineWidth: 1)
-        )
+        .padding(.top, DSSpacing.sm)
+        .padding(.horizontal, DSSpacing.lg)
         .accessibilityLabel(localized("阅读偏好分页"))
     }
 
@@ -222,20 +219,21 @@ struct ReaderSettingsView: View {
                 selectedPage = page
             }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: page.icon)
-                    .font(DSFont.fixed(size: 12, weight: .medium))
-                Text(localized(page.titleKey))
-                    .font(DSFont.fixed(size: 13, weight: .medium))
+            VStack(spacing: DSSpacing.xxs) {
+                HStack(spacing: 5) {
+                    Image(systemName: page.icon)
+                        .font(DSFont.fixed(size: 13, weight: .medium))
+                    Text(localized(page.titleKey))
+                        .font(DSFont.subheadline.weight(.semibold))
+                }
+                .foregroundColor(selected ? DSColor.textPrimary : DSColor.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DSSpacing.sm)
+
+                Capsule()
+                    .fill(selected ? readerTint : Color.clear)
+                    .frame(height: 3)
             }
-            .foregroundColor(selected ? DSColor.textOnAccent : DSColor.textSecondary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(
-                Capsule().fill(selected ? readerTint : Color.clear)
-            )
-            .shadow(color: selected ? readerTint.opacity(0.3) : .clear, radius: 6, y: 2)
-            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -282,15 +280,18 @@ struct ReaderSettingsView: View {
         .contentShape(Rectangle())
     }
 
-    /// The same row with the control's current value between title and chevron.
-    private func navigationValueRowLabel(title: String, systemImage: String, value: String) -> some View {
-        HStack(spacing: DSSpacing.sm) {
+    /// The same row with the control's current value between title and chevron. The
+    /// value rides in a 通栏行卡的右对齐圆角胶囊（`DSColor.appAccentSoft` 背景）。
+    private func navigationValueRowLabel(title: String, systemImage: String, value: String) -> some View {        HStack(spacing: DSSpacing.sm) {
             SettingsRowLabel(title, systemImage: systemImage)
             Spacer(minLength: DSSpacing.sm)
             Text(value)
-                .font(DSFont.caption)
-                .foregroundStyle(DSColor.textSecondary)
+                .font(DSFont.caption.weight(.semibold))
+                .foregroundStyle(DSColor.textPrimary)
                 .lineLimit(1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(DSColor.appAccentSoft, in: Capsule())
             Image(systemName: "chevron.right")
                 .font(DSFont.caption2)
                 .foregroundStyle(DSColor.textSecondary.opacity(0.7))
@@ -298,6 +299,20 @@ struct ReaderSettingsView: View {
         .padding(.horizontal, DSSpacing.md)
         .padding(.vertical, DSSpacing.sm)
         .contentShape(Rectangle())
+    }
+
+    /// 圆形按钮化步进器按钮：强调色图标 + `DSColor.appAccentSoft` 圆形底盘，替代系统
+    /// 矩形步进器（2026-10-30）。
+    private func circularStepButton(systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(DSFont.fixed(size: 13, weight: .semibold))
+                .foregroundStyle(DSColor.appAccent)
+                .frame(width: 30, height: 30)
+                .background(DSColor.appAccentSoft, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(localized("调整字号"))
     }
 
     /// 阅读偏好页的滑块行：标题与当前值并排，右侧值收进主题色胶囊徽章，滑块以
@@ -327,6 +342,7 @@ struct ReaderSettingsView: View {
 
             Slider(value: value, in: range, step: step)
                 .tint(readerTint)
+                .controlSize(.large)
                 .disabled(!isEnabled)
                 .accessibilityLabel(title)
                 .accessibilityValue(valueText)
@@ -422,9 +438,12 @@ struct ReaderSettingsView: View {
                     )
                     Spacer(minLength: DSSpacing.sm)
                     Text(scopeSummary(themeItems))
-                        .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textSecondary)
+                        .font(DSFont.caption.weight(.semibold))
+                        .foregroundStyle(DSColor.textPrimary)
                         .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(DSColor.appAccentSoft, in: Capsule())
                     Image(systemName: "chevron.right")
                         .font(DSFont.caption2)
                         .foregroundStyle(DSColor.textSecondary.opacity(0.7))
@@ -470,16 +489,27 @@ struct ReaderSettingsView: View {
             }
 
             if supportsFontSize {
-                Stepper(value: fontSizeBinding, in: GlobalSettings.readerFontSizeRange, step: 1) {
-                    LabeledContent {
-                        Text(String(format: localized("ReaderOverlay.Format.Points"), Int(fontSize)))
-                            .monospacedDigit()
-                            .foregroundStyle(DSColor.textSecondary)
-                    } label: {
-                        SettingsRowLabel(
-                            localized(ReadingSettingsScopeItem.fontSize.titleKey),
-                            systemImage: ReadingSettingsScopeItem.fontSize.systemImage
-                        )
+                HStack(spacing: DSSpacing.sm) {
+                    SettingsRowLabel(
+                        localized(ReadingSettingsScopeItem.fontSize.titleKey),
+                        systemImage: ReadingSettingsScopeItem.fontSize.systemImage
+                    )
+                    Spacer(minLength: DSSpacing.sm)
+                    circularStepButton(systemImage: "minus") {
+                        let next = floor(fontSizeBinding.wrappedValue) - 1
+                        fontSizeBinding.wrappedValue = max(GlobalSettings.readerFontSizeRange.lowerBound, next)
+                    }
+                    Text(String(format: localized("ReaderOverlay.Format.Points"), Int(fontSizeBinding.wrappedValue)))
+                        .font(DSFont.caption.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(DSColor.textPrimary)
+                        .frame(minWidth: 46)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(DSColor.appAccentSoft, in: Capsule())
+                    circularStepButton(systemImage: "plus") {
+                        let next = ceil(fontSizeBinding.wrappedValue) + 1
+                        fontSizeBinding.wrappedValue = min(GlobalSettings.readerFontSizeRange.upperBound, next)
                     }
                 }
                 .padding(.horizontal, DSSpacing.md)
@@ -1254,29 +1284,60 @@ struct ReaderSettingsView: View {
         return .system(size: size, weight: resolvedWeight)
     }
 
+    /// 顶部实时预览区：一张完整圆角预览卡（`DSRadius.xl`、按当前阅读主题着色背景、
+    /// 内边距 `DSSpacing`），卡内居中 3–4 行固定样张，字号/行距实时跟随设置但**限制最大
+    /// 显示尺寸**（固定容器高度 + `minimumScaleFactor`/`lineLimit`，绝不溢出重叠）。右上角
+    /// 一枚小号强调色徽章显示当前字号。预览卡与下方设置区视觉分离（2026-10-30）。
     private var previewPanel: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(localized("大"))
-                    .font(previewFont(size: 34))
+        previewCard
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.md)
+    }
 
-                Text(localized("小"))
-                    .font(previewFont(size: 18))
-                    .baselineOffset(-6)
-            }
-            Text(localized("  这是一段测试文字，用来测试字体大小和行距、字距、段落间距，以及不同主题下的阅读舒适度。调整设定时，可以观察文字密度、换行节奏与背景对比是否符合你的阅读习惯。"))
-                .font(previewFont(size: min(max(fontSize, 17), 24)))
-                .lineSpacing(readerConfig.lineSpacing)
-                .tracking(readerConfig.letterSpacing)
-                .foregroundStyle(theme.textColor)
+    private var previewCard: some View {
+        ZStack(alignment: .topTrailing) {
+            previewSample
+                .padding(.horizontal, DSSpacing.md)
+                .padding(.top, DSSpacing.xxl)
+                .padding(.bottom, DSSpacing.md)
+
+            fontSizeBadge
+                .padding(DSSpacing.sm)
         }
-        .padding(.horizontal, readerConfig.pageMarginH)
-        .padding(.top, 26)
-        .padding(.bottom, 22)
-        .frame(maxWidth: .infinity, minHeight: previewTextHeight, maxHeight: previewTextHeight, alignment: .topLeading)
-        .clipped()
-        .foregroundStyle(theme.textColor)
-        .background(theme.backgroundColor)
+        .frame(maxWidth: .infinity, minHeight: previewTextHeight, maxHeight: previewTextHeight)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+                .fill(theme.wrappedValue.backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+                .stroke(DSColor.separator, lineWidth: 1)
+        )
+    }
+
+    /// 右上角小号强调色徽章：当前字号（`%d pt`）。
+    private var fontSizeBadge: some View {
+        Text(String(format: localized("ReaderOverlay.Format.Points"), Int(fontSize)))
+            .font(DSFont.caption.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(DSColor.appAccent)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(DSColor.appAccentSoft, in: Capsule())
+    }
+
+    /// 居中样张：字号/行距实时跟随设置，但固定容器高度 + `minimumScaleFactor`/`lineLimit`
+    /// 双重钳制，绝不溢出重叠（修掉旧版"大""小"标题与样张混排的 bug）。
+    private var previewSample: some View {
+        Text(localized("这是一段测试文字，用来测试字体大小和行距、字距、段落间距，以及不同主题下的阅读舒适度。调整设定时，可以观察文字密度、换行节奏与背景对比是否符合你的阅读习惯。"))
+            .font(previewFont(size: min(max(fontSize, 17), 24)))
+            .lineSpacing(readerConfig.lineSpacing)
+            .tracking(readerConfig.letterSpacing)
+            .foregroundStyle(theme.textColor)
+            .multilineTextAlignment(.center)
+            .lineLimit(4)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     // MARK: - Fonts

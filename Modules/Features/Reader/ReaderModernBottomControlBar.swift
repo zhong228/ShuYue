@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// The 現代 interface's bottom chrome: one floating rounded panel, inset from every
-/// edge, holding the chapter line, the chapter progress slider, and the same four
-/// tools 經典 offers — 目錄 / 書籤 / 深色 / 設置.
+/// The 現代 interface's bottom chrome: one floating rounded glass island, inset from
+/// every edge, holding the chapter line, the chapter progress slider, and the same
+/// four tools 經典 offers — 目錄 / 書籤 / 深色 / 設置.
 ///
-/// It wears the shared 界面效果 surface (`floatingSurface`), which on iOS 26 is the
-/// system's own glass — so it matches the toolbar controls above it without either
-/// being hand-painted, and follows 外觀主題 › 界面效果 like every other floating element.
+/// It wears the shared 界面效果 surface language: a single `.ultraThinMaterial` island
+/// (大圆角、细描边、明显投影、距屏幕边缘留白), with the progress section above a
+/// divider and the four tools as filled rounded-square buttons below — so it reads as
+/// the same 双岛浮层 family as the other three chrome sets, not a different design.
 ///
 /// The book-scoped actions (刷新 / 換源 / 下載 / 聽書) are deliberately *not* here;
 /// 現代 puts them in `ReaderModernBookCard` behind the cover thumbnail.
@@ -33,11 +34,6 @@ struct ReaderModernBottomControlBar: View {
 
     @State private var chapterSliderDraft: Double? = nil
 
-
-    private var palette: ReaderChromePalette {
-        ReaderChromePalette(interface: .modern, theme: readerTheme, settings: settings)
-    }
-
     /// The reader's own dark mode, which 深色／白天 switches — not whether the background
     /// it sits on is 黑色, which a dark saved background does in light mode too.
     private var isDarkMode: Bool { settings.readerDarkMode }
@@ -55,16 +51,11 @@ struct ReaderModernBottomControlBar: View {
             Spacer(minLength: 0)
 
             VStack(spacing: DSSpacing.md) {
-                chapterLine
-                progressRow
-                Rectangle()
-                    .fill(DSColor.separator)
-                    .frame(height: 0.5)
-                    .opacity(0.6)
-                toolRow
+                progressSection
+                Divider().opacity(0.15)
+                toolGrid
             }
-            .padding(.horizontal, DSSpacing.lg)
-            .padding(.vertical, DSSpacing.md)
+            .padding(DSSpacing.md)
             .frame(maxWidth: overlayContentMaxWidth)
             .background(
                 RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
@@ -74,7 +65,7 @@ struct ReaderModernBottomControlBar: View {
                 RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
                     .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
             )
-            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 16, y: 8)
+            .shadow(color: DSColor.coverHeroShadow.opacity(0.35), radius: 20, y: 10)
             .overlay(alignment: .top) {
                 if chapterSliderDraft != nil {
                     scrubPreview
@@ -87,152 +78,119 @@ struct ReaderModernBottomControlBar: View {
         }
     }
 
-    private var chapterLine: some View {
-        HStack(spacing: DSSpacing.sm) {
-            Text(chapterTitle)
-                .font(DSFont.footnote)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            Text(chapterPageInfo)
-                .font(DSFont.footnote.monospacedDigit())
-        }
-        .foregroundStyle(palette.bottomIcon.opacity(0.62))
-        .accessibilityElement(children: .combine)
-    }
+    // MARK: - 上段：进度区
 
-    private var progressRow: some View {
-        HStack(spacing: DSSpacing.sm) {
-            Button(action: onPrevChapter) {
-                Image(systemName: "chevron.left")
-                    .font(DSFont.fixed(size: 15, weight: .medium))
-                    .foregroundStyle(palette.bottomIcon)
-                    // Explicit, not left to the button style: `.plain` does not reliably
-                    // dim a disabled label, and at a chapter boundary the arrow has to
-                    // read as unavailable.
-                    .opacity(canGoPrevChapter ? 1 : 0.3)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
+    private var progressSection: some View {
+        VStack(spacing: DSSpacing.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chapterTitle)
+                        .font(DSFont.footnote)
+                        .foregroundStyle(DSColor.textPrimary)
+                        .lineLimit(1)
+                    Text(chapterPageInfo)
+                        .font(DSFont.footnote.monospacedDigit())
+                        .foregroundStyle(DSColor.textSecondary)
+                }
+                Spacer(minLength: 0)
+                Text(progressPercentText)
+                    .font(DSFont.footnote.monospacedDigit())
+                    .foregroundStyle(DSColor.textSecondary)
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoPrevChapter)
-            .accessibilityLabel(localized("上一章"))
 
-            Slider(
-                value: Binding<Double>(
-                    get: { sliderProgress },
-                    set: { chapterSliderDraft = $0 }
-                ),
-                in: 0...1,
-                onEditingChanged: { editing in
-                    if editing {
-                        chapterSliderDraft = chapterSliderProgressValue()
-                    } else if let draft = chapterSliderDraft {
-                        applyChapterSliderProgress(draft)
-                        chapterSliderDraft = nil
+            HStack(spacing: DSSpacing.sm) {
+                chapterArrow(forward: false) { onPrevChapter() }
+                Slider(
+                    value: Binding<Double>(
+                        get: { sliderProgress },
+                        set: { chapterSliderDraft = $0 }
+                    ),
+                    in: 0...1,
+                    onEditingChanged: { editing in
+                        if editing {
+                            chapterSliderDraft = chapterSliderProgressValue()
+                        } else if let draft = chapterSliderDraft {
+                            applyChapterSliderProgress(draft)
+                            chapterSliderDraft = nil
+                        }
                     }
-                }
-            )
-            .accessibilityLabel(localized("阅读进度"))
-            .accessibilityValue(progressPercentText)
-
-            Button(action: onNextChapter) {
-                Image(systemName: "chevron.right")
-                    .font(DSFont.fixed(size: 15, weight: .medium))
-                    .foregroundStyle(palette.bottomIcon)
-                    .opacity(canGoNextChapter ? 1 : 0.3)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
+                )
+                .tint(DSColor.appAccent)
+                .accessibilityLabel(localized("阅读进度"))
+                .accessibilityValue(progressPercentText)
+                chapterArrow(forward: true) { onNextChapter() }
             }
-            .buttonStyle(.plain)
-            .disabled(!canGoNextChapter)
-            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "书末页"))
         }
     }
 
-    /// Same shared list 經典 draws, so hiding 深色 or importing an icon in
-    /// 自定義 applies to whichever interface is on. Order always follows
-    /// `allCases`; persistence only records what is hidden.
-    private var toolRow: some View {
+    private func chapterArrow(forward: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: forward ? "chevron.right" : "chevron.left")
+                .font(DSFont.fixed(size: 15, weight: .medium))
+                .foregroundStyle(
+                    forward
+                        ? (canGoNextChapter ? DSColor.textPrimary : DSColor.textSecondary)
+                        : (canGoPrevChapter ? DSColor.textPrimary : DSColor.textSecondary)
+                )
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(.regularMaterial))
+                .overlay(Circle().stroke(DSColor.separator.opacity(0.3), lineWidth: 0.5))
+                .accessibilityHidden(true)
+        }
+        .buttonStyle(.plain)
+        .disabled(forward ? !canGoNextChapter : !canGoPrevChapter)
+        .accessibilityLabel(localized(forward ? (canGoNextChapter ? "下一章" : "书末页") : "上一章"))
+    }
+
+    // MARK: - 下段：按钮区（带填充态的方形按钮，等距分布）
+
+    private var toolGrid: some View {
         HStack(spacing: 0) {
-            let items = settings.visibleReaderChromeToolItems
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                toolButton(for: item)
-                if index < items.count - 1 {
-                    Rectangle()
-                        .fill(DSColor.separator)
-                        .frame(width: 0.5, height: 22)
-                        .opacity(0.5)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func toolButton(for item: ReaderChromeToolItem) -> some View {
-        switch item {
-        case .tableOfContents:
-            toolBtn(item: item, label: localized("目录"), action: onOpenTOC)
-        case .bookmarks:
-            toolBtn(item: item, label: localized("书签"), action: onOpenBookmarks)
-        case .nightMode:
-            toolBtn(
-                item: item,
+            squareToolButton(id: "tableOfContents", systemImage: "list.bullet", label: localized("目录")) { onOpenTOC() }
+            Spacer()
+            squareToolButton(id: "bookmarks", systemImage: "bookmark", label: localized("书签")) { onOpenBookmarks() }
+            Spacer()
+            squareToolButton(
+                id: "nightMode",
+                systemImage: isDarkMode ? "sun.max.fill" : "moon.fill",
                 label: localized(isDarkMode ? "白天" : "深色"),
-                active: isDarkMode,
-                action: onToggleDarkMode
-            )
-        case .settings:
-            toolBtn(item: item, label: localized("设置"), action: onOpenSettings)
+                active: isDarkMode
+            ) { onToggleDarkMode() }
+            Spacer()
+            squareToolButton(id: "settings", systemImage: "gearshape", label: localized("设置")) { onOpenSettings() }
         }
     }
 
-    @ViewBuilder
-    private func toolBtn(
-        item: ReaderChromeToolItem,
+    private func squareToolButton(
+        id: String,
+        systemImage: String,
         label: String,
         active: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
-                toolGlyph(for: item, active: active)
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(DSFont.fixed(size: 20, weight: .medium))
                 Text(label)
-                    .font(DSFont.caption2)
-                    .foregroundStyle(active ? DSColor.appAccent : palette.bottomIcon)
+                    .font(DSFont.fixed(size: 11))
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.vertical, DSSpacing.xxs)
-            .background {
-                if active {
-                    Capsule()
-                        .fill(DSColor.appAccentSoft)
-                }
-            }
-            .contentShape(Rectangle())
+            .foregroundStyle(active ? DSColor.textOnAccent : DSColor.textPrimary)
+            .frame(width: 56, height: 56)
+            .background(
+                RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                    .fill(active ? DSColor.appAccent : Color.primary.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
+                    .stroke(DSColor.separator.opacity(0.4), lineWidth: 0.5)
+            )
         }
         .buttonStyle(.plain)
-        // Derived from the item, not the label: the label is localized, so a
-        // UI test looking for 目錄 would only ever find it in one language.
-        .accessibilityIdentifier("reader_tool_\(item.rawValue)")
+        .accessibilityIdentifier("reader_tool_\(id)")
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
-    }
-
-    /// An imported icon is drawn in its own colours — it is artwork the reader
-    /// chose, not a symbol to tint. Only the fallback SF Symbol takes the palette.
-    @ViewBuilder
-    private func toolGlyph(for item: ReaderChromeToolItem, active: Bool) -> some View {
-        if let custom = settings.readerChromeIconImage(for: item) {
-            Image(uiImage: custom)
-                .renderingMode(.original)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 22, height: 22)
-        } else {
-            Image(systemName: item.systemImage(isNight: isDarkMode))
-                .imageScale(.large)
-                .foregroundStyle(active ? DSColor.appAccent : palette.bottomIcon)
-        }
     }
 
     /// The bubble that follows the slider while scrubbing, showing where a release
@@ -249,7 +207,8 @@ struct ReaderModernBottomControlBar: View {
         }
         .padding(.horizontal, DSSpacing.xl)
         .padding(.vertical, DSSpacing.md)
-        .floatingSurface(in: Capsule(), fill: DSColor.appAccent)
+        .background(Capsule().fill(DSColor.appAccent))
+        .clipShape(Capsule())
         .allowsHitTesting(false)
         .transition(.opacity.animation(DSAnimation.fast))
         .offset(y: -72)

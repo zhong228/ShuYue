@@ -384,7 +384,7 @@ struct TTSRoleVoicePickerView: View {
                 Spacer(minLength: DSSpacing.sm)
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundStyle(DSColor.accent)
+                        .foregroundStyle(DSColor.appAccent)
                         // Decorative: the selected state is already in the traits, and
                         // VoiceOver would otherwise read the raw symbol name.
                         .accessibilityHidden(true)

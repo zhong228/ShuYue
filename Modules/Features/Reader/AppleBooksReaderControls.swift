@@ -96,44 +96,54 @@ struct AppleBooksReaderControls: View {
             .accessibilityHidden(true)
     }
 
+    /// 双岛浮层：整块菜单是一颗毛玻璃浮岛（大圆角、细描边、明显投影），进度行、菜单
+    /// 行、操作行都收进同一座岛内；去掉原本硬编码黑底，全部改用材质与 DS 语义色。
     private var menuPanel: some View {
         VStack(spacing: DSSpacing.sm) {
-            VStack(spacing: DSSpacing.sm) {
-                progressMenuRow
+            progressMenuRow
 
-                menuRow(localized("书签"), icon: "bookmark") {
-                    performPanelAction(onOpenBookmarks)
-                }
-
-                menuRow(localized("Search Book"), icon: "magnifyingglass") {
-                    performPanelAction(onOpenSearch)
-                }
-
-                menuRow(localized("Themes & Settings"), icon: "textformat.size") {
-                    performPanelAction(onOpenSettings)
-                }
-
-                if let aiAssistant {
-                    menuRow(aiAssistant.label, icon: aiAssistant.icon, isLocked: aiAssistant.isLocked) {
-                        performPanelAction(aiAssistant.action)
-                    }
-                }
-
-                // 深色／白天: what 經典 and 現代 keep in their tool row. Last, so the rows
-                // above stay where they are. The menu stays up — it is a switch, and the
-                // page it changes shows behind the menu.
-                menuRow(
-                    localized(isDarkMode ? "白天" : "深色"),
-                    icon: ReaderChromeToolItem.nightMode.systemImage(isNight: isDarkMode),
-                    action: onToggleDarkMode
-                )
+            menuRow(localized("书签"), icon: "bookmark") {
+                performPanelAction(onOpenBookmarks)
             }
+
+            menuRow(localized("Search Book"), icon: "magnifyingglass") {
+                performPanelAction(onOpenSearch)
+            }
+
+            menuRow(localized("Themes & Settings"), icon: "textformat.size") {
+                performPanelAction(onOpenSettings)
+            }
+
+            if let aiAssistant {
+                menuRow(aiAssistant.label, icon: aiAssistant.icon, isLocked: aiAssistant.isLocked) {
+                    performPanelAction(aiAssistant.action)
+                }
+            }
+
+            // 深色／白天: what 經典 and 現代 keep in their tool row. Last, so the rows
+            // above stay where they are. The menu stays up — it is a switch, and the
+            // page it changes shows behind the menu.
+            menuRow(
+                localized(isDarkMode ? "白天" : "深色"),
+                icon: ReaderChromeToolItem.nightMode.systemImage(isNight: isDarkMode),
+                action: onToggleDarkMode
+            )
 
             if !secondaryActions.isEmpty {
                 actionRow
             }
         }
-        .frame(width: DSLayout.readerAppleBooksPanelWidth)
+        .padding(DSSpacing.md)
+        .frame(width: DSLayout.readerAppleBooksPanelWidth + 24)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+        )
+        .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 16, y: 8)
     }
 
     /// Four capsules fill the panel's width exactly. A fifth used to stick out past its
@@ -169,18 +179,19 @@ struct AppleBooksReaderControls: View {
         Button {
             performPanelAction(item.action)
         } label: {
-            Image(systemName: item.icon)
-                .font(DSFont.toolbarIconLarge)
-                .foregroundStyle(DSColor.textPrimary)
-                .frame(
-                    width: DSLayout.readerAppleBooksActionWidth,
-                    height: DSLayout.readerAppleBooksActionHeight
-                )
-                .floatingSurface(in: Capsule())
-                // Same trap the 經典 bar hit: an unhidden SF Symbol stays
-                // its own element and reads out as "arrow.left.and.right"
-                // instead of 「換源」. docs/design.md §7.1.
-                .accessibilityHidden(true)
+            ZStack {
+                Capsule()
+                    .fill(.regularMaterial)
+                    .overlay(Capsule().stroke(DSColor.separator.opacity(0.4), lineWidth: 0.5))
+                Image(systemName: item.icon)
+                    .font(DSFont.toolbarIconLarge)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .accessibilityHidden(true)
+            }
+            .frame(
+                width: DSLayout.readerAppleBooksActionWidth,
+                height: DSLayout.readerAppleBooksActionHeight
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(item.label)
@@ -194,19 +205,19 @@ struct AppleBooksReaderControls: View {
                 ZStack(alignment: .leading) {
                     let fillWidth = geometry.size.width * CGFloat(value)
 
-                    Rectangle()
-                        .fill(DSColor.neutralControlProgressFill)
+                    Capsule()
+                        .fill(DSColor.appAccent)
                         .frame(width: fillWidth)
                         .allowsHitTesting(false)
 
                     progressLabel(
                         value,
-                        foreground: DSColor.neutralControlEmphasizedForeground
+                        foreground: DSColor.textPrimary
                     )
 
                     progressLabel(
                         value,
-                        foreground: DSColor.neutralControlProgressForeground
+                        foreground: DSColor.textOnAccent
                     )
                     .mask(alignment: .leading) {
                         Rectangle()
@@ -248,7 +259,7 @@ struct AppleBooksReaderControls: View {
             } label: {
                 Image(systemName: "list.bullet")
                     .font(DSFont.toolbarIconLarge)
-                    .foregroundStyle(DSColor.neutralControlEmphasizedForeground)
+                    .foregroundStyle(DSColor.textPrimary)
                     .frame(
                         width: DSLayout.readerAppleBooksControlSize,
                         height: DSLayout.readerAppleBooksMenuRowHeight
@@ -260,8 +271,11 @@ struct AppleBooksReaderControls: View {
             .accessibilityLabel(localized("目录"))
         }
         .frame(height: DSLayout.readerAppleBooksMenuRowHeight)
-        .background(DSColor.neutralControlEmphasizedFill, in: Capsule())
-        .clipShape(Capsule())
+        .background(
+            Capsule()
+                .fill(.regularMaterial)
+                .overlay(Capsule().stroke(DSColor.separator.opacity(0.4), lineWidth: 0.5))
+        )
     }
 
     private func progressLabel(_ value: Double, foreground: Color) -> some View {
@@ -273,7 +287,8 @@ struct AppleBooksReaderControls: View {
     }
 
     /// `isLocked`: the row needs Pro — the badge takes the icon's place and the action
-    /// opens the paywall.
+    /// opens the paywall. Rows sit inside the glass island, so they are plain text
+    /// buttons with no individual capsule.
     private func menuRow(
         _ title: String,
         icon: String,
@@ -297,9 +312,9 @@ struct AppleBooksReaderControls: View {
                 }
             }
             .foregroundStyle(DSColor.textPrimary)
-            .padding(.horizontal, DSSpacing.lg)
+            .padding(.horizontal, DSSpacing.md)
             .frame(height: DSLayout.readerAppleBooksMenuRowHeight)
-            .floatingSurface(in: Capsule())
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)

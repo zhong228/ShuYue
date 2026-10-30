@@ -31,103 +31,117 @@ struct ReaderTopBar: View {
         case bookDetail
     }
 
-    private var palette: ReaderChromePalette {
-        ReaderChromePalette(interface: .classic, theme: theme, settings: settings)
-    }
-
     private var showsMenu: Bool {
         !menuActions.isEmpty || onOpenBookDetail != nil
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: DSSpacing.sm) {
-                    Button {
-                        onBack()
-                    } label: {
+            HStack(spacing: 12) {
+                // 左：返回圆形毛玻璃浮钮
+                Button {
+                    onBack()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .overlay(Circle().stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5))
+                            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 10, y: 5)
                         Image(systemName: "chevron.left")
                             .font(DSFont.fixed(size: 17, weight: .medium))
-                            .foregroundColor(palette.topIcon)
-                            .frame(width: 36, height: 36)
-                            .accessibilityHidden(true)   // 名稱在按鈕上（見 §7.1）
+                            .foregroundStyle(DSColor.textPrimary)
                     }
-                    // Identifier moved off the Image with its accessibility: the UI test
-                    // queries `app.buttons["reader_back_button"]`, so it has to live on the
-                    // element that stays visible to accessibility.
-                    .accessibilityIdentifier("reader_back_button")
-                    .accessibilityLabel(localized("退出阅读"))
+                    .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("reader_back_button")
+                .accessibilityLabel(localized("退出阅读"))
 
-                    // Balances the trailing side, so a visible title stays centred: one
-                    // placeholder per trailing control past the first (搜尋 always, 選單 when shown).
-                    Color.clear
-                        .frame(width: 36, height: 36)
-
-                    if showsMenu {
-                        Color.clear
-                            .frame(width: 36, height: 36)
-                    }
-
+                // 中：标题长条胶囊，书签/搜索收进两端
+                HStack(spacing: 6) {
+                    bookmarkMicroButton
                     if titleVisible {
                         Text(chapterTitle)
                             .font(DSFont.fixed(size: titleSize, weight: .medium))
-                            .foregroundColor(DSColor.textPrimary)
+                            .foregroundStyle(DSColor.textPrimary)
                             .lineLimit(1)
-                            .frame(maxWidth: .infinity)
+                            .minimumScaleFactor(0.75)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Spacer(minLength: 0)
                     }
-
-                    Button {
-                        onOpenSearch()
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(DSFont.fixed(size: 17, weight: .medium))
-                            .foregroundColor(palette.topIcon)
-                            .frame(width: 36, height: 36)
-                            .accessibilityHidden(true)   // 名稱在按鈕上（見 §7.1）
-                    }
-                    .accessibilityLabel(localized("Search Book"))
-
-                    Button {
-                        onToggleBookmark()
-                    } label: {
-                        Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                            .font(DSFont.fixed(size: 17, weight: .medium))
-                            .foregroundColor(isBookmarked ? DSColor.appAccent : palette.topIcon)
-                            .scaleEffect(isBookmarked && !reduceMotion ? 1.15 : 1.0)
-                            .frame(width: 36, height: 36)
-                            .accessibilityHidden(true)
-                    }
-                    .animation(DSAnimation.fast, value: isBookmarked)
-                    .accessibilityLabel(localized("书签"))
-                    .accessibilityValue(localized(isBookmarked ? "已加入" : "未加入"))
-
-                    if showsMenu {
-                        menu
-                    }
+                    searchMicroButton
                 }
-                .frame(maxWidth: overlayMaxWidth)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .overlay(Capsule().stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5))
+                        .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 12, y: 6)
+                )
+                .accessibilityElement(children: .contain)
+
+                // 右：菜单圆形毛玻璃浮钮
+                if showsMenu {
+                    menu
+                } else {
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                }
             }
+            .frame(maxWidth: overlayMaxWidth)
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, titleTopSpacing)
             .padding(.bottom, titleBottomSpacing)
-            .background(
-                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                    .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
-            )
-            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 16, y: 8)
-            .padding(.horizontal, DSSpacing.md)
-            .padding(.top, DSSpacing.md)
             Spacer()
         }
     }
 
-    // MARK: - 三橫線 menu
+    private var bookmarkMicroButton: some View {
+        Button {
+            onToggleBookmark()
+        } label: {
+            Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
+                .font(DSFont.fixed(size: 13, weight: .medium))
+                .foregroundStyle(isBookmarked ? DSColor.appAccent : DSColor.textSecondary)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(.regularMaterial))
+                .overlay(Circle().stroke(DSColor.separator.opacity(0.4), lineWidth: 0.5))
+                .accessibilityHidden(true)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isBookmarked && !reduceMotion ? 1.12 : 1.0)
+        .animation(DSAnimation.fast, value: isBookmarked)
+        .accessibilityLabel(localized("书签"))
+        .accessibilityValue(localized(isBookmarked ? "已加入" : "未加入"))
+    }
+
+    private var searchMicroButton: some View {
+        Button {
+            onOpenSearch()
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .font(DSFont.fixed(size: 13, weight: .medium))
+                .foregroundStyle(DSColor.textSecondary)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(.regularMaterial))
+                .overlay(Circle().stroke(DSColor.separator.opacity(0.4), lineWidth: 0.5))
+                .accessibilityHidden(true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(localized("Search Book"))
+    }
+
+    // MARK: - 三橫線 menu（玻璃圆钮）
+
+    private var menuGlass: some View {
+        Circle()
+            .fill(.ultraThinMaterial)
+            .overlay(Circle().stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5))
+            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 10, y: 5)
+    }
 
     @ViewBuilder
     private var menu: some View {
@@ -136,7 +150,12 @@ struct ReaderTopBar: View {
                 legacyMenuSequence.cancel()
                 showsLegacyMenu = true
             } label: {
-                menuGlyph
+                ZStack {
+                    menuGlass
+                    menuGlyph
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
             }
             .accessibilityLabel(localized("选单"))
             .sheet(isPresented: $showsLegacyMenu, onDismiss: runLegacyMenuChoice) {
@@ -169,7 +188,12 @@ struct ReaderTopBar: View {
                     }
                 }
             } label: {
-                menuGlyph
+                ZStack {
+                    menuGlass
+                    menuGlyph
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
             }
             .accessibilityLabel(localized("选单"))
         }
@@ -178,9 +202,7 @@ struct ReaderTopBar: View {
     private var menuGlyph: some View {
         Image(systemName: "line.3.horizontal")
             .font(DSFont.fixed(size: 17, weight: .medium))
-            .foregroundColor(palette.topIcon)
-            .frame(width: 36, height: 36)
-            .accessibilityHidden(true)
+            .foregroundStyle(DSColor.textPrimary)
     }
 
     private var legacyMenuActions: [DismissalSequencedAction<MenuRoute>] {

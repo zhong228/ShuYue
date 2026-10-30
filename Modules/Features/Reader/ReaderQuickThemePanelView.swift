@@ -12,11 +12,11 @@ enum ReaderQuickPageTurnOption: String, CaseIterable, Identifiable, Hashable {
 
     var titleKey: String {
         switch self {
-        case .slide: return "Slide"
+        case .slide: return "平移翻页"
         case .cover: return "覆盖翻页"
-        case .curl: return "Curl"
-        case .fastFade: return "Fast Fade"
-        case .scroll: return "Scroll"
+        case .curl: return "仿真翻页"
+        case .fastFade: return "快速淡出"
+        case .scroll: return "上下滚动"
         }
     }
 

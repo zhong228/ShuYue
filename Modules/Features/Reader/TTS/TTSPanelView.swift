@@ -92,8 +92,7 @@ struct TTSPanelView: View {
                     }
 
                     playerCard
-                    sourceCard
-                    directoryCard
+                    entryCard
                     speedCard
                     sleepCard
                     playbackBehaviorCard
@@ -240,12 +239,32 @@ private extension TTSPanelView {
             .foregroundStyle(DSColor.textSecondary)
     }
 
-    func iconBadge(_ systemName: String) -> some View {
+    /// 圆角方形强调色底图标块，统一 28pt 圆角（替代旧版圆形浅色徽章）。
+    func iconTile(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .font(DSFont.fixed(size: 18, weight: .semibold))
-            .foregroundStyle(DSColor.appAccent)
-            .frame(width: 36, height: 36)
-            .background(Circle().fill(DSColor.appAccentSoft))
+            .foregroundStyle(DSColor.textOnAccent)
+            .frame(width: 44, height: 44)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(DSColor.appAccent)
+            )
+            .accessibilityHidden(true)
+    }
+
+    /// 朗读时封面外的强调色呼吸环（自动循环，停止朗读即移除）。
+    struct PulseModifier: ViewModifier {
+        @State private var animate = false
+        func body(content: Content) -> some View {
+            content
+                .scaleEffect(animate ? 1.16 : 1.0)
+                .opacity(animate ? 0 : 0.5)
+                .onAppear { animate = true }
+                .animation(
+                    .easeOut(duration: 1.6).repeatForever(autoreverses: false),
+                    value: animate
+                )
+        }
     }
 
     // MARK: Notice
@@ -273,67 +292,104 @@ private extension TTSPanelView {
         }
     }
 
-    // MARK: Player (hero card)
+    // MARK: Player (唱片机式 hero 卡，材质深浅自适应)
 
     var playerCard: some View {
-        card(radius: DSRadius.xxxl, fill: DSColor.appAccentSoft) {
-            VStack(spacing: DSSpacing.lg) {
-                VStack(spacing: DSSpacing.xs) {
-                    if tts.playbackState != .stopped {
-                        Label(localized("正在朗读"), systemImage: "waveform")
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.appAccent)
-                            .accessibilityHidden(true)
-                    }
-                    Text(activeChapterTitle.isEmpty ? localized("尚未选择章节") : activeChapterTitle)
-                        .font(DSFont.title3)
-                        .foregroundStyle(DSColor.textPrimary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                    if tts.playbackState != .stopped, tts.totalSegments > 0 {
-                        Text("\(localized("章節進度")) \(tts.currentSegmentIndex + 1) / \(tts.totalSegments)")
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.textSecondary)
-                    }
-                }
-
-                HStack(spacing: DSSpacing.lg) {
-                    Spacer()
-                    previousChapterButton
-                    playPauseButton
-                    nextChapterButton
-                    Spacer()
-                }
-
-                if tts.playbackState != .stopped, tts.totalSegments > 1 {
-                    VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                        Slider(
-                            value: Binding(
-                                get: { isScrubbing ? scrubProgress : playbackProgress },
-                                set: { scrubProgress = $0 }
-                            ),
-                            in: 0...1,
-                            onEditingChanged: { editing in
-                                isScrubbing = editing
-                                if editing {
-                                    scrubProgress = playbackProgress
-                                } else {
-                                    tts.seekToProgress(scrubProgress)
-                                }
-                            }
+        VStack(spacing: DSSpacing.lg) {
+            // 居中大圆形封面/波形区，朗读时强调色呼吸环
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [DSColor.appAccent, DSColor.appAccentDark],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .tint(DSColor.appAccent)
-                        HStack {
-                            Text(localized("章节开始"))
-                            Spacer()
-                            Text(localized("章节结尾"))
-                        }
+                    )
+                    .frame(width: 168, height: 168)
+                    .shadow(color: DSColor.coverHeroShadow, radius: 24, y: 8)
+                Image(systemName: "waveform")
+                    .font(DSFont.fixed(size: 52, weight: .semibold))
+                    .foregroundStyle(DSColor.textOnAccent)
+                    .accessibilityHidden(true)
+            }
+            .overlay(alignment: .center) {
+                if tts.playbackState == .playing {
+                    Circle()
+                        .stroke(DSColor.appAccent.opacity(0.35), lineWidth: 2)
+                        .frame(width: 188, height: 188)
+                        .modifier(PulseModifier())
+                }
+            }
+
+            VStack(spacing: DSSpacing.xs) {
+                if tts.playbackState != .stopped {
+                    Text(localized("正在朗读"))
+                        .font(DSFont.caption)
+                        .foregroundStyle(DSColor.appAccent)
+                        .padding(.horizontal, DSSpacing.md)
+                        .padding(.vertical, DSSpacing.xxs)
+                        .background(Capsule().fill(DSColor.appAccent.opacity(0.12)))
+                }
+                Text(activeChapterTitle.isEmpty ? localized("尚未选择章节") : activeChapterTitle)
+                    .font(DSFont.title3)
+                    .foregroundStyle(DSColor.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if tts.playbackState != .stopped, tts.totalSegments > 0 {
+                    Text("\(localized("章節進度")) \(tts.currentSegmentIndex + 1) / \(tts.totalSegments)")
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
+                }
+            }
+
+            HStack(spacing: DSSpacing.lg) {
+                Spacer()
+                previousChapterButton
+                playPauseButton
+                nextChapterButton
+                Spacer()
+            }
+
+            if tts.playbackState != .stopped, tts.totalSegments > 1 {
+                VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                    Slider(
+                        value: Binding(
+                            get: { isScrubbing ? scrubProgress : playbackProgress },
+                            set: { scrubProgress = $0 }
+                        ),
+                        in: 0...1,
+                        onEditingChanged: { editing in
+                            isScrubbing = editing
+                            if editing {
+                                scrubProgress = playbackProgress
+                            } else {
+                                tts.seekToProgress(scrubProgress)
+                            }
+                        }
+                    )
+                    .tint(DSColor.appAccent)
+                    HStack {
+                        Text(localized("章节开始"))
+                        Spacer()
+                        Text(localized("章节结尾"))
                     }
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
                 }
             }
         }
+        .padding(DSSpacing.xl)
+        .frame(maxWidth: .infinity)
+        .background(
+            .regularMaterial,
+            in: RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+        )
+        .shadow(color: DSColor.shadow, radius: 16, y: 6)
     }
 
     var previousChapterButton: some View {
@@ -346,13 +402,12 @@ private extension TTSPanelView {
                     .fill(DSColor.surface)
                     .overlay(Circle().stroke(DSColor.separator, lineWidth: 1))
                 Image(systemName: "backward.fill")
-                    .font(DSFont.fixed(size: 20, weight: .medium))
+                    .font(DSFont.fixed(size: 18, weight: .medium))
                     .foregroundStyle(DSColor.textPrimary)
                     .accessibilityHidden(true)
             }
-            .frame(width: 56, height: 56)
+            .frame(width: 52, height: 52)
         }
-        .shadow(color: DSColor.shadow, radius: 6, y: 2)
         .disabled(!hasAudioSource || !canGoPreviousChapter)
     }
 
@@ -368,11 +423,11 @@ private extension TTSPanelView {
             ZStack {
                 Circle().fill(DSColor.appAccent)
                 Image(systemName: tts.playbackState == .playing ? "pause.fill" : "play.fill")
-                    .font(DSFont.fixed(size: 30, weight: .semibold))
+                    .font(DSFont.fixed(size: 26, weight: .semibold))
                     .foregroundStyle(DSColor.textOnAccent)
                     .accessibilityHidden(true)
             }
-            .frame(width: 76, height: 76)
+            .frame(width: 64, height: 64)
         }
         .shadow(color: DSColor.appAccent.opacity(0.35), radius: 12, y: 4)
         .accessibilityIdentifier("tts_panel_play_pause")
@@ -390,44 +445,40 @@ private extension TTSPanelView {
                     .fill(DSColor.surface)
                     .overlay(Circle().stroke(DSColor.separator, lineWidth: 1))
                 Image(systemName: "forward.fill")
-                    .font(DSFont.fixed(size: 20, weight: .medium))
+                    .font(DSFont.fixed(size: 18, weight: .medium))
                     .foregroundStyle(DSColor.textPrimary)
                     .accessibilityHidden(true)
             }
-            .frame(width: 56, height: 56)
+            .frame(width: 52, height: 52)
         }
-        .shadow(color: DSColor.shadow, radius: 6, y: 2)
         .disabled(!hasAudioSource || !canGoNextChapter)
     }
 
-    // MARK: Source + multi-role
+    // MARK: Entry group (语音源设定 / 多角色朗读 / 目录)
 
-    var sourceCard: some View {
-        card {
-            VStack(spacing: 0) {
-                sourceSettingsRow
-                divider
-                multiRoleRow
-                if usesSystemVoice {
-                    HStack(spacing: DSSpacing.sm) {
-                        Image(systemName: "iphone.gen2")
-                            .foregroundStyle(DSColor.textSecondary)
-                            .accessibilityHidden(true)
-                        Text(localized("未配置网路语音源，将使用系统离线语音朗读"))
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.textSecondary)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.top, DSSpacing.md)
-                }
-            }
+    var entryCard: some View {
+        VStack(spacing: 0) {
+            sourceSettingsRow
+                .padding(DSSpacing.md)
+            divider
+                .padding(.horizontal, DSSpacing.md)
+            multiRoleRow
+                .padding(DSSpacing.md)
+            divider
+                .padding(.horizontal, DSSpacing.md)
+            directoryRow
+                .padding(DSSpacing.md)
         }
+        .interfaceCardSurface(
+            in: RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous),
+            fill: DSColor.surface
+        )
     }
 
     var sourceSettingsRow: some View {
         NavigationLink(destination: TTSSettingsView()) {
             HStack(spacing: DSSpacing.md) {
-                iconBadge("waveform")
+                iconTile("waveform")
                 Text(localized("语音源设定"))
                     .font(DSFont.callout)
                     .foregroundStyle(DSColor.textPrimary)
@@ -455,7 +506,7 @@ private extension TTSPanelView {
             }
         } label: {
             HStack(spacing: DSSpacing.md) {
-                iconBadge("person.2.wave.2")
+                iconTile("person.2.wave.2")
                 Text(localized("多角色朗读"))
                     .font(DSFont.callout)
                     .foregroundStyle(DSColor.textPrimary)
@@ -464,6 +515,9 @@ private extension TTSPanelView {
                     Text(localized("开启"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.appAccent)
+                        .padding(.horizontal, DSSpacing.sm)
+                        .padding(.vertical, DSSpacing.xxs)
+                        .background(Capsule().fill(DSColor.appAccent.opacity(0.12)))
                 }
                 Image(systemName: "chevron.right")
                     .font(DSFont.caption)
@@ -474,33 +528,29 @@ private extension TTSPanelView {
         .buttonStyle(.plain)
     }
 
-    // MARK: Directory
-
-    var directoryCard: some View {
-        card {
-            Button {
-                showChapterPicker = true
-            } label: {
-                HStack(spacing: DSSpacing.md) {
-                    iconBadge("list.bullet")
-                    VStack(alignment: .leading, spacing: DSSpacing.xxs) {
-                        Text(localized("目录"))
-                            .font(DSFont.callout)
-                            .foregroundStyle(DSColor.textPrimary)
-                        Text(activeChapterTitle.isEmpty ? localized("未选择章节") : activeChapterTitle)
-                            .font(DSFont.caption)
-                            .foregroundStyle(DSColor.textSecondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: DSSpacing.sm)
-                    Image(systemName: "chevron.right")
+    var directoryRow: some View {
+        Button {
+            showChapterPicker = true
+        } label: {
+            HStack(spacing: DSSpacing.md) {
+                iconTile("list.bullet")
+                VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                    Text(localized("目录"))
+                        .font(DSFont.callout)
+                        .foregroundStyle(DSColor.textPrimary)
+                    Text(activeChapterTitle.isEmpty ? localized("未选择章节") : activeChapterTitle)
                         .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textTertiary)
+                        .foregroundStyle(DSColor.textSecondary)
+                        .lineLimit(1)
                 }
-                .contentShape(Rectangle())
+                Spacer(minLength: DSSpacing.sm)
+                Image(systemName: "chevron.right")
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textTertiary)
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: Speed
@@ -508,9 +558,19 @@ private extension TTSPanelView {
     var speedCard: some View {
         card {
             VStack(alignment: .leading, spacing: DSSpacing.md) {
-                sectionHeader(localized("语速"))
-                HStack {
+                HStack(spacing: DSSpacing.sm) {
+                    sectionHeader(localized("语速"))
+                    Spacer()
+                    Text(speechRateText)
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.textOnAccent)
+                        .padding(.horizontal, DSSpacing.md)
+                        .padding(.vertical, DSSpacing.xxs)
+                        .background(Capsule().fill(DSColor.appAccent))
+                }
+                HStack(spacing: DSSpacing.sm) {
                     Image(systemName: "tortoise")
+                        .font(DSFont.fixed(size: 16, weight: .medium))
                         .foregroundStyle(DSColor.textSecondary)
                         .accessibilityHidden(true)
                     Slider(
@@ -528,12 +588,10 @@ private extension TTSPanelView {
                     .accessibilityLabel(localized("语速"))
                     .accessibilityValue(speechRateText)
                     Image(systemName: "hare")
+                        .font(DSFont.fixed(size: 16, weight: .medium))
                         .foregroundStyle(DSColor.textSecondary)
                         .accessibilityHidden(true)
                 }
-                Text("\(localized("當前速度"))：\(speechRateText)")
-                    .font(DSFont.caption)
-                    .foregroundStyle(DSColor.textSecondary)
                 if systemVoiceRateIsCapped {
                     Text(
                         String(
@@ -559,14 +617,17 @@ private extension TTSPanelView {
                 }
             } label: {
                 HStack(spacing: DSSpacing.md) {
-                    iconBadge("moon.zzz")
+                    iconTile("moon.zzz")
                     Text(localized("定时停止"))
                         .font(DSFont.callout)
                         .foregroundStyle(DSColor.textPrimary)
                     Spacer(minLength: DSSpacing.sm)
                     Text(sleepTimerLabel)
-                        .font(DSFont.caption)
-                        .foregroundStyle(DSColor.textSecondary)
+                        .font(DSFont.subheadline)
+                        .foregroundStyle(DSColor.appAccent)
+                        .padding(.horizontal, DSSpacing.md)
+                        .padding(.vertical, DSSpacing.xxs)
+                        .background(Capsule().fill(DSColor.appAccent.opacity(0.12)))
                 }
                 .contentShape(Rectangle())
             }
@@ -577,8 +638,13 @@ private extension TTSPanelView {
 
     var playbackBehaviorCard: some View {
         card {
-            VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                sectionHeader(localized("播放行为"))
+            VStack(alignment: .leading, spacing: DSSpacing.md) {
+                HStack {
+                    Text(localized("播放行为"))
+                        .font(DSFont.callout)
+                        .foregroundStyle(DSColor.textPrimary)
+                    Spacer()
+                }
                 Toggle(localized("朗读时保持萤幕开启"), isOn: $gs.ttsKeepsScreenAwake)
                 Text(localized("只防止自动锁定，按下电源键仍可锁屏并继续朗读。"))
                     .font(DSFont.footnote)
