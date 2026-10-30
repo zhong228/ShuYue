@@ -45,10 +45,20 @@ enum AIReadingContentService {
             try Task.checkCancellation()
         }
         let old = context.source
+        // The snapshot and the live chapter list are captured at different times
+        // (reading-session chapters vs the full TOC), so their counts can diverge. Rebuilding
+        // a stitched snapshot across mismatched arrays used to index `old.chunkSections` out
+        // of range — a deterministic crash on every recap that had to download prior
+        // chapters. Keep the verified snapshot instead of constructing a misaligned one.
+        guard old.chunkSections.count == chapters.count,
+              old.manifest.chapters.count == chapters.count else {
+            return try validateSelection(context)
+        }
         var updated = AIBookContentAdapter(bookID: context.bookID, chapters: chapters,
             transformationVersion: old.manifest.transformationVersion,
             missingStatus: Dictionary(uniqueKeysWithValues: old.manifest.chapters.map { ($0.order, $0.status) })) { index in
-                text[index] ?? (old.chunkSections[index].text.isEmpty ? nil : old.chunkSections[index].text)
+                guard old.chunkSections.indices.contains(index) else { return text[index] }
+                return text[index] ?? (old.chunkSections[index].text.isEmpty ? nil : old.chunkSections[index].text)
             }
         let position = old.boundary()
         updated = updated.atReadingPosition(spine: position.spineIndex, renderedOffset: position.utf16Offset,
