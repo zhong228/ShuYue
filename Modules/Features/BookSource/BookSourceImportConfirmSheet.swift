@@ -20,7 +20,10 @@ struct BookSourceImportConfirmSheet: View {
         } else {
             NavigationStack {
                 content
-                    .navigationTitle(localized("匯入書源"))
+                    .navigationTitle(
+                        handler.activeKind == .rssSource
+                            ? localized("匯入訂閱源") : localized("匯入書源")
+                    )
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
@@ -57,7 +60,7 @@ struct BookSourceImportConfirmSheet: View {
         switch handler.phase {
         case .idle:
             EmptyView()
-        case .confirming(let sourceURL):
+        case .confirming(let sourceURL, _):
             confirmingView(sourceURL: sourceURL)
         case .importing:
             importingView
@@ -68,7 +71,11 @@ struct BookSourceImportConfirmSheet: View {
             resultView(
                 systemImage: "checkmark.circle.fill",
                 tint: DSColor.success,
-                message: String(format: localized("成功匯入 %d 個書源"), count),
+                message: String(
+                    format: handler.activeKind == .rssSource
+                        ? localized("成功匯入 %d 個訂閱源") : localized("成功匯入 %d 個書源"),
+                    count
+                ),
                 actionTitle: localized("完成")
             ) { handler.finish() }
         case .failed(let message):
@@ -83,7 +90,10 @@ struct BookSourceImportConfirmSheet: View {
 
     private func confirmingView(sourceURL: URL) -> some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(localized("確認從外部來源匯入書源？"))
+            Text(
+                handler.activeKind == .rssSource
+                    ? localized("確認從外部來源匯入訂閱源？") : localized("確認從外部來源匯入書源？")
+            )
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
 
