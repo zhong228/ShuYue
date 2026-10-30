@@ -8,7 +8,8 @@ enum AIReadingEvidence {
 
     static func collect(context: AIQuestionContext, index: AIBookRetrievalIndex) throws -> [AIQuestionEvidence] {
         if let selection = context.selection {
-            guard selection.validated(in: context.source, boundary: context.boundary) else { throw LLMError.providerError(localized("選文已變更或超出目前閱讀範圍，請重新選取。")) }
+            guard selection.validated(in: context.source, boundary: context.boundary),
+                  context.source.chunkSections.indices.contains(selection.spineIndex) else { throw LLMError.providerError(localized("選文已變更或超出目前閱讀範圍，請重新選取。")) }
             let section = context.source.chunkSections[selection.spineIndex]
             var chunk = AIContentChunk(id: selectionIDPrefix + "\(selection.spineIndex):\(selection.range.location):\(selection.range.length)",
                 bookID: context.bookID, sectionID: section.id, ordinal: 0, text: selection.text,
