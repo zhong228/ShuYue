@@ -204,11 +204,12 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
     /// provider's SSE activity throughout generation, retaining only final text and usage.
     private func generateDeepSeek(_ request: LLMGenerationRequest, model: String) async throws -> LLMRawResponse {
         let activity = LastActivity()
+        let handle = TaskHandle<LLMRawResponse, Error>()
         let task = Task<LLMRawResponse, Error> {
             let watchdog = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    if activity.secondsSince() >= Self.idleTimeout { task.cancel() }
+                    if activity.secondsSince() >= Self.idleTimeout { handle.cancel() }
                 }
             }
             defer { watchdog.cancel() }
@@ -246,6 +247,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
             catch let error as LLMError { throw error }
             catch { throw LLMError.networkError(error.localizedDescription) }
         }
+        handle.set(task)
         return try await task.value
     }
 
@@ -264,6 +266,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         // data race.
         let sendableRequest = urlRequest
 
+        let handle = TaskHandle<Void, Never>()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 let activity = LastActivity()
@@ -277,7 +280,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         if activity.secondsSince() >= Self.idleTimeout, ended.mark() {
-                            task.cancel()
+                            handle.cancel()
                             continuation.finish(
                                 throwing: LLMError.networkError(localized("連線逾時：服務端長時間未傳送資料"))
                             )
@@ -360,8 +363,9 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                     if ended.mark() { continuation.finish(throwing: LLMError.networkError(error.localizedDescription)) }
                 }
             }
-            continuation.onTermination = { _ in task.cancel() }
-        }
+                continuation.onTermination = { _ in handle.cancel() }
+            }
+            handle.set(task)
     }
 
     // MARK: - Error bodies
@@ -429,4 +433,15 @@ private final class StreamEnded: @unchecked Sendable {
         ended = true
         return true
     }
+}
+
+/// 線程安全的任務句柄持有者。idle 看門狗運行在獨立的並發 Task 中，需要能取消主
+/// 任務；若直接捕獲 `task` 變數會觸發 Swift「閉包在變數宣告前捕獲」的編譯錯誤，而
+/// 捕獲 `var` 又會觸發 Swift 6 並發資料競爭診斷。改用此持有類，看門狗經由它請求
+/// 取消，自身為 @unchecked Sendable，跨執行緒存取均經 NSLock 保護。
+private final class TaskHandle<Success, Failure>: @unchecked Sendable {
+    private var task: Task<Success, Failure>?
+    private let lock = NSLock()
+    func set(_ t: Task<Success, Failure>) { lock.lock(); task = t; lock.unlock() }
+    func cancel() { lock.lock(); task?.cancel(); lock.unlock() }
 }
