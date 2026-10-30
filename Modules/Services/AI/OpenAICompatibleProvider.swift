@@ -204,7 +204,12 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
     /// provider's SSE activity throughout generation, retaining only final text and usage.
     private func generateDeepSeek(_ request: LLMGenerationRequest, model: String) async throws -> LLMRawResponse {
         let activity = LastActivity()
-        let task = Task<LLMRawResponse, Error> {
+        // Declared separately from its assignment so the watchdog closure (created
+        // inside the task) can reference it without capturing the variable being
+        // initialized — `let task = Task { … task.cancel() … }` is rejected by the
+        // Swift compiler as "closure captures 'task' before it is declared".
+        let task: Task<LLMRawResponse, Error>
+        task = Task {
             let watchdog = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -265,7 +270,13 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         let sendableRequest = urlRequest
 
         return AsyncThrowingStream { continuation in
-            let task = Task {
+            // Declared separately from its assignment so the watchdog and termination
+            // closures (both created inside the task) can reference it without capturing
+            // the variable being initialized — `let task = Task { … task.cancel() … }`
+            // is rejected as "closure captures 'task' before it is declared". `task` is
+            // an immutable `let`, so capturing it in `@Sendable` closures is also sound.
+            let task: Task<Void, Never>
+            task = Task {
                 let activity = LastActivity()
                 let ended = StreamEnded()
                 // Idle watchdog: a silent SSE connection — a hung gateway, a closed
