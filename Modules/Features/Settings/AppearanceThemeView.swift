@@ -1065,17 +1065,21 @@ private struct ThemePreviewTile: View {
         if preset.isImagePreset,
            let url = preset.backgroundImageURL(colorScheme: colorScheme),
            let image = UIImage(contentsOfFile: url.path) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
+            AnyView(
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            )
         } else {
-            LinearGradient(
-                colors: [
-                    preset.previewBackgroundColor,
-                    preset.dialogueColor.opacity(0.72)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            AnyView(
+                LinearGradient(
+                    colors: [
+                        preset.previewBackgroundColor,
+                        preset.dialogueColor.opacity(0.72)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
         }
     }
