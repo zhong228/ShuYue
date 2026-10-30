@@ -209,7 +209,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         // initializer, which the Swift compiler rejects as "captured before being
         // initialized".
         let handle = TaskHandle<LLMRawResponse, Error>()
-        let task = Task {
+        let task = Task<LLMRawResponse, Error> {
             let watchdog = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
