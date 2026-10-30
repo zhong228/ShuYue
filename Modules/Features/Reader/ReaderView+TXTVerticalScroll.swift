@@ -66,6 +66,13 @@ extension ReaderView {
                                          notifyLibraryViews: !usesSessionLocalScrollProgress)
                 },
                 onInternalLinkTap: { href in
+                    // 视频源/音频源直链：直接弹系统播放器开播，不再无响应。
+                    if let mediaURL = ReaderMediaLinkOpener.playableMediaURL(fromHref: href) {
+                        Task { @MainActor in
+                            ReaderMediaLinkOpener.presentPlayer(for: mediaURL)
+                        }
+                        return
+                    }
                     if let target = ReaderHTMLUtilities.reviewTarget(fromHref: href) {
                         // Sources that build their review URL in jsLib (同人小说网) resolve through
                         // their own runtime first; `reviewTarget` only ever holds a real URL.
