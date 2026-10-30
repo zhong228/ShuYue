@@ -822,12 +822,12 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
         }
 
         private func handleImportURL(_ url: URL, webView: WKWebView) {
-            guard let sourceURL = Self.onlineImportSourceURL(from: url) else {
-                presentImportResult(localized("無效的書源導入連結"), in: webView)
+            guard let link = Self.onlineImportSourceURL(from: url) else {
+                presentImportResult(localized("無效的書源導入連結"), title: localized("書源導入"), in: webView)
                 return
             }
 
-            MediaSession.shared.dataTask(with: sourceURL) { data, _, error in
+            MediaSession.shared.dataTask(with: link.sourceURL) { data, _, error in
                 DispatchQueue.main.async {
                     if let error {
                         self.presentImportResult(error.localizedDescription, in: webView)
@@ -837,24 +837,72 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
                         self.presentImportResult(localized("無法讀取書源資料"), in: webView)
                         return
                     }
-                    do {
-                        let ext = sourceURL.pathExtension.isEmpty ? "json" : sourceURL.pathExtension
-                        // Parse only; the confirmation list decides what gets written.
-                        let sources = try BookSourceStore.shared.parseForImport(
-                            data: data,
-                            fileExtension: ext
-                        )
-                        self.presentImportReview(sources, in: webView)
-                    } catch {
-                        self.presentImportResult(error.localizedDescription, in: webView)
+                    switch link.kind {
+                    case .rssSource:
+                        self.importRSS(data: data, in: webView)
+                    case .bookSource:
+                        self.presentBookSourceReview(data: data, sourceURL: link.sourceURL, in: webView)
+                    case .auto:
+                        // Undeclared payload: RSS JSON first (Legado book sources
+                        // carry `bookSourceName`/`bookSourceUrl`, which the RSS
+                        // parser ignores), book sources otherwise.
+                        let rssSources = (try? LegadoSourceJSONParser.parse(data: data)) ?? []
+                        if rssSources.isEmpty {
+                            self.presentBookSourceReview(data: data, sourceURL: link.sourceURL, in: webView)
+                        } else {
+                            self.presentImportResult(
+                                String(format: localized("成功匯入 %d 個訂閱源"), RSSStore.shared.addSourcesReturningAdded(rssSources).count),
+                                title: localized("訂閱源導入"),
+                                in: webView
+                            )
+                        }
                     }
                 }
             }.resume()
         }
 
-        private func presentImportResult(_ message: String, in webView: WKWebView) {
+        /// Parses and writes RSS subscriptions directly, mirroring the RSS
+        /// screen's own JSON importer (no review list for subscriptions).
+        private func importRSS(data: Data, in webView: WKWebView) {
+            do {
+                let sources = try LegadoSourceJSONParser.parse(data: data)
+                guard !sources.isEmpty else {
+                    presentImportResult(localized("連結中沒有可匯入的訂閱源"), title: localized("訂閱源導入"), in: webView)
+                    return
+                }
+                let added = RSSStore.shared.addSourcesReturningAdded(sources)
+                presentImportResult(
+                    String(format: localized("成功匯入 %d 個訂閱源"), added.count),
+                    title: localized("訂閱源導入"),
+                    in: webView
+                )
+            } catch {
+                presentImportResult(error.localizedDescription, title: localized("訂閱源導入"), in: webView)
+            }
+        }
+
+        /// Parses book sources only and shows the confirmation list.
+        private func presentBookSourceReview(data: Data, sourceURL: URL, in webView: WKWebView) {
+            let ext = sourceURL.pathExtension.isEmpty ? "json" : sourceURL.pathExtension
+            do {
+                // Parse only; the confirmation list decides what gets written.
+                let sources = try BookSourceStore.shared.parseForImport(
+                    data: data,
+                    fileExtension: ext
+                )
+                self.presentImportReview(sources, in: webView)
+            } catch {
+                self.presentImportResult(error.localizedDescription, in: webView)
+            }
+        }
+
+        private func presentImportResult(
+            _ message: String,
+            title: String = localized("書源導入"),
+            in webView: WKWebView
+        ) {
             guard let top = Self.topPresenter(in: webView) else { return }
-            let alert = UIAlertController(title: localized("書源導入"), message: message, preferredStyle: .alert)
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: localized("完成"), style: .default))
             top.present(alert, animated: true)
         }
@@ -897,10 +945,10 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
             return top
         }
 
-        static func onlineImportSourceURL(from url: URL) -> URL? {
+        static func onlineImportSourceURL(from url: URL) -> BookSourceImportDeepLink.ImportLink? {
             // Single source of truth: shared with the system-level deep-link
             // handler in `yuedu_appApp`. One path for this concern.
-            BookSourceImportDeepLink.sourceURL(from: url)
+            BookSourceImportDeepLink.importLink(from: url)
         }
 
         static func cookiesForInitialLoad(url: URL) -> [HTTPCookie] {
