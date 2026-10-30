@@ -307,12 +307,12 @@ struct BookDetailInfoItem: Identifiable {
     static func source(name: String, action: @escaping () -> Void) -> BookDetailInfoItem {
         BookDetailInfoItem(
             id: "source",
-            label: localized("來源"),
+            label: localized("来源"),
             value: name,
-            detail: localized("換源"),
+            detail: localized("换源"),
             action: action,
-            accessibilityHint: localized("點兩下切換書源"),
-            accessibilityInputLabels: [localized("換源")]
+            accessibilityHint: localized("点两下切换书源"),
+            accessibilityInputLabels: [localized("换源")]
         )
     }
 }
@@ -486,7 +486,7 @@ struct BookDetailIntroSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            BookDetailSectionHeader(title: localized("簡介"))
+            BookDetailSectionHeader(title: localized("简介"))
             introBody
                 .padding(DSSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -644,7 +644,7 @@ struct BookDetailChapterRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityValue(isLocked ? localized("付費章節") : "")
+        .accessibilityValue(isLocked ? localized("付费章节") : "")
     }
 }
 
@@ -693,7 +693,7 @@ struct BookDetailChapterSection: View {
                 .frame(width: 28, height: 28)
                 .background(DSColor.appAccentSoft, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                Text(localized("最新章節"))
+                Text(localized("最新章节"))
                     .font(DSFont.caption2.weight(.semibold))
                     .foregroundStyle(DSColor.appAccent)
                 Text(latestChapter)
@@ -718,7 +718,7 @@ struct BookDetailChapterSection: View {
     @ViewBuilder
     private var content: some View {
         if isLoading && chapters.isEmpty {
-            ProgressView(localized("載入目錄…"))
+            ProgressView(localized("载入目录…"))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DSSpacing.xl)
         } else if let errorMessage, chapters.isEmpty {
@@ -727,14 +727,14 @@ struct BookDetailChapterSection: View {
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
-                Button(localized("重試"), action: onRetry)
+                Button(localized("重试"), action: onRetry)
                     .buttonStyle(.bordered)
                     .tint(DSColor.accent)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, DSSpacing.lg)
         } else if chapters.isEmpty {
-            Text(localized("目錄為空"))
+            Text(localized("目录为空"))
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textSecondary)
                 .frame(maxWidth: .infinity)
@@ -868,14 +868,14 @@ struct BookDetailChapterListSheet: View {
         .scrollIndicators(.hidden)
         .background(PageBackgroundView(scope: .global).ignoresSafeArea())
         .pageBackgroundToolbar(for: .global)
-        .navigationTitle(localized("目錄"))
+        .navigationTitle(localized("目录"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     dismiss()
                 } label: {
-                    Label(localized("關閉"), systemImage: "xmark")
+                    Label(localized("关闭"), systemImage: "xmark")
                         .labelStyle(.iconOnly)
                 }
             }
@@ -895,7 +895,7 @@ struct BookDetailChapterListSheet: View {
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textTertiary)
                     .accessibilityHidden(true)
-                TextField(localized("搜索章節"), text: $search)
+                TextField(localized("搜索章节"), text: $search)
                     .textFieldStyle(.plain)
                     .font(DSFont.subheadline)
                     .autocorrectionDisabled()
@@ -921,7 +921,7 @@ struct BookDetailChapterListSheet: View {
             Image(systemName: "magnifyingglass")
                 .font(DSFont.title3)
                 .foregroundStyle(DSColor.textTertiary)
-            Text(localized("沒有符合的章節"))
+            Text(localized("没有符合的章节"))
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textSecondary)
         }
@@ -952,7 +952,7 @@ struct BookDetailChapterListSheet: View {
                     Image(systemName: "lock.fill")
                         .font(DSFont.caption2)
                         .foregroundStyle(DSColor.textTertiary)
-                        .accessibilityLabel(localized("付費章節"))
+                        .accessibilityLabel(localized("付费章节"))
                 } else {
                     switch trailing {
                     case .play:
@@ -964,7 +964,7 @@ struct BookDetailChapterListSheet: View {
                         Image(systemName: "chevron.right")
                             .font(DSFont.caption.weight(.semibold))
                             .foregroundStyle(DSColor.textTertiary)
-                            .accessibilityLabel(localized("閱讀"))
+                            .accessibilityLabel(localized("阅读"))
                     }
                 }
             }
@@ -994,41 +994,41 @@ extension View {
         onConfirm: @escaping () -> Void
     ) -> some View {
         confirmationDialog(
-            localized("要把這本書移出書架嗎？"),
+            localized("要把这本书移出书架吗？"),
             isPresented: isPresented,
             titleVisibility: .visible
         ) {
-            Button(localized("移除書架"), role: .destructive, action: onConfirm)
+            Button(localized("移除书架"), role: .destructive, action: onConfirm)
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("這本書的閱讀進度和快取會一起刪除。"))
+            Text(localized("这本书的阅读进度和快取会一起删除。"))
         }
     }
 }
 
-#Preview("詳情頁元件") {
+#Preview("详情页元件") {
     NavigationStack {
         BookDetailScaffold(
-            title: "斗羅大陸",
-            compactAction: BookDetailAction(title: "立即閱讀", systemImage: "book.fill", action: {})
+            title: "斗罗大陆",
+            compactAction: BookDetailAction(title: "立即阅读", systemImage: "book.fill", action: {})
         ) {
             BookDetailHero(
                 artworkShape: .book,
-                cover: BookCoverImage(coverURL: "", title: "斗羅大陸", author: "唐家三少"),
-                title: "斗羅大陸",
+                cover: BookCoverImage(coverURL: "", title: "斗罗大陆", author: "唐家三少"),
+                title: "斗罗大陆",
                 author: "唐家三少",
-                meta: "玄幻 · 東方玄幻 · 熱血",
-                primary: BookDetailAction(title: "立即閱讀", systemImage: "book.fill", action: {}),
-                secondary: BookDetailAction(title: "加入書架", systemImage: "plus", action: {})
+                meta: "玄幻 · 东方玄幻 · 热血",
+                primary: BookDetailAction(title: "立即阅读", systemImage: "book.fill", action: {}),
+                secondary: BookDetailAction(title: "加入书架", systemImage: "plus", action: {})
             )
         } content: {
             BookDetailInfoStrip(items: [
-                BookDetailInfoItem(id: "wordCount", label: "字數", value: "298萬字"),
-                BookDetailInfoItem(id: "chapters", label: "章節", value: "1,450"),
-                .source(name: "示範書源") {},
+                BookDetailInfoItem(id: "wordCount", label: "字数", value: "298万字"),
+                BookDetailInfoItem(id: "chapters", label: "章节", value: "1,450"),
+                .source(name: "示范书源") {},
             ])
             BookDetailIntroSection(
-                text: "唐門外門弟子唐三，因偷學內門絕學為唐門所不容，跳崖明志卻來到了另一個世界——斗羅大陸。這裡沒有魔法，沒有鬥氣，沒有武術，卻有神奇的武魂。",
+                text: "唐门外门弟子唐三，因偷学内门绝学为唐门所不容，跳崖明志却来到了另一个世界——斗罗大陆。这里没有魔法，没有斗气，没有武术，却有神奇的武魂。",
                 isExpanded: .constant(false)
             )
         }

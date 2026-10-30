@@ -12,9 +12,9 @@ struct RegexHighlightRuleEditorView: View {
         var id: Self { self }
         var titleKey: String {
             switch self {
-            case .basic: "基礎"
-            case .background: "背景圖"
-            case .spacing: "邊距"
+            case .basic: "基础"
+            case .background: "背景图"
+            case .spacing: "边距"
             case .css: "CSS"
             }
         }
@@ -29,10 +29,10 @@ struct RegexHighlightRuleEditorView: View {
         var id: Self { self }
         var titleKey: String {
             switch self {
-            case .none: "無背景"
-            case .color: "純色"
-            case .gradient: "漸層"
-            case .image: "圖片"
+            case .none: "无背景"
+            case .color: "纯色"
+            case .gradient: "渐层"
+            case .image: "图片"
             }
         }
     }
@@ -53,7 +53,7 @@ struct RegexHighlightRuleEditorView: View {
     var body: some View {
         Form {
             Section {
-                Picker(localized("編輯頁面"), selection: $selectedTab) {
+                Picker(localized("编辑页面"), selection: $selectedTab) {
                     ForEach(Tab.allCases) { tab in
                         Text(localized(tab.titleKey)).tag(tab)
                     }
@@ -75,11 +75,11 @@ struct RegexHighlightRuleEditorView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("編輯規則"))
+        .navigationTitle(localized("编辑规则"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(localized("儲存"), action: requestSave)
+                Button(localized("储存"), action: requestSave)
             }
         }
         .onAppear { synchronizeCSS() }
@@ -108,39 +108,39 @@ struct RegexHighlightRuleEditorView: View {
                 )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(localized("關閉")) { showingAssets = false }
+                        Button(localized("关闭")) { showingAssets = false }
                     }
                 }
             }
         }
-        .alert(localized("對比度偏低"), isPresented: $confirmLowContrast) {
+        .alert(localized("对比度偏低"), isPresented: $confirmLowContrast) {
             Button(localized("取消"), role: .cancel) {}
-            Button(localized("仍要儲存")) { performSave() }
+            Button(localized("仍要储存")) { performSave() }
         } message: {
-            Text(localized("文字與背景的對比度低於 4.5:1，可能不易閱讀。"))
+            Text(localized("文字与背景的对比度低于 4.5:1，可能不易阅读。"))
         }
     }
 
     @ViewBuilder
     private var basicSections: some View {
         Section(localized("匹配模板")) {
-            Toggle(localized("啟用此規則"), isOn: $model.isEnabled)
-            TextField(localized("名稱"), text: $model.name)
+            Toggle(localized("启用此规则"), isOn: $model.isEnabled)
+            TextField(localized("名称"), text: $model.name)
                 .disabled(model.isBuiltIn)
-            Text(localized("正則"))
+            Text(localized("正则"))
                 .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
             TextEditor(text: $model.pattern)
                 .font(DSFont.body.monospaced())
                 .frame(minHeight: 72)
                 .disabled(model.isBuiltIn)
-                .accessibilityLabel(localized("正則"))
+                .accessibilityLabel(localized("正则"))
             if model.isBuiltIn {
-                Text(localized("內置規則的名稱與正則模板固定；可調整樣式，或複製為自定義規則後修改。"))
+                Text(localized("内置规则的名称与正则模板固定；可调整样式，或复制为自定义规则后修改。"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
             }
-            Toggle(localized("忽略大小寫"), isOn: optionBinding(.caseInsensitive))
+            Toggle(localized("忽略大小写"), isOn: optionBinding(.caseInsensitive))
             Toggle(localized("匹配不跨段"), isOn: optionBinding(.doesNotCrossParagraph))
             errorText(model.regexError.map(String.init(describing:)))
             errorText(model.saveError?.localizedDescription)
@@ -149,15 +149,15 @@ struct RegexHighlightRuleEditorView: View {
         appearanceSection
         Section(localized("文字")) {
                 Menu {
-                    Button(localized("跟隨閱讀字體")) { mutateStyle { $0.text.fontPostScriptName = nil } }
+                    Button(localized("跟随阅读字体")) { mutateStyle { $0.text.fontPostScriptName = nil } }
                     ForEach(settings.userFonts, id: \.postScriptName) { font in
                         Button(font.displayName) { mutateStyle { $0.text.fontPostScriptName = font.postScriptName } }
                     }
                 } label: {
-                    LabeledContent(localized("字體"), value: fontDisplayName(activeStyle.text.fontPostScriptName))
+                    LabeledContent(localized("字体"), value: fontDisplayName(activeStyle.text.fontPostScriptName))
                 }
                 ColorPicker(
-                    localized("文字顏色"),
+                    localized("文字颜色"),
                     selection: colorBinding(
                         hex: activeStyle.text.colorHex ?? defaultTextHex,
                         update: { value in mutateStyle { $0.text.colorHex = value } }
@@ -165,7 +165,7 @@ struct RegexHighlightRuleEditorView: View {
                     supportsOpacity: false
                 )
                 metricSlider(
-                    localized("字號"),
+                    localized("字号"),
                     value: styleDoubleBinding(\.text.fontSize, fallback: 18),
                     range: 8...72,
                     step: 1,
@@ -174,17 +174,17 @@ struct RegexHighlightRuleEditorView: View {
                 Stepper(value: styleIntBinding(\.text.fontWeight, fallback: 400), in: 100...900, step: 100) {
                     LabeledContent(localized("字重"), value: "\(activeStyle.text.fontWeight ?? 400)")
                 }
-                Toggle(localized("斜體"), isOn: styleBoolBinding(\.text.italic))
-                Toggle(localized("底線"), isOn: styleBoolBinding(\.text.underline))
-                Toggle(localized("刪除線"), isOn: styleBoolBinding(\.text.strikethrough))
+                Toggle(localized("斜体"), isOn: styleBoolBinding(\.text.italic))
+                Toggle(localized("底线"), isOn: styleBoolBinding(\.text.underline))
+                Toggle(localized("删除线"), isOn: styleBoolBinding(\.text.strikethrough))
         }
         .interfaceSectionSurface()
-        Section(localized("即時測試")) {
+        Section(localized("即时测试")) {
             TextEditor(text: $model.testText)
                 .frame(minHeight: 96)
-                .accessibilityLabel(localized("即時測試"))
+                .accessibilityLabel(localized("即时测试"))
             highlightedPreview
-            Text(String(format: localized("命中 %d 處"), model.matches.count))
+            Text(String(format: localized("命中 %d 处"), model.matches.count))
                 .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
         }
@@ -195,18 +195,18 @@ struct RegexHighlightRuleEditorView: View {
     private var backgroundSections: some View {
         appearanceSection
         Section {
-                Picker(localized("背景類型"), selection: backgroundKindBinding) {
+                Picker(localized("背景类型"), selection: backgroundKindBinding) {
                     ForEach(BackgroundKind.allCases) { kind in
                         Text(localized(kind.titleKey)).tag(kind)
                     }
                 }
                 switch activeBackgroundKind {
                 case .none:
-                    Text(localized("不繪製背景，只套用文字樣式。"))
+                    Text(localized("不绘制背景，只套用文字样式。"))
                         .foregroundStyle(.secondary)
                 case .color:
                     ColorPicker(
-                        localized("背景顏色"),
+                        localized("背景颜色"),
                         selection: colorBinding(
                             hex: activeStyle.decoration.backgroundColorHex ?? defaultBackgroundHex,
                             update: { value in mutateStyle { $0.decoration.backgroundColorHex = value } }
@@ -222,14 +222,14 @@ struct RegexHighlightRuleEditorView: View {
             Text(localized("背景"))
         } footer: {
             if activeStyle.decoration.backgroundImage != nil {
-                Text(localized("圖片位移只移動底圖：X 正值向右、Y 正值向下，負值反向；文字、邊框與陰影留在原位。裁切焦點只選擇圖內範圍，不會移動整張底圖。"))
+                Text(localized("图片位移只移动底图：X 正值向右、Y 正值向下，负值反向；文字、边框与阴影留在原位。裁切焦点只选择图内范围，不会移动整张底图。"))
                     .dsSectionFooter()
             }
         }
         .interfaceSectionSurface()
         Section {
                 metricSlider(
-                    localized("裝飾不透明度"),
+                    localized("装饰不透明度"),
                     value: styleDoubleBinding(\.decoration.opacity, fallback: 1),
                     range: 0...1,
                     step: 0.05,
@@ -237,7 +237,7 @@ struct RegexHighlightRuleEditorView: View {
                     multiplier: 100
                 )
         } footer: {
-            Text(localized("裝飾不透明度影響背景、圖片、邊框與陰影，不影響文字；圖片不透明度只影響圖片，兩者相乘。0% 完全透明，100% 完全顯示；只有圖片時，調整任一項會有相同效果。"))
+            Text(localized("装饰不透明度影响背景、图片、边框与阴影，不影响文字；图片不透明度只影响图片，两者相乘。0% 完全透明，100% 完全显示；只有图片时，调整任一项会有相同效果。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -248,10 +248,10 @@ struct RegexHighlightRuleEditorView: View {
     @ViewBuilder
     private var spacingSections: some View {
         appearanceSection
-        Section(localized("內距")) {
+        Section(localized("内距")) {
                 ForEach(ReaderStyleEdge.allCases, id: \.rawValue) { edge in
                     metricSlider(
-                        String(format: localized("%@內距"), localized(edge.editorTitleKey)),
+                        String(format: localized("%@内距"), localized(edge.editorTitleKey)),
                         value: edgeBinding(edge),
                         range: 0...48,
                         step: 1,
@@ -259,14 +259,14 @@ struct RegexHighlightRuleEditorView: View {
                     )
                 }
                 metricSlider(
-                    localized("片段間隔"),
+                    localized("片段间隔"),
                     value: styleDoubleBinding(\.decoration.visualGap, fallback: 0),
                     range: 0...24,
                     step: 1,
                     unit: "pt"
                 )
                 metricSlider(
-                    localized("圓角"),
+                    localized("圆角"),
                     value: styleDoubleBinding(\.decoration.cornerRadius, fallback: 0),
                     range: 0...48,
                     step: 1,
@@ -274,20 +274,20 @@ struct RegexHighlightRuleEditorView: View {
                 )
         }
         .interfaceSectionSurface()
-        Section(localized("每邊邊框")) {
+        Section(localized("每边边框")) {
                 ForEach(ReaderStyleEdge.allCases, id: \.rawValue) { edge in
                     DisclosureGroup(localized(edge.editorTitleKey)) {
                         let border = activeStyle.decoration.borders?[edge]
                             ?? ReaderStyleBorder(width: 0, colorHex: 0x8E8E93)
                         metricSlider(
-                            localized("粗細"),
+                            localized("粗细"),
                             value: borderWidthBinding(edge, fallback: border),
                             range: 0...12,
                             step: 0.5,
                             unit: "pt"
                         )
                         ColorPicker(
-                            localized("顏色"),
+                            localized("颜色"),
                             selection: colorBinding(hex: border.colorHex) { updateBorder(edge, color: $0) },
                             supportsOpacity: false
                         )
@@ -295,16 +295,16 @@ struct RegexHighlightRuleEditorView: View {
                 }
         }
         .interfaceSectionSurface()
-        Section(localized("陰影")) {
+        Section(localized("阴影")) {
                 Button {
                     mutateStyle { $0.decoration.shadows.append(.init(colorHex: 0, radius: 4, x: 0, y: 2)) }
                 } label: {
-                    Label(localized("新增陰影"), systemImage: "plus")
+                    Label(localized("新增阴影"), systemImage: "plus")
                 }
                 ForEach(Array(activeStyle.decoration.shadows.enumerated()), id: \.offset) { index, shadow in
-                    DisclosureGroup(String(format: localized("陰影 %d"), index + 1)) {
+                    DisclosureGroup(String(format: localized("阴影 %d"), index + 1)) {
                         ColorPicker(
-                            localized("陰影顏色"),
+                            localized("阴影颜色"),
                             selection: colorBinding(hex: shadow.colorHex) { color in
                                 updateShadow(index) { $0.colorHex = color }
                             },
@@ -319,7 +319,7 @@ struct RegexHighlightRuleEditorView: View {
                                 $0.decoration.shadows.remove(at: index)
                             }
                         } label: {
-                            Label(localized("刪除陰影"), systemImage: "trash")
+                            Label(localized("删除阴影"), systemImage: "trash")
                         }
                     }
                 }
@@ -332,7 +332,7 @@ struct RegexHighlightRuleEditorView: View {
     private var cssSections: some View {
         appearanceSection
         Section(localized("CSS 宣告")) {
-                Text(localized("只接受單一規則的 declaration block，不接受 selector、HTML 或絕對定位。"))
+                Text(localized("只接受单一规则的 declaration block，不接受 selector、HTML 或绝对定位。"))
                     .font(DSFont.caption)
                     .foregroundStyle(.secondary)
                 TextEditor(text: $cssSource)
@@ -344,7 +344,7 @@ struct RegexHighlightRuleEditorView: View {
             Button {
                 synchronizeCSS()
             } label: {
-                Label(localized("重新產生標準 CSS"), systemImage: "arrow.clockwise")
+                Label(localized("重新产生标准 CSS"), systemImage: "arrow.clockwise")
             }
             Button {
                 if model.applyCSS(cssSource, appearance: appearance) { synchronizeCSS() }
@@ -358,7 +358,7 @@ struct RegexHighlightRuleEditorView: View {
 
     private var appearanceSection: some View {
         Section {
-            Picker(localized("編輯外觀"), selection: $appearance) {
+            Picker(localized("编辑外观"), selection: $appearance) {
                 Text(localized("亮色模式")).tag(ReaderStyleAppearance.light)
                 Text(localized("深色模式")).tag(ReaderStyleAppearance.dark)
             }
@@ -371,7 +371,7 @@ struct RegexHighlightRuleEditorView: View {
     private var gradientControls: some View {
         let gradient = activeStyle.decoration.backgroundGradient ?? defaultGradient
         metricSlider(
-            localized("漸層角度"),
+            localized("渐层角度"),
             value: gradientAngleBinding,
             range: 0...360,
             step: 1,
@@ -379,7 +379,7 @@ struct RegexHighlightRuleEditorView: View {
         )
         ForEach(gradient.stops.indices, id: \.self) { index in
             ColorPicker(
-                String(format: localized("漸層顏色 %d"), index + 1),
+                String(format: localized("渐层颜色 %d"), index + 1),
                 selection: colorBinding(hex: gradient.stops[index].colorHex) { color in
                     mutateStyle {
                         guard $0.decoration.backgroundGradient?.stops.indices.contains(index) == true else { return }
@@ -396,27 +396,27 @@ struct RegexHighlightRuleEditorView: View {
         Button { showingAssets = true } label: {
             Label(
                 activeStyle.decoration.backgroundImage == nil
-                    ? localized("選擇背景圖片")
-                    : localized("更換背景圖片"),
+                    ? localized("选择背景图片")
+                    : localized("更换背景图片"),
                 systemImage: "photo.on.rectangle"
             )
         }
         if let image = activeStyle.decoration.backgroundImage {
-            Picker(localized("圖片填充方式"), selection: imageModeBinding) {
+            Picker(localized("图片填充方式"), selection: imageModeBinding) {
                 ForEach(ReaderStyleImageContentMode.allCases, id: \.self) { mode in
                     Text(localized(mode.editorTitleKey)).tag(mode)
                 }
             }
-            metricSlider(localized("圖片位移 X"), value: styleDoubleBinding(\.decoration.backgroundImageOffsetX, fallback: 0), range: ReaderStyleDecorationStyle.imageOffsetRange, step: 1, unit: "pt")
-            metricSlider(localized("圖片位移 Y"), value: styleDoubleBinding(\.decoration.backgroundImageOffsetY, fallback: 0), range: ReaderStyleDecorationStyle.imageOffsetRange, step: 1, unit: "pt")
-            DisclosureGroup(localized("裁切焦點")) {
-                metricSlider(localized("圖片焦點 X"), value: imageDoubleBinding(\.focalX, image.focalX), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
-                metricSlider(localized("圖片焦點 Y"), value: imageDoubleBinding(\.focalY, image.focalY), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
+            metricSlider(localized("图片位移 X"), value: styleDoubleBinding(\.decoration.backgroundImageOffsetX, fallback: 0), range: ReaderStyleDecorationStyle.imageOffsetRange, step: 1, unit: "pt")
+            metricSlider(localized("图片位移 Y"), value: styleDoubleBinding(\.decoration.backgroundImageOffsetY, fallback: 0), range: ReaderStyleDecorationStyle.imageOffsetRange, step: 1, unit: "pt")
+            DisclosureGroup(localized("裁切焦点")) {
+                metricSlider(localized("图片焦点 X"), value: imageDoubleBinding(\.focalX, image.focalX), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
+                metricSlider(localized("图片焦点 Y"), value: imageDoubleBinding(\.focalY, image.focalY), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
             }
             .disabled(image.contentMode == .stretch)
-            metricSlider(localized("圖片不透明度"), value: imageDoubleBinding(\.opacity, image.opacity), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
+            metricSlider(localized("图片不透明度"), value: imageDoubleBinding(\.opacity, image.opacity), range: 0...1, step: 0.05, unit: "%", multiplier: 100)
         } else {
-            Text(localized("請從共用素材庫選擇或匯入圖片。"))
+            Text(localized("请从共用素材库选择或汇入图片。"))
                 .foregroundStyle(.secondary)
         }
     }
@@ -426,7 +426,7 @@ struct RegexHighlightRuleEditorView: View {
         if let warning = currentContrastWarning {
             Section {
                 Label(
-                    String(format: localized("文字與背景對比度為 %.1f:1。"), warning.ratio),
+                    String(format: localized("文字与背景对比度为 %.1f:1。"), warning.ratio),
                     systemImage: "exclamationmark.triangle"
                 )
                 .foregroundStyle(DSColor.warning)
@@ -473,7 +473,7 @@ struct RegexHighlightRuleEditorView: View {
                 .padding(.vertical, DSSpacing.sm)
                 .accessibilityLabel(model.testText)
         case .failure(let error):
-            Label(localized("預覽失敗"), systemImage: "exclamationmark.triangle")
+            Label(localized("预览失败"), systemImage: "exclamationmark.triangle")
                 .foregroundStyle(DSColor.warning)
                 .accessibilityValue(error.localizedDescription)
         }
@@ -483,7 +483,7 @@ struct RegexHighlightRuleEditorView: View {
     /// test-text editor: there you are judging the styling, not the regex, and
     /// the text itself is edited once on 基礎 and shared across all four tabs.
     private var stylePreviewSection: some View {
-        Section(localized("預覽")) {
+        Section(localized("预览")) {
             highlightedPreview
         }
         .interfaceSectionSurface()
@@ -729,7 +729,7 @@ struct RegexHighlightRuleEditorView: View {
     }
 
     private func fontDisplayName(_ postScriptName: String?) -> String {
-        guard let postScriptName else { return localized("跟隨閱讀字體") }
+        guard let postScriptName else { return localized("跟随阅读字体") }
         return settings.userFonts.first(where: { $0.postScriptName == postScriptName })?.displayName
             ?? postScriptName
     }
@@ -839,9 +839,9 @@ private extension ReaderStyleEdges {
 private extension ReaderStyleImageContentMode {
     var editorTitleKey: String {
         switch self {
-        case .fill: "填滿"
-        case .fit: "適應"
-        case .tile: "平鋪"
+        case .fill: "填满"
+        case .fit: "适应"
+        case .tile: "平铺"
         case .stretch: "拉伸"
         }
     }

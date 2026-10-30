@@ -357,7 +357,7 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
     }
 }
 
-#Preview("界面效果 — 浮動表面") {
+#Preview("界面效果 — 浮动表面") {
     ZStack {
         LinearGradient(
             colors: [DSColor.accent.opacity(0.35), DSColor.groupedBackground],
@@ -367,7 +367,7 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
         .ignoresSafeArea()
 
         VStack(spacing: DSSpacing.xxl) {
-            Text("正文墊在浮動元素後面，檢查毛玻璃是否穿透。")
+            Text("正文垫在浮动元素后面，检查毛玻璃是否穿透。")
                 .font(DSFont.body)
                 .padding(DSSpacing.lg)
 
@@ -377,7 +377,7 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
                     .frame(width: 48, height: 48)
                     .floatingSurface(in: Circle())
 
-                Text("浮動工具列")
+                Text("浮动工具列")
                     .font(DSFont.subheadline)
                     .padding(.horizontal, DSSpacing.xl)
                     .padding(.vertical, DSSpacing.md)
@@ -392,7 +392,7 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
 /// 分組卡片 in the running app to see the material switch; the preview deliberately
 /// reads the live setting rather than forcing it, so what shows here is what the
 /// user's own device shows.
-#Preview("界面效果 — 分組卡片") {
+#Preview("界面效果 — 分组卡片") {
     ZStack {
         LinearGradient(
             colors: [DSColor.accent.opacity(0.35), DSColor.groupedBackground],
@@ -405,10 +405,10 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
             Section {
                 Text("List section")
                     .font(DSFont.body)
-                Text("第二列，檢查列與列之間的接縫")
+                Text("第二列，检查列与列之间的接缝")
                     .font(DSFont.body)
             } footer: {
-                Text("玻璃取樣的是卡片背後的內容，純色主題下與不透明卡片幾乎無異。")
+                Text("玻璃取样的是卡片背后的内容，纯色主题下与不透明卡片几乎无异。")
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -416,7 +416,7 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
             // The 外觀主題 pattern: a card drawn by the view, not by the list. It has
             // to match the section above at every setting.
             Section {
-                Text("自繪卡片")
+                Text("自绘卡片")
                     .font(DSFont.body)
                     .padding(.horizontal, DSSpacing.lg)
                     .padding(.vertical, DSSpacing.lg)

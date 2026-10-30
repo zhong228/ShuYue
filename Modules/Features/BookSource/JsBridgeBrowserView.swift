@@ -98,7 +98,7 @@ struct JsBridgeBrowserView: View {
     @StateObject private var bridge = JsBridgeBrowserBridge()
     @State private var isSyncing = false
 
-    private var navTitle: String { title.isEmpty ? localized("瀏覽器") : title }
+    private var navTitle: String { title.isEmpty ? localized("浏览器") : title }
 
     var body: some View {
         if hidesToolbar {
@@ -214,7 +214,7 @@ struct JsBridgeBrowserView: View {
             VStack(spacing: DSSpacing.md) {
                 ProgressView()
                     .controlSize(.large)
-                Text(localized("載入中…"))
+                Text(localized("载入中…"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
             }
@@ -229,7 +229,7 @@ struct JsBridgeBrowserView: View {
                 Image(systemName: "wifi.exclamationmark")
                     .font(DSFont.largeTitle)
                     .foregroundStyle(DSColor.textSecondary)
-                Text(localized("載入失敗"))
+                Text(localized("载入失败"))
                     .font(DSFont.headline)
                     .foregroundStyle(DSColor.textPrimary)
                 if let detail = bridge.errorText, !detail.isEmpty {
@@ -238,7 +238,7 @@ struct JsBridgeBrowserView: View {
                         .foregroundStyle(DSColor.textSecondary)
                         .multilineTextAlignment(.center)
                 }
-                Button(localized("重試")) { bridge.reload?() }
+                Button(localized("重试")) { bridge.reload?() }
                     .buttonStyle(.bordered)
                     .tint(DSColor.accent)
             }
@@ -343,7 +343,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
 
     static func sourcePageBootstrap(injectedJavaScript: String) -> String {
         let unavailableMessage = javaScriptStringLiteral(
-            localized("段評執行環境不可用")
+            localized("段评执行环境不可用")
         )
         return """
         window.java = window.java || {};
@@ -413,7 +413,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
         NSError(
             domain: "SourcePageJavaBridge",
             code: 1,
-            userInfo: [NSLocalizedDescriptionKey: localized("段評執行環境不可用")]
+            userInfo: [NSLocalizedDescriptionKey: localized("段评执行环境不可用")]
         )
     }
 
@@ -686,7 +686,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
             guard message.name == Self.sourceRunMessageName,
                   let script = message.body as? String,
                   let sourceRunHandler else {
-                replyHandler(nil, localized("段評執行環境不可用"))
+                replyHandler(nil, localized("段评执行环境不可用"))
                 return
             }
             Task {
@@ -823,7 +823,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
 
         private func handleImportURL(_ url: URL, webView: WKWebView) {
             guard let link = Self.onlineImportSourceURL(from: url) else {
-                presentImportResult(localized("無效的書源導入連結"), title: localized("書源導入"), in: webView)
+                presentImportResult(localized("无效的书源导入连结"), title: localized("书源导入"), in: webView)
                 return
             }
 
@@ -834,7 +834,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
                         return
                     }
                     guard let data else {
-                        self.presentImportResult(localized("無法讀取書源資料"), in: webView)
+                        self.presentImportResult(localized("无法读取书源资料"), in: webView)
                         return
                     }
                     switch link.kind {
@@ -851,8 +851,8 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
                             self.presentBookSourceReview(data: data, sourceURL: link.sourceURL, in: webView)
                         } else {
                             self.presentImportResult(
-                                String(format: localized("成功匯入 %d 個訂閱源"), RSSStore.shared.addSourcesReturningAdded(rssSources).count),
-                                title: localized("訂閱源導入"),
+                                String(format: localized("成功汇入 %d 个订阅源"), RSSStore.shared.addSourcesReturningAdded(rssSources).count),
+                                title: localized("订阅源导入"),
                                 in: webView
                             )
                         }
@@ -867,17 +867,17 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
             do {
                 let sources = try LegadoSourceJSONParser.parse(data: data)
                 guard !sources.isEmpty else {
-                    presentImportResult(localized("連結中沒有可匯入的訂閱源"), title: localized("訂閱源導入"), in: webView)
+                    presentImportResult(localized("连结中没有可汇入的订阅源"), title: localized("订阅源导入"), in: webView)
                     return
                 }
                 let added = RSSStore.shared.addSourcesReturningAdded(sources)
                 presentImportResult(
-                    String(format: localized("成功匯入 %d 個訂閱源"), added.count),
-                    title: localized("訂閱源導入"),
+                    String(format: localized("成功汇入 %d 个订阅源"), added.count),
+                    title: localized("订阅源导入"),
                     in: webView
                 )
             } catch {
-                presentImportResult(error.localizedDescription, title: localized("訂閱源導入"), in: webView)
+                presentImportResult(error.localizedDescription, title: localized("订阅源导入"), in: webView)
             }
         }
 
@@ -898,7 +898,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
 
         private func presentImportResult(
             _ message: String,
-            title: String = localized("書源導入"),
+            title: String = localized("书源导入"),
             in webView: WKWebView
         ) {
             guard let top = Self.topPresenter(in: webView) else { return }
@@ -924,7 +924,7 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
                     onFinish: { [weak self] count in
                         box.controller?.dismiss(animated: true) {
                             self?.presentImportResult(
-                                String(format: localized("成功匯入 %d 個書源"), count),
+                                String(format: localized("成功汇入 %d 个书源"), count),
                                 in: webView
                             )
                         }
@@ -1003,7 +1003,7 @@ extension WKWebView {
 #Preview {
     JsBridgeBrowserView(
         urlString: "https://example.com",
-        title: "密鑰獲取",
+        title: "密钥获取",
         onDismiss: { _ in }
     )
 }

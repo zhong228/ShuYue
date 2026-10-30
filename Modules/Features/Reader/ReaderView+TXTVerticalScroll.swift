@@ -191,7 +191,7 @@ extension ReaderView {
                         if chapter.content.isEmpty && book?.isOnline == true {
                             VStack(spacing: 16) {
                                 ProgressView()
-                                Text(localized("載入章節中…"))
+                                Text(localized("载入章节中…"))
                                     .font(DSFont.fixed(size: fontSize - 2, design: .serif))
                                     .foregroundColor(readerTheme.textColor.opacity(0.6))
                             }

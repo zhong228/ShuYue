@@ -33,9 +33,9 @@ struct AIChatDesignFixture: View {
                     NavigationStack { AIRelationshipMapView(adapter: Self.adapter, graph: .sample) }
                 } else if ProcessInfo.processInfo.arguments.contains(Self.wordLookupArgument) {
                     AIWordLookupView(
-                        term: "聖者",
-                        context: "他終於突破到聖者境界，氣息鋪天蓋地。",
-                        bookTitle: "萬古神帝",
+                        term: "圣者",
+                        context: "他终于突破到圣者境界，气息铺天盖地。",
+                        bookTitle: "万古神帝",
                         bookID: Self.bookID,
                         onAskAI: {},
                         provider: AIWordLookupPreviewProvider()
@@ -54,8 +54,8 @@ struct AIChatDesignFixture: View {
 
     /// Two volumes, read into the second, so the summary page has volumes to list.
     private static var adapter: AIBookContentAdapter {
-        let titles = ["第一卷 風起", "第1章 煉器戰士", "第2章 界子", "第二卷 雲湧", "第3章 青霄聖者", "第4章 無字劍譜"]
-        let texts = ["", "張若塵接到大師兄所贈的黑色鐵球。", "青霄聖者與璇璣老人談到界子。", "", "青霄聖者對此並不看好。", "璇璣老人取出一本書冊。"]
+        let titles = ["第一卷 风起", "第1章 炼器战士", "第2章 界子", "第二卷 云涌", "第3章 青霄圣者", "第4章 无字剑谱"]
+        let texts = ["", "张若尘接到大师兄所赠的黑色铁球。", "青霄圣者与璇玑老人谈到界子。", "", "青霄圣者对此并不看好。", "璇玑老人取出一本书册。"]
         let chapters = titles.indices.map { BookChapter(index: $0, title: titles[$0], content: "") }
         return AIBookContentAdapter(bookID: bookID, chapters: chapters, readingPosition: (spine: 4, utf16Offset: texts[4].utf16.count),
                                     renderedText: texts[4]) { texts[$0] }
@@ -74,45 +74,45 @@ struct AIChatDesignFixture: View {
     }
 
     private static var session: AIChatSession {
-        var summaryQuestion = AIChatMessage(role: .user, text: localized("本章已讀摘要"))
+        var summaryQuestion = AIChatMessage(role: .user, text: localized("本章已读摘要"))
         summaryQuestion.action = .chapterSummary
 
         var summary = AIChatMessage(
             role: .assistant,
             text: """
-            以下是目前能確認的已讀片段前情整理，只涵蓋這批片段。
+            以下是目前能确认的已读片段前情整理，只涵盖这批片段。
 
-            ## 一、青禾殿：煉器戰士與師門相聚
-            張若塵接到大師兄所贈的**黑色鐵球**，鐵球重達數千斤，實為一具煉器戰士；他注入真氣激活銘紋，鐵球展開成三米高的鋼鐵巨人。
+            ## 一、青禾殿：炼器战士与师门相聚
+            张若尘接到大师兄所赠的**黑色铁球**，铁球重达数千斤，实为一具炼器战士；他注入真气激活铭纹，铁球展开成三米高的钢铁巨人。
 
-            - 煉器戰士由第一中央帝國神工部煉製，一般只有兵部能動用
-            - 胸前凹槽存放靈晶供能，兵部多用聖石供能
+            - 炼器战士由第一中央帝国神工部炼制，一般只有兵部能动用
+            - 胸前凹槽存放灵晶供能，兵部多用圣石供能
 
-            ## 二、青霄聖者與璇璣老人的密談
-            兩人離開青禾殿後，落到一塊三十多里長的隕石上，談到玄武墟界出世的邪器。
+            ## 二、青霄圣者与璇玑老人的密谈
+            两人离开青禾殿后，落到一块三十多里长的陨石上，谈到玄武墟界出世的邪器。
             """,
             citations: [
-                LLMCitation(chunkID: "fixture-1", quote: "鐵球重達數千斤……", spineIndex: 0, charOffset: 0, sectionTitle: "第561章 炼器战士"),
-                LLMCitation(chunkID: "fixture-2", quote: "兩人離開青禾殿……", spineIndex: 0, charOffset: 120, sectionTitle: "第562章 界子"),
+                LLMCitation(chunkID: "fixture-1", quote: "铁球重达数千斤……", spineIndex: 0, charOffset: 0, sectionTitle: "第561章 炼器战士"),
+                LLMCitation(chunkID: "fixture-2", quote: "两人离开青禾殿……", spineIndex: 0, charOffset: 120, sectionTitle: "第562章 界子"),
             ]
         )
         summary.notices = [
-            localized("目前章節位置尚無法驗證，本次只使用此前可確認的內容。"),
-            localized("本次只搜尋可確認的已讀範圍。"),
+            localized("目前章节位置尚无法验证，本次只使用此前可确认的内容。"),
+            localized("本次只搜寻可确认的已读范围。"),
         ]
 
-        var selectionQuestion = AIChatMessage(role: .user, text: localized("AI 解釋"))
+        var selectionQuestion = AIChatMessage(role: .user, text: localized("AI 解释"))
         selectionQuestion.action = .explain
         selectionQuestion.selection = AIReadingSelection(
             bookID: bookID, spineIndex: 0, range: NSRange(location: 0, length: 24),
-            text: "他注入真氣激活銘紋，鐵球展開成三米高的鋼鐵巨人。"
+            text: "他注入真气激活铭纹，铁球展开成三米高的钢铁巨人。"
         )
 
-        var unsupported = AIChatMessage(role: .assistant, text: "目前可用、已讀範圍內的檢索結果不足以確認。", hasEvidence: false)
+        var unsupported = AIChatMessage(role: .assistant, text: "目前可用、已读范围内的检索结果不足以确认。", hasEvidence: false)
         unsupported.notices = [
-            localized("目前章節位置尚無法驗證，本次只使用此前可確認的內容。"),
-            localized("部分章節沒有可用的本機正文，本次回答可能不完整。"),
-            localized("本次只搜尋可確認的已讀範圍。"),
+            localized("目前章节位置尚无法验证，本次只使用此前可确认的内容。"),
+            localized("部分章节没有可用的本机正文，本次回答可能不完整。"),
+            localized("本次只搜寻可确认的已读范围。"),
         ]
 
         var session = AIChatSession(

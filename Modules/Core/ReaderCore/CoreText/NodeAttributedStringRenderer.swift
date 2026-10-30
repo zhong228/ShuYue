@@ -30,7 +30,7 @@ struct NodeAttributedStringRenderer {
         let readerStyleAppearance: ReaderStyleAppearance
         let readerStyleAssetRevision: UInt64
         // Chapter title (prepended <h1> by normalizedChapterHTML) — driven by the
-        // reader's "顯示標題 / 標題大小 / 上距 / 下距" settings, not the generic
+        // reader's "显示标题 / 标题大小 / 上距 / 下距" settings, not the generic
         // heading scale, so those settings actually control the in-content title.
         let chapterTitleVisible: Bool
         let chapterTitleSize: CGFloat
@@ -475,7 +475,7 @@ struct NodeAttributedStringRenderer {
         // ──────────────── Heading ────────────────
 
         case .heading(let children, let level, let style):
-            // "顯示標題" off hides the prepended chapter-title <h1>.
+            // "显示标题" off hides the prepended chapter-title <h1>.
             if level == 1, !config.chapterTitleVisible {
                 return NSAttributedString()
             }

@@ -61,13 +61,13 @@ struct ExploreSettingsSheet: View {
                         .tag(layout)
                 }
             } label: {
-                SettingsRowLabel(localized("書源頁佈局"), systemImage: "rectangle.split.2x1")
+                SettingsRowLabel(localized("书源页布局"), systemImage: "rectangle.split.2x1")
             }
             .pickerStyle(.menu)
         } header: {
-            sectionHeader(localized("佈局"))
+            sectionHeader(localized("布局"))
         } footer: {
-            Text(localized("列表是上方一排分類、下方所選分類的書；雜誌是每個分類一排書架或一欄榜單。"))
+            Text(localized("列表是上方一排分类、下方所选分类的书；杂志是每个分类一排书架或一栏榜单。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -87,14 +87,14 @@ struct ExploreSettingsSheet: View {
                 Image(systemName: "plus.circle")
                     .foregroundStyle(DSColor.textSecondary)
                     .accessibilityHidden(true)
-                TextField(localized("新增關鍵詞"), text: $newKeyword)
+                TextField(localized("新增关键词"), text: $newKeyword)
                     .submitLabel(.done)
                     .onSubmit(addKeyword)
             }
         } header: {
-            sectionHeader(localized("豎排榜單關鍵詞"))
+            sectionHeader(localized("竖排榜单关键词"))
         } footer: {
-            Text(localized("標題含任一關鍵詞的分類用豎排序號，其餘用橫滑封面。左滑可刪除。"))
+            Text(localized("标题含任一关键词的分类用竖排序号，其余用横滑封面。左滑可删除。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -106,7 +106,7 @@ struct ExploreSettingsSheet: View {
                 rankedKeywordsRaw = ExploreSettings.encodeKeywords(ExploreSettings.defaultRankedKeywords)
             } label: {
                 SettingsRowLabel(
-                    localized("恢復預設關鍵詞"),
+                    localized("恢复预设关键词"),
                     systemImage: "arrow.counterclockwise",
                     role: .action
                 )
@@ -123,7 +123,7 @@ struct ExploreSettingsSheet: View {
                     Text(count.formatted()).tag(count)
                 }
             } label: {
-                SettingsRowLabel(localized("豎排展示數"), systemImage: "list.number")
+                SettingsRowLabel(localized("竖排展示数"), systemImage: "list.number")
             }
             .pickerStyle(.menu)
             Picker(selection: $shelfBookCount) {
@@ -131,11 +131,11 @@ struct ExploreSettingsSheet: View {
                     Text(count == 0 ? localized("全部") : count.formatted()).tag(count)
                 }
             } label: {
-                SettingsRowLabel(localized("橫滑展示數"), systemImage: "rectangle.split.3x1")
+                SettingsRowLabel(localized("横滑展示数"), systemImage: "rectangle.split.3x1")
             }
             .pickerStyle(.menu)
         } header: {
-            sectionHeader(localized("榜單展示數量"))
+            sectionHeader(localized("榜单展示数量"))
         }
         .interfaceSectionSurface()
     }
@@ -147,13 +147,13 @@ struct ExploreSettingsSheet: View {
                     Text(count.formatted()).tag(count)
                 }
             } label: {
-                SettingsRowLabel(localized("預加載數量"), systemImage: "arrow.down.circle")
+                SettingsRowLabel(localized("预加载数量"), systemImage: "arrow.down.circle")
             }
             .pickerStyle(.menu)
         } header: {
-            sectionHeader(localized("預加載"))
+            sectionHeader(localized("预加载"))
         } footer: {
-            Text(localized("捲到某個分類時，順便排隊載入後面幾個分類。數字越大越少看到載入中，但排隊的書源請求也越多。"))
+            Text(localized("卷到某个分类时，顺便排队载入后面几个分类。数字越大越少看到载入中，但排队的书源请求也越多。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -166,13 +166,13 @@ struct ExploreSettingsSheet: View {
                     Text(limit == 0 ? localized("不限制") : limit.formatted()).tag(limit)
                 }
             } label: {
-                SettingsRowLabel(localized("封面並發數"), systemImage: "arrow.triangle.2.circlepath")
+                SettingsRowLabel(localized("封面并发数"), systemImage: "arrow.triangle.2.circlepath")
             }
             .pickerStyle(.menu)
         } header: {
-            sectionHeader(localized("封面並發"))
+            sectionHeader(localized("封面并发"))
         } footer: {
-            Text(localized("同時下載的封面上限，書架和書籍詳情的封面也算在內。數字越低捲動時越不容易發熱，但封面出現得慢一些。"))
+            Text(localized("同时下载的封面上限，书架和书籍详情的封面也算在内。数字越低卷动时越不容易发热，但封面出现得慢一些。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()

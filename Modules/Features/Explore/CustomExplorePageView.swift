@@ -24,7 +24,7 @@ struct CustomExplorePageView: View {
                 }
             } else {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("這一頁已被刪除"), systemImage: "rectangle.stack")
+                    UnavailableLabel(localized("这一页已被删除"), systemImage: "rectangle.stack")
                 }
             }
         }
@@ -35,7 +35,7 @@ struct CustomExplorePageView: View {
         .toolbar {
             if let page, !page.components.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(localized("編輯"), value: ExploreNavigationRoute.customPageEditor(id: pageID))
+                    NavigationLink(localized("编辑"), value: ExploreNavigationRoute.customPageEditor(id: pageID))
                 }
             }
         }
@@ -72,9 +72,9 @@ struct CustomExplorePageView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            UnavailableLabel(localized("還沒有元件"), systemImage: "rectangle.3.group")
+            UnavailableLabel(localized("还没有元件"), systemImage: "rectangle.3.group")
         } description: {
-            Text(localized("加入元件，選書源的分類和版面，組出自己的探索頁。"))
+            Text(localized("加入元件，选书源的分类和版面，组出自己的探索页。"))
                 .foregroundStyle(DSColor.textSecondary)
         } actions: {
             Button(localized("新增元件")) { isAddingComponent = true }
@@ -83,7 +83,7 @@ struct CustomExplorePageView: View {
     }
 }
 
-#Preview("自訂頁（空）") {
+#Preview("自订页（空）") {
     NavigationStack {
         CustomExplorePageView(pageID: UUID())
     }

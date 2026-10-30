@@ -23,22 +23,22 @@ struct ReaderTranslationSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Picker(localized("顯示方式"), selection: $presentation.mode) {
-                        Text(localized("關閉")).tag(ReaderTranslationPresentation.Mode.off)
-                        Text(localized("雙語對照")).tag(ReaderTranslationPresentation.Mode.bilingual)
-                        Text(localized("只看譯文")).tag(ReaderTranslationPresentation.Mode.translationOnly)
+                    Picker(localized("显示方式"), selection: $presentation.mode) {
+                        Text(localized("关闭")).tag(ReaderTranslationPresentation.Mode.off)
+                        Text(localized("双语对照")).tag(ReaderTranslationPresentation.Mode.bilingual)
+                        Text(localized("只看译文")).tag(ReaderTranslationPresentation.Mode.translationOnly)
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
                 } header: {
-                    Text(localized("顯示方式"))
+                    Text(localized("显示方式"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
 
                 if presentation.isActive {
                     Section {
-                        Picker(localized("翻譯成"), selection: $presentation.language) {
+                        Picker(localized("翻译成"), selection: $presentation.language) {
                             ForEach(AIAnswerLanguage.allCases) { Text($0.displayName).tag($0) }
                         }
                     }
@@ -48,7 +48,7 @@ struct ReaderTranslationSheet: View {
                 }
 
                 Section {
-                    Button(localized("清除本書譯文"), role: .destructive) { confirmsClear = true }
+                    Button(localized("清除本书译文"), role: .destructive) { confirmsClear = true }
                 } footer: {
                     if let clearError {
                         Text(clearError).dsSectionFooter()
@@ -58,19 +58,19 @@ struct ReaderTranslationSheet: View {
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .navigationTitle(localized("整章翻譯"))
+            .navigationTitle(localized("整章翻译"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(localized("關閉"))
+                        .accessibilityLabel(localized("关闭"))
                 }
             }
-            .confirmationDialog(localized("清除本書的所有譯文？"), isPresented: $confirmsClear, titleVisibility: .visible) {
-                Button(localized("清除譯文"), role: .destructive) { clear() }
+            .confirmationDialog(localized("清除本书的所有译文？"), isPresented: $confirmsClear, titleVisibility: .visible) {
+                Button(localized("清除译文"), role: .destructive) { clear() }
                 Button(localized("取消"), role: .cancel) {}
             } message: {
-                Text(localized("譯文會刪除，翻譯也會關閉；之後再開啟要重新翻譯。"))
+                Text(localized("译文会删除，翻译也会关闭；之后再开启要重新翻译。"))
             }
         }
     }
@@ -80,29 +80,29 @@ struct ReaderTranslationSheet: View {
             switch service.runs[currentChapter] {
             case let .running(completed, total):
                 ProgressView(value: Double(completed), total: Double(max(total, 1))) {
-                    Text(localized("翻譯中…"))
+                    Text(localized("翻译中…"))
                         .foregroundStyle(DSColor.textPrimary)
                 } currentValueLabel: {
                     Text(verbatim: "\(completed)/\(total)")
                         .foregroundStyle(DSColor.textSecondary)
                 }
             case .finished:
-                Label(localized("本章已翻譯"), systemImage: "checkmark.circle")
+                Label(localized("本章已翻译"), systemImage: "checkmark.circle")
                     .foregroundStyle(DSColor.textPrimary)
             case let .failed(message):
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(DSColor.destructive)
-                Button(localized("重試"), action: onTranslateChapter)
+                Button(localized("重试"), action: onTranslateChapter)
             case nil:
                 if let chapterText {
                     if service.pendingBatchCount(book: bookID, language: presentation.language, text: chapterText) == 0 {
-                        Label(localized("本章已翻譯"), systemImage: "checkmark.circle")
+                        Label(localized("本章已翻译"), systemImage: "checkmark.circle")
                             .foregroundStyle(DSColor.textPrimary)
                     } else {
-                        Button(localized("翻譯本章"), action: onTranslateChapter)
+                        Button(localized("翻译本章"), action: onTranslateChapter)
                     }
                 } else {
-                    Text(localized("本章還在載入"))
+                    Text(localized("本章还在载入"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
             }
@@ -117,10 +117,10 @@ struct ReaderTranslationSheet: View {
         switch service.service() {
         case let .success(active):
             Section {
-                ThemedLabeledContent(localized("生成服務"), value: active.name)
+                ThemedLabeledContent(localized("生成服务"), value: active.name)
                 ThemedLabeledContent(localized("生成模型"), value: active.model)
             } footer: {
-                Text(localized("會翻譯你讀到的章節和下一章，約每 2,000 字一次模型呼叫；原文、劃線與閱讀進度不受影響。"))
+                Text(localized("会翻译你读到的章节和下一章，约每 2,000 字一次模型呼叫；原文、划线与阅读进度不受影响。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -128,7 +128,7 @@ struct ReaderTranslationSheet: View {
             Section {
                 Text(reason.message)
                     .foregroundStyle(DSColor.textSecondary)
-                NavigationLink(localized("AI 助手設定")) { AISettingsView(embedded: true) }
+                NavigationLink(localized("AI 助手设定")) { AISettingsView(embedded: true) }
             }
             .interfaceSectionSurface()
         }

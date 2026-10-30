@@ -36,7 +36,7 @@ enum WebNovelParser {
     ]
 
     private static let chapterTitleRegex = try? NSRegularExpression(
-        pattern: "(第\\s*[0-9零一二三四五六七八九十百千萬万兩两〇○]+\\s*[章節节回卷篇部]|chapter\\s*[0-9]+|ch\\.?\\s*[0-9]+)",
+        pattern: "(第\\s*[0-9零一二三四五六七八九十百千万万两两〇○]+\\s*[章节节回卷篇部]|chapter\\s*[0-9]+|ch\\.?\\s*[0-9]+)",
         options: [.caseInsensitive]
     )
 
@@ -46,7 +46,7 @@ enum WebNovelParser {
     /// fetchWebContent's while loop to concatenate the next entire chapter onto
     /// the current one, inflating single-chapter caches to 10+ chapters and 100+ pages.
     private static let nextPageTitleRegex = try? NSRegularExpression(
-        pattern: "^(下一页|下一頁|下页|下頁|next|next page)$",
+        pattern: "^(下一页|下一页|下页|下页|next|next page)$",
         options: [.caseInsensitive]
     )
 
@@ -249,8 +249,8 @@ enum WebNovelParser {
 
     private static func isLikelyChapterLink(title: String, url: String) -> Bool {
         let lowerTitle = title.lowercased()
-        if lowerTitle.contains("返回") || lowerTitle.contains("目录") || lowerTitle.contains("目錄") ||
-            lowerTitle.contains("首页") || lowerTitle.contains("首頁") {
+        if lowerTitle.contains("返回") || lowerTitle.contains("目录") || lowerTitle.contains("目录") ||
+            lowerTitle.contains("首页") || lowerTitle.contains("首页") {
             return false
         }
 
@@ -309,7 +309,7 @@ enum WebNovelParser {
 
     private static func extractOrder(from title: String) -> Int? {
         if let regex = try? NSRegularExpression(
-            pattern: "第\\s*([0-9]+)\\s*[章節节回卷篇部]",
+            pattern: "第\\s*([0-9]+)\\s*[章节节回卷篇部]",
             options: [.caseInsensitive]
         ),
         let match = regex.firstMatch(in: title, range: NSRange(title.startIndex..., in: title)),

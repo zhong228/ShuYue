@@ -81,7 +81,7 @@ struct AIChatAssistantMessage: View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             header
             if isHiddenByScope {
-                Label(localized("此回覆超出目前可確認的來源或閱讀範圍，已暫時隱藏。"), systemImage: "eye.slash")
+                Label(localized("此回复超出目前可确认的来源或阅读范围，已暂时隐藏。"), systemImage: "eye.slash")
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
             } else {
@@ -123,7 +123,7 @@ struct AIChatAssistantMessage: View {
                 .font(DSFont.footnote)
                 .foregroundStyle(DSColor.textSecondary)
             if let onRetry {
-                Button(localized("重試這個問題"), systemImage: "arrow.clockwise", action: onRetry)
+                Button(localized("重试这个问题"), systemImage: "arrow.clockwise", action: onRetry)
                     .font(DSFont.footnote)
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
@@ -155,20 +155,20 @@ struct AIChatAssistantMessage: View {
     /// answer cites nothing from the book, that is the label — it is the caveat that
     /// matters most — and the scope notes open under it.
     private var notes: [String] { message.notices ?? [] }
-    private var notesTitle: String { message.hasEvidence ? localized("回答範圍") : localized("未附書中引用") }
+    private var notesTitle: String { message.hasEvidence ? localized("回答范围") : localized("未附书中引用") }
 
     private var footer: some View {
         HStack(spacing: DSSpacing.sm) {
             Button {
                 UIPasteboard.general.string = message.text
                 copyCount += 1
-                AccessibilityNotification.Announcement(localized("已複製")).post()
+                AccessibilityNotification.Announcement(localized("已复制")).post()
             } label: {
                 Image(systemName: "doc.on.doc")
                     .frame(minWidth: DSLayout.minimumTapTarget, minHeight: DSLayout.minimumTapTarget, alignment: .leading)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel(localized("複製"))
+            .accessibilityLabel(localized("复制"))
             .sensoryFeedback(.success, trigger: copyCount)
 
             if !notes.isEmpty {
@@ -187,7 +187,7 @@ struct AIChatAssistantMessage: View {
                     .frame(minHeight: DSLayout.minimumTapTarget)
                     .contentShape(Rectangle())
                 }
-                .accessibilityValue(showsNotes ? localized("已展開") : localized("已收合"))
+                .accessibilityValue(showsNotes ? localized("已展开") : localized("已收合"))
             } else if !message.hasEvidence {
                 Label(notesTitle, systemImage: "exclamationmark.circle")
             }
@@ -372,12 +372,12 @@ struct AIChatComposer: View {
                             .frame(minWidth: DSLayout.minimumTapTarget, minHeight: DSLayout.minimumTapTarget)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(localized("移除選文"))
+                    .accessibilityLabel(localized("移除选文"))
                 }
             }
             if wholeBook {
                 Label {
-                    Text(localized("全書模式可能包含尚未讀到的情節。"))
+                    Text(localized("全书模式可能包含尚未读到的情节。"))
                 } icon: {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(DSColor.warning)
                 }
@@ -388,14 +388,14 @@ struct AIChatComposer: View {
             if !isSourceReady {
                 HStack(spacing: DSSpacing.sm) {
                     ProgressView().controlSize(.small)
-                    Text(localized("準備閱讀內容…"))
+                    Text(localized("准备阅读内容…"))
                 }
                 .font(DSFont.footnote)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.top, DSSpacing.sm)
                 .accessibilityElement(children: .combine)
             }
-            TextField(localized("問一個問題"), text: $draft, axis: .vertical)
+            TextField(localized("问一个问题"), text: $draft, axis: .vertical)
                 .accessibilityIdentifier("ai.chat.input")
                 .font(DSFont.body)
                 .lineLimit(1...6)
@@ -442,7 +442,7 @@ struct AIChatComposer: View {
         } label: {
             AIChatComposerMenuLabel(systemImage: "cpu", title: modelTitle)
         }
-        .accessibilityLabel(localized("選擇模型"))
+        .accessibilityLabel(localized("选择模型"))
         .accessibilityValue(modelTitle)
     }
 
@@ -455,17 +455,17 @@ struct AIChatComposer: View {
     }
 
     private var scopeMenu: some View {
-        let title = wholeBook ? localized("全書") : localized("已讀")
+        let title = wholeBook ? localized("全书") : localized("已读")
         return Menu {
-            Picker(localized("閱讀範圍"), selection: Binding(get: { wholeBook }, set: onSetWholeBook)) {
-                Label(localized("已讀"), systemImage: "book").tag(false)
-                Label(localized("全書"), systemImage: "books.vertical").tag(true)
+            Picker(localized("阅读范围"), selection: Binding(get: { wholeBook }, set: onSetWholeBook)) {
+                Label(localized("已读"), systemImage: "book").tag(false)
+                Label(localized("全书"), systemImage: "books.vertical").tag(true)
             }
             .pickerStyle(.inline)
         } label: {
             AIChatComposerMenuLabel(systemImage: wholeBook ? "books.vertical" : "book", title: title)
         }
-        .accessibilityLabel(localized("閱讀範圍"))
+        .accessibilityLabel(localized("阅读范围"))
         .accessibilityValue(title)
     }
 
@@ -517,11 +517,11 @@ private struct AIChatComposerMenuLabel: View {
 #Preview("Messages") {
     ScrollView {
         VStack(alignment: .leading, spacing: DSSpacing.xl) {
-            AIChatUserBubble(text: "這段在說什麼？", quote: "他注入真氣激活銘紋，鐵球展開成三米高的鋼鐵巨人。")
+            AIChatUserBubble(text: "这段在说什么？", quote: "他注入真气激活铭纹，铁球展开成三米高的钢铁巨人。")
             AIChatAssistantMessage(message: {
-                var message = AIChatMessage(role: .assistant, text: "## 煉器戰士\n張若塵接到大師兄所贈的鐵球。\n\n- 第一點\n- 第二點",
+                var message = AIChatMessage(role: .assistant, text: "## 炼器战士\n张若尘接到大师兄所赠的铁球。\n\n- 第一点\n- 第二点",
                     citations: [LLMCitation(chunkID: "a", quote: "…", spineIndex: 0, charOffset: 0, sectionTitle: "第561章 炼器战士")])
-                message.notices = [localized("本次只搜尋可確認的已讀範圍。")]
+                message.notices = [localized("本次只搜寻可确认的已读范围。")]
                 return message
             }())
         }

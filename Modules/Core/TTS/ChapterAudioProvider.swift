@@ -26,9 +26,9 @@ enum ChapterAudioProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAudio:
-            return localized("未找到音訊")
+            return localized("未找到音讯")
         case .missingLocalAudio:
-            return localized("音訊檔案不在此裝置上，請重新匯入")
+            return localized("音讯档案不在此装置上，请重新汇入")
         }
     }
 }

@@ -235,9 +235,9 @@ struct AppearanceThemeView: View {
                         settings.bookshelfGridColumnCount = columnCount
                     } label: {
                         if settings.bookshelfGridColumnCount == columnCount {
-                            Label(String(format: localized("%d 欄"), columnCount), systemImage: "checkmark")
+                            Label(String(format: localized("%d 栏"), columnCount), systemImage: "checkmark")
                         } else {
-                            Text(String(format: localized("%d 欄"), columnCount))
+                            Text(String(format: localized("%d 栏"), columnCount))
                         }
                     }
                 }
@@ -246,7 +246,7 @@ struct AppearanceThemeView: View {
                     SettingsRowLabel(localized("书库密度"), systemImage: "square.grid.3x3.fill")
                     Spacer()
                     HStack(spacing: 5) {
-                        Text(String(format: localized("%d 欄"), settings.bookshelfGridColumnCount))
+                        Text(String(format: localized("%d 栏"), settings.bookshelfGridColumnCount))
                         Image(systemName: "chevron.up.chevron.down")
                             .font(DSFont.caption2.weight(.semibold))
                     }
@@ -583,7 +583,7 @@ struct AppearanceThemeView: View {
         // and all — becomes the new theme, selected in the slot being edited. This was
         // two rows: 新建 copied the colours alone and opened an editor page, and
         // 保存為新主題 saved the whole look (2026-09-29).
-        .alert(localized("新建主題"), isPresented: $showNewThemeAlert) {
+        .alert(localized("新建主题"), isPresented: $showNewThemeAlert) {
             TextField(localized("主题名称"), text: $newThemeName)
             Button(localized("新建")) {
                 settings.saveCurrentAppearanceAsTheme(
@@ -632,13 +632,13 @@ struct AppearanceThemeView: View {
     private var interfaceEffectsSummary: String {
         var parts: [String] = []
         if settings.interfaceGlowIntensity > 0 {
-            parts.append(localized("光暈"))
+            parts.append(localized("光晕"))
         }
         if settings.interfaceFrostedGlass {
             parts.append(localized("毛玻璃"))
         }
         guard !parts.isEmpty else { return localized("已关闭") }
-        // Locale-correct joiner ("光暈、毛玻璃" / "Glow, Frosted Glass") instead of a
+        // Locale-correct joiner ("光晕、毛玻璃" / "Glow, Frosted Glass") instead of a
         // hardcoded separator that only reads right in one language.
         return parts.formatted(.list(type: .and, width: .narrow))
     }
@@ -650,7 +650,7 @@ struct AppearanceThemeView: View {
             DSSettingsCardNavRow(
                 icon: "iphone",
                 title: localized("开屏画面"),
-                value: localized(settings.launchImageEnabled ? "已開啟" : "已关闭")
+                value: localized(settings.launchImageEnabled ? "已开启" : "已关闭")
             ) {
                 LaunchImageSettingsView()
             }
@@ -743,7 +743,7 @@ struct AppearanceThemeView: View {
             Button(role: .destructive) {
                 deleteTarget = AppearanceThemePreset.preset(from: custom)
             } label: {
-                SettingsRowLabel(localized("删除主題"), systemImage: "trash", role: .destructive)
+                SettingsRowLabel(localized("删除主题"), systemImage: "trash", role: .destructive)
             }
             .themeActionFrame()
             .buttonStyle(.plain)
@@ -807,13 +807,13 @@ struct AppearanceThemeView: View {
                 } catch let error as AppearanceThemeImportError {
                     showImportFailure(localized(error.messageKey))
                 } catch {
-                    showImportFailure(localized("匯入主題失敗。"))
+                    showImportFailure(localized("汇入主题失败。"))
                 }
             }
         } catch let error as AppearanceThemeImportError {
             showImportFailure(localized(error.messageKey))
         } catch {
-            showImportFailure(localized("匯入主題失敗。"))
+            showImportFailure(localized("汇入主题失败。"))
         }
     }
 
@@ -826,9 +826,9 @@ struct AppearanceThemeView: View {
                 // Nothing to ask: the pack's reading setup is its theme's own.
                 applyQiTheme(try await QiThemeImportService.load(data))
             } catch let error as QiThemeImportError {
-                showImportFailure(error.errorDescription ?? localized("匯入主題失敗。"))
+                showImportFailure(error.errorDescription ?? localized("汇入主题失败。"))
             } catch {
-                showImportFailure(localized("匯入主題失敗。"))
+                showImportFailure(localized("汇入主题失败。"))
             }
         }
     }
@@ -844,14 +844,14 @@ struct AppearanceThemeView: View {
             } catch {
                 AppLogger.error("⟐ qitheme import failed", error: error)
                 progress.phase = .failed(
-                    (error as? LocalizedError)?.errorDescription ?? localized("匯入主題失敗。")
+                    (error as? LocalizedError)?.errorDescription ?? localized("汇入主题失败。")
                 )
             }
         }
     }
 
     private func showImportFailure(_ message: String) {
-        screenAlert = ThemeScreenAlert(title: localized("匯入失敗"), message: message)
+        screenAlert = ThemeScreenAlert(title: localized("汇入失败"), message: message)
     }
 
     /// Free-user upsell row; hidden entirely once Pro is active.
@@ -862,7 +862,7 @@ struct AppearanceThemeView: View {
             HStack(spacing: DSSpacing.md) {
                 // Pro is marked with the app's own icon, as on the 閱讀Pro row and page.
                 AppIconImage(size: DSLayout.settingsRowIconSize)
-                Text(localized("主題自定義"))
+                Text(localized("主题自定义"))
                     .font(DSFont.body)
                     .foregroundStyle(DSColor.textPrimary)
                 Spacer(minLength: 0)
@@ -1032,7 +1032,7 @@ private struct AppearanceReaderInterfaceView: View {
     /// system glass with no fill of ours, and only 經典 floats circles over the page.
     private func customizationSection(for interface: ReaderChromeInterface) -> some View {
         DSSettingsGroupCard(
-            title: localized("自定義"),
+            title: localized("自定义"),
             footer: {
                 Text(localized("点按屏幕中央呼出顶部与底部控制岛。顶部是返回／章节名／书签／搜索，右侧「更多」收纳刷新、换源、下载与网页打开；底部是进度滑条、上一章、下一章，以及目录、设置、听书、深色。未调整的部分跟随目前的阅读主题。"))
                     .dsSectionFooter()
@@ -1314,7 +1314,7 @@ private struct ThemeTileButtonBody: View {
     }
 }
 
-#Preview("閱讀界面") {
+#Preview("阅读界面") {
     NavigationStack {
         AppearanceReaderInterfaceView()
     }

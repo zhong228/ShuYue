@@ -41,7 +41,7 @@ struct AIRelationshipMapView: View {
                 }
                 .interfaceSectionSurface()
             } else if graph == nil {
-                Section { ProgressView(localized("載入中…")) }
+                Section { ProgressView(localized("载入中…")) }
                     .interfaceSectionSurface()
             } else if let graph, let center {
                 let neighbors = graph.neighbors(of: center.id)
@@ -51,7 +51,7 @@ struct AIRelationshipMapView: View {
                             .frame(height: DSLayout.relationshipMapHeight)
                             .listRowInsets(EdgeInsets())
                     } footer: {
-                        Text(localized("點任一人物，改看這個人物的關係。"))
+                        Text(localized("点任一人物，改看这个人物的关系。"))
                             .dsSectionFooter()
                     }
                     .interfaceSectionSurface()
@@ -59,13 +59,13 @@ struct AIRelationshipMapView: View {
                 Section {
                     ForEach(neighbors) { neighbor in
                         Button { recenter(neighbor.node.id) } label: { relationRow(neighbor) }
-                            .accessibilityHint(localized("改看這個人物的關係"))
+                            .accessibilityHint(localized("改看这个人物的关系"))
                     }
                 } header: {
-                    Text(String(format: localized("%@的關係"), center.name))
+                    Text(String(format: localized("%@的关系"), center.name))
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
-                    Text(localized("依整理已讀人物的記錄繪製，只含目前讀到的內容；每條關係都可到人物頁核對原文。"))
+                    Text(localized("依整理已读人物的记录绘制，只含目前读到的内容；每条关系都可到人物页核对原文。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
@@ -74,17 +74,17 @@ struct AIRelationshipMapView: View {
                         AIMemoryCardView(entityID: center.entityID, source: adapter, boundary: adapter.boundary(),
                                          onOpenCitation: onOpenCitation, showsDone: false)
                     } label: {
-                        SettingsRowLabel(String(format: localized("%@的人物頁"), center.name), systemImage: "person.text.rectangle")
+                        SettingsRowLabel(String(format: localized("%@的人物页"), center.name), systemImage: "person.text.rectangle")
                     }
                 }
                 .interfaceSectionSurface()
             } else {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("還沒有人物關係"), systemImage: "point.3.connected.trianglepath.dotted")
+                    UnavailableLabel(localized("还没有人物关系"), systemImage: "point.3.connected.trianglepath.dotted")
                 } description: {
-                    Text(localized("先用「整理已讀人物」建立人物記錄，關係就會畫在這裡。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("先用「整理已读人物」建立人物记录，关系就会画在这里。")).foregroundStyle(DSColor.textSecondary)
                 } actions: {
-                    NavigationLink(localized("整理已讀人物")) {
+                    NavigationLink(localized("整理已读人物")) {
                         AICharacterMemoryView(adapter: adapter, onOpenCitation: onOpenCitation)
                     }
                     .buttonStyle(.bordered)
@@ -94,7 +94,7 @@ struct AIRelationshipMapView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("人物關係圖"))
+        .navigationTitle(localized("人物关系图"))
         .toolbarTitleDisplayMode(.inline)
         .task(id: "\(adapter.contentFingerprint):\(memory.revisions[adapter.chunkBookID] ?? 0)") { await load() }
     }
@@ -219,7 +219,7 @@ private struct RelationshipRingNode: View {
         .position(point)
         .accessibilityLabel(neighbor.node.name)
         .accessibilityValue(neighbor.relations.map(\.text).joined(separator: "；"))
-        .accessibilityHint(localized("改看這個人物的關係"))
+        .accessibilityHint(localized("改看这个人物的关系"))
     }
 }
 
@@ -262,9 +262,9 @@ private struct RelationshipRingNameLabel: View {
 extension AIRelationshipGraph {
     /// 張若塵 and the people around him, for previews and the design fixture.
     static var sample: AIRelationshipGraph {
-        let people = ["張若塵", "池瑤", "雲武郡王", "林妃", "黃煙塵", "萬柯", "青霄聖者", "璇璣老人", "朱洪濤"]
-        let relations = ["與張若塵曾有婚約", "張若塵的父親", "張若塵的母親", "與張若塵有婚約", "張若塵的師兄",
-                         "張若塵的師尊", "指點張若塵劍道", "張若塵的同門"]
+        let people = ["张若尘", "池瑶", "云武郡王", "林妃", "黄烟尘", "万柯", "青霄圣者", "璇玑老人", "朱洪涛"]
+        let relations = ["与张若尘曾有婚约", "张若尘的父亲", "张若尘的母亲", "与张若尘有婚约", "张若尘的师兄",
+                         "张若尘的师尊", "指点张若尘剑道", "张若尘的同门"]
         let nodes = people.enumerated().map { Node(id: "n\($0.offset)", name: $0.element, entityID: "e\($0.offset)") }
         let edges = relations.enumerated().map { index, text in
             Edge(id: "r\(index)", first: "n0", second: "n\(index + 1)", text: text, chapter: index * 40)

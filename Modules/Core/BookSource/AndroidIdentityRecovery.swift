@@ -113,9 +113,9 @@ enum AndroidIdentityRecovery {
     /// `androidId()` ever gains a way to answer "iOS, and here is my id", because
     /// then no source needs the toggle.
     private static let deviceIdentifierPhrases = [
-        "设备信息", "設備信息", "装置信息", "裝置資訊",
-        "设备标识", "設備標識", "装置识别", "裝置識別",
-        "设备id", "設備id", "设备码", "設備碼", "装置码", "裝置碼",
+        "设备信息", "设备信息", "装置信息", "装置资讯",
+        "设备标识", "设备标识", "装置识别", "装置识别",
+        "设备id", "设备id", "设备码", "设备码", "装置码", "装置码",
         "androidid", "android_id", "android id",
         "deviceid", "device_id", "device id", "device info",
     ]

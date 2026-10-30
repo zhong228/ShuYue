@@ -18,8 +18,8 @@ struct BookSourceRuleDebugView: View {
 
     enum DebugTab: String, CaseIterable, Identifiable {
         case search  = "搜索"
-        case detail  = "詳情"
-        case toc     = "目錄"
+        case detail  = "详情"
+        case toc     = "目录"
         case content = "正文"
         case fullPipeline = "全流程"
         var id: String { rawValue }
@@ -50,7 +50,7 @@ struct BookSourceRuleDebugView: View {
                     if selectedTab == .search || selectedTab == .fullPipeline {
                         HStack {
                             TextField(
-                                selectedTab == .fullPipeline ? localized("全流程：輸入關鍵字，依序跑搜索→詳情→目錄→正文") : localized("搜索關鍵字"),
+                                selectedTab == .fullPipeline ? localized("全流程：输入关键字，依序跑搜索→详情→目录→正文") : localized("搜索关键字"),
                                 text: $keyword
                             )
                             .textFieldStyle(.roundedBorder)
@@ -85,7 +85,7 @@ struct BookSourceRuleDebugView: View {
                                 ProgressView()
                                     .padding(.horizontal, 12)
                             } else {
-                                Label(localized("執行"), systemImage: "play.fill")
+                                Label(localized("执行"), systemImage: "play.fill")
                                     .foregroundColor(DSColor.textOnAccent)
                                     .padding(.horizontal, 12)
                             }
@@ -106,7 +106,7 @@ struct BookSourceRuleDebugView: View {
                         Image(systemName: "magnifyingglass")
                             .font(DSFont.largeTitle)
                             .foregroundStyle(DSColor.textSecondary)
-                        Text(localized("輸入資料後按「執行」開始調試"))
+                        Text(localized("输入资料后按「执行」开始调试"))
                             .foregroundStyle(DSColor.textSecondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -120,7 +120,7 @@ struct BookSourceRuleDebugView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle(source.bookSourceName.isEmpty ? localized("書源調試") : source.bookSourceName)
+            .navigationTitle(source.bookSourceName.isEmpty ? localized("书源调试") : source.bookSourceName)
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

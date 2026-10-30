@@ -20,20 +20,20 @@ struct BookSourceDebugView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle(localized("啟用網路除錯錄製"), isOn: $debugger.isRecording)
-                    Toggle(localized("包含規則比對"), isOn: $debugger.includesParseEvents)
+                    Toggle(localized("启用网路除错录制"), isOn: $debugger.isRecording)
+                    Toggle(localized("包含规则比对"), isOn: $debugger.includesParseEvents)
                         .disabled(!debugger.isRecording)
                 } header: {
-                    Text(localized("錄製"))
+                    Text(localized("录制"))
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
-                    Text(localized("記下每一次請求與回應。規則比對量太大，預設不收。"))
+                    Text(localized("记下每一次请求与回应。规则比对量太大，预设不收。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
 
                 Section {
-                    Picker(localized("類型"), selection: $typeFilter) {
+                    Picker(localized("类型"), selection: $typeFilter) {
                         Text(localized("全部")).tag(WebCrawlerDebugger.LogEntry.LogType?.none)
                         ForEach(WebCrawlerDebugger.LogEntry.LogType.allCases, id: \.self) { type in
                             Text(type.localizedName)
@@ -41,7 +41,7 @@ struct BookSourceDebugView: View {
                         }
                     }
                 } header: {
-                    Text(localized("篩選"))
+                    Text(localized("筛选"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
@@ -52,9 +52,9 @@ struct BookSourceDebugView: View {
                             filename: BookSourceDebugExportFile.filename(),
                             entries: debugger.logs
                         ),
-                        preview: SharePreview(localized("書源除錯大師"))
+                        preview: SharePreview(localized("书源除错大师"))
                     ) {
-                        Label(localized("匯出紀錄"), systemImage: "square.and.arrow.up")
+                        Label(localized("汇出纪录"), systemImage: "square.and.arrow.up")
                     }
                     .disabled(debugger.logs.isEmpty)
                 } header: {
@@ -72,13 +72,13 @@ struct BookSourceDebugView: View {
                         }
                     }
                 } header: {
-                    Text(localized("紀錄"))
+                    Text(localized("纪录"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
-            .navigationTitle(localized("書源除錯大師"))
+            .navigationTitle(localized("书源除错大师"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -89,7 +89,7 @@ struct BookSourceDebugView: View {
                         Image(systemName: "xmark")
                             .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     // 匯出紀錄 is deliberately NOT here: a `ShareLink` inside a `Menu`
@@ -102,37 +102,37 @@ struct BookSourceDebugView: View {
                             UIPasteboard.general.string = exportText
                             showCopiedAlert = true
                         } label: {
-                            Label(localized("複製全部"), systemImage: "doc.on.doc")
+                            Label(localized("复制全部"), systemImage: "doc.on.doc")
                         }
                         Divider()
                         Button(role: .destructive) {
                             debugger.clear()
                         } label: {
-                            Label(localized("清空紀錄"), systemImage: "trash")
+                            Label(localized("清空纪录"), systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
                             .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(localized("更多動作"))
+                    .accessibilityLabel(localized("更多动作"))
                     .disabled(debugger.logs.isEmpty)
                 }
             }
-            .alert(localized("已複製"), isPresented: $showCopiedAlert) {
+            .alert(localized("已复制"), isPresented: $showCopiedAlert) {
                 Button(localized("好"), role: .cancel) {}
             } message: {
-                Text(localized("除錯紀錄已複製到剪貼簿。"))
+                Text(localized("除错纪录已复制到剪贴簿。"))
             }
         }
     }
 
     private var emptyState: some View {
         ContentUnavailableView {
-            UnavailableLabel(localized("沒有紀錄"), systemImage: "antenna.radiowaves.left.and.right.slash")
+            UnavailableLabel(localized("没有纪录"), systemImage: "antenna.radiowaves.left.and.right.slash")
         } description: {
             Text(debugger.isRecording
-                 ? localized("錄製中。回到書源做一次搜索或開啟章節，請求就會出現在這裡。")
-                 : localized("先打開上面的錄製開關，再回到書源操作一次。")).foregroundStyle(DSColor.textSecondary)
+                 ? localized("录制中。回到书源做一次搜索或开启章节，请求就会出现在这里。")
+                 : localized("先打开上面的录制开关，再回到书源操作一次。")).foregroundStyle(DSColor.textSecondary)
         }
     }
 
@@ -197,7 +197,7 @@ struct BookSourceDebugLogRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(entry.type.localizedName)，\(entry.message)")
         .accessibilityValue(entry.url ?? "")
-        .accessibilityHint(hasDetail ? localized("點兩下展開詳細內容") : "")
+        .accessibilityHint(hasDetail ? localized("点两下展开详细内容") : "")
         .accessibilityAddTraits(hasDetail ? .isButton : [])
     }
 
@@ -226,11 +226,11 @@ struct BookSourceDebugLogRow: View {
 extension WebCrawlerDebugger.LogEntry.LogType {
     var localizedName: String {
         switch self {
-        case .info:       return localized("資訊")
-        case .request:    return localized("請求")
-        case .response:   return localized("回應")
-        case .parseEvent: return localized("規則比對")
-        case .error:      return localized("錯誤")
+        case .info:       return localized("资讯")
+        case .request:    return localized("请求")
+        case .response:   return localized("回应")
+        case .parseEvent: return localized("规则比对")
+        case .error:      return localized("错误")
         }
     }
 

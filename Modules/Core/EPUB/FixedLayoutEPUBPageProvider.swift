@@ -102,7 +102,7 @@ final class FixedLayoutEPUBRenderer {
         let sections = document.session.chapters.map { descriptor -> FixedPageDocumentSection in
             let title = descriptor.title.trimmingCharacters(in: .whitespacesAndNewlines)
             return FixedPageDocumentSection(
-                title: title.isEmpty ? String(format: localized("第 %d 頁"), descriptor.index + 1) : title,
+                title: title.isEmpty ? String(format: localized("第 %d 页"), descriptor.index + 1) : title,
                 startPage: descriptor.index
             )
         }

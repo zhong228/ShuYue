@@ -43,11 +43,11 @@ struct AIAssistantPanelView: View {
             Group {
                 if profiles.isEmpty {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("尚未設定 AI 服務"), systemImage: "sparkles")
+                        UnavailableLabel(localized("尚未设定 AI 服务"), systemImage: "sparkles")
                     } description: {
-                        Text(settingsError ?? localized("填入自己的 API 服務，即可開始閱讀問答。")).foregroundStyle(DSColor.textSecondary)
+                        Text(settingsError ?? localized("填入自己的 API 服务，即可开始阅读问答。")).foregroundStyle(DSColor.textSecondary)
                     } actions: {
-                        Button(localized("前往設定")) { openScreen(.settings) }
+                        Button(localized("前往设定")) { openScreen(.settings) }
                     }
                 } else {
                     transcript
@@ -64,12 +64,12 @@ struct AIAssistantPanelView: View {
                 pendingScreen = nil
             }) {
                 DismissalSequencedActionChooser(title: localized("更多"), actions: [
-                    .init(route: SecondaryScreen.history, title: localized("對話列表"), systemImage: "clock.arrow.circlepath"),
-                    .init(route: .characters, title: localized("書中人物"), systemImage: "person.2"),
-                    .init(route: .summary, title: localized("全書與分卷摘要"), systemImage: "text.book.closed"),
-                    .init(route: .prompts, title: localized("自訂提示詞"), systemImage: "text.badge.plus"),
-                    .init(route: .settings, title: localized("AI 助手設定"), systemImage: "gearshape"),
-                    .init(route: .status, title: localized("AI 狀態與診斷"), systemImage: "info.circle")
+                    .init(route: SecondaryScreen.history, title: localized("对话列表"), systemImage: "clock.arrow.circlepath"),
+                    .init(route: .characters, title: localized("书中人物"), systemImage: "person.2"),
+                    .init(route: .summary, title: localized("全书与分卷摘要"), systemImage: "text.book.closed"),
+                    .init(route: .prompts, title: localized("自订提示词"), systemImage: "text.badge.plus"),
+                    .init(route: .settings, title: localized("AI 助手设定"), systemImage: "gearshape"),
+                    .init(route: .status, title: localized("AI 状态与诊断"), systemImage: "info.circle")
                 ], onSelect: { pendingScreen = $0 })
             }
             .navigationDestination(for: SecondaryScreen.self) { screen in
@@ -125,24 +125,24 @@ struct AIAssistantPanelView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button { dismiss() } label: { Image(systemName: "xmark") }
-                .accessibilityLabel(localized("關閉"))
+                .accessibilityLabel(localized("关闭"))
         }
         ToolbarItem(placement: .primaryAction) {
             Button { startNewConversation() } label: { Image(systemName: "square.and.pencil") }
-                .accessibilityLabel(localized("新對話"))
+                .accessibilityLabel(localized("新对话"))
         }
         ToolbarItem(placement: .primaryAction) {
             if #available(iOS 18.0, *) {
                 Menu {
-                    Button(localized("對話列表"), systemImage: "clock.arrow.circlepath") { openScreen(.history) }
+                    Button(localized("对话列表"), systemImage: "clock.arrow.circlepath") { openScreen(.history) }
                     Section {
-                        Button(localized("書中人物"), systemImage: "person.2") { openScreen(.characters) }
-                        Button(localized("全書與分卷摘要"), systemImage: "text.book.closed") { openScreen(.summary) }
-                        Button(localized("自訂提示詞"), systemImage: "text.badge.plus") { openScreen(.prompts) }
+                        Button(localized("书中人物"), systemImage: "person.2") { openScreen(.characters) }
+                        Button(localized("全书与分卷摘要"), systemImage: "text.book.closed") { openScreen(.summary) }
+                        Button(localized("自订提示词"), systemImage: "text.badge.plus") { openScreen(.prompts) }
                     }
                     Section {
-                        Button(localized("AI 助手設定"), systemImage: "gearshape") { openScreen(.settings) }
-                        Button(localized("AI 狀態與診斷"), systemImage: "info.circle") { openScreen(.status) }
+                        Button(localized("AI 助手设定"), systemImage: "gearshape") { openScreen(.settings) }
+                        Button(localized("AI 状态与诊断"), systemImage: "info.circle") { openScreen(.status) }
                     }
                 } label: { Image(systemName: "ellipsis.circle") }
                 .accessibilityLabel(localized("更多"))
@@ -158,9 +158,9 @@ struct AIAssistantPanelView: View {
     @ViewBuilder private var transcript: some View {
         if conversation.session.isEmpty {
             ContentUnavailableView {
-                UnavailableLabel(localized("一起讀懂這本書"), systemImage: "sparkles")
+                UnavailableLabel(localized("一起读懂这本书"), systemImage: "sparkles")
             } description: {
-                Text(localized("選取原文來解釋或翻譯，也可以直接提問。")).foregroundStyle(DSColor.textSecondary)
+                Text(localized("选取原文来解释或翻译，也可以直接提问。")).foregroundStyle(DSColor.textSecondary)
             }
                 .accessibilityIdentifier("ai.chat.transcript")
         } else {
@@ -207,7 +207,7 @@ struct AIAssistantPanelView: View {
                 .floatingSurfaceBackground(in: Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("捲到最新"))
+        .accessibilityLabel(localized("卷到最新"))
         .padding(DSSpacing.md)
         .transition(.opacity)
     }
@@ -249,7 +249,7 @@ struct AIAssistantPanelView: View {
                 onSetWholeBook: { conversation.setWholeBook($0) },
                 profiles: profiles,
                 modelChoice: modelChoice,
-                modelTitle: modelChoice?.model ?? conversation.session.model ?? localized("選擇模型"),
+                modelTitle: modelChoice?.model ?? conversation.session.model ?? localized("选择模型"),
                 onSelectModel: selectModel,
                 isBusy: conversation.isBusy,
                 isSourceReady: isSourceReady,
@@ -268,7 +268,7 @@ struct AIAssistantPanelView: View {
         }
         // Not a chat turn: the book summary is its own page, built once and kept.
         if conversation.selection == nil {
-            builtIn.append(AIChatSuggestionBar.Item(id: "screen.summary", title: localized("全書摘要")) { openScreen(.summary) })
+            builtIn.append(AIChatSuggestionBar.Item(id: "screen.summary", title: localized("全书摘要")) { openScreen(.summary) })
             if !bookAnnotations().isEmpty {
                 builtIn.append(AIChatSuggestionBar.Item(id: "action.annotationReview", title: AIReadingAction.annotationReview.title) {
                     sendAction(.annotationReview)
@@ -329,7 +329,7 @@ struct AIAssistantPanelView: View {
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { selectedCitation = nil } label: { Image(systemName: "xmark") }.accessibilityLabel(localized("關閉"))
+                    Button { selectedCitation = nil } label: { Image(systemName: "xmark") }.accessibilityLabel(localized("关闭"))
                 }
             }
         }
@@ -360,19 +360,19 @@ struct AIChatHistoryView: View {
     let onNew: () -> Void
     var body: some View {
         List {
-            Button(localized("新對話"), systemImage: "square.and.pencil", action: onNew)
+            Button(localized("新对话"), systemImage: "square.and.pencil", action: onNew)
             ForEach(sessions) { session in
                 Button { onSelect(session) } label: {
                     LabeledContent(session.title) {
-                        if session.id == currentID { Image(systemName: "checkmark").accessibilityLabel(localized("已選取")) }
+                        if session.id == currentID { Image(systemName: "checkmark").accessibilityLabel(localized("已选取")) }
                     }
                 }
-                .swipeActions { Button(localized("刪除"), role: .destructive) { onDelete(session.id) } }
+                .swipeActions { Button(localized("删除"), role: .destructive) { onDelete(session.id) } }
             }
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("對話列表"))
+        .navigationTitle(localized("对话列表"))
         .toolbarTitleDisplayMode(.inline)
     }
 }
@@ -407,5 +407,5 @@ private extension View {
 }
 
 #Preview {
-    AIAssistantPanelView(bookID: UUID(), bookTitle: "閱讀中的書", adapter: .init(bookID: UUID(), chapters: [], textForChapter: { _ in nil }), progress: 0.4, onOpenCitation: { _, _ in })
+    AIAssistantPanelView(bookID: UUID(), bookTitle: "阅读中的书", adapter: .init(bookID: UUID(), chapters: [], textForChapter: { _ in nil }), progress: 0.4, onOpenCitation: { _, _ in })
 }

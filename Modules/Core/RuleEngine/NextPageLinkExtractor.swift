@@ -27,7 +27,7 @@ struct NextPageLinkExtractor {
         }
 
         let hrefPattern =
-            #"<a\s[^>]*href=["']([^"']+)["'][^>]*>[^<]*?(?:下一[頁页]|下一页|Next\s*Page|next\s*page)[^<]*</a>"#
+            #"<a\s[^>]*href=["']([^"']+)["'][^>]*>[^<]*?(?:下一[页页]|下一页|Next\s*Page|next\s*page)[^<]*</a>"#
         if let regex = try? NSRegularExpression(pattern: hrefPattern, options: .caseInsensitive),
             let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
             match.numberOfRanges > 1,

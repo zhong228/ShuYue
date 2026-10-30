@@ -163,10 +163,10 @@ final class ReplaceRuleStore: ObservableObject {
     /// id makes those the same record everywhere, and the merge collapses them.
     private func installPresets() {
         let presets: [(id: String, name: String, pattern: String, replacement: String)] = [
-            ("preset.ad-filter.leading", "廣告文字過濾（首行）", "^\\s*本章節.*?(?=\\n)", ""),
-            ("preset.ad-filter.trailing", "廣告文字過濾（尾行）", "(?<=\\n).*?閱讀\\s*$", ""),
-            ("preset.collapse-blank-lines", "合并多餘空行", "\\n{3,}", "\n\n"),
-            ("preset.trim-leading-space", "清除全形空格開頭", "^[\\u3000\\s]+", ""),
+            ("preset.ad-filter.leading", "广告文字过滤（首行）", "^\\s*本章节.*?(?=\\n)", ""),
+            ("preset.ad-filter.trailing", "广告文字过滤（尾行）", "(?<=\\n).*?阅读\\s*$", ""),
+            ("preset.collapse-blank-lines", "合并多余空行", "\\n{3,}", "\n\n"),
+            ("preset.trim-leading-space", "清除全形空格开头", "^[\\u3000\\s]+", ""),
             ("preset.trim-trailing-space", "清除行末空白", "[\\t ]+$", ""),
         ]
         for (i, preset) in presets.enumerated() {
@@ -220,11 +220,11 @@ enum ReplaceRuleImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidData:
-            return localized("無法讀取文件")
+            return localized("无法读取文件")
         case .parseError:
-            return localized("替換規則 JSON 解析失敗")
+            return localized("替换规则 JSON 解析失败")
         case .noRules:
-            return localized("未找到可匯入的替換規則")
+            return localized("未找到可汇入的替换规则")
         }
     }
 }

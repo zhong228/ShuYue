@@ -1037,7 +1037,7 @@ struct CoreTextPageEngineView: UIViewControllerRepresentable {
             unresolvedChapters.removeValue(forKey: position.spineIndex)
 
             AppLogger.anomaly(
-                localized("章節停在載入中且沒有再次嘗試"),
+                localized("章节停在载入中且没有再次尝试"),
                 category: .reader,
                 detail: [
                     "chapter=\(position.spineIndex)",

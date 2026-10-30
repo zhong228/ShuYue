@@ -27,31 +27,31 @@ struct ToolbarTitleAndIconLabel: View {
 }
 
 #if DEBUG
-#Preview("底部工具列：圖示＋文字") {
+#Preview("底部工具列：图示＋文字") {
     NavigationStack {
         DSColor.background
             .toolbar {
                 ToolbarItemGroup(placement: .bottomBar) {
                     Button {} label: { Image(systemName: "trash") }
-                        .accessibilityLabel(localized("刪除"))
+                        .accessibilityLabel(localized("删除"))
                     Spacer()
                     // Short enough to fit, then too long for the width.
                     Button {} label: {
                         ToolbarTitleAndIconLabel(
-                            title: localized("加入分組"),
+                            title: localized("加入分组"),
                             systemImage: "text.badge.plus",
                             width: DSLayout.bookshelfAddToGroupLabelWidth
                         )
                     }
-                    .accessibilityLabel(localized("加入分組"))
+                    .accessibilityLabel(localized("加入分组"))
                     Button {} label: {
                         ToolbarTitleAndIconLabel(
-                            title: localized("加入分組"),
+                            title: localized("加入分组"),
                             systemImage: "text.badge.plus",
                             width: DSLayout.bookshelfAddToGroupLabelWidth
                         )
                     }
-                    .accessibilityLabel(localized("加入分組"))
+                    .accessibilityLabel(localized("加入分组"))
                 }
             }
     }

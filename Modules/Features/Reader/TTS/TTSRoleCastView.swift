@@ -56,7 +56,7 @@ struct TTSRoleCastView: View {
             }
         }
         .softScrollEdges()
-        .navigationTitle(localized("多角色朗讀"))
+        .navigationTitle(localized("多角色朗读"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .onAppear {
@@ -71,7 +71,7 @@ struct TTSRoleCastView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(localized("重設")) {
+                Button(localized("重设")) {
                     showResetConfirmation = true
                 }
                 // Dead only when there is genuinely nothing for this book: no cast, no
@@ -81,14 +81,14 @@ struct TTSRoleCastView: View {
             }
         }
         .confirmationDialog(
-            localized("重設這本書的角色設定？"),
+            localized("重设这本书的角色设定？"),
             isPresented: $showResetConfirmation,
             titleVisibility: .visible
         ) {
-            Button(localized("重設"), role: .destructive) { resetBook() }
+            Button(localized("重设"), role: .destructive) { resetBook() }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("會清掉這本書的配音、AI 整理的角色名單，以及所有人物卡。書本身和聽書設定不受影響。"))
+            Text(localized("会清掉这本书的配音、AI 整理的角色名单，以及所有人物卡。书本身和听书设定不受影响。"))
         }
     }
 
@@ -110,7 +110,7 @@ struct TTSRoleCastView: View {
 
     private var enableSection: some View {
         Section {
-            Toggle(localized("多角色朗讀"), isOn: $gs.ttsMultiRoleEnabled)
+            Toggle(localized("多角色朗读"), isOn: $gs.ttsMultiRoleEnabled)
                 .disabled(!supportsMultiRole)
         } footer: {
             Text(enableFooterText).dsSectionFooter()
@@ -127,16 +127,16 @@ struct TTSRoleCastView: View {
     private var enableFooterText: String {
         switch family {
         case .system:
-            return localized("為每個角色指派不同的系統語音。未指派的角色與旁白共用同一個聲音。")
+            return localized("为每个角色指派不同的系统语音。未指派的角色与旁白共用同一个声音。")
         case .edge:
-            return localized("為每個角色指派不同的微軟線上語音。角色越多，每章需要合成的片段也越多。")
+            return localized("为每个角色指派不同的微软线上语音。角色越多，每章需要合成的片段也越多。")
         case .bookSource:
             // One source is one voice, so the cast is the list of imported sources. A reader
             // with only one has nothing to switch between — which is a missing import, not
             // an unsupported engine.
             return supportsMultiRole
-                ? localized("為每個角色指派不同的匯入語音源。角色越多，每章需要的請求也越多。")
-                : localized("匯入的語音源一個就是一個聲音，目前只匯入了一個。到語音朗讀設定再匯入幾個（語音包通常一個音色一筆），就能指派給不同角色。")
+                ? localized("为每个角色指派不同的汇入语音源。角色越多，每章需要的请求也越多。")
+                : localized("汇入的语音源一个就是一个声音，目前只汇入了一个。到语音朗读设定再汇入几个（语音包通常一个音色一笔），就能指派给不同角色。")
         }
     }
 
@@ -156,8 +156,8 @@ struct TTSRoleCastView: View {
                 Button {
                     showAISettings = true
                 } label: {
-                    LabeledContent(localized("設定 AI 助手")) {
-                        Text(localized("未設定"))
+                    LabeledContent(localized("设定 AI 助手")) {
+                        Text(localized("未设定"))
                             .foregroundStyle(DSColor.textSecondary)
                     }
                 }
@@ -168,20 +168,20 @@ struct TTSRoleCastView: View {
                 LabeledContent(localized("人物卡")) {
                     Text(
                         cardCount == 0
-                            ? localized("還沒有人物卡")
-                            : String(format: localized("%1$d 張人物卡、%2$d 個別名"), cardCount, aliasCount)
+                            ? localized("还没有人物卡")
+                            : String(format: localized("%1$d 张人物卡、%2$d 个别名"), cardCount, aliasCount)
                     )
                     .foregroundStyle(DSColor.textSecondary)
                 }
             }
         } header: {
-            Text(localized("角色識別"))
+            Text(localized("角色识别"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             Text(
                 aiConfigured
-                    ? localized("整理人物卡之後，同一個人的不同稱呼（張若塵／若塵／塵哥）會歸成同一個聲音。")
-                    : localized("沒有 AI 也能用，只是同一個人的不同稱呼會各拿一個聲音。")
+                    ? localized("整理人物卡之后，同一个人的不同称呼（张若尘／若尘／尘哥）会归成同一个声音。")
+                    : localized("没有 AI 也能用，只是同一个人的不同称呼会各拿一个声音。")
             )
             .dsSectionFooter()
         }
@@ -191,7 +191,7 @@ struct TTSRoleCastView: View {
     private var detectedSection: some View {
         Section {
             if detectedSpeakers.isEmpty {
-                Text(localized("這一章沒有偵測到對話。"))
+                Text(localized("这一章没有侦测到对话。"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
             } else {
@@ -203,7 +203,7 @@ struct TTSRoleCastView: View {
             Text(localized("本章角色"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("角色是從「某某說道：「…」」這類敘述裡讀出來的，判斷不出來的對話會用旁白的聲音。"))
+            Text(localized("角色是从「某某说道：「…」」这类叙述里读出来的，判断不出来的对话会用旁白的声音。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -218,7 +218,7 @@ struct TTSRoleCastView: View {
             Text(localized("其他已指派的角色"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("這些角色在本書其他章節出現過。"))
+            Text(localized("这些角色在本书其他章节出现过。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -245,7 +245,7 @@ struct TTSRoleCastView: View {
         // than the two labels VoiceOver would otherwise land on separately.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(speaker)，\(voiceLabel(for: assigned))")
-        .accessibilityHint(localized("選擇這個角色的聲音"))
+        .accessibilityHint(localized("选择这个角色的声音"))
     }
 
     /// What a row says about a character's voice — including the case the whole tagging
@@ -254,13 +254,13 @@ struct TTSRoleCastView: View {
         guard let voice else { return localized("旁白") }
         switch (voice, family) {
         case let (.system(identifier), .system):
-            return AVSpeechSynthesisVoice(identifier: identifier)?.name ?? localized("語音已移除")
+            return AVSpeechSynthesisVoice(identifier: identifier)?.name ?? localized("语音已移除")
         case let (.edge(voiceID), .edge):
-            return EdgeTTSVoice.voice(id: voiceID)?.displayName ?? localized("語音已移除")
+            return EdgeTTSVoice.voice(id: voiceID)?.displayName ?? localized("语音已移除")
         case (.bookSource, .bookSource):
-            return voice.importedSource()?.name ?? localized("語音已移除")
+            return voice.importedSource()?.name ?? localized("语音已移除")
         default:
-            return localized("目前的語音來源不支援")
+            return localized("目前的语音来源不支援")
         }
     }
 }
@@ -284,7 +284,7 @@ struct TTSRoleVoicePickerView: View {
             Section {
                 row(title: localized("旁白"), isSelected: current == nil) { assign(nil) }
             } footer: {
-                Text(localized("與沒有指派聲音的角色、以及旁白文字使用同一個聲音。"))
+                Text(localized("与没有指派声音的角色、以及旁白文字使用同一个声音。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -316,10 +316,10 @@ struct TTSRoleVoicePickerView: View {
                 }
             }
         } header: {
-            Text(localized("匯入的語音源"))
+            Text(localized("汇入的语音源"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("每個匯入的語音源就是一個聲音。想要更多音色，就到語音朗讀設定匯入更多來源。"))
+            Text(localized("每个汇入的语音源就是一个声音。想要更多音色，就到语音朗读设定汇入更多来源。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -357,7 +357,7 @@ struct TTSRoleVoicePickerView: View {
                 }
             }
         } header: {
-            Text(localized("微軟線上語音"))
+            Text(localized("微软线上语音"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -410,14 +410,14 @@ struct TTSRoleVoicePickerView: View {
     NavigationStack {
         TTSRoleCastView(
             bookID: UUID(),
-            detectedSpeakers: ["張若塵", "池瑤", "齊源老道"],
+            detectedSpeakers: ["张若尘", "池瑶", "齐源老道"],
             adapter: AIBookContentAdapter(bookID: UUID(), chapters: [], textForChapter: { _ in nil }),
             progress: 0.42
         )
     }
 }
 
-#Preview("沒有偵測到對話") {
+#Preview("没有侦测到对话") {
     NavigationStack {
         TTSRoleCastView(
             bookID: UUID(),

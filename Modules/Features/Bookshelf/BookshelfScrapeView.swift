@@ -31,18 +31,18 @@ struct BookshelfScrapeView: View {
                 switch phase {
                 case .idle:
                     VStack(alignment: .leading, spacing: DSSpacing.md) {
-                        Text(localized("掃描無封面書籍並自動搜尋封面"))
+                        Text(localized("扫描无封面书籍并自动搜寻封面"))
                             .font(DSFont.body)
                             .foregroundStyle(DSColor.textPrimary)
                         Text(
-                            String(format: localized("書坊中共有 %d 本無封面書籍。"), coverlessBooks.count)
+                            String(format: localized("书坊中共有 %d 本无封面书籍。"), coverlessBooks.count)
                         )
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
                         Button {
                             startScrape()
                         } label: {
-                            Label(localized("開始刮削"), systemImage: "sparkle.magnifyingglass")
+                            Label(localized("开始刮削"), systemImage: "sparkle.magnifyingglass")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
@@ -64,7 +64,7 @@ struct BookshelfScrapeView: View {
                             .font(DSFont.headline)
                             .foregroundStyle(DSColor.textPrimary)
                         Text(
-                            String(format: localized("成功 %d 本，失敗 %d 本。"), success, failed)
+                            String(format: localized("成功 %d 本，失败 %d 本。"), success, failed)
                         )
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
@@ -75,7 +75,7 @@ struct BookshelfScrapeView: View {
             .interfaceSectionSurface()
 
             if !outcomes.isEmpty {
-                Section(localized("刮削結果")) {
+                Section(localized("刮削结果")) {
                     ForEach(outcomes) { outcome in
                         HStack {
                             Text(outcome.bookTitle)
@@ -100,7 +100,7 @@ struct BookshelfScrapeView: View {
         .listStyle(.insetGrouped)
         .themedAppSurface()
         .softScrollEdges()
-        .navigationTitle(localized("刮削書坊封面"))
+        .navigationTitle(localized("刮削书坊封面"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

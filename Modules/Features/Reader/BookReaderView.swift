@@ -47,14 +47,14 @@ struct BookReaderView: View {
             resourceFailureAlert.receive(failure, bookID: bookId, isReady: remoteReady)
         }
         .alert(
-            localized("遠端內容載入失敗"),
+            localized("远端内容载入失败"),
             isPresented: Binding(
                 get: { resourceFailureAlert.failure != nil },
                 set: { if !$0 { resourceFailureAlert.dismiss() } }
             ),
             presenting: resourceFailureAlert.failure
         ) { _ in
-            Button(localized("關閉")) { closeReader() }
+            Button(localized("关闭")) { closeReader() }
             Button(localized("取消"), role: .cancel) { resourceFailureAlert.dismiss() }
         } message: { failure in
             Text(failure.message)
@@ -150,16 +150,16 @@ private struct RemoteReaderOpeningView: View {
     var body: some View {
         if let error {
             ContentUnavailableView {
-                UnavailableLabel(localized("無法開啟書籍"), systemImage: "exclamationmark.triangle")
+                UnavailableLabel(localized("无法开启书籍"), systemImage: "exclamationmark.triangle")
             } description: {
                 Text(error).foregroundStyle(DSColor.textSecondary)
             } actions: {
-                Button(localized("重試"), action: onRetry)
-                Button(localized("關閉"), action: onClose)
+                Button(localized("重试"), action: onRetry)
+                Button(localized("关闭"), action: onClose)
             }
         } else {
             VStack(spacing: DSSpacing.lg) {
-                ProgressView(localized("正在開啟書籍"))
+                ProgressView(localized("正在开启书籍"))
                 Button(localized("取消"), action: onClose)
                     .buttonStyle(.bordered)
             }
@@ -174,5 +174,5 @@ private struct RemoteReaderOpeningView: View {
 }
 
 #Preview("Remote reader error") {
-    RemoteReaderOpeningView(error: localized("認證失敗，請確認帳號和密碼"), onRetry: {}, onClose: {})
+    RemoteReaderOpeningView(error: localized("认证失败，请确认帐号和密码"), onRetry: {}, onClose: {})
 }

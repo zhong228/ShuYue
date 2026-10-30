@@ -129,16 +129,16 @@ struct ReaderLeftDrawerView: View {
                 .frame(width: 32, height: 32)
                 .background(.thinMaterial, in: Circle())
         }
-        .accessibilityLabel(localized("關閉"))
+        .accessibilityLabel(localized("关闭"))
     }
 
     // MARK: - Segment Picker
 
     private var segmentPicker: some View {
         Picker("", selection: $segment) {
-            Text(localized("搜索章節")).tag(Segment.search)
-            Text(localized("章節目錄")).tag(Segment.tree)
-            Text(localized("書籤")).tag(Segment.bookmarks)
+            Text(localized("搜索章节")).tag(Segment.search)
+            Text(localized("章节目录")).tag(Segment.tree)
+            Text(localized("书签")).tag(Segment.bookmarks)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
@@ -151,7 +151,7 @@ struct ReaderLeftDrawerView: View {
             Image(systemName: "magnifyingglass")
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textSecondary)
-            TextField(localized("搜索章節"), text: $searchText)
+            TextField(localized("搜索章节"), text: $searchText)
                 .textFieldStyle(.plain)
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textPrimary)
@@ -243,7 +243,7 @@ struct ReaderLeftDrawerView: View {
     }
 
     private var pageCountText: some View {
-        Text(String(format: localized("第 %d 頁（共 %d 頁）"), currentPage + 1, totalPages))
+        Text(String(format: localized("第 %d 页（共 %d 页）"), currentPage + 1, totalPages))
             .font(DSFont.fixed(size: 14))
             .foregroundStyle(DSColor.textPrimary)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -307,8 +307,8 @@ struct ReaderLeftDrawerView: View {
     private var bookmarkContent: some View {
         VStack(spacing: 0) {
             Picker("", selection: $bookmarkSegment) {
-                Text(localized("書籤")).tag(ReaderBookmarkListView.Segment.bookmark)
-                Text(localized("重點")).tag(ReaderBookmarkListView.Segment.highlight)
+                Text(localized("书签")).tag(ReaderBookmarkListView.Segment.bookmark)
+                Text(localized("重点")).tag(ReaderBookmarkListView.Segment.highlight)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -342,11 +342,11 @@ struct ReaderLeftDrawerView: View {
         .ignoresSafeArea()
         .overlay(alignment: .leading) {
             ReaderLeftDrawerView(
-                bookTitle: "範例書名",
+                bookTitle: "范例书名",
                 chapters: [
                     BookChapter(index: 0, title: "第一章 序幕", content: ""),
-                    BookChapter(index: 1, title: "第二章 啟程", content: ""),
-                    BookChapter(index: 2, title: "第三章 抉擇", content: ""),
+                    BookChapter(index: 1, title: "第二章 启程", content: ""),
+                    BookChapter(index: 2, title: "第三章 抉择", content: ""),
                 ],
                 currentPage: 1,
                 totalPages: 240,

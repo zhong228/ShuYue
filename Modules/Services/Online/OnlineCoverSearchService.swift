@@ -26,8 +26,8 @@ enum OnlineCoverSearchService {
 
         var displayName: String {
             switch self {
-            case .tuishujun: return localized("推書君")
-            case .ypshuo: return localized("一片書喽")
+            case .tuishujun: return localized("推书君")
+            case .ypshuo: return localized("一片书喽")
             }
         }
 
@@ -167,7 +167,7 @@ enum OnlineCoverSearchService {
         if trimmed.isEmpty { return true }
         let placeholders: Set<String> = [
             "未知作者", "未知", "佚名", "Unknown", "Unknown Author",
-            "著者不明", "작자 미상", "作者不詳",
+            "著者不明", "작자 미상", "作者不详",
         ]
         return placeholders.contains(trimmed)
     }

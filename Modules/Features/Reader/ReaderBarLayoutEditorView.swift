@@ -34,13 +34,13 @@ struct ReaderBarLayoutEditorView: View {
         List {
             previewSection
             Section {
-                Picker(localized("頁面類型"), selection: $editsChapterOpening) {
+                Picker(localized("页面类型"), selection: $editsChapterOpening) {
                     Text(localized("正文")).tag(false)
-                    Text(localized("章節首頁")).tag(true)
+                    Text(localized("章节首页")).tag(true)
                 }
                 .pickerStyle(.segmented)
             } footer: {
-                Text(localized("兩種頁面可選不同組件，邊距與共用樣式一致。"))
+                Text(localized("两种页面可选不同组件，边距与共用样式一致。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -52,12 +52,12 @@ struct ReaderBarLayoutEditorView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(DSColor.groupedBackground)
-        .navigationTitle(localized("頁首頁尾"))
+        .navigationTitle(localized("页首页尾"))
         .toolbarTitleDisplayMode(.inline)
-        .alert(localized("無法儲存頁首頁尾設定"), isPresented: $saveFailed) {
-            Button(localized("確定"), role: .cancel) {}
+        .alert(localized("无法储存页首页尾设定"), isPresented: $saveFailed) {
+            Button(localized("确定"), role: .cancel) {}
         } message: {
-            Text(localized("請稍後再試。"))
+            Text(localized("请稍后再试。"))
         }
     }
 
@@ -75,7 +75,7 @@ struct ReaderBarLayoutEditorView: View {
                         bar(.header)
                     }
                     Spacer(minLength: DSSpacing.sm)
-                    Text(localized("正文預覽"))
+                    Text(localized("正文预览"))
                         .font(DSFont.callout)
                         .foregroundStyle(Color(uiColor: theme.uiTextColor))
                     Spacer(minLength: DSSpacing.sm)
@@ -90,7 +90,7 @@ struct ReaderBarLayoutEditorView: View {
             .listRowInsets(EdgeInsets())
             .accessibilityElement(children: .contain)
         } footer: {
-            Text(localized("預覽使用示例書名與章節名，時間與電量為實際數值。"))
+            Text(localized("预览使用示例书名与章节名，时间与电量为实际数值。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -117,7 +117,7 @@ struct ReaderBarLayoutEditorView: View {
 
     private func slotSummary(_ slot: ReaderBarSlot) -> String {
         let titles = layout.fields(in: slot).map { localized(ReaderBarFieldNaming.titleKey(for: $0.kind)) }
-        return titles.isEmpty ? localized("隱藏") : titles.joined(separator: localized("、"))
+        return titles.isEmpty ? localized("隐藏") : titles.joined(separator: localized("、"))
     }
 
     private func slotEditor(_ slot: ReaderBarSlot) -> some View {
@@ -130,14 +130,14 @@ struct ReaderBarLayoutEditorView: View {
                     ))
                 }
             } header: {
-                Text(localized("顯示組件"))
+                Text(localized("显示组件"))
                     .foregroundStyle(DSColor.textSecondary)
             }
             .interfaceSectionSurface()
 
             ForEach(layout.fields(in: slot)) { selected in
                 Section {
-                    Toggle(localized("自訂"), isOn: Binding(
+                    Toggle(localized("自订"), isOn: Binding(
                         get: { field(selected.kind, in: slot)?.isCustomizing ?? false },
                         set: { value in updateField(selected.kind, in: slot) { $0.usesCustomOptions = value } }
                     ))
@@ -173,9 +173,9 @@ struct ReaderBarLayoutEditorView: View {
     }
 
     private func fieldColorOptions(_ kind: ReaderOverlayComponentKind, in slot: ReaderBarSlot) -> some View {
-        let title = String(format: localized("%@顏色"), localized(ReaderBarFieldNaming.titleKey(for: kind)))
+        let title = String(format: localized("%@颜色"), localized(ReaderBarFieldNaming.titleKey(for: kind)))
         return DisclosureGroup {
-            Picker(localized("顏色"), selection: Binding<ReaderOverlayColorSource?>(
+            Picker(localized("颜色"), selection: Binding<ReaderOverlayColorSource?>(
                 get: { field(kind, in: slot)?.color?.source },
                 set: { source in
                     updateField(kind, in: slot) { field in
@@ -185,9 +185,9 @@ struct ReaderBarLayoutEditorView: View {
                     }
                 }
             )) {
-                Text(localized("沿用共用顏色")).tag(Optional<ReaderOverlayColorSource>.none)
-                Text(localized("跟隨正文顏色")).tag(Optional(ReaderOverlayColorSource.readerText))
-                Text(localized("自訂顏色")).tag(Optional(ReaderOverlayColorSource.custom))
+                Text(localized("沿用共用颜色")).tag(Optional<ReaderOverlayColorSource>.none)
+                Text(localized("跟随正文颜色")).tag(Optional(ReaderOverlayColorSource.readerText))
+                Text(localized("自订颜色")).tag(Optional(ReaderOverlayColorSource.custom))
             }
             .pickerStyle(.menu)
             .accessibilityLabel(title)
@@ -213,7 +213,7 @@ struct ReaderBarLayoutEditorView: View {
         switch kind {
         case .battery:
             Toggle(
-                localized("顯示電量百分比"),
+                localized("显示电量百分比"),
                 isOn: Binding(
                     get: { configuration.showsBatteryPercentage },
                     set: { newValue in
@@ -227,7 +227,7 @@ struct ReaderBarLayoutEditorView: View {
 
         case .customText:
             TextField(
-                localized("自訂文字"),
+                localized("自订文字"),
                 text: Binding(
                     get: { configuration.customText },
                     set: { newValue in
@@ -254,7 +254,7 @@ struct ReaderBarLayoutEditorView: View {
                     Text(localized(ReaderBarFieldNaming.titleKey(for: format))).tag(format)
                 }
             } label: {
-                Text(localized("顯示格式"))
+                Text(localized("显示格式"))
                     .font(DSFont.body)
                     .foregroundStyle(DSColor.textSecondary)
             }
@@ -270,7 +270,7 @@ struct ReaderBarLayoutEditorView: View {
     private func barSection(_ which: ReaderBar) -> some View {
         Section {
             Toggle(
-                localized(which == .header ? "顯示頁眉" : "顯示頁腳"),
+                localized(which == .header ? "显示页眉" : "显示页脚"),
                 isOn: which == .header
                     ? $readerConfig.readerHeaderVisible
                     : $readerConfig.readerFooterVisible
@@ -278,7 +278,7 @@ struct ReaderBarLayoutEditorView: View {
             .font(DSFont.body)
 
             Toggle(
-                localized("分隔線"),
+                localized("分隔线"),
                 isOn: Binding(
                     get: {
                         which == .header ? layout.showsHeaderDivider : layout.showsFooterDivider
@@ -305,22 +305,22 @@ struct ReaderBarLayoutEditorView: View {
             }
 
             BarSliderRow(
-                title: localized("上邊距"),
+                title: localized("上边距"),
                 value: which == .header ? edgeDistanceBinding(for: which) : innerMarginBinding(for: which),
                 range: 0...200
             )
             BarSliderRow(
-                title: localized("下邊距"),
+                title: localized("下边距"),
                 value: which == .footer ? edgeDistanceBinding(for: which) : innerMarginBinding(for: which),
                 range: 0...200
             )
-            BarSliderRow(title: localized("左邊距"), value: sideMarginBinding(for: which, right: false), range: 0...200)
-            BarSliderRow(title: localized("右邊距"), value: sideMarginBinding(for: which, right: true), range: 0...200)
+            BarSliderRow(title: localized("左边距"), value: sideMarginBinding(for: which, right: false), range: 0...200)
+            BarSliderRow(title: localized("右边距"), value: sideMarginBinding(for: which, right: true), range: 0...200)
         } header: {
             Text(localized(which.titleKey))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("頁眉上邊距與頁腳下邊距從畫面邊緣計算，另一側控制與正文的間距。"))
+            Text(localized("页眉上边距与页脚下边距从画面边缘计算，另一侧控制与正文的间距。"))
                 .dsSectionFooter()
 
         }
@@ -331,16 +331,16 @@ struct ReaderBarLayoutEditorView: View {
 
     private var styleSection: some View {
         Section {
-            Toggle(localized("顯示組件分隔點"), isOn: Binding(
+            Toggle(localized("显示组件分隔点"), isOn: Binding(
                 get: { layout.showsComponentSeparators },
                 set: { value in update { $0.showsComponentSeparators = value } }
             ))
-            Picker(localized("顏色"), selection: Binding(
+            Picker(localized("颜色"), selection: Binding(
                 get: { layout.style.color.source },
                 set: { source in update { $0.style.color.source = source } }
             )) {
-                Text(localized("跟隨正文顏色")).tag(ReaderOverlayColorSource.readerText)
-                Text(localized("自訂顏色")).tag(ReaderOverlayColorSource.custom)
+                Text(localized("跟随正文颜色")).tag(ReaderOverlayColorSource.readerText)
+                Text(localized("自订颜色")).tag(ReaderOverlayColorSource.custom)
             }
             .font(DSFont.body)
             .pickerStyle(.menu)
@@ -353,7 +353,7 @@ struct ReaderBarLayoutEditorView: View {
             }
 
             BarSliderRow(
-                title: localized("字級"),
+                title: localized("字级"),
                 value: Binding(
                     get: { CGFloat(layout.style.fontSize) },
                     set: { newValue in
@@ -390,10 +390,10 @@ struct ReaderBarLayoutEditorView: View {
                 valueText: "\(Int((layout.style.opacity * 100).rounded()))%"
             )
         } header: {
-            Text(localized("樣式"))
+            Text(localized("样式"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("此處設定共用樣式；各位置選中的組件可開啟自訂選項。"))
+            Text(localized("此处设定共用样式；各位置选中的组件可开启自订选项。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -514,8 +514,8 @@ struct ReaderBarLayoutEditorView: View {
 
     private var previewContent: ReaderOverlayContentSnapshot {
         ReaderOverlayContentSnapshot(
-            bookTitle: localized("示例書名"),
-            chapterTitle: localized("第一章 示例章節"),
+            bookTitle: localized("示例书名"),
+            chapterTitle: localized("第一章 示例章节"),
             chapterPage: editsChapterOpening ? 1 : 3,
             chapterPageCount: 12,
             totalProgress: 0.4523,
@@ -592,37 +592,37 @@ private struct BarSliderRow: View {
 enum ReaderBarFieldNaming {
     static func titleKey(for kind: ReaderOverlayComponentKind) -> String {
         switch kind {
-        case .bookTitle: "書名"
-        case .chapterTitle: "章節名"
-        case .chapterPage: "本章頁碼"
-        case .totalProgressText: "總進度"
-        case .progressBar: "進度條"
-        case .currentTime: "目前時間"
+        case .bookTitle: "书名"
+        case .chapterTitle: "章节名"
+        case .chapterPage: "本章页码"
+        case .totalProgressText: "总进度"
+        case .progressBar: "进度条"
+        case .currentTime: "目前时间"
         case .currentDate: "目前日期"
         case .weekday: "星期"
-        case .battery: "電量"
-        case .readingDuration: "本次閱讀時長"
-        case .remainingTime: "預估剩餘時間"
-        case .customText: "自訂文字"
+        case .battery: "电量"
+        case .readingDuration: "本次阅读时长"
+        case .remainingTime: "预估剩余时间"
+        case .customText: "自订文字"
         }
     }
 
     static func titleKey(for format: ReaderOverlayDisplayFormat) -> String {
         switch format {
-        case .automatic: "自動"
-        case .compact: "精簡"
-        case .detailed: "詳細"
-        case .fraction: "分數"
+        case .automatic: "自动"
+        case .compact: "精简"
+        case .detailed: "详细"
+        case .fraction: "分数"
         case .percentage: "百分比"
-        case .hourMinute24: "24 小時制"
-        case .hourMinute12: "12 小時制"
+        case .hourMinute24: "24 小时制"
+        case .hourMinute12: "12 小时制"
         }
     }
 
     static func titleKey(for weight: ReaderOverlayFontWeight) -> String {
         switch weight {
-        case .light: "細"
-        case .regular: "標準"
+        case .light: "细"
+        case .regular: "标准"
         case .medium: "中等"
         case .semibold: "半粗"
         case .bold: "粗"
@@ -644,13 +644,13 @@ enum ReaderBarFieldNaming {
     }
 }
 
-#Preview("頁首頁尾編輯") {
+#Preview("页首页尾编辑") {
     NavigationStack {
         ReaderBarLayoutEditorView(theme: .sepia)
     }
 }
 
-#Preview("頁首頁尾編輯 · 夜間") {
+#Preview("页首页尾编辑 · 夜间") {
     NavigationStack {
         ReaderBarLayoutEditorView(theme: .night)
     }

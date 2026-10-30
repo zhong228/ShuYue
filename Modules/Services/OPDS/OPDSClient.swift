@@ -64,13 +64,13 @@ enum OPDSError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return localized("目錄網址格式無效")
-        case .unsupportedScheme: return localized("僅支援 http / https 網址")
-        case .authenticationFailed: return localized("認證失敗，請確認帳號和密碼")
-        case .http(let code): return String(format: localized("連線失敗（HTTP %d）"), code)
-        case .noData: return localized("伺服器未返回資料")
-        case .invalidFeed: return localized("目錄資料格式無效")
-        case .loginPage: return localized("伺服器返回登入網頁，請確認目錄網址與帳密")
+        case .invalidURL: return localized("目录网址格式无效")
+        case .unsupportedScheme: return localized("仅支援 http / https 网址")
+        case .authenticationFailed: return localized("认证失败，请确认帐号和密码")
+        case .http(let code): return String(format: localized("连线失败（HTTP %d）"), code)
+        case .noData: return localized("伺服器未返回资料")
+        case .invalidFeed: return localized("目录资料格式无效")
+        case .loginPage: return localized("伺服器返回登入网页，请确认目录网址与帐密")
         }
     }
 }

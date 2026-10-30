@@ -43,7 +43,7 @@ struct ReaderTouchZoneEditorView: View {
             }
             .accessibilityLabel(localized("取消"))
 
-            Text(localized("翻頁區塊編輯"))
+            Text(localized("翻页区块编辑"))
                 .font(DSFont.headline)
                 .frame(maxWidth: .infinity)
 
@@ -96,7 +96,7 @@ struct ReaderTouchZoneEditorView: View {
         }
         .accessibilityLabel(
             String(
-                format: localized("第 %d 列，第 %d 欄：%@"),
+                format: localized("第 %d 列，第 %d 栏：%@"),
                 index / 3 + 1,
                 index % 3 + 1,
                 model.draft.zones[index].localizedTitle
@@ -108,7 +108,7 @@ struct ReaderTouchZoneEditorView: View {
         Button {
             model.restoreDefault()
         } label: {
-            Label(localized("恢復預設"), systemImage: "arrow.counterclockwise")
+            Label(localized("恢复预设"), systemImage: "arrow.counterclockwise")
                 .font(DSFont.body)
                 .frame(maxWidth: .infinity)
                 .padding(DSSpacing.lg)

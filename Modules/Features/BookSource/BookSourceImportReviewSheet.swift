@@ -13,11 +13,11 @@ struct BookSourceImportReviewSheet: View {
     var body: some View {
         if let pending = coordinator.pending {
             SourceImportConfirmList(
-                title: localized("匯入書源"),
+                title: localized("汇入书源"),
                 plan: pending.plan,
                 existingClock: { coordinator.existingClock(for: $0) },
                 showsComments: $coordinator.showsComments,
-                confirmTitle: localized("匯入"),
+                confirmTitle: localized("汇入"),
                 extraOptions: {
                     BookSourceImportOptionsSection(
                         options: $coordinator.options,
@@ -63,14 +63,14 @@ struct BookSourceImportReviewHost: View {
             }
         }
         .alert(
-            localized("操作失敗"),
+            localized("操作失败"),
             isPresented: Binding(
                 get: { failureMessage != nil },
                 set: { if !$0 { failureMessage = nil } }
             ),
             presenting: failureMessage
         ) { _ in
-            Button(localized("確定"), role: .cancel) { failureMessage = nil }
+            Button(localized("确定"), role: .cancel) { failureMessage = nil }
         } message: { message in
             Text(message)
         }

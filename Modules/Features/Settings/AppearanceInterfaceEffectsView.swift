@@ -12,7 +12,7 @@ struct AppearanceInterfaceEffectsView: View {
             AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 DSSettingsGroupCard(title: "", footer: {
-                    Text(localized("效果套用於底部迷你播放器與閱讀器的浮動工具列、控制欄。"))
+                    Text(localized("效果套用于底部迷你播放器与阅读器的浮动工具列、控制栏。"))
                         .dsSectionFooter()
                 }) {
                     previewCard
@@ -44,11 +44,11 @@ struct AppearanceInterfaceEffectsView: View {
                 // would be visibly inert. Same rule as 透明度 above.
                 if settings.interfaceFrostedGlass {
                     DSSettingsGroupCard(title: "", footer: {
-                        Text(localized("系統設計建議玻璃只用於浮動控制項，所以預設關閉。"))
+                        Text(localized("系统设计建议玻璃只用于浮动控制项，所以预设关闭。"))
                             .dsSectionFooter()
                     }) {
                         DSSettingsCardToggle(
-                            title: localized("分組卡片"),
+                            title: localized("分组卡片"),
                             systemImage: "rectangle.stack",
                             isOn: $settings.interfaceGlassCards
                         )
@@ -58,7 +58,7 @@ struct AppearanceInterfaceEffectsView: View {
                 // The switches first and the glow after, as the reference the user handed over
                 // groups them (2026-09-29).
                 DSSettingsGroupCard(title: "", footer: {
-                    Text(localized("光暈從浮動元素的邊緣向外擴散，顏色跟隨主題色。"))
+                    Text(localized("光晕从浮动元素的边缘向外扩散，颜色跟随主题色。"))
                         .dsSectionFooter()
                 }) {
                     glowRow
@@ -83,7 +83,7 @@ struct AppearanceInterfaceEffectsView: View {
     private var glowRow: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
             HStack {
-                Text(localized("光暈強度"))
+                Text(localized("光晕强度"))
                     .font(DSFont.body)
                     .foregroundStyle(DSColor.textPrimary)
                 Spacer(minLength: DSSpacing.md)
@@ -98,7 +98,7 @@ struct AppearanceInterfaceEffectsView: View {
             )
             // A bare Slider has no name and announces a fraction of its range;
             // both modifiers reuse the text shown above. docs/design.md §7.1.
-            .accessibilityLabel(localized("光暈強度"))
+            .accessibilityLabel(localized("光晕强度"))
             .accessibilityValue(glowValueText)
         }
     }
@@ -128,8 +128,8 @@ struct AppearanceInterfaceEffectsView: View {
     /// user with a switch that visibly does nothing.
     private var frostedGlassFooterKey: String {
         reduceTransparency
-            ? "系統已開啟「降低透明度」，浮動元素目前一律使用不透明底色。"
-            : "關閉後，浮動元素改用不透明底色。透明度越低，背後的內容越不透出。"
+            ? "系统已开启「降低透明度」，浮动元素目前一律使用不透明底色。"
+            : "关闭后，浮动元素改用不透明底色。透明度越低，背后的内容越不透出。"
     }
 
     private var glowValueText: String {
@@ -160,7 +160,7 @@ struct AppearanceInterfaceEffectsView: View {
                     previewCircle("list.bullet")
                 }
 
-                Text(localized("浮動工具列"))
+                Text(localized("浮动工具列"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textPrimary)
                     .padding(.horizontal, DSSpacing.xl)
@@ -174,7 +174,7 @@ struct AppearanceInterfaceEffectsView: View {
         .padding(.horizontal, DSSpacing.lg)
         .padding(.vertical, DSSpacing.sm)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(localized("效果預覽"))
+        .accessibilityLabel(localized("效果预览"))
     }
 
     private func previewCircle(_ symbol: String) -> some View {

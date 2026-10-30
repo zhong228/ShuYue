@@ -38,7 +38,7 @@ final class SourceAPIErrorLog: @unchecked Sendable {
         /// Single line fit for a `Text` — e.g.
         /// `HTTP 403 · www.trxs666.com/user/invite · 无效JWT，你还可尝试21次`.
         var displayText: String {
-            var parts = [statusCode.map { "HTTP \($0)" } ?? localized("連線失敗")]
+            var parts = [statusCode.map { "HTTP \($0)" } ?? localized("连线失败")]
             if let endpoint, !endpoint.isEmpty { parts.append(endpoint) }
             if let message, !message.isEmpty { parts.append(message) }
             return parts.joined(separator: " · ")
@@ -66,7 +66,7 @@ final class SourceAPIErrorLog: @unchecked Sendable {
         let failure: Failure?
         if timedOut {
             failure = Failure(
-                statusCode: nil, message: localized("連線逾時"), endpoint: endpoint)
+                statusCode: nil, message: localized("连线逾时"), endpoint: endpoint)
         } else if let statusCode, (200..<300).contains(statusCode) {
             // A 2xx still counts as a failure when the body IS an error envelope:
             // these aggregator APIs answer `{"error":"访问被拒绝"}` with HTTP 200.
@@ -207,11 +207,11 @@ final class SourceAPIErrorLog: @unchecked Sendable {
         let sourceReportedAllEndpointsFailed =
             normalized.hasPrefix("请求失败:")
                 || normalized.hasPrefix("请求失败：")
-                || normalized.hasPrefix("請求失敗:")
-                || normalized.hasPrefix("請求失敗：")
+                || normalized.hasPrefix("请求失败:")
+                || normalized.hasPrefix("请求失败：")
         if sourceReportedAllEndpointsFailed,
            normalized.contains("所有接口均请求失败")
-                || normalized.contains("所有接口均請求失敗") {
+                || normalized.contains("所有接口均请求失败") {
             return sanitized(collapsed)
         }
 
@@ -307,7 +307,7 @@ final class SourceAPIErrorLog: @unchecked Sendable {
         let normalized = message.lowercased()
         return [
             "unauthorized", "forbidden", "access denied", "token expired", "invalid token",
-            "未授权", "未授權", "未登录", "未登錄", "无权限", "無權限", "访问被拒绝", "訪問被拒絕",
+            "未授权", "未授权", "未登录", "未登录", "无权限", "无权限", "访问被拒绝", "访问被拒绝",
         ].contains { normalized.contains($0) }
     }
 

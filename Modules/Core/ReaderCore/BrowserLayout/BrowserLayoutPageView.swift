@@ -498,18 +498,18 @@ final class BrowserLayoutPageView: UIView, UIGestureRecognizerDelegate, @preconc
             return AXCustomContent(label: localized(model.bar.titleKey), value: model.accessibilityValue)
         }
         accessibilityHint = usesContinuousScrolling
-            ? localized("點兩下展開閱讀工具")
-            : localized("點兩下展開閱讀工具，三指左右滑動翻頁")
+            ? localized("点两下展开阅读工具")
+            : localized("点两下展开阅读工具，三指左右滑动翻页")
         accessibilityCustomActions = usesContinuousScrolling ? [
-            accessibilityAction(named: localized("選單"), action: .toggleMenu),
+            accessibilityAction(named: localized("选单"), action: .toggleMenu),
         ] : [
-            accessibilityAction(named: localized("下一頁"), action: .nextPage),
-            accessibilityAction(named: localized("上一頁"), action: .prevPage),
-            accessibilityAction(named: localized("選單"), action: .toggleMenu),
-            accessibilityAction(named: localized("目錄"), action: .tableOfContents),
+            accessibilityAction(named: localized("下一页"), action: .nextPage),
+            accessibilityAction(named: localized("上一页"), action: .prevPage),
+            accessibilityAction(named: localized("选单"), action: .toggleMenu),
+            accessibilityAction(named: localized("目录"), action: .tableOfContents),
         ]
         if textInteraction != nil {
-            accessibilityCustomActions?.append(UIAccessibilityCustomAction(name: localized("選取文字")) { [weak self] _ in
+            accessibilityCustomActions?.append(UIAccessibilityCustomAction(name: localized("选取文字")) { [weak self] _ in
                 guard let self, let first = displayList.items.compactMap({ item -> CGRect? in
                     if case .text(let text) = item { return text.rect.rawValue }; return nil
                 }).first else { return false }

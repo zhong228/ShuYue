@@ -79,7 +79,7 @@ public enum ReaderChapterPresentation {
             // State claims ready but validated content is unavailable. Surface the
             // inconsistency and wait for an explicit retry; auto-refetching here loops
             // forever when the same validation failure repeats.
-            return .failed(message: "資料不一致，請點擊重試")
+            return .failed(message: "资料不一致，请点击重试")
         }
     }
 

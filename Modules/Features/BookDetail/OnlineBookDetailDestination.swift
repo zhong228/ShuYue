@@ -144,7 +144,7 @@ extension View {
         onConfirm: @escaping (BookOrigin) -> Void
     ) -> some View {
         alert(
-            localized("書籍類型不一樣"),
+            localized("书籍类型不一样"),
             isPresented: Binding(
                 get: { origin.wrappedValue != nil },
                 set: { if !$0 { origin.wrappedValue = nil } }
@@ -152,9 +152,9 @@ extension View {
             presenting: origin.wrappedValue
         ) { pending in
             Button(localized("取消"), role: .cancel) {}
-            Button(localized("確定")) { onConfirm(pending) }
+            Button(localized("确定")) { onConfirm(pending) }
         } message: { _ in
-            Text(localized("是否確認換源"))
+            Text(localized("是否确认换源"))
         }
     }
 }
@@ -207,13 +207,13 @@ extension OnlineBook {
 #Preview {
     NavigationStack {
         OnlineBookDetailDestination(.search(SearchBook(
-            name: "斗羅大陸",
+            name: "斗罗大陆",
             author: "唐家三少",
             origins: [
                 BookOrigin(
-                    sourceId: UUID(), sourceName: "示範小說源",
+                    sourceId: UUID(), sourceName: "示范小说源",
                     bookUrl: "https://example.com/book/1", tocUrl: "https://example.com/book/1/toc",
-                    coverUrl: "", intro: "唐門外門弟子唐三，跳崖明志卻來到了另一個世界——斗羅大陸。",
+                    coverUrl: "", intro: "唐门外门弟子唐三，跳崖明志却来到了另一个世界——斗罗大陆。",
                     lastChapter: "第一章", wordCount: "", kind: "玄幻", runtimeVariables: nil
                 )
             ]

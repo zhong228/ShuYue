@@ -138,7 +138,7 @@ struct BookIntroAction: Equatable, Sendable {
     enum Kind: Equatable, Sendable {
         /// `<button>名稱@onclick:腳本</button>`.
         case button
-        /// An image whose src carries Legado's URL options with a click: `url,{"click":"腳本"}`.
+        /// An image whose src carries Legado's URL options with a click: `url,{"click":"脚本"}`.
         case image
     }
 
@@ -151,7 +151,7 @@ struct BookIntroAction: Equatable, Sendable {
     var displayName: String {
         switch kind {
         case .button: name
-        case .image: localized("圖片")
+        case .image: localized("图片")
         }
     }
 }
@@ -218,7 +218,7 @@ struct BookIntroInteractiveFragment: Equatable, Sendable {
         }
     }
 
-    /// An image src of the form `url,{"click":"腳本"}` loads `url`; tapping it runs the
+    /// An image src of the form `url,{"click":"脚本"}` loads `url`; tapping it runs the
     /// script. legado-E and MD3 read the options as a string map and take `click`.
     private static func markImages(in body: Element, actions: inout [BookIntroAction]) throws {
         for image in try body.select("img[src]") {

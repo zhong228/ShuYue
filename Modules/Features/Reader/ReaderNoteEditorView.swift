@@ -76,7 +76,7 @@ struct ReaderNoteEditorView: View {
             .padding(.top, DSSpacing.md)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(DSColor.background.ignoresSafeArea())
-            .navigationTitle(localized("筆記"))
+            .navigationTitle(localized("笔记"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
         }
@@ -96,7 +96,7 @@ struct ReaderNoteEditorView: View {
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .accessibilityLabel(localized("刪除筆記"))
+                    .accessibilityLabel(localized("删除笔记"))
                 }
 
                 Button {
@@ -114,7 +114,7 @@ struct ReaderNoteEditorView: View {
                 } label: {
                     Image(systemName: "xmark")
                 }
-                .accessibilityLabel(localized("關閉"))
+                .accessibilityLabel(localized("关闭"))
             }
         }
     }
@@ -133,7 +133,7 @@ struct ReaderNoteEditorView: View {
             Button {
                 onUpgrade()
             } label: {
-                Label(localized("訂閱 Pro 繼續編輯筆記"), systemImage: "lock.fill")
+                Label(localized("订阅 Pro 继续编辑笔记"), systemImage: "lock.fill")
                     .font(DSFont.subheadline)
                     .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
             }
@@ -163,7 +163,7 @@ struct ReaderNoteEditorView: View {
                     .accessibilityHidden(true)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(localized("標註的原文"))
+            .accessibilityLabel(localized("标注的原文"))
             .accessibilityValue(excerpt)
     }
 
@@ -180,7 +180,7 @@ struct ReaderNoteEditorView: View {
             .padding(.leading, -DSSpacing.xs)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text(localized("新增筆記…"))
+                    Text(localized("新增笔记…"))
                         .font(DSFont.body)
                         .foregroundStyle(DSColor.textSecondary)
                         .padding(.top, DSSpacing.sm)
@@ -189,15 +189,15 @@ struct ReaderNoteEditorView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .accessibilityLabel(localized("筆記內容"))
+            .accessibilityLabel(localized("笔记内容"))
     }
 }
 
-#Preview("新筆記") {
+#Preview("新笔记") {
     Color.clear
         .sheet(isPresented: .constant(true)) {
             ReaderNoteEditorView(
-                excerpt: "那現在到底是什麼狀況？我的腦中忽然變得一片混亂。如果能再重看一次《滅活法》，我就能更確定了。",
+                excerpt: "那现在到底是什么状况？我的脑中忽然变得一片混乱。如果能再重看一次《灭活法》，我就能更确定了。",
                 note: "",
                 date: Date(),
                 showsDelete: false,
@@ -210,12 +210,12 @@ struct ReaderNoteEditorView: View {
         }
 }
 
-#Preview("已有筆記") {
+#Preview("已有笔记") {
     Color.clear
         .sheet(isPresented: .constant(true)) {
             ReaderNoteEditorView(
-                excerpt: "那現在到底是什麼狀況？我的腦中忽然變得一片混亂。",
-                note: "這裡的伏筆對應第三章的實驗記錄。",
+                excerpt: "那现在到底是什么状况？我的脑中忽然变得一片混乱。",
+                note: "这里的伏笔对应第三章的实验记录。",
                 date: Date(),
                 showsDelete: true,
                 isEditable: true,
@@ -227,12 +227,12 @@ struct ReaderNoteEditorView: View {
         }
 }
 
-#Preview("Pro 過期唯讀") {
+#Preview("Pro 过期唯读") {
     Color.clear
         .sheet(isPresented: .constant(true)) {
             ReaderNoteEditorView(
-                excerpt: "那現在到底是什麼狀況？我的腦中忽然變得一片混亂。",
-                note: "這裡的伏筆對應第三章的實驗記錄。",
+                excerpt: "那现在到底是什么状况？我的脑中忽然变得一片混乱。",
+                note: "这里的伏笔对应第三章的实验记录。",
                 date: Date(),
                 showsDelete: false,
                 isEditable: false,

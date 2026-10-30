@@ -20,7 +20,7 @@ extension ReaderView {
         // rebuilding the navigation tree or replacing the scroll container.
         if manuallyRefreshingChapterIndex == currentChapterIndex {
             readerSurfaceBackground
-                .overlay { ProgressView(localized("載入中…")) }
+                .overlay { ProgressView(localized("载入中…")) }
                 .readerLoadingChromeTap { toggleReaderChrome() }
                 .transition(.opacity)
         }

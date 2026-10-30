@@ -277,7 +277,7 @@ final class FixedPageReaderViewController: UIViewController, FixedPageReaderCont
                 let pages = MangaChapterParser.pages(from: package.content, headers: self.headers, localDir: localDir)
                 self.state.isLoading = false
                 guard !pages.isEmpty else {
-                    self.state.errorMessage = localized("未找到圖片")
+                    self.state.errorMessage = localized("未找到图片")
                     return
                 }
                 self.currentPages = pages
@@ -349,7 +349,7 @@ final class FixedPageReaderViewController: UIViewController, FixedPageReaderCont
                 AppLogger.error("Fixed-page document has no readable pages: \(filename)")
                 self.state.errorMessage = isPDF
                     ? LocalPDFArchiveError.cannotReadDocument.errorDescription
-                    : localized("無法讀取這本書的頁面")
+                    : localized("无法读取这本书的页面")
                 return
             }
 
@@ -368,7 +368,7 @@ final class FixedPageReaderViewController: UIViewController, FixedPageReaderCont
             self.currentPages = pages
             self.documentSections = sections
             // No bookmarks means no table of contents to show, which the overlay
-            // reads as "hide the 目錄 button".
+            // reads as "hide the 目录 button".
             self.state.chapterListItems = sections.enumerated().map { offset, section in
                 FixedPageChapterListItem(id: UUID(), index: offset, title: section.title)
             }
@@ -422,7 +422,7 @@ final class FixedPageReaderViewController: UIViewController, FixedPageReaderCont
                 guard self.loadToken == token else { return }
                 self.state.isLoading = false
                 guard !pages.isEmpty else {
-                    self.state.errorMessage = localized("未找到圖片")
+                    self.state.errorMessage = localized("未找到图片")
                     return
                 }
                 self.heldChapters.reset(to: index, pageCount: pages.count)
@@ -540,7 +540,7 @@ final class FixedPageReaderViewController: UIViewController, FixedPageReaderCont
             chapterIndex: chapterIndex,
             chapterTitle: title,
             range: range,
-            excerpt: String(format: localized("第 %d 頁"), page + 1)
+            excerpt: String(format: localized("第 %d 页"), page + 1)
         )
     }
     func readerAutoScrollStateChanged(_ isActive: Bool) { state.isAutoScrolling = isActive }

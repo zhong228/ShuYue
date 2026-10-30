@@ -65,7 +65,7 @@ struct BookSourceCheckView: View {
                     }
                 }
             }
-            .navigationTitle(localized("書源驗證"))
+            .navigationTitle(localized("书源验证"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -75,7 +75,7 @@ struct BookSourceCheckView: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if checker.isRunning {
@@ -92,7 +92,7 @@ struct BookSourceCheckView: View {
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
-                        .accessibilityLabel(localized("重新驗證"))
+                        .accessibilityLabel(localized("重新验证"))
                     }
                 }
             }
@@ -107,7 +107,7 @@ struct BookSourceCheckView: View {
             Image(systemName: "waveform.and.magnifyingglass")
                 .font(DSFont.fixed(size: 56))
                 .foregroundColor(DSColor.textSecondary.opacity(0.35))
-            Text(localized("沒有選取的書源"))
+            Text(localized("没有选取的书源"))
                 .font(DSFont.title3.weight(.semibold))
                 .foregroundStyle(DSColor.textPrimary)
             Spacer()
@@ -143,7 +143,7 @@ struct BookSourceCheckView: View {
             case .failureFilter:
                 failureFilterSection
             case .resultsHeader:
-                Text(localized("驗證結果"))
+                Text(localized("验证结果"))
                     .font(DSFont.headline)
                     .foregroundColor(DSColor.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -162,13 +162,13 @@ struct BookSourceCheckView: View {
         HStack(spacing: DSSpacing.sm) {
             if checker.isRunning {
                 ProgressView().scaleEffect(0.9)
-                Text(localized("驗證中…"))
+                Text(localized("验证中…"))
                     .font(DSFont.bodyBold)
                     .foregroundStyle(DSColor.textPrimary)
             } else {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(DSColor.success)
-                Text(localized("驗證完成"))
+                Text(localized("验证完成"))
                     .font(DSFont.bodyBold)
                     .foregroundStyle(DSColor.textPrimary)
             }
@@ -187,7 +187,7 @@ struct BookSourceCheckView: View {
 
     private var failureFilterSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            Text(localized("失敗類型細分"))
+            Text(localized("失败类型细分"))
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
             // A `Grid` row, not an `HStack` of capsules: four labels of different
@@ -201,11 +201,11 @@ struct BookSourceCheckView: View {
                         filterChip(.all, icon: "line.3.horizontal.circle",
                                    label: localized("全部"), count: failedCount)
                         filterChip(.ruleMissing, icon: "wrench.and.screwdriver",
-                                   label: localized("規則缺失"), count: count(.ruleMissing))
+                                   label: localized("规则缺失"), count: count(.ruleMissing))
                         filterChip(.parseFailed, icon: "text.badge.xmark",
                                    label: localized("解析失效"), count: count(.parseFailed))
                         filterChip(.environment, icon: "network.slash",
-                                   label: localized("環境問題"), count: count(.environment))
+                                   label: localized("环境问题"), count: count(.environment))
                     }
                 }
             }
@@ -230,7 +230,7 @@ struct BookSourceCheckView: View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
             Text(
                 String(
-                    format: localized("共 %1$d 個書源，通過 %2$d 個"),
+                    format: localized("共 %1$d 个书源，通过 %2$d 个"),
                     checker.items.count, checker.passedCount)
             )
             if let summary = checker.lastSummary {
@@ -255,7 +255,7 @@ private struct BookSourceCheckResultRow: View {
                 healthIcon
                 Text(
                     item.source.bookSourceName.isEmpty
-                        ? localized("未命名書源") : item.source.bookSourceName
+                        ? localized("未命名书源") : item.source.bookSourceName
                 )
                 .font(DSFont.bodyBold)
                 .foregroundColor(DSColor.textPrimary)
@@ -271,8 +271,8 @@ private struct BookSourceCheckResultRow: View {
 
             if item.isFinished, !item.overallPass {
                 HStack(spacing: DSSpacing.xs) {
-                    Text(localized("失敗類型") + "：")
-                    Text(item.failureCategory?.title ?? localized("網站失效"))
+                    Text(localized("失败类型") + "：")
+                    Text(item.failureCategory?.title ?? localized("网站失效"))
                 }
                 .font(DSFont.caption)
                 .foregroundColor(DSColor.textSecondary)
@@ -407,9 +407,9 @@ private struct FailureFilterChip: View {
     }
 }
 
-#Preview("失敗類型細分") {
+#Preview("失败类型细分") {
     VStack(alignment: .leading, spacing: DSSpacing.sm) {
-        Text(localized("失敗類型細分"))
+        Text(localized("失败类型细分"))
             .font(DSFont.headline)
         SourceFilterButtonGroup {
             Grid(horizontalSpacing: DSSpacing.sm, verticalSpacing: 0) {
@@ -417,11 +417,11 @@ private struct FailureFilterChip: View {
                     FailureFilterChip(icon: "line.3.horizontal.circle",
                                       label: localized("全部"), count: 19, selected: true) {}
                     FailureFilterChip(icon: "wrench.and.screwdriver",
-                                      label: localized("規則缺失"), count: 1, selected: false) {}
+                                      label: localized("规则缺失"), count: 1, selected: false) {}
                     FailureFilterChip(icon: "text.badge.xmark",
                                       label: localized("解析失效"), count: 13, selected: false) {}
                     FailureFilterChip(icon: "network.slash",
-                                      label: localized("環境問題"), count: 5, selected: false) {}
+                                      label: localized("环境问题"), count: 5, selected: false) {}
                 }
             }
         }
@@ -429,20 +429,20 @@ private struct FailureFilterChip: View {
     .padding()
 }
 
-#Preview("驗證結果列") {
+#Preview("验证结果列") {
     var failed = BookSourceCheckItem(
-        source: BookSource(bookSourceUrl: "https://example.com", bookSourceName: "示例書源"))
+        source: BookSource(bookSourceUrl: "https://example.com", bookSourceName: "示例书源"))
     failed.stages = [
         StageOutcome(status: .pass, summary: "「我的」12 本"),
         StageOutcome(status: .skipped, summary: "—"),
         StageOutcome(status: .pass, summary: "搜索《示例》"),
-        StageOutcome(status: .fail, summary: "目錄失效"),
+        StageOutcome(status: .fail, summary: "目录失效"),
         StageOutcome(status: .skipped, summary: "—"),
     ]
     failed.responseTime = 1_234
     failed.failureCategory = .tocEmpty
     let passed = BookSourceCheckItem(
-        source: BookSource(bookSourceUrl: "https://example.org", bookSourceName: "通過的書源"))
+        source: BookSource(bookSourceUrl: "https://example.org", bookSourceName: "通过的书源"))
     return VStack(alignment: .leading, spacing: DSSpacing.lg) {
         BookSourceCheckResultRow(item: failed)
         BookSourceCheckResultRow(item: passed)

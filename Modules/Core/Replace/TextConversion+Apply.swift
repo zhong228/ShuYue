@@ -35,7 +35,7 @@ extension TextConversion {
             // ICU that merges or splits characters, which could not be aligned; the text stays
             // as authored instead of shifting every offset after the change. Once diagnostics
             // exports have never shown this line, it can become an assertion.
-            AppLogger.render("繁簡轉換：轉換後字數改變，保留原文", context: [
+            AppLogger.render("繁简转换：转换后字数改变，保留原文", context: [
                 "mode": rawValue,
                 "characters": "\(originals.count)→\(candidates.count)",
                 "sample": String(text.prefix(40)),

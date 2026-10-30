@@ -388,7 +388,7 @@ final class CoreTextCollectionScrollViewController: UIViewController, UIEditMenu
             )
         }
         let underlineAction = UIAction(
-            title: localized("下劃線"),
+            title: localized("下划线"),
             image: UIImage(systemName: "underline"),
             handler: { [weak self] _ in
                 self?.requestUnderline(style: .underline, color: .yellow)
@@ -410,14 +410,14 @@ final class CoreTextCollectionScrollViewController: UIViewController, UIEditMenu
 
         var actions = suggestedActions
         actions.append(UIAction(
-            title: localized("替換"),
+            title: localized("替换"),
             image: UIImage(systemName: "eraser"),
             handler: { [weak self] _ in
                 self?.requestReplaceRule()
             }
         ))
         actions.append(UIAction(
-            title: localized("重點"),
+            title: localized("重点"),
             image: UIImage(systemName: "highlighter"),
             handler: { [weak self] _ in
                 self?.presentEmphasisEditMenu()
@@ -426,7 +426,7 @@ final class CoreTextCollectionScrollViewController: UIViewController, UIEditMenu
         // 同分頁模式：沒訂閱時換鎖頭，實際分流在 ReaderView。
         let canEditNote = premium.allowsParagraphNoteEditing
         actions.append(UIAction(
-            title: localized(selectionHasNote ? "編輯筆記" : "筆記"),
+            title: localized(selectionHasNote ? "编辑笔记" : "笔记"),
             image: UIImage(systemName: canEditNote ? "note.text" : "lock.fill"),
             handler: { [weak self] _ in
                 self?.requestNoteEdit()
@@ -486,9 +486,9 @@ final class CoreTextCollectionScrollViewController: UIViewController, UIEditMenu
 
     private func emphasisColorName(for color: AnnotationColor) -> String {
         switch color {
-        case .yellow: return localized("黃色")
-        case .green: return localized("綠色")
-        case .blue: return localized("藍色")
+        case .yellow: return localized("黄色")
+        case .green: return localized("绿色")
+        case .blue: return localized("蓝色")
         case .pink: return localized("粉色")
         case .orange: return localized("橙色")
         }

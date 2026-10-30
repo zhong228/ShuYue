@@ -283,8 +283,8 @@ struct ExploreTileButtonStyle: ButtonStyle {
                 columns: Array(repeating: GridItem(.flexible(), spacing: DSSpacing.md), count: density.rawValue),
                 spacing: DSSpacing.md
             ) {
-                ExploreEntryLabel(title: "瀏覽器", artwork: .symbol("globe"), layout: .grid(density))
-                ExploreEntryLabel(name: "男頻精選", layout: .grid(density))
+                ExploreEntryLabel(title: "浏览器", artwork: .symbol("globe"), layout: .grid(density))
+                ExploreEntryLabel(name: "男频精选", layout: .grid(density))
                 ExploreEntryLabel(title: "书山聚合", artwork: .glyph("📚"), layout: .grid(density))
                 ExploreEntryLabel(title: "番茄小说", artwork: .glyph("番"), layout: .grid(density))
             }
@@ -297,8 +297,8 @@ struct ExploreTileButtonStyle: ButtonStyle {
 #Preview("探索 list") {
     ScrollView {
         LazyVStack(spacing: DSSpacing.md) {
-            ExploreEntryLabel(title: "瀏覽器", artwork: .symbol("globe"), layout: .list)
-            ExploreEntryLabel(name: "男頻精選", layout: .list)
+            ExploreEntryLabel(title: "浏览器", artwork: .symbol("globe"), layout: .list)
+            ExploreEntryLabel(name: "男频精选", layout: .list)
             ExploreEntryLabel(title: "书山聚合", artwork: .glyph("📚"), layout: .list)
             ExploreEntryLabel(title: "番茄小说", artwork: .glyph("番"), layout: .list)
         }

@@ -7,7 +7,7 @@ protocol EdgeTTSTransport: Sendable {
 final class EdgeTTSAudioProvider: TTSAudioProvider, Sendable {
     let voice: EdgeTTSVoice
     private let transport: any EdgeTTSTransport
-    var displayName: String { localized("微軟線上語音") }
+    var displayName: String { localized("微软线上语音") }
 
     init(voice: EdgeTTSVoice, transport: any EdgeTTSTransport = EdgeTTSWebSocketTransport()) {
         self.voice = voice

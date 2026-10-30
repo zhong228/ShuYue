@@ -41,7 +41,7 @@ extension View {
         contentShape(Rectangle())
             .onTapGesture(perform: action)
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(localized("載入中…"))
-            .accessibilityHint(localized("顯示閱讀工具列"))
+            .accessibilityLabel(localized("载入中…"))
+            .accessibilityHint(localized("显示阅读工具列"))
     }
 }

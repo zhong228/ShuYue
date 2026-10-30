@@ -107,8 +107,8 @@ enum AIQuestionFailure: Error, LocalizedError {
     case contextBudget, modelBudget
     var errorDescription: String? {
         switch self {
-        case .contextBudget: return localized("問題與必要背景超出本次上下文預算，請縮短問題或另開對話。")
-        case .modelBudget: return localized("本次 AI 呼叫預算已用盡。")
+        case .contextBudget: return localized("问题与必要背景超出本次上下文预算，请缩短问题或另开对话。")
+        case .modelBudget: return localized("本次 AI 呼叫预算已用尽。")
         }
     }
 }
@@ -117,8 +117,8 @@ enum AIQuestionStage: String, Sendable {
     case searching, supplementing, answering
     var label: String {
         switch self {
-        case .searching: return localized("搜尋原文…")
-        case .supplementing: return localized("補查原文…")
+        case .searching: return localized("搜寻原文…")
+        case .supplementing: return localized("补查原文…")
         case .answering: return localized("整理答案…")
         }
     }

@@ -49,7 +49,7 @@ struct ExploreSourcePage: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showsDiscoverSettings = true } label: {
-                        Label(localized("發現頁設定"), systemImage: "gearshape")
+                        Label(localized("发现页设定"), systemImage: "gearshape")
                     }
                 }
                 if hasLogin {
@@ -107,7 +107,7 @@ extension ExploreSourcePage {
 
 #Preview {
     var source = BookSource()
-    source.bookSourceName = "範例書源"
+    source.bookSourceName = "范例书源"
     source.bookSourceUrl = "https://example.com"
     source.loginUrl = "https://example.com/login"
     return NavigationStack {

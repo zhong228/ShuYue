@@ -56,34 +56,34 @@ enum PremiumFeature: String, CaseIterable, Identifiable, Hashable {
     /// rows (`PremiumPillar`), so a feature is called one thing everywhere Pro is sold.
     var titleKey: String {
         switch self {
-        case .aiReading: return "AI 閱讀助手"
-        case .paragraphNote: return "段落筆記"
-        case .customFonts: return "字體匯入"
-        case .touchZoneEditor: return "翻頁區塊"
-        case .dialogueHighlight: return "對話氣泡與高亮"
-        case .layoutPresetImport: return "排版備份"
-        case .readerBackgroundImport: return "自訂閱讀背景"
-        case .bottomBarCustomization: return "底部分頁"
-        case .readerThemePacks: return "外觀主題"
-        case .alternateAppIcons: return "桌面圖標切換"
-        case .launchScreen: return "啟動圖"
+        case .aiReading: return "AI 阅读助手"
+        case .paragraphNote: return "段落笔记"
+        case .customFonts: return "字体汇入"
+        case .touchZoneEditor: return "翻页区块"
+        case .dialogueHighlight: return "对话气泡与高亮"
+        case .layoutPresetImport: return "排版备份"
+        case .readerBackgroundImport: return "自订阅读背景"
+        case .bottomBarCustomization: return "底部分页"
+        case .readerThemePacks: return "外观主题"
+        case .alternateAppIcons: return "桌面图标切换"
+        case .launchScreen: return "启动图"
         }
     }
 
     /// Localization key for the one-line feature description: what the reader gets.
     var subtitleKey: String {
         switch self {
-        case .aiReading: return "問書、整章翻譯、查詞與整理書架"
-        case .paragraphNote: return "在劃線旁寫下想法，筆記跟著原文走"
-        case .customFonts: return "匯入喜歡的字體，閱讀和介面都能用"
-        case .touchZoneEditor: return "畫面分成 3×3，每一格點了做什麼由你決定"
-        case .dialogueHighlight: return "對白排成聊天氣泡，重點按規則自動上色"
-        case .layoutPresetImport: return "整套排版匯出匯入，也能讀 Legado 的設定檔"
-        case .readerBackgroundImport: return "用自己的圖片當書頁背景"
-        case .bottomBarCustomization: return "自訂底部 Tab 的頁面、大小與圖示"
-        case .readerThemePacks: return "App 與閱讀配色、頁面背景，都能自己調"
-        case .alternateAppIcons: return "切換預置的桌面圖標"
-        case .launchScreen: return "換上你自己的開屏畫面"
+        case .aiReading: return "问书、整章翻译、查词与整理书架"
+        case .paragraphNote: return "在划线旁写下想法，笔记跟著原文走"
+        case .customFonts: return "汇入喜欢的字体，阅读和介面都能用"
+        case .touchZoneEditor: return "画面分成 3×3，每一格点了做什么由你决定"
+        case .dialogueHighlight: return "对白排成聊天气泡，重点按规则自动上色"
+        case .layoutPresetImport: return "整套排版汇出汇入，也能读 Legado 的设定档"
+        case .readerBackgroundImport: return "用自己的图片当书页背景"
+        case .bottomBarCustomization: return "自订底部 Tab 的页面、大小与图示"
+        case .readerThemePacks: return "App 与阅读配色、页面背景，都能自己调"
+        case .alternateAppIcons: return "切换预置的桌面图标"
+        case .launchScreen: return "换上你自己的开屏画面"
         }
     }
 

@@ -56,7 +56,7 @@ enum AppConfig {
     /// it outlived the books that created it: deleting a book and re-adding it from 發現
     /// replayed the same chapter URLs, and nothing in the app could clear it. A source whose
     /// chapter URLs carry a token or a signature therefore produced "every chapter fails and
-    /// only 換源 fixes it" — 換源 being the one action that changes the key. Reasonable range:
+    /// only 换源 fixes it" — 換源 being the one action that changes the key. Reasonable range:
     /// hours to a day; the "check for new chapters" path passes `forceRefresh: true` and is
     /// unaffected either way.
     static let tocCacheTTL: TimeInterval = 6 * 60 * 60

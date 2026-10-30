@@ -18,11 +18,11 @@ enum UserFontStorageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedFileType:
-            return localized("僅支援 TTF 或 OTF 字體")
+            return localized("仅支援 TTF 或 OTF 字体")
         case .invalidFontFile:
-            return localized("無法讀取字體檔案")
+            return localized("无法读取字体档案")
         case .missingDocumentsDirectory:
-            return localized("無法存取文件資料夾")
+            return localized("无法存取文件资料夹")
         }
     }
 }

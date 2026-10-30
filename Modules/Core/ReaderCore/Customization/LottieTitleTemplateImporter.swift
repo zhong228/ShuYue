@@ -81,10 +81,10 @@ enum LottieTitleTemplateImporter {
 
         for raw in paintOrdered(rawLayers) {
             if raw["parent"] != nil {
-                notes.add(localized("模板圖層使用了父子連結，位置可能與原設計不同。"))
+                notes.add(localized("模板图层使用了父子连结，位置可能与原设计不同。"))
             }
             if raw["tt"] != nil || raw["hasMask"] as? Bool == true {
-                notes.add(localized("模板圖層使用了遮罩或軌道遮罩，匯入後不會保留。"))
+                notes.add(localized("模板图层使用了遮罩或轨道遮罩，汇入后不会保留。"))
             }
 
             let transform = Transform(raw["ks"] as? [String: Any] ?? [:])
@@ -95,11 +95,11 @@ enum LottieTitleTemplateImporter {
             case 2:
                 guard let refID = raw["refId"] as? String,
                       let image = images[refID] else {
-                    notes.add(localized("模板引用了找不到的圖片，該圖層已略過。"))
+                    notes.add(localized("模板引用了找不到的图片，该图层已略过。"))
                     continue
                 }
                 guard let payload = decodeDataURI(image.source) else {
-                    notes.add(localized("模板的圖片不是內嵌資料，該圖層已略過。"))
+                    notes.add(localized("模板的图片不是内嵌资料，该图层已略过。"))
                     continue
                 }
                 let assetID: UUID
@@ -133,11 +133,11 @@ enum LottieTitleTemplateImporter {
 
             case 5:
                 guard let document = try textDocument(raw) else {
-                    notes.add(localized("模板的文字圖層無法解析，已略過。"))
+                    notes.add(localized("模板的文字图层无法解析，已略过。"))
                     continue
                 }
                 if backgroundIsEnabled(raw) {
-                    notes.add(localized("模板文字的背景框尚未支援，已略過。"))
+                    notes.add(localized("模板文字的背景框尚未支援，已略过。"))
                 }
                 layers.append(
                     textLayer(
@@ -154,7 +154,7 @@ enum LottieTitleTemplateImporter {
 
             case 1:
                 guard let size = solidSize(raw) else {
-                    notes.add(localized("模板含有不支援的圖層，已略過。"))
+                    notes.add(localized("模板含有不支援的图层，已略过。"))
                     continue
                 }
                 layers.append(
@@ -169,7 +169,7 @@ enum LottieTitleTemplateImporter {
                 )
 
             default:
-                notes.add(localized("模板含有不支援的圖層，已略過。"))
+                notes.add(localized("模板含有不支援的图层，已略过。"))
             }
         }
 
@@ -177,7 +177,7 @@ enum LottieTitleTemplateImporter {
             throw LottieTitleTemplateImportError.noSupportedLayers
         }
 
-        notes.add(localized("模板只有一組配色，深色模式沿用同一份。"))
+        notes.add(localized("模板只有一组配色，深色模式沿用同一份。"))
 
         let design = ChapterTitleDesign(
             canvasAspectRatio: canvasWidth / canvasHeight,
@@ -233,7 +233,7 @@ enum LottieTitleTemplateImporter {
         let rect = transform.rect(forLayerSize: pixelSize)
         return ChapterTitleLayer(
             id: UUID(),
-            name: name.isEmpty ? localized("圖片") : name,
+            name: name.isEmpty ? localized("图片") : name,
             kind: .image,
             frame: ReaderStyleNormalizedRect(rect: rect, in: canvas),
             rotation: ReaderStyleRotation(degrees: transform.rotation),
@@ -281,7 +281,7 @@ enum LottieTitleTemplateImporter {
         )
         return ChapterTitleLayer(
             id: UUID(),
-            name: name.isEmpty ? localized("色塊") : name,
+            name: name.isEmpty ? localized("色块") : name,
             kind: .colorBlock,
             frame: ReaderStyleNormalizedRect(
                 rect: transform.rect(forLayerSize: pixelSize),
@@ -408,7 +408,7 @@ enum LottieTitleTemplateImporter {
             return (.chapterName, .dynamic(.name))
         default:
             if text.contains("${") {
-                notes.add(localized("模板文字不是單純的變數，已轉成固定文字。"))
+                notes.add(localized("模板文字不是单纯的变数，已转成固定文字。"))
             }
             return (.customText, .text(text))
         }
@@ -421,7 +421,7 @@ enum LottieTitleTemplateImporter {
         guard let family = font?.family, !family.isEmpty else { return nil }
         guard UIFont(name: family, size: 12) == nil else { return family }
         notes.add(
-            String(format: localized("模板字型「%@」不在系統中，已改用閱讀字型。"), family)
+            String(format: localized("模板字型「%@」不在系统中，已改用阅读字型。"), family)
         )
         return nil
     }
@@ -694,13 +694,13 @@ enum LottieTitleTemplateImportError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notATitleTemplate:
-            return localized("這不是可辨識的標題模板檔。")
+            return localized("这不是可辨识的标题模板档。")
         case .animatedTemplate:
-            return localized("這個模板含有動畫，目前只支援靜態標題模板。")
+            return localized("这个模板含有动画，目前只支援静态标题模板。")
         case .noSupportedLayers:
-            return localized("這個模板沒有可轉換的圖層。")
+            return localized("这个模板没有可转换的图层。")
         case .imageDecodingFailed:
-            return localized("模板裡的圖片無法解碼。")
+            return localized("模板里的图片无法解码。")
         }
     }
 }

@@ -24,7 +24,7 @@ enum PickedImageError: Error {
     var messageKey: String {
         switch self {
         case .cannotReadPhoto, .cannotOpenFile:
-            return "無法讀取圖片。"
+            return "无法读取图片。"
         }
     }
 }
@@ -81,7 +81,7 @@ struct ImageSourcePickerButton<LabelContent: View>: View {
         case extra(Int)
     }
 
-    /// Spoken name of the control (the label is usually just "選擇" or an icon).
+    /// Spoken name of the control (the label is usually just "选择" or an icon).
     let accessibilityTitle: String
     var contentTypes: [UTType] = ImageSourcePicker.contentTypes
     var extraActions: [ImageSourcePickerAction] = []
@@ -149,12 +149,12 @@ struct ImageSourcePickerButton<LabelContent: View>: View {
                 Button {
                     isShowingPhotos = true
                 } label: {
-                    Label(localized("從相簿選擇"), systemImage: "photo.on.rectangle")
+                    Label(localized("从相簿选择"), systemImage: "photo.on.rectangle")
                 }
                 Button {
                     isShowingFiles = true
                 } label: {
-                    Label(localized("從檔案選擇"), systemImage: "folder")
+                    Label(localized("从档案选择"), systemImage: "folder")
                 }
                 ForEach(extraActions) { extra in
                     Button(role: extra.isDestructive ? .destructive : nil) {
@@ -173,12 +173,12 @@ struct ImageSourcePickerButton<LabelContent: View>: View {
         var actions: [DismissalSequencedAction<Route>] = [
             DismissalSequencedAction(
                 route: .photos,
-                title: localized("從相簿選擇"),
+                title: localized("从相簿选择"),
                 systemImage: "photo.on.rectangle"
             ),
             DismissalSequencedAction(
                 route: .files,
-                title: localized("從檔案選擇"),
+                title: localized("从档案选择"),
                 systemImage: "folder"
             ),
         ]
@@ -237,7 +237,7 @@ struct ImageSourcePickerButton<LabelContent: View>: View {
 }
 
 extension ImageSourcePickerButton where LabelContent == ImageSourcePickerCapsuleLabel {
-    /// The capsule "選擇 ⌄" affordance used next to an image thumbnail.
+    /// The capsule "选择 ⌄" affordance used next to an image thumbnail.
     init(
         accessibilityTitle: String,
         contentTypes: [UTType] = ImageSourcePicker.contentTypes,
@@ -261,7 +261,7 @@ extension ImageSourcePickerButton where LabelContent == ImageSourcePickerCapsule
 /// Capsule label for `ImageSourcePickerButton`. The chevron is only drawn for
 /// the `Menu` path — on the iOS 17 sheet path the control is a plain button.
 struct ImageSourcePickerCapsuleLabel: View {
-    var title: String = localized("選擇")
+    var title: String = localized("选择")
     var showsChevron: Bool = true
 
     var body: some View {
@@ -285,10 +285,10 @@ struct ImageSourcePickerCapsuleLabel: View {
 
 #Preview("Capsule") {
     ImageSourcePickerButton(
-        accessibilityTitle: localized("亮色背景圖"),
+        accessibilityTitle: localized("亮色背景图"),
         extraActions: [
             ImageSourcePickerAction(
-                title: localized("移除背景圖"),
+                title: localized("移除背景图"),
                 systemImage: "trash",
                 isDestructive: true,
                 action: {}
@@ -302,10 +302,10 @@ struct ImageSourcePickerCapsuleLabel: View {
 #Preview("Row") {
     Form {
         ImageSourcePickerButton(
-            accessibilityTitle: localized("選擇圖片"),
+            accessibilityTitle: localized("选择图片"),
             onPick: { _ in }
         ) {
-            Label(localized("選擇圖片"), systemImage: "photo")
+            Label(localized("选择图片"), systemImage: "photo")
         }
     }
     .softScrollEdges()

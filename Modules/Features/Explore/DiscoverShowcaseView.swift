@@ -118,18 +118,18 @@ private struct DiscoverEmptyState: View {
         // (e.g. 「请先于【源变量】处填写共享Token」), show ITS words — the generic
         // copy would hide the one instruction the user needs.
         ContentUnavailableView {
-            UnavailableLabel(localized("暫無發現內容"), systemImage: "sparkles")
+            UnavailableLabel(localized("暂无发现内容"), systemImage: "sparkles")
         } description: {
             Text(
                 discover.sourceNotice
-                    ?? localized("此書源未回傳發現內容，可下拉重新整理或切換書源")
+                    ?? localized("此书源未回传发现内容，可下拉重新整理或切换书源")
             ).foregroundStyle(DSColor.textSecondary)
         } actions: {
             // The source asked for a device id and got none. The toggle that fixes
             // it lives in 書源編輯 → 基本, which nobody looking at an empty 發現頁
             // will find — so offer it here. See `AndroidIdentityRecovery`.
             if discover.androidIdentityRepairSource != nil {
-                Button(localized("提供裝置識別碼並重試")) {
+                Button(localized("提供装置识别码并重试")) {
                     discover.enableAndroidIdentityAndReload()
                 }
                 .buttonStyle(.borderedProminent)
@@ -164,7 +164,7 @@ private struct DiscoverControlsRow: View {
                         DSCapsuleLabel(title: item.title, trailingSystemImage: "arrow.up.right", usesGlassSurface: false)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint(localized("在瀏覽器中開啟"))
+                    .accessibilityHint(localized("在浏览器中开启"))
                 }
             }
             .padding(.horizontal, DSSpacing.lg)
@@ -205,14 +205,14 @@ private struct DiscoverControlsRow: View {
     /// The 线路 (mirror host) filter, matched on the raw Legado `select` title so both
     /// simplified and traditional sources are covered.
     static func isLineFilter(_ filter: DiscoverFilter) -> Bool {
-        filter.title == "线路" || filter.title == "線路"
+        filter.title == "线路" || filter.title == "线路"
     }
 
     static func filterTitle(_ title: String) -> String {
         switch title {
-        case "线路", "線路": localized("線路")
-        case "类型", "類型": localized("類型")
-        case "频道", "頻道": localized("頻道")
+        case "线路", "线路": localized("线路")
+        case "类型", "类型": localized("类型")
+        case "频道", "频道": localized("频道")
         case "平台": localized("平台")
         default: title
         }
@@ -300,7 +300,7 @@ struct DiscoverSectionPlaceholder: View {
         case .failed:
             Button(action: onRetry) {
                 VStack(spacing: DSSpacing.xs) {
-                    Label(localized("載入失敗，點按重試"), systemImage: "arrow.clockwise")
+                    Label(localized("载入失败，点按重试"), systemImage: "arrow.clockwise")
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.accent)
                     if let reason = section.errorReason, !reason.isEmpty {
@@ -316,7 +316,7 @@ struct DiscoverSectionPlaceholder: View {
             }
             .buttonStyle(.plain)
         case .loaded:
-            Text(localized("暫無發現內容"))
+            Text(localized("暂无发现内容"))
                 .font(DSFont.footnote)
                 .foregroundStyle(DSColor.textSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -535,7 +535,7 @@ private struct DiscoverFeaturedCard: View {
         .frame(width: DSLayout.discoverShelfCoverWidth, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+        .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
     }
 }
 
@@ -632,7 +632,7 @@ private struct DiscoverBookRow: View {
         .padding(.vertical, DSSpacing.sm)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+        .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
     }
 }
 
@@ -655,7 +655,7 @@ struct DiscoverCategoryView: View {
                         Menu {
                             AddToCustomPageItems(reference: reference)
                         } label: {
-                            Label(localized("加入自訂頁"), systemImage: "rectangle.stack.badge.plus")
+                            Label(localized("加入自订页"), systemImage: "rectangle.stack.badge.plus")
                                 .labelStyle(.iconOnly)
                         }
                     }
@@ -710,7 +710,7 @@ struct DiscoverCategoryBookList: View {
             .overlay {
                 if books.isEmpty, !hasMorePages, !isLoadingMore, loadMoreErrorReason == nil {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("暫無發現內容"), systemImage: "books.vertical")
+                        UnavailableLabel(localized("暂无发现内容"), systemImage: "books.vertical")
                     }
                 }
             }
@@ -779,7 +779,7 @@ struct DiscoverCategoryBookList: View {
                 loadMoreIfNeeded()
             } label: {
                 VStack(spacing: DSSpacing.xs) {
-                    Label(localized("載入失敗，點按重試"), systemImage: "arrow.clockwise")
+                    Label(localized("载入失败，点按重试"), systemImage: "arrow.clockwise")
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.accent)
 
@@ -1016,7 +1016,7 @@ struct DiscoverListLayoutView: View {
 
 #Preview {
     var source = BookSource()
-    source.bookSourceName = "範例書源"
+    source.bookSourceName = "范例书源"
     source.bookSourceUrl = "https://example.com"
     return NavigationStack {
         DiscoverShowcaseView(discover: DiscoverViewModel(source: source))

@@ -10,7 +10,7 @@ extension ReaderView {
             List {
                 // 目前使用中的書源 — always visible with a checkmark so the user knows
                 // which source is active (search results below exclude this one).
-                Section(localized("目前書源")) {
+                Section(localized("目前书源")) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(currentSourceName)
@@ -50,7 +50,7 @@ extension ReaderView {
                         if changeSourceLoading {
                             HStack(spacing: 8) {
                                 ProgressView()
-                                Text(localized("正在搜尋更多書源…"))
+                                Text(localized("正在搜寻更多书源…"))
                                     .font(DSFont.footnote)
                                     .foregroundStyle(DSColor.textSecondary)
                             }
@@ -58,15 +58,15 @@ extension ReaderView {
                     } else if changeSourceLoading {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text(localized("正在搜尋其他書源…"))
+                            Text(localized("正在搜寻其他书源…"))
                                 .foregroundStyle(DSColor.textSecondary)
                         }
                     } else {
-                        Text(localized("暫無其他書源"))
+                        Text(localized("暂无其他书源"))
                             .foregroundStyle(DSColor.textSecondary)
                     }
                 } header: {
-                    Text(localized("其他書源"))
+                    Text(localized("其他书源"))
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
                     if let err = changeSourceError {
@@ -80,7 +80,7 @@ extension ReaderView {
             .scrollContentBackground(.hidden)
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
-            .navigationTitle(localized("換源"))
+            .navigationTitle(localized("换源"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -90,7 +90,7 @@ extension ReaderView {
                         Image(systemName: "arrow.clockwise")
                     }
                     .disabled(changeSourceLoading)
-                    .accessibilityLabel(localized("重新搜尋"))
+                    .accessibilityLabel(localized("重新搜寻"))
 
                     // Legado-style variable editors: sources' JS reads these
                     // back (`source.getVariable()` / book variables) on fetch.
@@ -100,12 +100,12 @@ extension ReaderView {
                             Button {
                                 showSourceVariableEditor = true
                             } label: {
-                                Label(localized("設置源變量"), systemImage: "curlybraces")
+                                Label(localized("设置源变量"), systemImage: "curlybraces")
                             }
                             Button {
                                 showBookVariableEditor = true
                             } label: {
-                                Label(localized("設置書籍變量"), systemImage: "character.book.closed")
+                                Label(localized("设置书籍变量"), systemImage: "character.book.closed")
                             }
                         }
                     } label: {
@@ -122,7 +122,7 @@ extension ReaderView {
                     // view itself gives the toolbar item a new identity, and toolbar items
                     // that change identity flicker or drop out entirely.
                     let isSwitching = changeSourcePendingOrigin != nil
-                    Button(localized(isSwitching ? "取消" : "關閉")) {
+                    Button(localized(isSwitching ? "取消" : "关闭")) {
                         if isSwitching {
                             readerViewModel.cancelPendingSourceSwitch()
                         } else {
@@ -176,13 +176,13 @@ extension ReaderView {
                 // unchanged while the TOC downloaded, which reads as "nothing happened".
                 HStack(spacing: 6) {
                     ProgressView()
-                    Text(localized("正在載入目錄…"))
+                    Text(localized("正在载入目录…"))
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
                 }
             } else if changeSourceFailedKeys.contains(originKey)
                 || changeSourceFailedKeys.contains(ChangeSourceCache.urlKey(origin.bookUrl)) {
-                Text(localized("載入失敗"))
+                Text(localized("载入失败"))
                     .font(DSFont.caption2)
                     .foregroundColor(.red)
                     .padding(.horizontal, 6)
@@ -694,7 +694,7 @@ extension ReaderView {
             // (it is laid out first), so this is a chapter still empty after its own
             // layout pass, or an online chapter whose content has not arrived.
             AppLogger.anomaly(
-                localized("聽書取不到章節文字而停止"),
+                localized("听书取不到章节文字而停止"),
                 category: .tts,
                 detail: [
                     "chapter=\(chapterIndex)",
@@ -907,7 +907,7 @@ extension ReaderView {
             // text, so narration stops at a chapter boundary. It reached `NSLog` only
             // until now, which is why no exported log ever explained the stop.
             AppLogger.anomaly(
-                localized("朗讀在章節結束處取不到下一章文字"),
+                localized("朗读在章节结束处取不到下一章文字"),
                 category: .tts,
                 detail: [
                     "chapter=\(target)",

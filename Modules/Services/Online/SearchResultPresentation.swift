@@ -81,7 +81,7 @@ enum SearchResultIPSDiagnostics {
         for line in lines {
             let text = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if text.isEmpty { continue }
-            if text.hasPrefix("标签:") || text.hasPrefix("標籤:") { continue }
+            if text.hasPrefix("标签:") || text.hasPrefix("标签:") { continue }
             if text.hasPrefix("#") && text.count < 30 { continue }
             kept.append(text)
         }

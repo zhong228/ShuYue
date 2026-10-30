@@ -24,8 +24,8 @@ enum BookstoreChannel: String, CaseIterable, Identifiable {
         case .featured: "精选"
         case .ranked: "排行榜"
         case .newBooks: "新书"
-        case .categories: "分類"
-        case .myPages: "我的頁面"
+        case .categories: "分类"
+        case .myPages: "我的页面"
         }
     }
 
@@ -40,7 +40,7 @@ enum BookstoreChannel: String, CaseIterable, Identifiable {
     }
 
     /// 匹配“新书”的词：标题含任一词的分类当作新书频道内容。
-    static let newBookKeywords = ["新书", "新書", "最新", "更新", "新上架", "新進"]
+    static let newBookKeywords = ["新书", "新书", "最新", "更新", "新上架", "新进"]
 
     func matches(_ section: DiscoverShowcaseSection) -> Bool {
         switch self {

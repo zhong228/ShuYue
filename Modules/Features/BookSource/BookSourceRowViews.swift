@@ -138,7 +138,7 @@ struct BookSourceRow: View {
             .accessibilityLabel(accessibilityLabel)
             .accessibilityValue(accessibilityValue)
             .accessibilityAddTraits(accessibilityTraits)
-            .accessibilityHint(localized("點兩下切換啟用狀態"))
+            .accessibilityHint(localized("点两下切换启用状态"))
             .accessibilityAction { actions.toggleEnabled(source.id) }
             .accessibilityActions { rotorActions }
 
@@ -146,7 +146,7 @@ struct BookSourceRow: View {
             row
         } else {
             row.accessibilityCustomContent(
-                Text(localized("網址")),
+                Text(localized("网址")),
                 Text(source.bookSourceUrl)
             )
         }
@@ -163,7 +163,7 @@ struct BookSourceRow: View {
             VStack(alignment: .leading, spacing: compact ? 2 : DSSpacing.xs) {
                 HStack(spacing: DSSpacing.sm) {
                     Text(source.bookSourceName.isEmpty
-                        ? localized("未命名書源") : source.bookSourceName)
+                        ? localized("未命名书源") : source.bookSourceName)
                         .font(compact ? DSFont.subheadline.weight(.semibold) : DSFont.bodyBold)
                         .foregroundColor(source.enabled ? DSColor.textPrimary : DSColor.textSecondary)
                         .lineLimit(1)
@@ -302,26 +302,26 @@ struct BookSourceRow: View {
         Button {
             actions.showInfo(source)
         } label: {
-            Label(localized("查看詳情"), systemImage: "info.circle")
+            Label(localized("查看详情"), systemImage: "info.circle")
         }
         Button {
             actions.test(source)
         } label: {
-            Label(localized("測試書源"), systemImage: "antenna.radiowaves.left.and.right")
+            Label(localized("测试书源"), systemImage: "antenna.radiowaves.left.and.right")
         }
         Divider()
         Button {
             actions.edit(source)
         } label: {
-            Label(localized("編輯"), systemImage: "square.and.pencil")
+            Label(localized("编辑"), systemImage: "square.and.pencil")
         }
         Button {
             actions.copyJSON(source)
         } label: {
-            Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+            Label(localized("复制 JSON"), systemImage: "doc.on.doc")
         }
         BookSourceExportShareLink(
-            label: localized("匯出"),
+            label: localized("汇出"),
             filenameLabel: source.bookSourceName,
             sources: { [source] in [source] },
             onHandoff: actions.export
@@ -330,44 +330,44 @@ struct BookSourceRow: View {
             Button {
                 actions.login(source)
             } label: {
-                Label(localized("Cookie 驗證登入"), systemImage: "person.badge.key")
+                Label(localized("Cookie 验证登入"), systemImage: "person.badge.key")
             }
         }
         Button {
             actions.editVariables(source)
         } label: {
-            Label(localized("設置源變量"), systemImage: "slider.horizontal.3")
+            Label(localized("设置源变量"), systemImage: "slider.horizontal.3")
         }
         Divider()
         Button {
             actions.pickGroup(source)
         } label: {
-            Label(localized("移動到分組"), systemImage: "folder")
+            Label(localized("移动到分组"), systemImage: "folder")
         }
         Button {
             actions.moveToNewGroup(source)
         } label: {
-            Label(localized("移動到新分組"), systemImage: "folder.badge.plus")
+            Label(localized("移动到新分组"), systemImage: "folder.badge.plus")
         }
         if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Button {
                 actions.applyGroupName(defaultGroupName, [source.id])
             } label: {
-                Label(localized("移出分組"), systemImage: "folder.badge.minus")
+                Label(localized("移出分组"), systemImage: "folder.badge.minus")
             }
         }
         Divider()
         if pin == .top {
             Button {
-                actions.unpin(source, localized("已取消置頂"))
+                actions.unpin(source, localized("已取消置顶"))
             } label: {
-                Label(localized("取消置頂"), systemImage: "pin.slash")
+                Label(localized("取消置顶"), systemImage: "pin.slash")
             }
         } else {
             Button {
                 actions.pinToTop(source)
             } label: {
-                Label(localized("置頂"), systemImage: "pin")
+                Label(localized("置顶"), systemImage: "pin")
             }
         }
         if pin == .bottom {
@@ -387,7 +387,7 @@ struct BookSourceRow: View {
         Button(role: .destructive) {
             actions.delete(source)
         } label: {
-            Label(localized("刪除"), systemImage: "trash")
+            Label(localized("删除"), systemImage: "trash")
         }
     }
 
@@ -396,7 +396,7 @@ struct BookSourceRow: View {
     /// The row's VoiceOver name: 書源名稱（分組）, matching the first visible line.
     private var accessibilityLabel: String {
         let name = source.bookSourceName.isEmpty
-            ? localized("未命名書源")
+            ? localized("未命名书源")
             : source.bookSourceName
         guard !source.bookSourceGroup.isEmpty else { return name }
         return "\(name)（\(source.bookSourceGroup)）"
@@ -405,9 +405,9 @@ struct BookSourceRow: View {
     /// State the row shows visually: the 啟用 toggle, the pin marker, and the validation badge.
     /// Selection is carried by the `.isSelected` trait instead, so it isn't said twice.
     private var accessibilityValue: String {
-        var parts = [localized(source.enabled ? "已啟用" : "已停用")]
+        var parts = [localized(source.enabled ? "已启用" : "已停用")]
         if let pin {
-            parts.append(localized(pin == .top ? "已置頂" : "已置底"))
+            parts.append(localized(pin == .top ? "已置顶" : "已置底"))
         }
         if let health = health?.health {
             parts.append(Self.healthText(health))
@@ -428,9 +428,9 @@ struct BookSourceRow: View {
 
     static func healthText(_ health: SourceHealth) -> String {
         switch health {
-        case .passed:       return localized("驗證通過")
-        case .fetchError:   return localized("抓取異常")
-        case .contentError: return localized("正文異常")
+        case .passed:       return localized("验证通过")
+        case .fetchError:   return localized("抓取异常")
+        case .contentError: return localized("正文异常")
         }
     }
 
@@ -439,48 +439,48 @@ struct BookSourceRow: View {
     /// VoiceOver can reach any of them.
     @ViewBuilder
     private var rotorActions: some View {
-        Button(localized(isSelected ? "取消選取" : "選取")) {
+        Button(localized(isSelected ? "取消选取" : "选取")) {
             actions.toggleSelection(source.id)
         }
-        Button(localized("查看詳情")) {
+        Button(localized("查看详情")) {
             actions.showInfo(source)
         }
-        Button(localized("測試書源")) {
+        Button(localized("测试书源")) {
             actions.test(source)
         }
-        Button(localized("編輯")) {
+        Button(localized("编辑")) {
             actions.edit(source)
         }
-        Button(localized("複製 JSON")) {
+        Button(localized("复制 JSON")) {
             actions.copyJSON(source)
         }
         if !source.loginUrl.isEmpty {
-            Button(localized("Cookie 驗證登入")) {
+            Button(localized("Cookie 验证登入")) {
                 actions.login(source)
             }
         }
-        Button(localized("設置源變量")) {
+        Button(localized("设置源变量")) {
             actions.editVariables(source)
         }
         // 移動到分組 is now a searchable list rather than a submenu of group names, so the
         // rotor can reach the real thing. 移動到新分組 stays as the quicker typing path.
-        Button(localized("移動到分組")) {
+        Button(localized("移动到分组")) {
             actions.pickGroup(source)
         }
-        Button(localized("移動到新分組")) {
+        Button(localized("移动到新分组")) {
             actions.moveToNewGroup(source)
         }
         if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            Button(localized("移出分組")) {
+            Button(localized("移出分组")) {
                 actions.applyGroupName(defaultGroupName, [source.id])
             }
         }
         if pin == .top {
-            Button(localized("取消置頂")) {
-                actions.unpin(source, localized("已取消置頂"))
+            Button(localized("取消置顶")) {
+                actions.unpin(source, localized("已取消置顶"))
             }
         } else {
-            Button(localized("置頂")) {
+            Button(localized("置顶")) {
                 actions.pinToTop(source)
             }
         }
@@ -493,7 +493,7 @@ struct BookSourceRow: View {
                 actions.pinToBottom(source)
             }
         }
-        Button(localized("刪除"), role: .destructive) {
+        Button(localized("删除"), role: .destructive) {
             actions.delete(source)
         }
     }
@@ -561,8 +561,8 @@ struct BookSourceGroupHeaderRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(group.name)，\(group.sourceIDs.count)")
-            .accessibilityValue(localized(expanded ? "已展開" : "已收合"))
-            .accessibilityHint(localized("點兩下展開或收合分組"))
+            .accessibilityValue(localized(expanded ? "已展开" : "已收合"))
+            .accessibilityHint(localized("点两下展开或收合分组"))
             .accessibilityAddTraits(.isHeader)
 
             menu
@@ -594,19 +594,19 @@ struct BookSourceGroupHeaderRow: View {
                 Button {
                     actions.rename(group)
                 } label: {
-                    Label(localized("重命名分組"), systemImage: "character.cursor.ibeam")
+                    Label(localized("重命名分组"), systemImage: "character.cursor.ibeam")
                 }
                 Button {
                     actions.pickMergeTarget(group)
                 } label: {
-                    Label(localized("合併到其他分組"), systemImage: "arrow.merge")
+                    Label(localized("合并到其他分组"), systemImage: "arrow.merge")
                 }
                 Divider()
             }
             Button {
                 actions.setEnabled(group.sourceIds, true)
             } label: {
-                Label(localized("啟用全部"), systemImage: "bolt.fill")
+                Label(localized("启用全部"), systemImage: "bolt.fill")
             }
             Button {
                 actions.setEnabled(group.sourceIds, false)
@@ -617,10 +617,10 @@ struct BookSourceGroupHeaderRow: View {
             Button {
                 actions.select(group.sourceIds)
             } label: {
-                Label(localized("選擇該分組"), systemImage: "checkmark.circle")
+                Label(localized("选择该分组"), systemImage: "checkmark.circle")
             }
             BookSourceExportShareLink(
-                label: localized("匯出該分組"),
+                label: localized("汇出该分组"),
                 filenameLabel: group.name,
                 sources: { actions.resolveSources(group.sourceIDs) },
                 onHandoff: actions.export
@@ -628,14 +628,14 @@ struct BookSourceGroupHeaderRow: View {
             Button {
                 actions.copyToPasteboard(group)
             } label: {
-                Label(localized("複製該分組到剪貼簿"), systemImage: "doc.on.doc")
+                Label(localized("复制该分组到剪贴簿"), systemImage: "doc.on.doc")
             }
             if !group.isPinGroup {
                 Divider()
                 Button(role: .destructive) {
                     actions.delete(group)
                 } label: {
-                    Label(localized("刪除該分組"), systemImage: "trash")
+                    Label(localized("删除该分组"), systemImage: "trash")
                 }
             }
         } label: {
@@ -646,7 +646,7 @@ struct BookSourceGroupHeaderRow: View {
                 .contentShape(Rectangle())
                 .accessibilityHidden(true)
         }
-        .accessibilityLabel(localized("分組操作"))
+        .accessibilityLabel(localized("分组操作"))
     }
 }
 
@@ -675,7 +675,7 @@ struct PinPill: View {
             Image(systemName: pin == .top ? "pin.fill" : "pin.fill")
                 .font(DSFont.fixed(size: 9))
                 .rotationEffect(.degrees(pin == .bottom ? 180 : 0))
-            Text(pin == .top ? localized("置頂") : localized("置底"))
+            Text(pin == .top ? localized("置顶") : localized("置底"))
                 .font(DSFont.fixed(size: 11, weight: .medium))
         }
         .foregroundColor(DSColor.appAccent)
@@ -706,21 +706,21 @@ private let previewActions = BookSourceRowActions(
     pinToBottom: { _ in }, unpin: { _, _ in }, delete: { _ in }
 )
 
-#Preview("書源列 — 新樣式") {
+#Preview("书源列 — 新样式") {
     List {
         BookSourceRow(
-            source: previewSource(name: "示例書源", group: "常用"),
-            isSelected: false, pin: nil, health: nil, defaultGroupName: "默認分組",
+            source: previewSource(name: "示例书源", group: "常用"),
+            isSelected: false, pin: nil, health: nil, defaultGroupName: "默认分组",
             actions: previewActions
         )
         BookSourceRow(
-            source: previewSource(name: "已選取的源"),
-            isSelected: true, pin: .top, health: nil, defaultGroupName: "默認分組",
+            source: previewSource(name: "已选取的源"),
+            isSelected: true, pin: .top, health: nil, defaultGroupName: "默认分组",
             actions: previewActions
         )
         BookSourceRow(
-            source: previewSource(name: "已停用的源", group: "備用", enabled: false),
-            isSelected: false, pin: .bottom, health: nil, defaultGroupName: "默認分組",
+            source: previewSource(name: "已停用的源", group: "备用", enabled: false),
+            isSelected: false, pin: .bottom, health: nil, defaultGroupName: "默认分组",
             actions: previewActions
         )
     }
@@ -733,7 +733,7 @@ private let previewGroupActions = BookSourceGroupActions(
     setEnabled: { _, _ in }, select: { _ in }, copyToPasteboard: { _ in },
     export: { _ in }, delete: { _ in }, resolveSources: { _ in [] })
 
-#Preview("分組表頭 — 新樣式") {
+#Preview("分组表头 — 新样式") {
     List {
         BookSourceGroupHeaderRow(
             group: BookSourceRowGroup(id: "常用", name: "常用", sourceIDs: [UUID(), UUID()]),
@@ -742,7 +742,7 @@ private let previewGroupActions = BookSourceGroupActions(
         )
         BookSourceGroupHeaderRow(
             group: BookSourceRowGroup(
-                id: BookSourceRowGroup.topPinnedID, name: "置頂組", sourceIDs: [UUID()]),
+                id: BookSourceRowGroup.topPinnedID, name: "置顶组", sourceIDs: [UUID()]),
             expanded: false,
             actions: previewGroupActions
         )
@@ -798,8 +798,8 @@ struct BookSourceListHeaderBar: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DSSpacing.sm) {
                         filterPill(.all, label: localized("全部"), count: counts.total)
-                        filterPill(.fetchError, label: localized("抓取異常"), count: counts.fetchError)
-                        filterPill(.contentError, label: localized("正文異常"), count: counts.contentError)
+                        filterPill(.fetchError, label: localized("抓取异常"), count: counts.fetchError)
+                        filterPill(.contentError, label: localized("正文异常"), count: counts.contentError)
                     }
                     .padding(.vertical, DSSpacing.xs)
                 }
@@ -854,7 +854,7 @@ struct BookSourceListHeaderBar: View {
             HStack(spacing: 4) {
                 Image(systemName: grouped ? "rectangle.grid.1x2" : "square.grid.2x2")
                     .font(DSFont.fixed(size: 13))
-                Text(grouped ? localized("分組") : localized("列表"))
+                Text(grouped ? localized("分组") : localized("列表"))
                     .font(DSFont.fixed(size: 12, weight: .medium))
             }
             .foregroundStyle(grouped ? DSColor.appAccent : DSColor.textSecondary)
@@ -863,7 +863,7 @@ struct BookSourceListHeaderBar: View {
             .background(Capsule().fill(grouped ? DSColor.appAccent.opacity(0.12) : DSColor.neutralControlFill))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("書源排列方式"))
+        .accessibilityLabel(localized("书源排列方式"))
     }
 }
 
@@ -1034,12 +1034,12 @@ struct BookSourceGroupCard: View {
             Button {
                 actions.select(group.sourceIds)
             } label: {
-                Label(localized("全選"), systemImage: "checkmark")
+                Label(localized("全选"), systemImage: "checkmark")
             }
             Button {
                 actions.setEnabled(group.sourceIds, true)
             } label: {
-                Label(localized("啟用全部"), systemImage: "checkmark.circle")
+                Label(localized("启用全部"), systemImage: "checkmark.circle")
             }
             Button {
                 actions.setEnabled(group.sourceIds, false)
@@ -1050,23 +1050,23 @@ struct BookSourceGroupCard: View {
             Button {
                 actions.rename(group)
             } label: {
-                Label(localized("重命名分組"), systemImage: "pencil")
+                Label(localized("重命名分组"), systemImage: "pencil")
             }
             Button {
                 actions.pickMergeTarget(group)
             } label: {
-                Label(localized("合併到其他分組"), systemImage: "arrow.merge")
+                Label(localized("合并到其他分组"), systemImage: "arrow.merge")
             }
             Button {
                 actions.copyToPasteboard(group)
             } label: {
-                Label(localized("複製到剪貼板"), systemImage: "doc.on.clipboard")
+                Label(localized("复制到剪贴板"), systemImage: "doc.on.clipboard")
             }
             Divider()
             Button(role: .destructive) {
                 actions.delete(group)
             } label: {
-                Label(localized("刪除該分組"), systemImage: "trash")
+                Label(localized("删除该分组"), systemImage: "trash")
             }
         }
     }
@@ -1109,7 +1109,7 @@ struct BookSourceGridCard: View {
                 } label: {
                     revealButtonContents(
                         systemImage: "trash",
-                        title: localized("刪除"),
+                        title: localized("删除"),
                         color: Color.red
                     )
                 }
@@ -1221,7 +1221,7 @@ struct BookSourceGridCard: View {
 
     private var nameText: String {
         source.bookSourceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? localized("未命名書源")
+            ? localized("未命名书源")
             : source.bookSourceName
     }
 
@@ -1261,26 +1261,26 @@ struct BookSourceGridCard: View {
         Button {
             actions.showInfo(source)
         } label: {
-            Label(localized("查看詳情"), systemImage: "info.circle")
+            Label(localized("查看详情"), systemImage: "info.circle")
         }
         Button {
             actions.test(source)
         } label: {
-            Label(localized("測試書源"), systemImage: "antenna.radiowaves.left.and.right")
+            Label(localized("测试书源"), systemImage: "antenna.radiowaves.left.and.right")
         }
         Divider()
         Button {
             actions.edit(source)
         } label: {
-            Label(localized("編輯"), systemImage: "square.and.pencil")
+            Label(localized("编辑"), systemImage: "square.and.pencil")
         }
         Button {
             actions.copyJSON(source)
         } label: {
-            Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+            Label(localized("复制 JSON"), systemImage: "doc.on.doc")
         }
         BookSourceExportShareLink(
-            label: localized("匯出"),
+            label: localized("汇出"),
             filenameLabel: source.bookSourceName,
             sources: { [source] in [source] },
             onHandoff: actions.export
@@ -1289,44 +1289,44 @@ struct BookSourceGridCard: View {
             Button {
                 actions.login(source)
             } label: {
-                Label(localized("Cookie 驗證登入"), systemImage: "person.badge.key")
+                Label(localized("Cookie 验证登入"), systemImage: "person.badge.key")
             }
         }
         Button {
             actions.editVariables(source)
         } label: {
-            Label(localized("設置源變量"), systemImage: "slider.horizontal.3")
+            Label(localized("设置源变量"), systemImage: "slider.horizontal.3")
         }
         Divider()
         Button {
             actions.pickGroup(source)
         } label: {
-            Label(localized("移動到分組"), systemImage: "folder")
+            Label(localized("移动到分组"), systemImage: "folder")
         }
         Button {
             actions.moveToNewGroup(source)
         } label: {
-            Label(localized("移動到新分組"), systemImage: "folder.badge.plus")
+            Label(localized("移动到新分组"), systemImage: "folder.badge.plus")
         }
         if !source.bookSourceGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Button {
                 actions.applyGroupName(defaultGroupName, [source.id])
             } label: {
-                Label(localized("移出分組"), systemImage: "folder.badge.minus")
+                Label(localized("移出分组"), systemImage: "folder.badge.minus")
             }
         }
         Divider()
         if pin == .top {
             Button {
-                actions.unpin(source, localized("已取消置頂"))
+                actions.unpin(source, localized("已取消置顶"))
             } label: {
-                Label(localized("取消置頂"), systemImage: "pin.slash")
+                Label(localized("取消置顶"), systemImage: "pin.slash")
             }
         } else {
             Button {
                 actions.pinToTop(source)
             } label: {
-                Label(localized("置頂"), systemImage: "pin")
+                Label(localized("置顶"), systemImage: "pin")
             }
         }
         if pin == .bottom {
@@ -1346,7 +1346,7 @@ struct BookSourceGridCard: View {
         Button(role: .destructive) {
             actions.delete(source)
         } label: {
-            Label(localized("刪除"), systemImage: "trash")
+            Label(localized("删除"), systemImage: "trash")
         }
     }
 }

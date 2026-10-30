@@ -17,7 +17,7 @@ struct SourceSearchSheet: View {
             content
                 .background(PageBackgroundView(scope: .global).ignoresSafeArea())
                 .pageBackgroundToolbar(for: .global)
-                .navigationTitle(localized("選擇來源"))
+                .navigationTitle(localized("选择来源"))
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -27,7 +27,7 @@ struct SourceSearchSheet: View {
                     if aggregator.isSearching && !aggregator.results.isEmpty {
                         ToolbarItem(placement: .topBarTrailing) {
                             ProgressView()
-                                .accessibilityLabel(localized("搜尋書源中…"))
+                                .accessibilityLabel(localized("搜寻书源中…"))
                         }
                     }
                 }
@@ -47,11 +47,11 @@ struct SourceSearchSheet: View {
     @ViewBuilder
     private var content: some View {
         if aggregator.isSearching && aggregator.results.isEmpty {
-            ProgressView(localized("搜尋書源中…"))
+            ProgressView(localized("搜寻书源中…"))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if aggregator.results.isEmpty {
             ContentUnavailableView {
-                UnavailableLabel(localized("未找到其他書源"), systemImage: "magnifyingglass")
+                UnavailableLabel(localized("未找到其他书源"), systemImage: "magnifyingglass")
             }
         } else {
             List {

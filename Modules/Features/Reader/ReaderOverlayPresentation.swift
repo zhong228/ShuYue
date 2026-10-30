@@ -130,17 +130,17 @@ enum ReaderOverlayPresentationResolver {
 
     private static func accessibilityLabel(for kind: ReaderOverlayComponentKind) -> String {
         switch kind {
-        case .bookTitle: localized("書名")
-        case .chapterTitle: localized("章節名")
-        case .chapterPage: localized("本章頁碼")
-        case .totalProgressText, .progressBar: localized("總進度")
-        case .currentTime: localized("目前時間")
+        case .bookTitle: localized("书名")
+        case .chapterTitle: localized("章节名")
+        case .chapterPage: localized("本章页码")
+        case .totalProgressText, .progressBar: localized("总进度")
+        case .currentTime: localized("目前时间")
         case .currentDate: localized("目前日期")
         case .weekday: localized("星期")
-        case .battery: localized("電量")
-        case .readingDuration: localized("本次閱讀時長")
-        case .remainingTime: localized("預估剩餘時間")
-        case .customText: localized("自訂文字")
+        case .battery: localized("电量")
+        case .readingDuration: localized("本次阅读时长")
+        case .remainingTime: localized("预估剩余时间")
+        case .customText: localized("自订文字")
         }
     }
 

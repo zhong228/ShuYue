@@ -1,6 +1,6 @@
 import UIKit
 
-/// Draws the "對話底色框" background box behind quoted dialogue.
+/// Draws the "对话底色框" background box behind quoted dialogue.
 ///
 /// Two styles (`Style`), chosen in reader settings and shared by both writing modes:
 /// - `.solid` — the base color as an opaque, lightly-rounded block.

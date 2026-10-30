@@ -16,23 +16,23 @@ struct CalibreWirelessView: View {
             Section {
                 statusRow
                 if service.state.isActive {
-                    Button(localized("中斷連線"), role: .destructive) { service.disconnect() }
+                    Button(localized("中断连线"), role: .destructive) { service.disconnect() }
                 }
             } header: {
-                Text(localized("連線狀態"))
+                Text(localized("连线状态"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("先在電腦 Calibre 的「連線／分享」啟動無線裝置連線。"))
+                Text(localized("先在电脑 Calibre 的「连线／分享」启动无线装置连线。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
 
             if !service.state.isActive {
                 Section {
-                    SecureField(localized("無線裝置密碼（選填）"), text: $password)
+                    SecureField(localized("无线装置密码（选填）"), text: $password)
                         .textContentType(.password)
                 } footer: {
-                    Text(localized("輸入 Calibre 無線裝置設定的密碼，僅供本次連線使用。"))
+                    Text(localized("输入 Calibre 无线装置设定的密码，仅供本次连线使用。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
@@ -46,15 +46,15 @@ struct CalibreWirelessView: View {
                         }
                     }
                     if service.isDiscovering && service.servers.isEmpty {
-                        ProgressView(localized("正在搜尋附近的 Calibre…"))
+                        ProgressView(localized("正在搜寻附近的 Calibre…"))
                     }
                     if let error = service.discoveryError {
                         Text(error).font(DSFont.footnote).foregroundStyle(DSColor.textSecondary)
-                        Button(localized("開啟系統設定")) {
+                        Button(localized("开启系统设定")) {
                             if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                         }
                     }
-                    Button(service.isDiscovering ? localized("停止搜尋") : localized("搜尋附近電腦")) {
+                    Button(service.isDiscovering ? localized("停止搜寻") : localized("搜寻附近电脑")) {
                         if service.isDiscovering { service.stopDiscovery() }
                         else { service.startDiscovery() }
                     }
@@ -62,19 +62,19 @@ struct CalibreWirelessView: View {
                     Text(localized("附近的 Calibre"))
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
-                    Text(localized("需要同一區域網路，並允許本 App 存取本機網路。"))
+                    Text(localized("需要同一区域网路，并允许本 App 存取本机网路。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
 
-                Section(localized("手動連線")) {
-                    TextField(localized("電腦 IP 或主機名稱"), text: $host)
+                Section(localized("手动连线")) {
+                    TextField(localized("电脑 IP 或主机名称"), text: $host)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
-                    TextField(localized("連接埠"), text: $port)
+                    TextField(localized("连接埠"), text: $port)
                         .keyboardType(.numberPad)
-                    Button(localized("連線")) {
+                    Button(localized("连线")) {
                         service.connect(host: host, port: UInt16(port) ?? 0, password: password, store: store)
                     }
                     .disabled(host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (UInt16(port) ?? 0) == 0)
@@ -84,7 +84,7 @@ struct CalibreWirelessView: View {
 
             Section {
                 if service.transfers.isEmpty {
-                    Text(localized("尚未接收書籍"))
+                    Text(localized("尚未接收书籍"))
                         .foregroundStyle(DSColor.textSecondary)
                 } else {
                     ForEach(service.transfers.reversed()) { transfer in
@@ -92,16 +92,16 @@ struct CalibreWirelessView: View {
                     }
                 }
             } header: {
-                Text(localized("接收紀錄"))
+                Text(localized("接收纪录"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("傳送期間請保持此頁開啟，離開或切背景會中斷。支援 EPUB、PDF、TXT、Markdown。"))
+                Text(localized("传送期间请保持此页开启，离开或切背景会中断。支援 EPUB、PDF、TXT、Markdown。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
         }
         .softScrollEdges()
-        .navigationTitle(localized("電腦傳書"))
+        .navigationTitle(localized("电脑传书"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .bookshelf)
         .onDisappear {
@@ -120,13 +120,13 @@ struct CalibreWirelessView: View {
             if let completed = current.last(where: { entry in
                 entry.phase == .completed && previous.first(where: { $0.id == entry.id })?.phase != .completed
             }) {
-                UIAccessibility.post(notification: .announcement, argument: completed.title + "，" + localized("已加入書架"))
+                UIAccessibility.post(notification: .announcement, argument: completed.title + "，" + localized("已加入书架"))
             }
         }
         .onChange(of: service.state) { _, current in
             switch current {
             case .connected(let name):
-                UIAccessibility.post(notification: .announcement, argument: localized("已連線") + "，" + name)
+                UIAccessibility.post(notification: .announcement, argument: localized("已连线") + "，" + name)
             case .failed(let message):
                 UIAccessibility.post(notification: .announcement, argument: message)
             default: break
@@ -140,15 +140,15 @@ struct CalibreWirelessView: View {
     @ViewBuilder private var statusRow: some View {
         switch service.state {
         case .disconnected:
-            Label(localized("尚未連線"), systemImage: "network")
+            Label(localized("尚未连线"), systemImage: "network")
                 .foregroundStyle(DSColor.textSecondary)
         case .connecting:
-            ProgressView(localized("正在連接 Calibre…"))
+            ProgressView(localized("正在连接 Calibre…"))
         case .connected(let name):
-            ThemedLabeledContent(localized("已連線"), value: name)
+            ThemedLabeledContent(localized("已连线"), value: name)
         case .failed(let message):
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                Label(localized("連線失敗"), systemImage: "exclamationmark.triangle")
+                Label(localized("连线失败"), systemImage: "exclamationmark.triangle")
                 Text(message).font(DSFont.footnote).foregroundStyle(DSColor.textSecondary)
             }
         }
@@ -169,9 +169,9 @@ struct CalibreWirelessView: View {
                 }
                 .accessibilityValue(byteProgress(transfer))
             case .importing:
-                ProgressView(localized("正在匯入書架…"))
+                ProgressView(localized("正在汇入书架…"))
             case .completed:
-                Label(localized("已加入書架"), systemImage: "checkmark.circle")
+                Label(localized("已加入书架"), systemImage: "checkmark.circle")
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
             case .failed(let message):

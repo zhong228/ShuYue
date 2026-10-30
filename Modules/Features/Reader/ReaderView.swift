@@ -1580,7 +1580,7 @@ struct ReaderView: View {
                 .paragraphStyle: paragraph
             ]
             let rect = CGRect(x: 56, y: 64, width: size.width - 112, height: size.height - 128)
-            let titleString = displayTitle.isEmpty ? "閱讀" : displayTitle
+            let titleString = displayTitle.isEmpty ? "阅读" : displayTitle
             (titleString as NSString).draw(
                 with: rect,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
@@ -1687,7 +1687,7 @@ struct ReaderView: View {
             if showsLoadingChrome {
                 VStack {
                     Spacer()
-                    ProgressView(localized("載入中…"))
+                    ProgressView(localized("载入中…"))
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -1735,7 +1735,7 @@ struct ReaderView: View {
                     scrollBody
                     if epubRenderer.scrollEngine != nil, !epubRenderer.scrollEngineReady {
                         readerSurfaceBackground
-                            .overlay { ProgressView(localized("載入中…")) }
+                            .overlay { ProgressView(localized("载入中…")) }
                             .readerLoadingChromeTap { toggleReaderChrome() }
                             .transition(.opacity)
                     }
@@ -1785,7 +1785,7 @@ struct ReaderView: View {
             } else if usesCoreTextEPUB {
                 VStack {
                     Spacer()
-                    ProgressView(localized("載入中…"))
+                    ProgressView(localized("载入中…"))
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -2037,13 +2037,13 @@ struct ReaderView: View {
             applyAutoReadPause()
         }
         .hidesRootTabBar()
-        .alert(localized("TXT 目錄修復未完成"), isPresented: $showTXTIndexFailure) {
-            Button(localized("確定"), role: .cancel) { setReaderChromeVisible(true) }
+        .alert(localized("TXT 目录修复未完成"), isPresented: $showTXTIndexFailure) {
+            Button(localized("确定"), role: .cancel) { setReaderChromeVisible(true) }
         } message: {
-            Text(localized("為避免閱讀進度或書籤錯移，尚未套用新目錄。原有位置資料已保留。請保留原始 TXT，並匯出診斷記錄以供檢查。"))
+            Text(localized("为避免阅读进度或书签错移，尚未套用新目录。原有位置资料已保留。请保留原始 TXT，并汇出诊断记录以供检查。"))
         }
-        .alert(String(format: localized("將「%@」加入書架？"), snapshotBook?.title ?? ""), isPresented: $showAddToShelfAlert) {
-            Button(localized("加入書架")) {
+        .alert(String(format: localized("将「%@」加入书架？"), snapshotBook?.title ?? ""), isPresented: $showAddToShelfAlert) {
+            Button(localized("加入书架")) {
                 if let snap = snapshotBook {
                     store.addOnlineBook(
                         name: snap.title,
@@ -2118,7 +2118,7 @@ struct ReaderView: View {
             // Allow the in-reader mini-player the whole time the reader is on screen,
             // independent of the bars — bar visibility only repositions it now.
             setTTSFloatingOverlayVisible(true)
-            ttsCoordinator.nextChapterLoadingStatusTitle = localized("正在載入下一章…")
+            ttsCoordinator.nextChapterLoadingStatusTitle = localized("正在载入下一章…")
             ttsCoordinator.onNextNarrationUnit = {
                 ttsLog("[TTS][Reader] onChapterFinished ttsChapter=\(ttsChapterIndex.map(String.init) ?? "nil") currentChapter=\(currentChapterIndex)")
                 return advanceTTSChapterFromEngine()
@@ -2666,22 +2666,22 @@ struct ReaderView: View {
                 .environmentObject(subscriptionStore)
         }
         .alert(
-            localized("刪除筆記"),
+            localized("删除笔记"),
             isPresented: Binding(
                 get: { noteDeleteRoute != nil },
                 set: { if !$0 { noteDeleteRoute = nil } }
             ),
             presenting: noteDeleteRoute
         ) { route in
-            Button(localized("刪除筆記和標註"), role: .destructive) {
+            Button(localized("删除笔记和标注"), role: .destructive) {
                 deleteNote(route, removesAnnotation: true)
             }
-            Button(localized("只刪除筆記"), role: .destructive) {
+            Button(localized("只删除笔记"), role: .destructive) {
                 deleteNote(route, removesAnnotation: false)
             }
             Button(localized("取消"), role: .cancel) {}
         } message: { _ in
-            Text(localized("標註可以保留下來，或是連同筆記一起刪除。"))
+            Text(localized("标注可以保留下来，或是连同笔记一起删除。"))
         }
         .sheet(isPresented: $showAIAssistantPanel, onDismiss: { aiLaunch = nil }) {
             let sourceContext = aiCurrentSourceContext
@@ -2719,8 +2719,8 @@ struct ReaderView: View {
                     }
                 )
                 .task { await gatherAIBookText() }
-                .alert(localized("引用定位未驗證"), isPresented: Binding(get: { aiCitationError != nil }, set: { if !$0 { aiCitationError = nil } })) {
-                    Button(localized("確定"), role: .cancel) { aiCitationError = nil }
+                .alert(localized("引用定位未验证"), isPresented: Binding(get: { aiCitationError != nil }, set: { if !$0 { aiCitationError = nil } })) {
+                    Button(localized("确定"), role: .cancel) { aiCitationError = nil }
                 } message: { Text(aiCitationError ?? "") }
             }
         }
@@ -2792,9 +2792,9 @@ struct ReaderView: View {
                     )
                 } else {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("媒體旁白"), systemImage: "waveform")
+                        UnavailableLabel(localized("媒体旁白"), systemImage: "waveform")
                     } description: {
-                        Text(localized("目前章節沒有媒體旁白")).foregroundStyle(DSColor.textSecondary)
+                        Text(localized("目前章节没有媒体旁白")).foregroundStyle(DSColor.textSecondary)
                     }
                 }
             }
@@ -2829,9 +2829,9 @@ struct ReaderView: View {
                 )
                 .alert(item: $readerFontImportError) { error in
                     Alert(
-                        title: Text(localized("字體匯入失敗")),
+                        title: Text(localized("字体汇入失败")),
                         message: Text(error.message),
-                        dismissButton: .default(Text(localized("確定")))
+                        dismissButton: .default(Text(localized("确定")))
                     )
                 }
                 .readerStyleImportPresentation(route: $readerStyleImportRoute)

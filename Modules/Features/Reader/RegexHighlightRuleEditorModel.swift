@@ -24,7 +24,7 @@ final class RegexHighlightRuleEditorModel: ObservableObject {
 
     init(
         rule: RegexHighlightRule,
-        testText: String = "“Sample dialogue”\n「範例對話」",
+        testText: String = "“Sample dialogue”\n「范例对话」",
         onSave: @escaping (RegexHighlightRule) throws -> Void
     ) {
         original = rule

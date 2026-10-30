@@ -474,7 +474,7 @@ final class WebViewFetcher: NSObject, WKNavigationDelegate {
         for(var i=0;i<links.length;i++){
             var a=links[i];
             var txt=(a.innerText||'').trim();
-            if(!/下一[页頁]|next\\s*page/i.test(txt))continue;
+            if(!/下一[页页]|next\\s*page/i.test(txt))continue;
             var href=a.href;
             if(!href||href===cur)continue;
             var curBase=cur.replace(/_\\d+$/,'');
@@ -850,9 +850,9 @@ enum WebViewError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .timeout: return "WebView 載入超時"
-        case .deallocated: return "WebView 已釋放"
-        case .emptyContent: return "WebView 回傳空內容"
+        case .timeout: return "WebView 载入超时"
+        case .deallocated: return "WebView 已释放"
+        case .emptyContent: return "WebView 回传空内容"
         }
     }
 }

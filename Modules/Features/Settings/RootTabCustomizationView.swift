@@ -21,7 +21,7 @@ struct RootTabCustomizationView: View {
                     DSSettingsGroupCard(title: localized("底部 Tab")) {
                         DSSettingsCardRow(
                             icon: "lock.fill",
-                            title: localized("底部 Tab 自定義需要 Pro"),
+                            title: localized("底部 Tab 自定义需要 Pro"),
                             isLocked: true
                         ) {
                             showPaywall = true
@@ -47,9 +47,9 @@ struct RootTabCustomizationView: View {
         .themedAppSurface(for: .settings)
         .alert(item: $iconImportError) { error in
             Alert(
-                title: Text(localized("圖標導入失敗")),
+                title: Text(localized("图标导入失败")),
                 message: Text(error.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
         .sheet(isPresented: $showPaywall) {
@@ -59,8 +59,8 @@ struct RootTabCustomizationView: View {
     }
 
     private var visibleTabsSection: some View {
-        DSSettingsGroupCard(title: localized("顯示頁面"), footer: {
-            Text(localized("至少保留一個內容頁，設定固定顯示，避免無法恢復頁面。"))
+        DSSettingsGroupCard(title: localized("显示页面"), footer: {
+            Text(localized("至少保留一个内容页，设定固定显示，避免无法恢复页面。"))
                 .dsSectionFooter()
         }) {
             ForEach(RootTabItem.allCases) { tab in
@@ -68,7 +68,7 @@ struct RootTabCustomizationView: View {
                     HStack {
                         SettingsRowLabel(localized(tab.titleKey), systemImage: tab.defaultSystemImage)
                         Spacer(minLength: DSSpacing.md)
-                        Text(localized("固定顯示"))
+                        Text(localized("固定显示"))
                             .font(DSFont.caption)
                             .foregroundStyle(DSColor.textSecondary)
                     }
@@ -89,15 +89,15 @@ struct RootTabCustomizationView: View {
     }
 
     private var tabPresentationSection: some View {
-        DSSettingsGroupCard(title: localized("Tab 圖標"), footer: {
-            Text(localized("不調整時保持系統 Tab 默認大小；開啟自訂大小後才套用滑桿。"))
+        DSSettingsGroupCard(title: localized("Tab 图标"), footer: {
+            Text(localized("不调整时保持系统 Tab 默认大小；开启自订大小后才套用滑杆。"))
                 .dsSectionFooter()
         }) {
             Toggle(isOn: hidesLabelsBinding) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    Text(localized("隱藏標籤文字"))
+                    Text(localized("隐藏标签文字"))
                         .foregroundStyle(DSColor.textPrimary)
-                    Text(localized("開啟後 Tab 欄只顯示圖標，不顯示文字標籤"))
+                    Text(localized("开启后 Tab 栏只显示图标，不显示文字标签"))
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -110,10 +110,10 @@ struct RootTabCustomizationView: View {
 
             Toggle(isOn: customIconSizeEnabledBinding) {
                 HStack {
-                    Text(localized("自訂圖標大小"))
+                    Text(localized("自订图标大小"))
                         .foregroundStyle(DSColor.textPrimary)
                     Spacer(minLength: DSSpacing.md)
-                    Text(settings.usesCustomRootTabIconSize ? iconSizeText : localized("系統默認"))
+                    Text(settings.usesCustomRootTabIconSize ? iconSizeText : localized("系统默认"))
                         .font(settings.usesCustomRootTabIconSize ? DSFont.body.monospacedDigit() : DSFont.body)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -126,7 +126,7 @@ struct RootTabCustomizationView: View {
 
                 VStack(alignment: .leading, spacing: DSSpacing.sm) {
                     HStack {
-                        Text(localized("圖標大小"))
+                        Text(localized("图标大小"))
                             .foregroundStyle(DSColor.textPrimary)
                         Spacer()
                         Text(iconSizeText)
@@ -142,7 +142,7 @@ struct RootTabCustomizationView: View {
                     // A bare Slider has no name and announces a fraction of its
                     // range instead of the size printed above it.
                     // docs/design.md §7.1, third trap.
-                    .accessibilityLabel(localized("圖標大小"))
+                    .accessibilityLabel(localized("图标大小"))
                     .accessibilityValue(iconSizeText)
                 }
                 .dsSettingsCardRow(minHeight: 0)
@@ -170,7 +170,7 @@ struct RootTabCustomizationView: View {
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
                 Text(localized(slot.titleKey))
                     .foregroundStyle(DSColor.textPrimary)
-                Text(asset?.originalFileName ?? localized("未選擇圖片"))
+                Text(asset?.originalFileName ?? localized("未选择图片"))
                     .font(DSFont.caption)
                     .foregroundStyle(asset == nil ? DSColor.textSecondary : DSColor.accent)
                     .lineLimit(1)
@@ -183,7 +183,7 @@ struct RootTabCustomizationView: View {
                 contentTypes: Self.iconContentTypes,
                 extraActions: asset == nil ? [] : [
                     ImageSourcePickerAction(
-                        title: localized("移除圖片"),
+                        title: localized("移除图片"),
                         systemImage: "trash",
                         isDestructive: true,
                         action: { settings.deleteRootTabIcon(tab: tab, slot: slot) }
@@ -191,7 +191,7 @@ struct RootTabCustomizationView: View {
                 ],
                 onPick: { result in handleIconPick(result, tab: tab, slot: slot) }
             ) {
-                Label(localized("選擇圖片"), systemImage: "photo")
+                Label(localized("选择图片"), systemImage: "photo")
                     .font(DSFont.subheadline)
             }
             .buttonStyle(.bordered)
@@ -298,7 +298,7 @@ struct RootTabCustomizationView: View {
                 try settings.importRootTabIcon(
                     data: data,
                     // Photos gives no file name; the row shows this under the slot.
-                    originalFileName: localized("相簿圖片"),
+                    originalFileName: localized("相簿图片"),
                     tab: tab,
                     slot: slot
                 )

@@ -157,7 +157,7 @@ final class AutoReadController: NSObject, ObservableObject {
         String(format: "%.0fs", clampedSecondsPerPage(value))
     }
 
-    /// "約每 10 秒翻一頁"
+    /// "约每 10 秒翻一页"
     var intervalDescription: String {
         String(
             format: localized("AutoRead.Format.Interval"),

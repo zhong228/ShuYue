@@ -13,7 +13,7 @@ enum ReaderQuickPageTurnOption: String, CaseIterable, Identifiable, Hashable {
     var titleKey: String {
         switch self {
         case .slide: return "Slide"
-        case .cover: return "覆蓋翻頁"
+        case .cover: return "覆盖翻页"
         case .curl: return "Curl"
         case .fastFade: return "Fast Fade"
         case .scroll: return "Scroll"
@@ -201,7 +201,7 @@ struct ReaderQuickThemePanelView: View {
             fontSizeStepButton(
                 -1,
                 textFont: DSFont.body.weight(.semibold),
-                accessibilityKey: "縮小字體"
+                accessibilityKey: "缩小字体"
             )
 
             Text("\(Int(fontSize))")
@@ -216,7 +216,7 @@ struct ReaderQuickThemePanelView: View {
             fontSizeStepButton(
                 1,
                 textFont: DSFont.title2.weight(.semibold),
-                accessibilityKey: "放大字體"
+                accessibilityKey: "放大字体"
             )
         }
         .frame(maxWidth: .infinity, minHeight: DSLayout.readerQuickPanelTopControlHeight)
@@ -232,7 +232,7 @@ struct ReaderQuickThemePanelView: View {
     private var pageTurnMenu: some View {
         Menu {
             Picker(
-                localized("翻頁"),
+                localized("翻页"),
                 selection: Binding(
                     get: { pageTurnOption },
                     set: { onSelectPageTurnOption($0) }
@@ -264,7 +264,7 @@ struct ReaderQuickThemePanelView: View {
             .shadow(color: DSColor.shadow, radius: 6, y: 1)
             .contentShape(Capsule())
         }
-        .accessibilityLabel(localized("翻頁"))
+        .accessibilityLabel(localized("翻页"))
         .accessibilityValue(localized(pageTurnTitleKey(for: pageTurnOption)))
     }
 
@@ -328,7 +328,7 @@ struct ReaderQuickThemePanelView: View {
     private var readingBackgroundCard: some View {
         let resolution = settings.readerBackgroundResolution(mode: settings.readerMode, wornTheme: readerTheme)
         return quickPanelCard {
-            quickPanelCardHeader("閱讀背景")
+            quickPanelCardHeader("阅读背景")
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DSSpacing.md) {
@@ -354,7 +354,7 @@ struct ReaderQuickThemePanelView: View {
     /// the device by hand turns it back off, since the two cannot both hold.
     private var followSystemAppearanceToggle: some View {
         Toggle(
-            localized("跟隨裝置深淺色"),
+            localized("跟随装置深浅色"),
             isOn: Binding(
                 get: { settings.readerFollowSystemTheme },
                 set: { applyFollowSystemAppearance($0) }
@@ -420,21 +420,21 @@ struct ReaderQuickThemePanelView: View {
             Button {
                 backgroundEditor = .edit(background.id)
             } label: {
-                Label(localized("編輯"), systemImage: "slider.horizontal.3")
+                Label(localized("编辑"), systemImage: "slider.horizontal.3")
             }
             Menu {
                 Button(role: .destructive) {
                     settings.deleteReaderCustomBackground(id: background.id)
                 } label: {
-                    Label(String(format: localized("刪除「%@」"), background.name), systemImage: "trash")
+                    Label(String(format: localized("删除「%@」"), background.name), systemImage: "trash")
                 }
             } label: {
-                Label(localized("刪除"), systemImage: "trash")
+                Label(localized("删除"), systemImage: "trash")
             }
         }
         .accessibilityLabel(background.name)
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityAction(named: localized("編輯")) {
+        .accessibilityAction(named: localized("编辑")) {
             backgroundEditor = .edit(background.id)
         }
     }
@@ -450,7 +450,7 @@ struct ReaderQuickThemePanelView: View {
                     Image(systemName: "plus")
                         .font(DSFont.title2.weight(.semibold))
                         .accessibilityHidden(true)
-                    Text(localized("自定義"))
+                    Text(localized("自定义"))
                         .font(DSFont.subheadline)
                 }
                 .foregroundStyle(DSColor.textPrimary)
@@ -463,7 +463,7 @@ struct ReaderQuickThemePanelView: View {
             .shadow(color: DSColor.shadow, radius: 6, y: 1)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("自定義"))
+        .accessibilityLabel(localized("自定义"))
     }
 
     /// One background's tile: its colour or picture, its name, and the selection ring.
@@ -535,7 +535,7 @@ struct ReaderQuickThemePanelView: View {
             Button {
                 onStartAutoRead()
             } label: {
-                Label(localized("自動閱讀"), systemImage: "play.fill")
+                Label(localized("自动阅读"), systemImage: "play.fill")
             }
             .buttonStyle(QuickPanelActionButtonStyle())
 

@@ -170,15 +170,15 @@ enum AIMemoryFailure: String, Error, LocalizedError, Sendable {
     case invalidPlan, invalidEvidence, invalidSchema, sourceChanged, providerChanged, budget, resultUnknown, persistence, cancelled
     var errorDescription: String? {
         switch self {
-        case .invalidPlan: return localized("無法在目前正文與預算內規劃人物分析批次。")
-        case .invalidEvidence: return localized("抽取引用無法唯一核對，該批未保存。")
-        case .invalidSchema: return localized("人物抽取格式不完整，該批未保存。")
-        case .sourceChanged: return localized("正文來源已變更，請重新規劃；可核對的舊批次會重用。")
-        case .providerChanged: return localized("生成服務或模型已變更，請重新確認建檔工作。")
-        case .budget: return localized("人物建檔呼叫預算已用盡，請確認增加額度後續跑。")
-        case .resultUnknown: return localized("上一批可能已呼叫並計費，但尚無已保存結果；續跑可能再次計費。")
-        case .persistence: return localized("人物資料保存失敗，尚未保存的範圍不計入完成。")
-        case .cancelled: return localized("人物建檔已暫停。")
+        case .invalidPlan: return localized("无法在目前正文与预算内规划人物分析批次。")
+        case .invalidEvidence: return localized("抽取引用无法唯一核对，该批未保存。")
+        case .invalidSchema: return localized("人物抽取格式不完整，该批未保存。")
+        case .sourceChanged: return localized("正文来源已变更，请重新规划；可核对的旧批次会重用。")
+        case .providerChanged: return localized("生成服务或模型已变更，请重新确认建档工作。")
+        case .budget: return localized("人物建档呼叫预算已用尽，请确认增加额度后续跑。")
+        case .resultUnknown: return localized("上一批可能已呼叫并计费，但尚无已保存结果；续跑可能再次计费。")
+        case .persistence: return localized("人物资料保存失败，尚未保存的范围不计入完成。")
+        case .cancelled: return localized("人物建档已暂停。")
         }
     }
 }

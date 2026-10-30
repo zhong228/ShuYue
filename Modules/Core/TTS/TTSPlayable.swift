@@ -60,20 +60,20 @@ enum TTSPlaybackError: LocalizedError {
         switch self {
         case let .chunkUnavailable(index, underlying):
             return String(
-                format: localized("第 %d 段語音無法下載：%@"),
+                format: localized("第 %d 段语音无法下载：%@"),
                 index + 1,
                 underlying.localizedDescription
             )
         case let .chunkSkipped(index, underlying):
             return String(
-                format: localized("第 %d 段語音無法下載，已跳過：%@"),
+                format: localized("第 %d 段语音无法下载，已跳过：%@"),
                 index + 1,
                 underlying.localizedDescription
             )
         case let .playbackFailed(index):
-            return String(format: localized("第 %d 段語音無法播放"), index + 1)
+            return String(format: localized("第 %d 段语音无法播放"), index + 1)
         case .systemVoiceUnavailable:
-            return localized("系統語音無法播放，請到設定下載對應語音後重試")
+            return localized("系统语音无法播放，请到设定下载对应语音后重试")
         }
     }
 }

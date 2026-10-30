@@ -82,16 +82,16 @@ struct DismissalSequencedActionChooser<Route: Hashable>: View {
 
 #Preview {
     DismissalSequencedActionChooser(
-        title: localized("匯入"),
+        title: localized("汇入"),
         actions: [
             DismissalSequencedAction(
                 route: "local",
-                title: localized("本地導入"),
+                title: localized("本地导入"),
                 systemImage: "doc.badge.plus"
             ),
             DismissalSequencedAction(
                 route: "network",
-                title: localized("網路導入"),
+                title: localized("网路导入"),
                 systemImage: "network"
             ),
         ],

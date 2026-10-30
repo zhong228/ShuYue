@@ -96,7 +96,7 @@ struct ReaderFloatingChrome: View {
                     .accessibilityHidden(true)
             }
             .accessibilityIdentifier("reader_back_button")
-            .accessibilityLabel(localized("退出閱讀"))
+            .accessibilityLabel(localized("退出阅读"))
 
             Text(chapterTitle)
                 .font(DSFont.fixed(size: 15, weight: .medium))
@@ -111,7 +111,7 @@ struct ReaderFloatingChrome: View {
                     .frame(width: 36, height: 36)
                     .accessibilityHidden(true)
             }
-            .accessibilityLabel(localized("書籤"))
+            .accessibilityLabel(localized("书签"))
             .accessibilityValue(localized(isBookmarked ? "已加入" : "未加入"))
 
             Button(action: onOpenSearch) {
@@ -213,7 +213,7 @@ struct ReaderFloatingChrome: View {
                     }
                 }
             )
-            .accessibilityLabel(localized("閱讀進度"))
+            .accessibilityLabel(localized("阅读进度"))
             .accessibilityValue(progressPercentText)
 
             Button(action: onNextChapter) {
@@ -226,7 +226,7 @@ struct ReaderFloatingChrome: View {
             }
             .buttonStyle(.plain)
             .disabled(!canGoNextChapter)
-            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "書末頁"))
+            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "书末页"))
         }
     }
 
@@ -240,12 +240,12 @@ struct ReaderFloatingChrome: View {
         HStack(spacing: DSSpacing.xs) {
             toolButton(
                 item: ReaderChromeToolItem.tableOfContents,
-                label: localized("目錄"),
+                label: localized("目录"),
                 action: onOpenTOC
             )
             toolButton(
                 item: ReaderChromeActionItem.playback,
-                label: localized("聽書"),
+                label: localized("听书"),
                 action: onOpenTTS
             )
             toolButton(
@@ -256,7 +256,7 @@ struct ReaderFloatingChrome: View {
             )
             toolButton(
                 item: ReaderChromeToolItem.settings,
-                label: localized("設置"),
+                label: localized("设置"),
                 action: onOpenSettings
             )
         }
@@ -364,7 +364,7 @@ struct ReaderFloatingChrome: View {
                 }
                 if let onOpenBookDetail {
                     Button(action: onOpenBookDetail) {
-                        Label(localized("書籍詳情"), systemImage: "info.circle")
+                        Label(localized("书籍详情"), systemImage: "info.circle")
                     }
                 }
             } label: {
@@ -394,7 +394,7 @@ struct ReaderFloatingChrome: View {
         if onOpenBookDetail != nil {
             actions.append(DismissalSequencedAction(
                 route: .bookDetail,
-                title: localized("書籍詳情"),
+                title: localized("书籍详情"),
                 systemImage: "info.circle"
             ))
         }
@@ -439,14 +439,14 @@ struct ReaderFloatingChrome: View {
     ZStack {
         theme.backgroundColor.ignoresSafeArea()
 
-        Text(String(repeating: "正文墊在浮動控制島後面，檢查是否穿透。", count: 24))
+        Text(String(repeating: "正文垫在浮动控制岛后面，检查是否穿透。", count: 24))
             .font(DSFont.fixed(size: 17))
             .foregroundColor(theme.textColor)
             .padding(20)
 
         ReaderFloatingChrome(
             readerTheme: theme,
-            chapterTitle: "第四回 薄命女偏逢薄命郎 葫蘆僧亂判葫蘆案",
+            chapterTitle: "第四回 薄命女偏逢薄命郎 葫芦僧乱判葫芦案",
             isBookmarked: false,
             overlayContentMaxWidth: 640,
             canGoPrevChapter: true,

@@ -59,7 +59,7 @@ struct OnlineCoverSearchView: View {
                 candidates: model.candidates,
                 isSearching: model.isSearching,
                 hasSearched: model.hasSearched,
-                emptyHint: localized("可以改用「換封面」在書源裡找，或從相簿選一張圖片。")
+                emptyHint: localized("可以改用「换封面」在书源里找，或从相簿选一张图片。")
             ) { candidate in
                 model.stop()
                 onSelect(candidate)
@@ -81,7 +81,7 @@ struct OnlineCoverSearchView: View {
                     Image(systemName: model.isSearching ? "stop.circle" : "arrow.clockwise")
                 }
                 .accessibilityLabel(
-                    model.isSearching ? localized("停止搜索") : localized("重新搜尋")
+                    model.isSearching ? localized("停止搜索") : localized("重新搜寻")
                 )
             }
         }
@@ -93,7 +93,7 @@ struct OnlineCoverSearchView: View {
 #Preview {
     NavigationStack {
         OnlineCoverSearchView(
-            title: "紅樓夢",
+            title: "红楼梦",
             author: "曹雪芹",
             onSelect: { _ in }
         )

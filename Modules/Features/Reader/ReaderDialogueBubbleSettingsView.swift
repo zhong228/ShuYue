@@ -40,7 +40,7 @@ struct ReaderDialogueBubbleSettingsView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("對話氣泡"))
+        .navigationTitle(localized("对话气泡"))
         .toolbarTitleDisplayMode(.inline)
         .sheet(item: $avatarPickerSide) { side in
             NavigationStack {
@@ -61,9 +61,9 @@ struct ReaderDialogueBubbleSettingsView: View {
 
     private var enableSection: some View {
         Section {
-            Toggle(localized("啟用對話氣泡"), isOn: binding(\.isEnabled))
+            Toggle(localized("启用对话气泡"), isOn: binding(\.isEnabled))
         } footer: {
-            Text(localized("整段都是對話的段落會排成氣泡；夾在敘述裡的引號仍然沿用正則高亮。直排閱讀不套用。"))
+            Text(localized("整段都是对话的段落会排成气泡；夹在叙述里的引号仍然沿用正则高亮。直排阅读不套用。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -74,12 +74,12 @@ struct ReaderDialogueBubbleSettingsView: View {
     /// renderer drifts from it exactly where it matters (tails, skins, how the
     /// box hugs a short line), which is worse than no preview at all.
     private var previewSection: some View {
-        Section(header: Text(localized("預覽")).foregroundStyle(DSColor.textSecondary)) {
+        Section(header: Text(localized("预览")).foregroundStyle(DSColor.textSecondary)) {
             DialogueBubblePreview(style: style)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DSSpacing.sm)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(localized("對話氣泡預覽"))
+                .accessibilityLabel(localized("对话气泡预览"))
         }
         .interfaceSectionSurface()
     }
@@ -95,45 +95,45 @@ struct ReaderDialogueBubbleSettingsView: View {
             Toggle(localized("左右交替"), isOn: binding(\.alternatesSides))
 
             slider(
-                title: localized("最大寬度"),
+                title: localized("最大宽度"),
                 value: binding(\.maxWidthRatio),
                 range: 0.3...1,
                 step: 0.01,
                 text: percent(style.maxWidthRatio)
             )
             slider(
-                title: localized("邊距"),
+                title: localized("边距"),
                 value: binding(\.sideInsetRatio),
                 range: 0...0.3,
                 step: 0.005,
                 text: percent(style.sideInsetRatio)
             )
             slider(
-                title: localized("左右內距"),
+                title: localized("左右内距"),
                 value: binding(\.horizontalPaddingEm),
                 range: 0...2,
                 step: 0.02,
                 text: em(style.horizontalPaddingEm)
             )
             slider(
-                title: localized("上下內距"),
+                title: localized("上下内距"),
                 value: binding(\.verticalPaddingEm),
                 range: 0...2,
                 step: 0.02,
                 text: em(style.verticalPaddingEm)
             )
             slider(
-                title: localized("氣泡間距"),
+                title: localized("气泡间距"),
                 value: binding(\.spacingEm),
                 range: 0...2,
                 step: 0.02,
                 text: em(style.spacingEm)
             )
 
-            Toggle(localized("隱藏引號"), isOn: binding(\.removesQuotes))
-            Toggle(localized("顯示說話者"), isOn: binding(\.showsSpeakerName))
-            Toggle(localized("同一人固定同一側"), isOn: binding(\.sidesFollowSpeaker))
-            Toggle(localized("合併同段相鄰對話"), isOn: binding(\.mergesAdjacent))
+            Toggle(localized("隐藏引号"), isOn: binding(\.removesQuotes))
+            Toggle(localized("显示说话者"), isOn: binding(\.showsSpeakerName))
+            Toggle(localized("同一人固定同一侧"), isOn: binding(\.sidesFollowSpeaker))
+            Toggle(localized("合并同段相邻对话"), isOn: binding(\.mergesAdjacent))
         }
         .interfaceSectionSurface()
     }
@@ -143,7 +143,7 @@ struct ReaderDialogueBubbleSettingsView: View {
             side == .left ? \.left : \.right
         let sideStyle = style.side(side)
         return Section(
-            header: Text(side == .left ? localized("左側氣泡") : localized("右側氣泡")).foregroundStyle(DSColor.textSecondary)
+            header: Text(side == .left ? localized("左侧气泡") : localized("右侧气泡")).foregroundStyle(DSColor.textSecondary)
         ) {
             ColorPicker(
                 localized("底色"),
@@ -153,21 +153,21 @@ struct ReaderDialogueBubbleSettingsView: View {
                 supportsOpacity: false
             )
             ColorPicker(
-                localized("文字顏色"),
+                localized("文字颜色"),
                 selection: colorBinding(hex: sideStyle.textHex ?? 0x1C1C1E) {
                     $0[keyPath: path].textHex = $1
                 },
                 supportsOpacity: false
             )
             ColorPicker(
-                localized("邊框顏色"),
+                localized("边框颜色"),
                 selection: colorBinding(hex: sideStyle.borderHex ?? sideStyle.fillHex) {
                     $0[keyPath: path].borderHex = $1
                 },
                 supportsOpacity: false
             )
             slider(
-                title: localized("圓角"),
+                title: localized("圆角"),
                 value: Binding(
                     get: { style[keyPath: path].cornerRadiusEm },
                     set: { value in update { $0[keyPath: path].cornerRadiusEm = value } }
@@ -177,7 +177,7 @@ struct ReaderDialogueBubbleSettingsView: View {
                 text: em(sideStyle.cornerRadiusEm)
             )
             slider(
-                title: localized("邊框粗細"),
+                title: localized("边框粗细"),
                 value: Binding(
                     get: { style[keyPath: path].borderWidthEm },
                     set: { value in update { $0[keyPath: path].borderWidthEm = value } }
@@ -187,7 +187,7 @@ struct ReaderDialogueBubbleSettingsView: View {
                 text: em(sideStyle.borderWidthEm)
             )
             Toggle(
-                localized("氣泡尾巴"),
+                localized("气泡尾巴"),
                 isOn: Binding(
                     get: { style[keyPath: path].tail != nil },
                     set: { isOn in
@@ -197,7 +197,7 @@ struct ReaderDialogueBubbleSettingsView: View {
             )
 
             TextField(
-                localized("找不到說話者時顯示"),
+                localized("找不到说话者时显示"),
                 text: Binding(
                     get: { sideStyle.name ?? "" },
                     set: { value in
@@ -208,7 +208,7 @@ struct ReaderDialogueBubbleSettingsView: View {
             )
 
             Picker(
-                localized("氣泡裝飾"),
+                localized("气泡装饰"),
                 selection: Binding<ReaderDialogueBubbleDecorationKind?>(
                     get: { sideStyle.decoration?.kind },
                     set: { kind in
@@ -225,7 +225,7 @@ struct ReaderDialogueBubbleSettingsView: View {
                     }
                 )
             ) {
-                Text(localized("無")).tag(ReaderDialogueBubbleDecorationKind?.none)
+                Text(localized("无")).tag(ReaderDialogueBubbleDecorationKind?.none)
                 ForEach(ReaderDialogueBubbleDecorationKind.allCases, id: \.self) { kind in
                     Text(localized(kind.localizedNameKey))
                         .tag(ReaderDialogueBubbleDecorationKind?.some(kind))
@@ -233,14 +233,14 @@ struct ReaderDialogueBubbleSettingsView: View {
             }
             if let decoration = sideStyle.decoration {
                 ColorPicker(
-                    localized("裝飾顏色"),
+                    localized("装饰颜色"),
                     selection: colorBinding(hex: decoration.colorHex) {
                         $0[keyPath: path].decoration?.colorHex = $1
                     },
                     supportsOpacity: false
                 )
                 slider(
-                    title: localized("裝飾大小"),
+                    title: localized("装饰大小"),
                     value: Binding(
                         get: { decoration.sizeEm },
                         set: { value in
@@ -252,7 +252,7 @@ struct ReaderDialogueBubbleSettingsView: View {
                     text: em(decoration.sizeEm)
                 )
                 Picker(
-                    localized("裝飾位置"),
+                    localized("装饰位置"),
                     selection: Binding(
                         get: { decoration.anchor },
                         set: { value in
@@ -266,20 +266,20 @@ struct ReaderDialogueBubbleSettingsView: View {
                 }
             }
             Picker(
-                localized("文字對齊"),
+                localized("文字对齐"),
                 selection: Binding(
                     get: { sideStyle.textAlignment ?? (side == .left ? .left : .right) },
                     set: { value in update { $0[keyPath: path].textAlignment = value } }
                 )
             ) {
-                Text(localized("對齊・靠左")).tag(ChapterTitleAlignment.left)
-                Text(localized("對齊・置中")).tag(ChapterTitleAlignment.center)
-                Text(localized("對齊・靠右")).tag(ChapterTitleAlignment.right)
+                Text(localized("对齐・靠左")).tag(ChapterTitleAlignment.left)
+                Text(localized("对齐・置中")).tag(ChapterTitleAlignment.center)
+                Text(localized("对齐・靠右")).tag(ChapterTitleAlignment.right)
             }
             .pickerStyle(.segmented)
 
             Menu {
-                Button(localized("跟隨閱讀字體")) {
+                Button(localized("跟随阅读字体")) {
                     update { $0[keyPath: path].fontPostScriptName = nil }
                 }
                 ForEach(GlobalSettings.shared.userFonts, id: \.postScriptName) { font in
@@ -289,12 +289,12 @@ struct ReaderDialogueBubbleSettingsView: View {
                 }
             } label: {
                 LabeledContent(
-                    localized("氣泡字體"),
-                    value: sideStyle.fontPostScriptName ?? localized("跟隨閱讀字體")
+                    localized("气泡字体"),
+                    value: sideStyle.fontPostScriptName ?? localized("跟随阅读字体")
                 )
             }
             slider(
-                title: localized("氣泡字級"),
+                title: localized("气泡字级"),
                 value: Binding(
                     get: { style[keyPath: path].fontSizeMultiplier },
                     set: { value in update { $0[keyPath: path].fontSizeMultiplier = value } }
@@ -311,10 +311,10 @@ struct ReaderDialogueBubbleSettingsView: View {
                 in: 100...900,
                 step: 100
             ) {
-                ThemedLabeledContent(localized("氣泡字重"), value: "\(sideStyle.fontWeight ?? 400)")
+                ThemedLabeledContent(localized("气泡字重"), value: "\(sideStyle.fontWeight ?? 400)")
             }
             slider(
-                title: localized("氣泡字距"),
+                title: localized("气泡字距"),
                 value: Binding(
                     get: { style[keyPath: path].letterSpacingEm },
                     set: { value in update { $0[keyPath: path].letterSpacingEm = value } }
@@ -328,13 +328,13 @@ struct ReaderDialogueBubbleSettingsView: View {
                 avatarPickerSide = side
             } label: {
                 Label(
-                    sideStyle.avatar == nil ? localized("選擇頭像") : localized("更換頭像"),
+                    sideStyle.avatar == nil ? localized("选择头像") : localized("更换头像"),
                     systemImage: "person.crop.circle"
                 )
             }
             if let avatar = sideStyle.avatar {
                 slider(
-                    title: localized("頭像大小"),
+                    title: localized("头像大小"),
                     value: Binding(
                         get: { avatar.sizeEm },
                         set: { value in update { $0[keyPath: path].avatar?.sizeEm = value } }
@@ -344,7 +344,7 @@ struct ReaderDialogueBubbleSettingsView: View {
                     text: em(avatar.sizeEm)
                 )
                 slider(
-                    title: localized("頭像間距"),
+                    title: localized("头像间距"),
                     value: Binding(
                         get: { avatar.gapEm },
                         set: { value in update { $0[keyPath: path].avatar?.gapEm = value } }
@@ -356,14 +356,14 @@ struct ReaderDialogueBubbleSettingsView: View {
                 Button(role: .destructive) {
                     update { $0[keyPath: path].avatar = nil }
                 } label: {
-                    Label(localized("移除頭像"), systemImage: "trash")
+                    Label(localized("移除头像"), systemImage: "trash")
                 }
             }
             if sideStyle.skin != nil {
                 Button(role: .destructive) {
                     update { $0[keyPath: path].skin = nil }
                 } label: {
-                    Label(localized("移除氣泡皮膚圖"), systemImage: "trash")
+                    Label(localized("移除气泡皮肤图"), systemImage: "trash")
                 }
             }
         }
@@ -374,16 +374,16 @@ struct ReaderDialogueBubbleSettingsView: View {
         Section {
             if let onOpenImporter {
                 Button(action: onOpenImporter) {
-                    Label(localized("匯入氣泡樣式"), systemImage: "square.and.arrow.down")
+                    Label(localized("汇入气泡样式"), systemImage: "square.and.arrow.down")
                 }
             }
             Button(role: .destructive) {
                 update { $0 = ReaderDialogueBubbleStyle(isEnabled: true) }
             } label: {
-                Label(localized("恢復預設氣泡"), systemImage: "arrow.counterclockwise")
+                Label(localized("恢复预设气泡"), systemImage: "arrow.counterclockwise")
             }
         } footer: {
-            Text(localized("只取用顏色、邊距與皮膚圖，文字仍照閱讀字級排版。"))
+            Text(localized("只取用颜色、边距与皮肤图，文字仍照阅读字级排版。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -542,8 +542,8 @@ final class ReaderDialogueBubblePreviewView: UIView {
         paragraph.lineSpacing = fontSize * 0.2
 
         let lines = [
-            "「" + localized("你今天怎麼這麼早？") + "」",
-            "「" + localized("睡不著，就先過來了。") + "」",
+            "「" + localized("你今天怎么这么早？") + "」",
+            "「" + localized("睡不著，就先过来了。") + "」",
         ]
         let text = NSMutableAttributedString(
             string: lines.joined(separator: "\n"),

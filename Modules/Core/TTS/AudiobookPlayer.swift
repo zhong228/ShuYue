@@ -690,7 +690,7 @@ final class AudiobookPlayer: NSObject, ObservableObject {
     /// not cover — opening a book, a jump, a chapter end with nothing queued, a retry.
     private func loadCurrentChapter(autoPlay: Bool) {
         guard let store, chapters.indices.contains(chapterIndex) else {
-            error = localized("未找到音訊")
+            error = localized("未找到音讯")
             return
         }
         guard let book = currentBook() else { return }
@@ -876,7 +876,7 @@ final class AudiobookPlayer: NSObject, ObservableObject {
     private func makeEntry(chapterIndex index: Int, audio: ChapterAudio, autoPlay: Bool) -> QueueEntry {
         // 番茄畅听-style URLs have no audio file extension and the CDN's Content-Type
         // is not one AVFoundation recognizes, so a plain AVURLAsset fails with
-        // "無法打開". Route those through a resource loader that declares the MIME type
+        // "无法打开". Route those through a resource loader that declares the MIME type
         // out-of-band. Ordinary .mp3/.m4a links keep the plain fast path.
         let asset: AVURLAsset
         if AudioStreamResourceLoader.requiresLoader(for: audio.url),
@@ -1042,7 +1042,7 @@ final class AudiobookPlayer: NSObject, ObservableObject {
             if entry === queuedEntry { itemStatusChanged(entry, status: .failed) }
             return
         }
-        let message = failure?.localizedDescription ?? localized("未找到音訊")
+        let message = failure?.localizedDescription ?? localized("未找到音讯")
         audiobookLog("item failed ch=\(entry.chapterIndex): \(message)")
         AppLogger.network(
             "[Audiobook] chapter audio failed to play",
@@ -1662,8 +1662,8 @@ final class AudiobookPlayer: NSObject, ObservableObject {
 // MARK: - Logging
 
 /// On-device audiobook playback diagnostics (Console.app, category `audiobook`).
-/// Must NOT be `#if DEBUG`-gated: audiobook open failures ("未找到音訊" / AVPlayer
-/// "無法打開") only reproduce against live sources on Release/TestFlight builds, and
+/// Must NOT be `#if DEBUG`-gated: audiobook open failures ("未找到音讯" / AVPlayer
+/// "无法打开") only reproduce against live sources on Release/TestFlight builds, and
 /// the `item failed:` / `NO AUDIO URL contentLen=… head=…` lines are the only signal
 /// for why a specific book (e.g. a VIP 番茄有聲 title) won't play. os_log surfaces in
 /// Release; `print` behind `#if DEBUG` is invisible in the field.

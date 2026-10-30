@@ -23,7 +23,7 @@ final class ReaderViewModel: ObservableObject {
     /// so the 換源 list can flag them. Backed by `ChangeSourceCache`.
     @Published private(set) var changeSourceFailedKeys: Set<String> = []
     /// Non-nil while a tapped source is being switched to. The sheet renders a cancellable
-    /// "正在載入目錄…" over the row instead of looking frozen — Legado shows a `WaitDialog`
+    /// "正在载入目录…" over the row instead of looking frozen — Legado shows a `WaitDialog`
     /// on the same event, and its cancel listener aborts the fetch.
     @Published private(set) var changeSourcePendingOrigin: BookOrigin?
 
@@ -163,7 +163,7 @@ final class ReaderViewModel: ObservableObject {
 
         // A previous failure is about to be re-evaluated. The cache probe below is an actor
         // hop plus metadata/artifact reads and a checksum, and the reader renders the failure
-        // overlay straight off this state — leaving `.failed` in place paints "章節載入失敗"
+        // overlay straight off this state — leaving `.failed` in place paints "章节载入失败"
         // over a chapter that is actively being loaded again.
         if case .failed = chapterStates[chapterIndex] {
             chapterStates[chapterIndex] = .loading
@@ -421,7 +421,7 @@ final class ReaderViewModel: ObservableObject {
         else {
             throw NSError(
                 domain: "ReaderViewModel", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
+                userInfo: [NSLocalizedDescriptionKey: localized("找不到书源")])
         }
         // A search result almost never carries a tocUrl: it belongs to the book's
         // DETAIL page, so `parseSearchResults` leaves it empty on purpose (an empty
@@ -488,7 +488,7 @@ final class ReaderViewModel: ObservableObject {
             ])
             throw NSError(
                 domain: "ReaderViewModel", code: -2,
-                userInfo: [NSLocalizedDescriptionKey: localized("此書源取不到目錄")])
+                userInfo: [NSLocalizedDescriptionKey: localized("此书源取不到目录")])
         }
         cacheSearchTOC(package, forKey: key)
         return package

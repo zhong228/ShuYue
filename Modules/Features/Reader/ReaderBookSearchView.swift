@@ -36,15 +36,15 @@ struct ReaderBookSearchView: View {
             Group {
                 if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("搜尋書籍"), systemImage: "magnifyingglass")
+                        UnavailableLabel(localized("搜寻书籍"), systemImage: "magnifyingglass")
                     } description: {
-                        Text(localized("輸入關鍵字搜尋目前已載入的章節與頁面。")).foregroundStyle(DSColor.textSecondary)
+                        Text(localized("输入关键字搜寻目前已载入的章节与页面。")).foregroundStyle(DSColor.textSecondary)
                     }
                 } else if matches.isEmpty {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("無搜尋結果"), systemImage: "doc.text.magnifyingglass")
+                        UnavailableLabel(localized("无搜寻结果"), systemImage: "doc.text.magnifyingglass")
                     } description: {
-                        Text(localized("換個關鍵字再試一次。")).foregroundStyle(DSColor.textSecondary)
+                        Text(localized("换个关键字再试一次。")).foregroundStyle(DSColor.textSecondary)
                     }
                 } else {
                     List(matches) { item in
@@ -60,7 +60,7 @@ struct ReaderBookSearchView: View {
                                     .font(DSFont.caption)
                                     .foregroundStyle(DSColor.textSecondary)
                                     .lineLimit(2)
-                                Text(String(format: localized("第 %d 頁"), item.pageIndex + 1))
+                                Text(String(format: localized("第 %d 页"), item.pageIndex + 1))
                                     .font(DSFont.caption2)
                                     .foregroundStyle(DSColor.textSecondary)
                                     .monospacedDigit()
@@ -78,14 +78,14 @@ struct ReaderBookSearchView: View {
             }
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
-            .navigationTitle(localized("搜尋書籍"))
+            .navigationTitle(localized("搜寻书籍"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onClose) {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
             }
         }
@@ -113,7 +113,7 @@ struct ReaderBookSearchView: View {
             ReaderBookSearchItem(
                 pageIndex: 0,
                 chapterTitle: "第一章",
-                text: "這是一段用於預覽搜尋結果的閱讀內容。"
+                text: "这是一段用于预览搜寻结果的阅读内容。"
             ),
         ],
         onSelect: { _ in },

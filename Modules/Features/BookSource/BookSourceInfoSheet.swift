@@ -13,8 +13,8 @@ struct BookSourceInfoSheet: View {
 
     private var sourceTypeText: String {
         switch source.bookSourceType {
-        case 1: return localized("音頻")
-        case 2: return localized("圖片")
+        case 1: return localized("音频")
+        case 2: return localized("图片")
         case 3: return localized("文件")
         default: return localized("文本")
         }
@@ -30,47 +30,47 @@ struct BookSourceInfoSheet: View {
         NavigationStack {
             List {
                 Section {
-                    infoRow(localized("書源名稱"), value: displayName)
+                    infoRow(localized("书源名称"), value: displayName)
                     infoRow(
-                        localized("分組"),
+                        localized("分组"),
                         value: source.bookSourceGroup.isEmpty
-                            ? localized("默認分組") : source.bookSourceGroup)
-                    infoRow(localized("網址"), value: source.bookSourceUrl, monospaced: true)
-                    infoRow(localized("類型"), value: sourceTypeText)
+                            ? localized("默认分组") : source.bookSourceGroup)
+                    infoRow(localized("网址"), value: source.bookSourceUrl, monospaced: true)
+                    infoRow(localized("类型"), value: sourceTypeText)
                 }
                 .interfaceSectionSurface()
 
                 Section {
                     infoRow(
-                        localized("狀態"),
-                        value: localized(source.enabled ? "已啟用" : "已停用"))
+                        localized("状态"),
+                        value: localized(source.enabled ? "已启用" : "已停用"))
                     infoRow(
-                        localized("支持發現"),
+                        localized("支持发现"),
                         value: localized(supportsExplore ? "是" : "否"))
                     if let validation {
-                        infoRow(localized("驗證結果"), value: validationText(validation))
+                        infoRow(localized("验证结果"), value: validationText(validation))
                     }
-                    infoRow(localized("響應時間"), value: "\(source.respondTime) ms")
+                    infoRow(localized("响应时间"), value: "\(source.respondTime) ms")
                     if let lastUpdateText {
-                        infoRow(localized("最後更新"), value: lastUpdateText)
+                        infoRow(localized("最后更新"), value: lastUpdateText)
                     }
                     if !source.concurrentRate.isEmpty {
-                        infoRow(localized("併發限制"), value: source.concurrentRate)
+                        infoRow(localized("并发限制"), value: source.concurrentRate)
                     }
                     if !source.loginUrl.isEmpty {
-                        infoRow(localized("登入網址"), value: source.loginUrl, monospaced: true)
+                        infoRow(localized("登入网址"), value: source.loginUrl, monospaced: true)
                     }
                 }
                 .interfaceSectionSurface()
 
                 Section {
-                    ruleRow(localized("搜索規則"), present: !source.searchUrl.isEmpty)
-                    ruleRow(localized("發現規則"), present: !source.exploreUrl.isEmpty)
-                    ruleRow(localized("詳情規則"), present: !source.ruleBookInfo.tocUrl.isEmpty)
-                    ruleRow(localized("目錄規則"), present: !source.ruleToc.chapterList.isEmpty)
-                    ruleRow(localized("正文規則"), present: !source.ruleContent.content.isEmpty)
+                    ruleRow(localized("搜索规则"), present: !source.searchUrl.isEmpty)
+                    ruleRow(localized("发现规则"), present: !source.exploreUrl.isEmpty)
+                    ruleRow(localized("详情规则"), present: !source.ruleBookInfo.tocUrl.isEmpty)
+                    ruleRow(localized("目录规则"), present: !source.ruleToc.chapterList.isEmpty)
+                    ruleRow(localized("正文规则"), present: !source.ruleContent.content.isEmpty)
                 } header: {
-                    Text(localized("規則"))
+                    Text(localized("规则"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
@@ -82,7 +82,7 @@ struct BookSourceInfoSheet: View {
                             .foregroundColor(DSColor.textSecondary)
                             .textSelection(.enabled)
                     } header: {
-                        Text(localized("註釋"))
+                        Text(localized("注释"))
                             .foregroundStyle(DSColor.textSecondary)
                     }
                     .interfaceSectionSurface()
@@ -95,14 +95,14 @@ struct BookSourceInfoSheet: View {
                             .foregroundColor(DSColor.textSecondary)
                             .textSelection(.enabled)
                     } header: {
-                        Text(localized("源變量說明"))
+                        Text(localized("源变量说明"))
                             .foregroundStyle(DSColor.textSecondary)
                     }
                     .interfaceSectionSurface()
                 }
             }
             .softScrollEdges()
-            .navigationTitle(localized("查看詳情"))
+            .navigationTitle(localized("查看详情"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -112,14 +112,14 @@ struct BookSourceInfoSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
             }
         }
     }
 
     private var displayName: String {
-        source.bookSourceName.isEmpty ? localized("未命名書源") : source.bookSourceName
+        source.bookSourceName.isEmpty ? localized("未命名书源") : source.bookSourceName
     }
 
     private var supportsExplore: Bool {
@@ -130,9 +130,9 @@ struct BookSourceInfoSheet: View {
     private func validationText(_ summary: SourceValidationSummary) -> String {
         let label: String
         switch summary.health {
-        case .passed:       label = localized("驗證通過")
-        case .fetchError:   label = localized("抓取異常")
-        case .contentError: label = localized("正文異常")
+        case .passed:       label = localized("验证通过")
+        case .fetchError:   label = localized("抓取异常")
+        case .contentError: label = localized("正文异常")
         }
         return "\(label)・\(summary.responseMs) ms"
     }
@@ -164,17 +164,17 @@ struct BookSourceInfoSheet: View {
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityValue(localized(present ? "已設定" : "未設定"))
+        .accessibilityValue(localized(present ? "已设定" : "未设定"))
     }
 }
 
 #Preview {
     var source = BookSource()
-    source.bookSourceName = "範例書源"
+    source.bookSourceName = "范例书源"
     source.bookSourceUrl = "https://example.com"
-    source.bookSourceGroup = "小說"
+    source.bookSourceGroup = "小说"
     source.searchUrl = "https://example.com/search?q={{key}}"
-    source.bookSourceComment = "這是一個範例書源的註釋。"
+    source.bookSourceComment = "这是一个范例书源的注释。"
     return BookSourceInfoSheet(
         source: source,
         validation: SourceValidationSummary(health: .passed, responseMs: 320)

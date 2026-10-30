@@ -30,11 +30,11 @@ enum LocalPDFArchiveError: LocalizedError {
         case .invalidFileType:
             return localized("不支援的 PDF 格式")
         case .cannotReadDocument:
-            return localized("無法讀取 PDF 檔案")
+            return localized("无法读取 PDF 档案")
         case .passwordProtected:
-            return localized("這個 PDF 有密碼保護，目前無法開啟")
+            return localized("这个 PDF 有密码保护，目前无法开启")
         case .noPagesFound:
-            return localized("PDF 中未找到頁面")
+            return localized("PDF 中未找到页面")
         }
     }
 }

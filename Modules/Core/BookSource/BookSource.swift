@@ -576,15 +576,15 @@ enum OnlineBookContentInference {
             .replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "_", with: "")
             .replacingOccurrences(of: "-", with: "")
-        if normalized == "听书" || normalized == "聽書" || normalized == "有声"
-            || normalized == "有聲" || normalized == "audio" || normalized == "audiobook" {
+        if normalized == "听书" || normalized == "听书" || normalized == "有声"
+            || normalized == "有声" || normalized == "audio" || normalized == "audiobook" {
             return .audio
         }
-        if normalized == "漫画" || normalized == "漫畫" || normalized == "comic"
+        if normalized == "漫画" || normalized == "漫画" || normalized == "comic"
             || normalized == "manga" || normalized == "image" {
             return .manga
         }
-        if normalized == "小说" || normalized == "小說" || normalized == "novel"
+        if normalized == "小说" || normalized == "小说" || normalized == "novel"
             || normalized == "text" || normalized == "文字" {
             return .text
         }
@@ -611,12 +611,12 @@ enum OnlineBookContentInference {
             .replacingOccurrences(of: " ", with: "")
         guard !normalized.isEmpty else { return nil }
 
-        let audioMarkers = ["当前模式：听书", "当前模式:听书", "目前模式：聽書", "模式：听书", "模式:听书"]
+        let audioMarkers = ["当前模式：听书", "当前模式:听书", "目前模式：听书", "模式：听书", "模式:听书"]
         if audioMarkers.contains(where: { normalized.contains($0) }) {
             return .audio
         }
 
-        let mangaMarkers = ["当前模式：漫画", "当前模式:漫画", "目前模式：漫畫", "模式：漫画", "模式:漫画"]
+        let mangaMarkers = ["当前模式：漫画", "当前模式:漫画", "目前模式：漫画", "模式：漫画", "模式:漫画"]
         if mangaMarkers.contains(where: { normalized.contains($0) }) {
             return .manga
         }
@@ -795,7 +795,7 @@ extension OnlineChapterRef {
     }
 
     private static var strongVolumeSeparatorTitles: Set<String> {
-        ["作品相关", "作品相關", "正文卷"]
+        ["作品相关", "作品相关", "正文卷"]
     }
 }
 

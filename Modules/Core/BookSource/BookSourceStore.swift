@@ -444,7 +444,7 @@ class BookSourceStore: ObservableObject {
             }
             return String(afterScheme)
         }
-        return "無域名"
+        return "无域名"
     }
 
     // MARK: Import (Legado Compatible)

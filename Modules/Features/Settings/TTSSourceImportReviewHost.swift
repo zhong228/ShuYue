@@ -42,11 +42,11 @@ struct TTSSourceImportReviewHost: View {
 
     var body: some View {
         SourceImportConfirmList(
-            title: localized("匯入語音源"),
+            title: localized("汇入语音源"),
             plan: plan,
             existingClock: { clocks[$0] },
             showsComments: $showsComments,
-            confirmTitle: localized("匯入"),
+            confirmTitle: localized("汇入"),
             extraOptions: { EmptyView() },
             onConfirm: {
                 let selected = plan.selectedSources

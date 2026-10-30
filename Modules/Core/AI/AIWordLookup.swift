@@ -57,21 +57,21 @@ enum AIWordLookup {
 
     static func systemPrompt(language: AIAnswerLanguage) -> String {
         """
-        你是閱讀器裡的查詞助手。讀者在書中選了一個詞或短語，請依上下文說明。
-        用\(language.promptName)回答，輸出 Markdown，依序：
-        - 開頭一段直接說明它在這段文字裡的意思；有指代、雙關或特殊語氣時一併說明。選取的是外文時，先給翻譯。
-        - 「## \(localized("讀音"))」：中文給漢語拼音，外文給音標或假名；沒有把握就省略這一節。
-        - 「## \(localized("釋義"))」：列出常見義項，標明這裡用的是哪一個。
-        - 「## \(localized("例句"))」：一到兩個自然的例句。
-        - 「## \(localized("出處與背景"))」：只有成語、典故、專有名詞或文化背景時才寫。
-        只依上下文推斷書中用法，不要透露本書後續情節；上下文不足以判斷時直接說明。不要重複題目，不要寫開場白。
+        你是阅读器里的查词助手。读者在书中选了一个词或短语，请依上下文说明。
+        用\(language.promptName)回答，输出 Markdown，依序：
+        - 开头一段直接说明它在这段文字里的意思；有指代、双关或特殊语气时一并说明。选取的是外文时，先给翻译。
+        - 「## \(localized("读音"))」：中文给汉语拼音，外文给音标或假名；没有把握就省略这一节。
+        - 「## \(localized("释义"))」：列出常见义项，标明这里用的是哪一个。
+        - 「## \(localized("例句"))」：一到两个自然的例句。
+        - 「## \(localized("出处与背景"))」：只有成语、典故、专有名词或文化背景时才写。
+        只依上下文推断书中用法，不要透露本书后续情节；上下文不足以判断时直接说明。不要重复题目，不要写开场白。
         """
     }
 
     static func request(term: String, context: String, bookTitle: String?, language: AIAnswerLanguage) -> LLMGenerationRequest {
         var lines: [String] = []
-        if let bookTitle, !bookTitle.isEmpty { lines.append("書名：\(bookTitle)") }
-        lines.append("選取：\(term)")
+        if let bookTitle, !bookTitle.isEmpty { lines.append("书名：\(bookTitle)") }
+        lines.append("选取：\(term)")
         lines.append("上下文：\(context.isEmpty ? term : context)")
         return LLMGenerationRequest(messages: [
             LLMMessage(role: .system, content: systemPrompt(language: language)),

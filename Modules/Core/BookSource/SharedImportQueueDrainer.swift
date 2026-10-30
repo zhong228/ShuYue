@@ -463,7 +463,7 @@ final class SharedImportQueueDrainer: ObservableObject {
         }
         // Parse now so a malformed pack still fails here and is reported as a failure, then
         // hand the result to the confirmation list. Returning 0 keeps this out of the
-        // "成功匯入 N 個項目" tally — nothing has been written yet — and `publish` skips the
+        // "成功汇入 N 个项目" tally — nothing has been written yet — and `publish` skips the
         // alert entirely when a drain carried nothing but sources to review.
         let sources = try BookSourceStore.shared.parseForImport(
             data: data,

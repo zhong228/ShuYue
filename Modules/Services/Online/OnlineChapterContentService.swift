@@ -145,7 +145,7 @@ final class OnlineChapterContentService {
         ref: OnlineChapterRef,
         index: Int
     ) -> ChapterContentPayload {
-        let displayTitle = title(at: index).isEmpty ? localized("作品相關") : title(at: index)
+        let displayTitle = title(at: index).isEmpty ? localized("作品相关") : title(at: index)
         let escaped = ReaderHTMLUtilities.escapeHTML(displayTitle)
         let html = """
         <!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"></head>

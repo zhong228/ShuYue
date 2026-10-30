@@ -117,7 +117,7 @@ struct OnlineBookView: View {
         let d = detailInfo?.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let b = currentBook.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if let d = d, !d.isEmpty { return d }
-        return b.isEmpty ? localized("未知書名") : b
+        return b.isEmpty ? localized("未知书名") : b
     }
 
     private var displayAuthor: String {
@@ -178,7 +178,7 @@ struct OnlineBookView: View {
         let name = currentBook.sourceName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !name.isEmpty { return name }
         if let s = source?.bookSourceName, !s.isEmpty { return s }
-        return localized("未知書源")
+        return localized("未知书源")
     }
 
     /// Category string split into individual genre tags, junk filtered out.
@@ -224,7 +224,7 @@ struct OnlineBookView: View {
                 )
             }
             BookDetailChapterSection(
-                title: localized("目錄"),
+                title: localized("目录"),
                 chapters: chapters,
                 isLoading: loadingTOC,
                 errorMessage: tocError,
@@ -340,8 +340,8 @@ struct OnlineBookView: View {
     private var readAction: BookDetailAction {
         BookDetailAction(
             title: openingReader
-                ? localized("打開中…")
-                : (alreadyInShelf ? localized("繼續閱讀") : localized("立即閱讀")),
+                ? localized("打开中…")
+                : (alreadyInShelf ? localized("继续阅读") : localized("立即阅读")),
             systemImage: "book.fill",
             isBusy: openingReader,
             isEnabled: !chapters.isEmpty && !addingToShelf,
@@ -352,8 +352,8 @@ struct OnlineBookView: View {
     private var shelfAction: BookDetailAction {
         BookDetailAction(
             title: alreadyInShelf
-                ? localized("移除書架")
-                : (addingToShelf ? localized("加入中…") : localized("加入書架")),
+                ? localized("移除书架")
+                : (addingToShelf ? localized("加入中…") : localized("加入书架")),
             systemImage: alreadyInShelf ? "minus" : "plus",
             isBusy: addingToShelf,
             isEnabled: !chapters.isEmpty,
@@ -367,12 +367,12 @@ struct OnlineBookView: View {
         var items: [BookDetailInfoItem] = []
         if !displayWordCount.isEmpty {
             items.append(BookDetailInfoItem(
-                id: "wordCount", label: localized("字數"), value: displayWordCount
+                id: "wordCount", label: localized("字数"), value: displayWordCount
             ))
         }
         if !chapters.isEmpty {
             items.append(BookDetailInfoItem(
-                id: "chapters", label: localized("章節"), value: chapters.count.formatted()
+                id: "chapters", label: localized("章节"), value: chapters.count.formatted()
             ))
         }
         items.append(.source(name: sourceName) { showSourcePicker = true })
@@ -506,7 +506,7 @@ struct OnlineBookView: View {
 
     private func loadTOC(forceRefresh: Bool = false) async {
         guard let source else {
-            tocError = localized("書源已被刪除")
+            tocError = localized("书源已被删除")
             return
         }
 
@@ -853,15 +853,15 @@ struct OnlineBookView: View {
     let sample = OnlineBook(
         name: "修仙聊天群",
         author: "世味煮作茶",
-        intro: "某一天，剛被開除的上班族余小安偶然進入了一個奇怪的修仙聊天群，接受了一個種藥草的委託，從此，他變成了一個種地的……不過他的顧客名字都很奇怪，比如：白帝仙王、青龍仙君、太上仙尊。",
+        intro: "某一天，刚被开除的上班族余小安偶然进入了一个奇怪的修仙聊天群，接受了一个种药草的委托，从此，他变成了一个种地的……不过他的顾客名字都很奇怪，比如：白帝仙王、青龙仙君、太上仙尊。",
         coverUrl: "",
         bookUrl: "https://example.com/book/1",
         tocUrl: "https://example.com/book/1/toc",
-        wordCount: "34.8萬字",
-        lastChapter: "第703章 大結局",
-        kind: "都市腦洞 | 都市 | 系統 | 神豪 | 諸天萬界",
+        wordCount: "34.8万字",
+        lastChapter: "第703章 大结局",
+        kind: "都市脑洞 | 都市 | 系统 | 神豪 | 诸天万界",
         sourceId: UUID(),
-        sourceName: "晴天小說"
+        sourceName: "晴天小说"
     )
     return NavigationStack {
         OnlineBookView(book: sample)

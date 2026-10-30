@@ -50,7 +50,7 @@ struct AppearanceColorsAndFontView: View {
         }
         }
         .softScrollEdges()
-        .navigationTitle(localized("顏色與字體"))
+        .navigationTitle(localized("颜色与字体"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .sheet(item: $paywallFeature) { feature in
@@ -64,8 +64,8 @@ struct AppearanceColorsAndFontView: View {
     private var accentSection: some View {
         let light = colorsBinding(for: lightTheme)
         let dark = colorsBinding(for: darkTheme)
-        return DSSettingsGroupCard(title: localized("強調色"), footer: {
-            Text(localized("只用在能點或已選中的東西：按鈕、連結、開關、滑桿、選中狀態、Tab 選中圖示和設定列的圖示。"))
+        return DSSettingsGroupCard(title: localized("强调色"), footer: {
+            Text(localized("只用在能点或已选中的东西：按钮、连结、开关、滑杆、选中状态、Tab 选中图示和设定列的图示。"))
                 .dsSectionFooter()
         }) {
             ColorPicker(selection: hexColor(light, \.accentHex), supportsOpacity: false) {
@@ -74,7 +74,7 @@ struct AppearanceColorsAndFontView: View {
             .padding(.horizontal, DSSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minHeight: 54)
-            .accessibilityLabel(modeLabel(section: "強調色", mode: "亮色模式"))
+            .accessibilityLabel(modeLabel(section: "强调色", mode: "亮色模式"))
             // The dark accent is part of the dark palette: it has its own value only
             // once 自動深色配色 is off, under 背景.
             if dark.wrappedValue.dark != nil {
@@ -85,7 +85,7 @@ struct AppearanceColorsAndFontView: View {
                 .padding(.horizontal, DSSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(minHeight: 54)
-                .accessibilityLabel(modeLabel(section: "強調色", mode: "深色模式"))
+                .accessibilityLabel(modeLabel(section: "强调色", mode: "深色模式"))
             }
         }
     }
@@ -93,8 +93,8 @@ struct AppearanceColorsAndFontView: View {
     private var textColorSection: some View {
         let light = colorsBinding(for: lightTheme)
         let dark = colorsBinding(for: darkTheme)
-        return DSSettingsGroupCard(title: localized("文字顏色"), footer: {
-            Text(localized("主文字用在標題和列名稱，次級文字用在數值、副標和說明，弱文字用在停用和提示文字。閱讀正文的顏色在閱讀設定裡設。"))
+        return DSSettingsGroupCard(title: localized("文字颜色"), footer: {
+            Text(localized("主文字用在标题和列名称，次级文字用在数值、副标和说明，弱文字用在停用和提示文字。阅读正文的颜色在阅读设定里设。"))
                 .dsSectionFooter()
         }) {
             ForEach(TextLevel.allCases) { level in
@@ -129,8 +129,8 @@ struct AppearanceColorsAndFontView: View {
         let dark = colorsBinding(for: darkTheme)
         return DSSettingsGroupCard(title: localized("背景"), footer: {
             Text(dark.wrappedValue.dark == nil
-                ? localized("頁面、卡片和面板的底色；閱讀主題選「跟隨外觀主題」時，閱讀頁也用它。關閉「自動深色配色」後，強調色和背景都能另外指定深色。")
-                : localized("頁面、卡片和面板的底色；閱讀主題選「跟隨外觀主題」時，閱讀頁也用它。"))
+                ? localized("页面、卡片和面板的底色；阅读主题选「跟随外观主题」时，阅读页也用它。关闭「自动深色配色」后，强调色和背景都能另外指定深色。")
+                : localized("页面、卡片和面板的底色；阅读主题选「跟随外观主题」时，阅读页也用它。"))
                 .dsSectionFooter()
         }) {
             ColorPicker(selection: hexColor(light, \.backgroundHex), supportsOpacity: false) {
@@ -142,7 +142,7 @@ struct AppearanceColorsAndFontView: View {
             .accessibilityLabel(modeLabel(section: "背景", mode: "亮色模式"))
             DSSettingsCardDivider()
             DSSettingsCardToggle(
-                title: localized("自動深色配色"),
+                title: localized("自动深色配色"),
                 systemImage: "circle.lefthalf.filled",
                 isOn: automaticDarkBinding(dark)
             )
@@ -160,13 +160,13 @@ struct AppearanceColorsAndFontView: View {
     }
 
     private var fontSection: some View {
-        DSSettingsGroupCard(title: localized("全局字體"), footer: {
-            Text(localized("介面所有文字都用這個字體，並跟著系統字級縮放；閱讀正文的字體在閱讀設定裡設。打開「粗體文字」時，沒有粗體的字體會暫時改用系統字體。"))
+        DSSettingsGroupCard(title: localized("全局字体"), footer: {
+            Text(localized("介面所有文字都用这个字体，并跟著系统字级缩放；阅读正文的字体在阅读设定里设。打开「粗体文字」时，没有粗体的字体会暂时改用系统字体。"))
                 .dsSectionFooter()
         }) {
             DSSettingsCardNavRow(
                 icon: "textformat",
-                title: localized("字體"),
+                title: localized("字体"),
                 value: settings.globalFontDisplayName
             ) {
                 GlobalFontSettingsView()
@@ -331,7 +331,7 @@ private enum TextLevel: CaseIterable, Identifiable {
     func titleKey(dark: Bool) -> String {
         switch self {
         case .primary: return dark ? "深色主文字" : "亮色主文字"
-        case .secondary: return dark ? "深色次級文字" : "亮色次級文字"
+        case .secondary: return dark ? "深色次级文字" : "亮色次级文字"
         case .tertiary: return dark ? "深色弱文字" : "亮色弱文字"
         }
     }
@@ -369,10 +369,10 @@ extension GlobalSettings {
     /// name, else 系統字體.
     var globalFontDisplayName: String {
         guard let selected = resolvedGlobalFontPostScript else {
-            return localized("系統字體")
+            return localized("系统字体")
         }
         return userFonts.first { $0.postScriptName == selected }?.displayName
-            ?? localized("系統字體")
+            ?? localized("系统字体")
     }
 }
 

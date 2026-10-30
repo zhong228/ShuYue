@@ -63,25 +63,25 @@ struct ReaderCustomBackgroundEditorView: View {
             }
 
             Section {
-                TextField(localized("名稱"), text: $name, prompt: Text(defaultName))
+                TextField(localized("名称"), text: $name, prompt: Text(defaultName))
                     .font(DSFont.body)
             } header: {
-                Text(localized("名稱"))
+                Text(localized("名称"))
                     .foregroundStyle(DSColor.textSecondary)
             }
             .interfaceSectionSurface()
 
             Section {
-                Picker(localized("類型"), selection: $kind) {
-                    Text(localized("顏色")).tag(Kind.color)
-                    Text(localized("圖片")).tag(Kind.picture)
+                Picker(localized("类型"), selection: $kind) {
+                    Text(localized("颜色")).tag(Kind.color)
+                    Text(localized("图片")).tag(Kind.picture)
                 }
                 .pickerStyle(.segmented)
 
                 switch kind {
                 case .color:
                     ColorPicker(selection: $color, supportsOpacity: false) {
-                        SettingsRowLabel(localized("背景顏色"), systemImage: "paintpalette")
+                        SettingsRowLabel(localized("背景颜色"), systemImage: "paintpalette")
                     }
                 case .picture:
                     pictureRow
@@ -91,7 +91,7 @@ struct ReaderCustomBackgroundEditorView: View {
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
                 if kind == .picture {
-                    Text(localized("圖片會直接顯示在閱讀背景與主題預覽中。"))
+                    Text(localized("图片会直接显示在阅读背景与主题预览中。"))
                         .dsSectionFooter()
                 }
             }
@@ -99,11 +99,11 @@ struct ReaderCustomBackgroundEditorView: View {
 
             Section {
                 Toggle(isOn: $automaticTextColor) {
-                    SettingsRowLabel(localized("自動文字顏色"), systemImage: "paintbrush")
+                    SettingsRowLabel(localized("自动文字颜色"), systemImage: "paintbrush")
                 }
                 if !automaticTextColor {
                     ColorPicker(selection: $textColor, supportsOpacity: false) {
-                        SettingsRowLabel(localized("文字顏色"), systemImage: "paintbrush.pointed")
+                        SettingsRowLabel(localized("文字颜色"), systemImage: "paintbrush.pointed")
                     }
                 }
             } header: {
@@ -117,7 +117,7 @@ struct ReaderCustomBackgroundEditorView: View {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
-                        SettingsRowLabel(localized("刪除這個背景"), systemImage: "trash", role: .destructive)
+                        SettingsRowLabel(localized("删除这个背景"), systemImage: "trash", role: .destructive)
                     }
                 }
                 .interfaceSectionSurface()
@@ -126,7 +126,7 @@ struct ReaderCustomBackgroundEditorView: View {
         .softScrollEdges()
         .scrollContentBackground(.hidden)
         .background(DSColor.groupedBackground)
-        .navigationTitle(localized("自定義閱讀背景"))
+        .navigationTitle(localized("自定义阅读背景"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -134,32 +134,32 @@ struct ReaderCustomBackgroundEditorView: View {
                     Image(systemName: "checkmark")
                 }
                 .disabled(!canSave)
-                .accessibilityLabel(localized("儲存"))
+                .accessibilityLabel(localized("储存"))
             }
         }
         .alert(
-            localized("閱讀背景匯入失敗"),
+            localized("阅读背景汇入失败"),
             isPresented: Binding(
                 get: { importFailure != nil },
                 set: { if !$0 { importFailure = nil } }
             )
         ) {
-            Button(localized("確定"), role: .cancel) {}
+            Button(localized("确定"), role: .cancel) {}
         } message: {
             Text(importFailure ?? "")
         }
         .alert(
-            String(format: localized("刪除「%@」？"), original?.name ?? ""),
+            String(format: localized("删除「%@」？"), original?.name ?? ""),
             isPresented: $showDeleteConfirmation
         ) {
-            Button(localized("刪除"), role: .destructive) {
+            Button(localized("删除"), role: .destructive) {
                 guard let original else { return }
                 settings.deleteReaderCustomBackground(id: original.id)
                 onDelete()
             }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("正在使用這個背景的地方會改用內建的閱讀背景。"))
+            Text(localized("正在使用这个背景的地方会改用内建的阅读背景。"))
         }
         .onDisappear {
             for fileName in importedFileNames {
@@ -181,7 +181,7 @@ struct ReaderCustomBackgroundEditorView: View {
                     .resizable()
                     .scaledToFill()
             }
-            Text(localized("這是閱讀時文字的樣子。"))
+            Text(localized("这是阅读时文字的样子。"))
                 .font(DSFont.body)
                 .foregroundStyle(Color(uiColor: AppearanceThemePreset.hex(previewTextHex)))
                 .padding(DSSpacing.lg)
@@ -194,20 +194,20 @@ struct ReaderCustomBackgroundEditorView: View {
                 .stroke(DSColor.separator, lineWidth: 1)
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(localized("預覽"))
+        .accessibilityLabel(localized("预览"))
     }
 
     @ViewBuilder
     private var pictureRow: some View {
         if ReaderPremiumVisibilityPolicy(isProActive: subscriptionStore.isProActive).showsBackgroundImageImport {
             ImageSourcePickerButton(
-                accessibilityTitle: localized("導入圖片背景"),
+                accessibilityTitle: localized("导入图片背景"),
                 onPick: importPicture
             ) {
-                SettingsRowLabel(localized("導入圖片背景"), systemImage: "photo", role: .action)
+                SettingsRowLabel(localized("导入图片背景"), systemImage: "photo", role: .action)
             }
         } else {
-            SettingsLockedRow(title: localized("導入圖片背景"), systemImage: "photo") {
+            SettingsLockedRow(title: localized("导入图片背景"), systemImage: "photo") {
                 onRequestPaywall(.readerBackgroundImport)
             }
         }
@@ -217,7 +217,7 @@ struct ReaderCustomBackgroundEditorView: View {
 
     private var defaultName: String {
         original?.name ?? ReaderCustomBackgroundLibrary.unusedName(
-            base: localized("自訂背景"),
+            base: localized("自订背景"),
             among: settings.readerCustomBackgrounds
         )
     }
@@ -267,7 +267,7 @@ struct ReaderCustomBackgroundEditorView: View {
             importFailure = localized(error.messageKey)
         } catch {
             AppLogger.error("⟐ reading background picture import failed", error: error)
-            importFailure = localized("無法匯入圖片背景。")
+            importFailure = localized("无法汇入图片背景。")
         }
     }
 

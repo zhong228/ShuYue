@@ -61,7 +61,7 @@ enum DownloadActivityDebugHarness {
         bookCount: Int,
         paused: Bool
     ) -> DownloadActivityAttributes.ContentState {
-        let titles = ["巫師：從合成寶石開始", "劍來", "詭祕之主"]
+        let titles = ["巫师：从合成宝石开始", "剑来", "诡秘之主"]
         let books = (0..<bookCount).map { index in
             DownloadActivityAttributes.ContentState.Book(
                 id: fakeBookId(index).uuidString,

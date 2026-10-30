@@ -677,7 +677,7 @@ final class OnlineProviderAttributedStringBuilder: @preconcurrency AttributedStr
         // title as a heading or review-bearing paragraph. Strip that leading
         // title text and typeset the title through ChapterTitleAttributedBuilder
         // so HTML-body books honour the reader's chapter-title style — fonts,
-        // weight, alignment, split, and "顯示標題" — exactly like plain-text ones.
+        // weight, alignment, split, and "显示标题" — exactly like plain-text ones.
         // This runs unconditionally: gating it on `advancedCSSEnabled` left the
         // manual mode (the only mode that exposes the font pickers) rendering the
         // source's own <h1>, so every title setting silently did nothing online.
@@ -744,7 +744,7 @@ final class OnlineProviderAttributedStringBuilder: @preconcurrency AttributedStr
             attributedString = bodyAttributed
         }
         // ⟐ 段評 format probe (Release-visible): paragraph structure + first paragraph styles.
-        // Splits the search space for the "indent+spacing gone with 段評 on" report — if the
+        // Splits the search space for the "indent+spacing gone with 段评 on" report — if the
         // probes already show indent=0/spacing=0 (or paragraphs joined by \u{2028}), the content
         // or IR conversion is at fault; if they look right, the paginator/display side is.
         AppLogger.render(

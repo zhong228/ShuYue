@@ -63,8 +63,8 @@ struct AICharacterListView: View {
             AIAssistantService.shared.activate(adapter)
         }
         .onDisappear { task?.cancel() }
-        .confirmationDialog(localized("全書模式可能揭露身分、關係與結局"), isPresented: $confirmWholeBook, titleVisibility: .visible) {
-            Button(localized("使用全書模式")) { scope = .wholeBook }
+        .confirmationDialog(localized("全书模式可能揭露身分、关系与结局"), isPresented: $confirmWholeBook, titleVisibility: .visible) {
+            Button(localized("使用全书模式")) { scope = .wholeBook }
             Button(localized("取消"), role: .cancel) {}
         }
     }
@@ -73,25 +73,25 @@ struct AICharacterListView: View {
     /// first; the control stays on 已讀 until the reader confirms.
     private var scopeSection: some View {
         Section {
-            Picker(localized("範圍"), selection: Binding(get: { scope }, set: { value in
+            Picker(localized("范围"), selection: Binding(get: { scope }, set: { value in
                 if value == .wholeBook { confirmWholeBook = true } else { scope = .read }
             })) {
-                Text(localized("已讀")).tag(Scope.read)
-                Text(localized("全書")).tag(Scope.wholeBook)
+                Text(localized("已读")).tag(Scope.read)
+                Text(localized("全书")).tag(Scope.wholeBook)
             }
             .pickerStyle(.segmented)
         } footer: {
             Text(
                 scope == .read
                     ? String(
-                        format: localized("只列出你讀到 %d%% 為止出現過的角色。"),
+                        format: localized("只列出你读到 %d%% 为止出现过的角色。"),
                         Int((progress * 100).rounded())
                     )
-                    : localized("包含你還沒讀到的角色。")
+                    : localized("包含你还没读到的角色。")
             )
             .dsSectionFooter()
             if scope == .read, store.profiles(forBook: bookID).count > profiles.count {
-                Text(localized("部分卡片來源或範圍未驗證，已在安全模式隱藏；自訂設定仍保留。"))
+                Text(localized("部分卡片来源或范围未验证，已在安全模式隐藏；自订设定仍保留。"))
                     .dsSectionFooter()
             }
         }
@@ -100,7 +100,7 @@ struct AICharacterListView: View {
 
     private var addSection: some View {
         Section {
-            TextField(localized("人物名稱"), text: $newName)
+            TextField(localized("人物名称"), text: $newName)
                 .disabled(buildingName != nil)
             Button {
                 build(name: newName.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -122,7 +122,7 @@ struct AICharacterListView: View {
             // The one place in the assistant that reads past the reader's progress. It is
             // opt-in, and the only thing holding spoilers back is a prompt rule — so the
             // reader is told, rather than finding out from a card.
-            Text(localized("人物卡依目前範圍整理；全書及舊版未驗證卡片不會用於安全模式的別名或朗讀。"))
+            Text(localized("人物卡依目前范围整理；全书及旧版未验证卡片不会用于安全模式的别名或朗读。"))
                 .dsSectionFooter()
         }
         // An input on the bare page reads as a caption; the card makes it a field.
@@ -132,9 +132,9 @@ struct AICharacterListView: View {
     private var emptySection: some View {
         Section {
             ContentUnavailableView {
-                UnavailableLabel(localized("還沒有人物卡"), systemImage: "person.text.rectangle")
+                UnavailableLabel(localized("还没有人物卡"), systemImage: "person.text.rectangle")
             } description: {
-                Text(localized("整理之後，多角色朗讀也會用這裡的別名，把同一個人的不同稱呼歸成同一個聲音。")).foregroundStyle(DSColor.textSecondary)
+                Text(localized("整理之后，多角色朗读也会用这里的别名，把同一个人的不同称呼归成同一个声音。")).foregroundStyle(DSColor.textSecondary)
             }
         }
         .listRowBackground(Color.clear)
@@ -154,11 +154,11 @@ struct AICharacterListView: View {
                 ThemedLabeledContent(localized("身分"), value: role)
             }
             if let first = profile.firstAppearance {
-                ThemedLabeledContent(localized("首次登場"), value: first)
+                ThemedLabeledContent(localized("首次登场"), value: first)
             }
             if !profile.aliasCandidates.isEmpty {
                 LabeledContent(
-                    localized("別稱"),
+                    localized("别称"),
                     value: profile.aliasCandidates.joined(separator: "、")
                 )
             }
@@ -177,10 +177,10 @@ struct AICharacterListView: View {
             Text(profile.name)
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(profile.citationChunkIDs.isEmpty ? localized("未提供可核對引用") : String(format: localized("引用 %d 筆原文"), profile.citationChunkIDs.count))
+            Text(profile.citationChunkIDs.isEmpty ? localized("未提供可核对引用") : String(format: localized("引用 %d 笔原文"), profile.citationChunkIDs.count))
                 .dsSectionFooter()
             if !profile.isSafe(at: adapter.boundary()) {
-                Text(localized("全書或未驗證範圍，可能含劇透"))
+                Text(localized("全书或未验证范围，可能含剧透"))
                     .dsSectionFooter()
             }
         }
@@ -189,7 +189,7 @@ struct AICharacterListView: View {
             Button(role: .destructive) {
                 store.remove(name: profile.name, forBook: bookID)
             } label: {
-                Label(localized("刪除"), systemImage: "trash")
+                Label(localized("删除"), systemImage: "trash")
             }
             Button {
                 build(name: profile.name)

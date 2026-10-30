@@ -169,7 +169,7 @@ final class IOS17SearchResultTableViewController: UITableViewController {
                         reuseIdentifier: Self.loadMoreCellIdentifier
                     )
                 var configuration = UIListContentConfiguration.cell()
-                configuration.text = localized("載入更多")
+                configuration.text = localized("载入更多")
                 configuration.image = UIImage(systemName: "arrow.down.circle")
                 configuration.textProperties.color = .tintColor
                 configuration.textProperties.font = GlobalAppTypography.uiFont(

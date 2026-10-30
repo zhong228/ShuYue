@@ -124,7 +124,7 @@ private func normalizeChapterTitleKey(_ title: String) -> String {
 private func extractChapterOrder(from title: String) -> Int? {
     let patterns = [
         "第\\s*([0-9]+)\\s*[章节回卷篇部]",
-        "第\\s*([零一二三四五六七八九十百千万兩两〇○]+)\\s*[章节回卷篇部]",
+        "第\\s*([零一二三四五六七八九十百千万两两〇○]+)\\s*[章节回卷篇部]",
         "chapter\\s*([0-9]+)",
     ]
 
@@ -155,7 +155,7 @@ private func extractChapterOrder(from title: String) -> Int? {
 private func parseChineseChapterNumber(_ raw: String) -> Int? {
     let digits: [Character: Int] = [
         "零": 0, "〇": 0, "○": 0,
-        "一": 1, "二": 2, "两": 2, "兩": 2, "三": 3, "四": 4,
+        "一": 1, "二": 2, "两": 2, "两": 2, "三": 3, "四": 4,
         "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
     ]
     let units: [Character: Int] = ["十": 10, "百": 100, "千": 1000, "万": 10000]
@@ -353,7 +353,7 @@ private let detectPageJS = """
     var n=0;
     for(var i=0;i<links.length;i++){
         var t=links[i].innerText||'';
-        if(/第[\\d零一二三四五六七八九十百千]+[章節]/i.test(t)||/Chapter\\s*\\d+/i.test(t)) n++;
+        if(/第[\\d零一二三四五六七八九十百千]+[章节]/i.test(t)||/Chapter\\s*\\d+/i.test(t)) n++;
     }
     return n>=5?9999:txt.length;
 })()
@@ -369,7 +369,7 @@ private let extractChaptersJS = """
         var t=(links[i].innerText||links[i].textContent||'').trim();
         var u=links[i].href||'';
         if(u&&!seen[u]&&u.indexOf('http')===0&&(
-            /第[\\d零一二三四五六七八九十百千万]+[章節]/i.test(t)||
+            /第[\\d零一二三四五六七八九十百千万]+[章节]/i.test(t)||
             /Chapter\\s*\\d+/i.test(t)
         )&&t.length<120){
             seen[u]=true;
@@ -475,7 +475,7 @@ class BrowserState: NSObject, ObservableObject, WKNavigationDelegate {
 
     func extractContentPayload(completion: @escaping (String, String, String) -> Void) {
         webView.evaluateJavaScript(contentExtractPayloadJS) { [weak self] result, _ in
-            let fallbackTitle = self?.pageTitle ?? "未知書名"
+            let fallbackTitle = self?.pageTitle ?? "未知书名"
             guard
                 let json = result as? String,
                 let data = json.data(using: .utf8),
@@ -510,7 +510,7 @@ class BrowserState: NSObject, ObservableObject, WKNavigationDelegate {
     private func extractTextContent(completion: @escaping (String, String) -> Void) {
         webView.evaluateJavaScript("document.title") { [weak self] t, _ in
             let title = ReaderHTMLUtilities.displayText(
-                fromHTMLFragment: (t as? String) ?? (self?.pageTitle ?? "未知書名")
+                fromHTMLFragment: (t as? String) ?? (self?.pageTitle ?? "未知书名")
             )
             self?.webView.evaluateJavaScript(contentExtractJS) { text, _ in
                 let raw = ((text as? String) ?? "")
@@ -791,7 +791,7 @@ struct BrowserPage: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button { dismiss() } label: {
-                    Label(localized("關閉"), systemImage: "xmark")
+                    Label(localized("关闭"), systemImage: "xmark")
                         .labelStyle(.iconOnly)
                 }
             }
@@ -838,7 +838,7 @@ struct BrowserPage: View {
             }
         }
         .alert(
-            localized("操作失敗"),
+            localized("操作失败"),
             isPresented: Binding(
                 get: { errorMsg != nil },
                 set: { isPresented in
@@ -846,9 +846,9 @@ struct BrowserPage: View {
                 }
             )
         ) {
-            Button(localized("確定"), role: .cancel) {}
+            Button(localized("确定"), role: .cancel) {}
         } message: {
-            Text(errorMsg ?? localized("操作失敗"))
+            Text(errorMsg ?? localized("操作失败"))
         }
     }
 
@@ -912,10 +912,10 @@ struct BrowserPage: View {
             )
         }
         let displayTitle = ReaderHTMLUtilities.displayText(fromHTMLFragment: title)
-        let bookTitle = displayTitle.isEmpty ? "網頁書籍" : displayTitle
+        let bookTitle = displayTitle.isEmpty ? "网页书籍" : displayTitle
         let book = store.addWebBrowsedBook(
             name: bookTitle,
-            author: "網路",
+            author: "网路",
             sourceURL: browser.currentURL,
             chapters: refs
         )
@@ -957,7 +957,7 @@ struct BrowserPage: View {
             browser.extractChapterLinks { items in
                 isExtracting = false
                 if items.isEmpty {
-                    errorMsg = localized("無法識別章節連結，請直接進入章節頁面再轉碼")
+                    errorMsg = localized("无法识别章节连结，请直接进入章节页面再转码")
                 } else {
                     tocBookTitle = ReaderHTMLUtilities.displayText(fromHTMLFragment: browser.pageTitle)
                     extractedChapters = items
@@ -968,17 +968,17 @@ struct BrowserPage: View {
             browser.extractContentPayload { title, content, html in
                 guard content.count >= 200 else {
                     isExtracting = false
-                    errorMsg = localized("抓取到的內容太少，請嘗試進入具體章節頁面")
+                    errorMsg = localized("抓取到的内容太少，请尝试进入具体章节页面")
                     return
                 }
                 let displayTitle = title.isEmpty
-                    ? "網頁書籍"
+                    ? "网页书籍"
                     : ReaderHTMLUtilities.displayText(fromHTMLFragment: title)
                 do {
                     let book = try store.importWeb(
                         content: html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? content : html,
                         title: displayTitle,
-                        author: "網路",
+                        author: "网路",
                         sourceURL: browser.currentURL,
                         format: .plainText
                     )
@@ -986,7 +986,7 @@ struct BrowserPage: View {
                     readerPresentation = ReaderPresentation(id: book.id)
                 } catch {
                     isExtracting = false
-                    errorMsg = localized("儲存失敗：") + error.localizedDescription
+                    errorMsg = localized("储存失败：") + error.localizedDescription
                 }
             }
         }
@@ -1054,7 +1054,7 @@ struct BrowserPage: View {
                     .frame(width: DSLayout.minimumTapTarget, height: DSLayout.minimumTapTarget)
                 }
                 .disabled(!canTranscode || isExtracting)
-                .accessibilityLabel(browser.hasTOC ? localized("目錄") : localized("轉碼閱讀"))
+                .accessibilityLabel(browser.hasTOC ? localized("目录") : localized("转码阅读"))
             } else {
                 // Safari's search field, before there is a page to read.
                 Image(systemName: "magnifyingglass")
@@ -1064,7 +1064,7 @@ struct BrowserPage: View {
                     .accessibilityHidden(true)
             }
 
-            TextField(localized("輸入網址或搜尋"), text: addressBinding)
+            TextField(localized("输入网址或搜寻"), text: addressBinding)
                 .font(DSFont.body)
                 .multilineTextAlignment(addressFocused ? .leading : .center)
                 .textInputAutocapitalization(.never)
@@ -1115,11 +1115,11 @@ struct BrowserPage: View {
 
     private var toolbarRow: some View {
         HStack {
-            toolbarButton("chevron.left", label: localized("上一頁"), enabled: showsPage, action: goBack)
+            toolbarButton("chevron.left", label: localized("上一页"), enabled: showsPage, action: goBack)
             Spacer()
             toolbarButton(
                 "chevron.right",
-                label: localized("下一頁"),
+                label: localized("下一页"),
                 enabled: showsSites ? browser.hasPage : browser.canGoForward,
                 action: goForward
             )
@@ -1127,13 +1127,13 @@ struct BrowserPage: View {
             let bookmarked = bookmarks.isBookmarked(browser.currentURL)
             toolbarButton(
                 bookmarked ? "bookmark.fill" : "bookmark",
-                label: bookmarked ? localized("移除書籤") : localized("加入書籤"),
+                label: bookmarked ? localized("移除书签") : localized("加入书签"),
                 enabled: showsPage && browser.hasPage
             ) {
                 bookmarks.toggle(title: browser.pageTitle, url: browser.currentURL)
             }
             Spacer()
-            toolbarButton("book", label: localized("書籤"), enabled: true) {
+            toolbarButton("book", label: localized("书签"), enabled: true) {
                 showBookmarks = true
             }
             Spacer()
@@ -1142,7 +1142,7 @@ struct BrowserPage: View {
                     get: { browser.usesDesktopSite },
                     set: { browser.setDesktopSite($0) }
                 )) {
-                    Label(localized("電腦版網頁"), systemImage: "desktopcomputer")
+                    Label(localized("电脑版网页"), systemImage: "desktopcomputer")
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -1211,7 +1211,7 @@ struct WebTOCSheet: View {
                     }
                     Text(
                         String(
-                            format: localized("共偵測到 %d 章，選擇開始閱讀的章節"),
+                            format: localized("共侦测到 %d 章，选择开始阅读的章节"),
                             chapters.count))
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
@@ -1267,7 +1267,7 @@ struct WebTOCSheet: View {
                     }
                     onConfirm(refs, selectedIndex)
                 } label: {
-                    Text(String(format: localized("從第 %d 章開始閱讀"), selectedIndex + 1))
+                    Text(String(format: localized("从第 %d 章开始阅读"), selectedIndex + 1))
                         .font(DSFont.fixed(size: 16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -1279,7 +1279,7 @@ struct WebTOCSheet: View {
                 .padding(.vertical, 12)
                 .background(Color(UIColor.systemBackground))
             }
-            .navigationTitle(localized("偵測到章節目錄"))
+            .navigationTitle(localized("侦测到章节目录"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .explore)
             .toolbar {

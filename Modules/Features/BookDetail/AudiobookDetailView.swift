@@ -114,7 +114,7 @@ struct AudiobookDetailView: View {
         let name = currentBook.sourceName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !name.isEmpty { return name }
         if let s = source?.bookSourceName, !s.isEmpty { return s }
-        return localized("未知書源")
+        return localized("未知书源")
     }
 
     private var canSwitchSource: Bool {
@@ -126,7 +126,7 @@ struct AudiobookDetailView: View {
     private var displayName: String {
         if let d = detailInfo?.name.trimmingCharacters(in: .whitespacesAndNewlines), !d.isEmpty { return d }
         let b = currentBook.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return b.isEmpty ? localized("未知書名") : b
+        return b.isEmpty ? localized("未知书名") : b
     }
 
     private var displayAuthor: String {
@@ -197,7 +197,7 @@ struct AudiobookDetailView: View {
                 )
             }
             BookDetailChapterSection(
-                title: localized("章節"),
+                title: localized("章节"),
                 chapters: chapters,
                 isLoading: loading,
                 errorMessage: loadError,
@@ -298,7 +298,7 @@ struct AudiobookDetailView: View {
 
     private var playAction: BookDetailAction {
         BookDetailAction(
-            title: resumeChapterIndex > 0 ? localized("繼續播放") : localized("開始播放"),
+            title: resumeChapterIndex > 0 ? localized("继续播放") : localized("开始播放"),
             systemImage: "play.fill",
             isBusy: openingPlayer,
             isEnabled: !chapters.isEmpty && !addingToShelf,
@@ -309,8 +309,8 @@ struct AudiobookDetailView: View {
     private var shelfAction: BookDetailAction {
         BookDetailAction(
             title: alreadyInShelf
-                ? localized("移除書架")
-                : (addingToShelf ? localized("加入中…") : localized("加入書架")),
+                ? localized("移除书架")
+                : (addingToShelf ? localized("加入中…") : localized("加入书架")),
             systemImage: alreadyInShelf ? "minus" : "plus",
             isBusy: addingToShelf,
             isEnabled: !chapters.isEmpty,
@@ -324,7 +324,7 @@ struct AudiobookDetailView: View {
         var items: [BookDetailInfoItem] = []
         if !chapters.isEmpty {
             items.append(BookDetailInfoItem(
-                id: "chapters", label: localized("章節"), value: chapters.count.formatted()
+                id: "chapters", label: localized("章节"), value: chapters.count.formatted()
             ))
         }
         items.append(.source(name: sourceName) { showSourcePicker = true })
@@ -448,7 +448,7 @@ struct AudiobookDetailView: View {
     }
 
     private func load() {
-        guard let source else { loadError = localized("書源已被刪除"); return }
+        guard let source else { loadError = localized("书源已被删除"); return }
         loading = true
         loadError = nil
         loadedRuntimeVariables = nil
@@ -578,7 +578,7 @@ struct AudiobookDetailView: View {
         return book
     }
 
-    /// Open playback. Only the explicit "加入書架" action creates a permanent shelf item.
+    /// Open playback. Only the explicit "加入书架" action creates a permanent shelf item.
     private func play(chapterIndex: Int) {
         guard !chapters.isEmpty, let source, !openingPlayer else { return }
         openingPlayer = true
@@ -659,9 +659,9 @@ extension BookSourceStore {
 #Preview {
     NavigationStack {
         AudiobookDetailView(book: OnlineBook(
-            name: "斗羅大陸",
+            name: "斗罗大陆",
             author: "唐家三少",
-            intro: "唐門外門弟子唐三，因偷學內門絕學為唐門所不容，跳崖明志卻來到了另一個世界——斗羅大陸。",
+            intro: "唐门外门弟子唐三，因偷学内门绝学为唐门所不容，跳崖明志却来到了另一个世界——斗罗大陆。",
             coverUrl: "",
             bookUrl: "https://example.com/audiobook/1",
             tocUrl: "https://example.com/audiobook/1/toc",
@@ -669,7 +669,7 @@ extension BookSourceStore {
             lastChapter: "",
             kind: "玄幻",
             sourceId: UUID(),
-            sourceName: "示範有聲書源"))
+            sourceName: "示范有声书源"))
         .environmentObject(BookStore())
     }
 }

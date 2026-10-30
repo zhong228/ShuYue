@@ -70,7 +70,7 @@ struct ChapterTitleDesignerView: View {
     private var compactTabs: some View {
         TabView(selection: $activeTab) {
             ChapterTitleDesignerCanvas(model: model)
-                .tabItem { Label(localized("預覽"), systemImage: "rectangle.on.rectangle") }
+                .tabItem { Label(localized("预览"), systemImage: "rectangle.on.rectangle") }
                 .tag(ChapterTitleDesignerTab.preview)
 
             ChapterTitleLayerListView(model: model)
@@ -78,15 +78,15 @@ struct ChapterTitleDesignerView: View {
                 .tag(ChapterTitleDesignerTab.elements)
 
             ChapterTitleInspectorView(model: model)
-                .tabItem { Label(localized("樣式"), systemImage: "paintpalette") }
+                .tabItem { Label(localized("样式"), systemImage: "paintpalette") }
                 .tag(ChapterTitleDesignerTab.style)
 
             assetLibrary
-                .tabItem { Label(localized("資源"), systemImage: "photo.on.rectangle") }
+                .tabItem { Label(localized("资源"), systemImage: "photo.on.rectangle") }
                 .tag(ChapterTitleDesignerTab.resources)
 
             sourceEditor
-                .tabItem { Label(localized("源碼"), systemImage: "chevron.left.forwardslash.chevron.right") }
+                .tabItem { Label(localized("源码"), systemImage: "chevron.left.forwardslash.chevron.right") }
                 .tag(ChapterTitleDesignerTab.source)
         }
     }
@@ -98,7 +98,7 @@ struct ChapterTitleDesignerView: View {
                 .toolbarTitleDisplayMode(.inline)
         } content: {
             ChapterTitleDesignerCanvas(model: model)
-                .navigationTitle(localized("預覽"))
+                .navigationTitle(localized("预览"))
                 .toolbarTitleDisplayMode(.inline)
         } detail: {
             // The chrome must live *inside* the detail column, not on the
@@ -114,15 +114,15 @@ struct ChapterTitleDesignerView: View {
     private var detailTabs: some View {
         TabView(selection: $detailTab) {
             ChapterTitleInspectorView(model: model)
-                .tabItem { Label(localized("樣式"), systemImage: "paintpalette") }
+                .tabItem { Label(localized("样式"), systemImage: "paintpalette") }
                 .tag(ChapterTitleDesignerTab.style)
 
             assetLibrary
-                .tabItem { Label(localized("資源"), systemImage: "photo.on.rectangle") }
+                .tabItem { Label(localized("资源"), systemImage: "photo.on.rectangle") }
                 .tag(ChapterTitleDesignerTab.resources)
 
             sourceEditor
-                .tabItem { Label(localized("源碼"), systemImage: "chevron.left.forwardslash.chevron.right") }
+                .tabItem { Label(localized("源码"), systemImage: "chevron.left.forwardslash.chevron.right") }
                 .tag(ChapterTitleDesignerTab.source)
         }
     }
@@ -146,7 +146,7 @@ struct ChapterTitleDesignerView: View {
     private func designerChrome<Content: View>(_ content: Content) -> some View {
         content
             .background(DSColor.background)
-            .navigationTitle(localized("章節標題設計器"))
+            .navigationTitle(localized("章节标题设计器"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -165,7 +165,7 @@ struct ChapterTitleDesignerView: View {
                             .accessibilityHidden(true)
                     }
                     .disabled(!model.canUndo)
-                    .accessibilityLabel(localized("復原"))
+                    .accessibilityLabel(localized("复原"))
 
                     Button { model.redo() } label: {
                         Image(systemName: "arrow.uturn.forward")
@@ -188,29 +188,29 @@ struct ChapterTitleDesignerView: View {
 
     private var sourceEditor: some View {
         Form {
-            Picker(localized("預覽"), selection: $model.activeAppearance) {
+            Picker(localized("预览"), selection: $model.activeAppearance) {
                 Text(localized("亮色模式")).tag(ReaderStyleAppearance.light)
                 Text(localized("深色模式")).tag(ReaderStyleAppearance.dark)
             }
             .pickerStyle(.segmented)
-            Section(localized("源碼")) {
+            Section(localized("源码")) {
                 TextEditor(text: model.activeAppearance == .light ? $lightSource : $darkSource)
                     .font(DSFont.monospaced())
                     .frame(minHeight: DSLayout.readableNarrowWidth / 2)
-                    .accessibilityLabel(localized("章節標題源碼"))
+                    .accessibilityLabel(localized("章节标题源码"))
                 Menu {
-                    insertionButton("{number}", label: localized("插入章節數"))
-                    insertionButton("{name}", label: localized("插入章節名"))
-                    insertionButton("{title}", label: localized("插入原始標題"))
-                    insertionButton("font-family: chapter-number;", label: localized("插入章節數字體"))
-                    insertionButton("font-family: chapter-name;", label: localized("插入章節名字體"))
+                    insertionButton("{number}", label: localized("插入章节数"))
+                    insertionButton("{name}", label: localized("插入章节名"))
+                    insertionButton("{title}", label: localized("插入原始标题"))
+                    insertionButton("font-family: chapter-number;", label: localized("插入章节数字体"))
+                    insertionButton("font-family: chapter-name;", label: localized("插入章节名字体"))
                 } label: {
                     Label(localized("插入"), systemImage: "plus.circle")
                 }
                 Button {
                     _ = model.applySource(light: lightSource, dark: darkSource)
                 } label: {
-                    Label(localized("套用源碼"), systemImage: "checkmark.circle")
+                    Label(localized("套用源码"), systemImage: "checkmark.circle")
                 }
             }
             .interfaceSectionSurface()
@@ -271,7 +271,7 @@ struct ChapterTitleDesignerView: View {
     private func sourceErrorText(_ error: Error) -> String {
         switch error {
         case let error as ChapterTitleHTMLCodecError:
-            return String(format: localized("源碼錯誤：%@"), String(describing: error))
+            return String(format: localized("源码错误：%@"), String(describing: error))
         default:
             return error.localizedDescription
         }

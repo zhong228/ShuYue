@@ -60,11 +60,11 @@ extension ReaderView {
                     appleBooksActivePanel = nil
                     closeReader()
                 } label: {
-                    Label(localized("退出閱讀"), systemImage: "xmark")
+                    Label(localized("退出阅读"), systemImage: "xmark")
                         .labelStyle(.iconOnly)
                 }
                 .accessibilityIdentifier("reader_close_button")
-                .accessibilityLabel(localized("退出閱讀"))
+                .accessibilityLabel(localized("退出阅读"))
             }
 
             ToolbarItemGroup(placement: .bottomBar) {
@@ -73,11 +73,11 @@ extension ReaderView {
                 Button {
                     toggleAppleBooksPanel(.menu)
                 } label: {
-                    Label(localized("選單"), systemImage: "list.bullet")
+                    Label(localized("选单"), systemImage: "list.bullet")
                         .labelStyle(.iconOnly)
                 }
-                .accessibilityLabel(localized("選單"))
-                .accessibilityHint(localized("點兩下展開閱讀工具"))
+                .accessibilityLabel(localized("选单"))
+                .accessibilityHint(localized("点两下展开阅读工具"))
             }
         }
     }
@@ -88,7 +88,7 @@ extension ReaderView {
         ReaderTopBar(
             theme: readerTheme,
             chapterTitle: currentChapterTitle.converted(to: settings.textConversion),
-            // The "顯示標題 / 標題大小 / 上距 / 下距" settings drive the in-content
+            // The "显示标题 / 标题大小 / 上距 / 下距" settings drive the in-content
             // chapter title (top of the page), NOT this nav bar. The top bar
             // shows no chapter title — only fixed chrome padding.
             titleVisible: false,
@@ -198,12 +198,12 @@ extension ReaderView {
         Button {
             closeReader()
         } label: {
-            Label(localized("退出閱讀"), systemImage: "chevron.left")
+            Label(localized("退出阅读"), systemImage: "chevron.left")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(modernPalette.topIcon)
         }
         .accessibilityIdentifier("reader_back_button")
-        .accessibilityLabel(localized("退出閱讀"))
+        .accessibilityLabel(localized("退出阅读"))
     }
 
     /// One line, one glass capsule. The author moved into the card: a second line
@@ -223,7 +223,7 @@ extension ReaderView {
                 ? modernBookTitle
                 : "\(modernBookTitle), \(modernBookAuthor)"
         )
-        .accessibilityHint(localized("書籍詳情"))
+        .accessibilityHint(localized("书籍详情"))
     }
 
     private var modernCoverButton: some View {
@@ -236,7 +236,7 @@ extension ReaderView {
         // would draw its own circle and inset the artwork inside it, which is the
         // small-square-in-a-circle look this replaces.
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("書籍詳情"))
+        .accessibilityLabel(localized("书籍详情"))
         // Arrow on the thumbnail's bottom edge, so the card hangs under the cover it
         // belongs to rather than covering it.
         .popover(isPresented: $showModernBookCard, arrowEdge: .bottom) {
@@ -415,7 +415,7 @@ extension ReaderView {
             ReaderSecondaryAction(
                 id: .playback,
                 icon: "headphones",
-                label: localized("聽書"),
+                label: localized("听书"),
                 action: { handleListeningAction() }
             )
         ]
@@ -425,7 +425,7 @@ extension ReaderView {
                 ReaderSecondaryAction(
                     id: .download,
                     icon: downloadButtonIcon,
-                    label: localized("下載"),
+                    label: localized("下载"),
                     action: { handleDownloadAction() }
                 )
             )
@@ -436,7 +436,7 @@ extension ReaderView {
                 ReaderSecondaryAction(
                     id: .changeSource,
                     icon: "arrow.left.and.right",
-                    label: localized("換源"),
+                    label: localized("换源"),
                     action: { showChangeSourceSheet = true }
                 )
             )
@@ -447,7 +447,7 @@ extension ReaderView {
                 ReaderSecondaryAction(
                     id: .openWebPage,
                     icon: "globe",
-                    label: localized("開啟網頁"),
+                    label: localized("开启网页"),
                     action: { openCurrentChapterWebPage() }
                 )
             )
@@ -473,7 +473,7 @@ extension ReaderView {
                 ReaderSecondaryAction(
                     id: .translation,
                     icon: "translate",
-                    label: localized("AI 翻譯"),
+                    label: localized("AI 翻译"),
                     isLocked: aiLocked,
                     action: { openTranslationSheet() }
                 )
@@ -650,7 +650,7 @@ extension ReaderView {
             Button {
                 jumpBackToTTSChapter()
             } label: {
-                Label(localized("原進度"), systemImage: "arrow.uturn.backward")
+                Label(localized("原进度"), systemImage: "arrow.uturn.backward")
                     .font(DSFont.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
@@ -663,7 +663,7 @@ extension ReaderView {
             Button {
                 startTTSFromPromptChapter()
             } label: {
-                Label(localized("從本章開始聽"), systemImage: "headphones")
+                Label(localized("从本章开始听"), systemImage: "headphones")
                     .font(DSFont.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
@@ -690,10 +690,10 @@ extension ReaderView {
 
     var ttsJumpPromptMessage: String {
         guard let ttsChapterIndex, chapters.indices.contains(ttsChapterIndex) else {
-            return localized("你已移到其他章節，可以選擇回到正在朗讀的位置，或從目前章節重新開始。")
+            return localized("你已移到其他章节，可以选择回到正在朗读的位置，或从目前章节重新开始。")
         }
         return String(
-            format: localized("聽書仍在「%@」，可以選擇回去，或改從目前章節開始。"),
+            format: localized("听书仍在「%@」，可以选择回去，或改从目前章节开始。"),
             chapters[ttsChapterIndex].title.converted(to: settings.textConversion)
         )
     }

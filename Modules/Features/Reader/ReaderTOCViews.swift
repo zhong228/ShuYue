@@ -255,7 +255,7 @@ struct ReaderTOCView: View {
                 .searchable(
                     text: $searchText,
                     placement: searchPlacement,
-                    prompt: localized("搜索章節")
+                    prompt: localized("搜索章节")
                 )
                 .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
                 .pageBackgroundToolbar(for: .settings)
@@ -298,7 +298,7 @@ struct ReaderTOCView: View {
     }
 
     private var pageCountText: some View {
-        Text(String(format: localized("第 %d 頁（共 %d 頁）"), currentPage + 1, totalPages))
+        Text(String(format: localized("第 %d 页（共 %d 页）"), currentPage + 1, totalPages))
             .font(DSFont.fixed(size: 14))
             .foregroundStyle(DSColor.textPrimary)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -403,14 +403,14 @@ struct ReaderTOCView: View {
     }
 }
 
-#Preview("目錄") {
+#Preview("目录") {
     ReaderTOCView(
         chapters: [
             BookChapter(index: 0, title: "第一章 序幕", content: ""),
-            BookChapter(index: 1, title: "第二章 啟程", content: ""),
-            BookChapter(index: 2, title: "第三章 抉擇", content: ""),
+            BookChapter(index: 1, title: "第二章 启程", content: ""),
+            BookChapter(index: 2, title: "第三章 抉择", content: ""),
         ],
-        bookTitle: "範例書名",
+        bookTitle: "范例书名",
         currentPage: 1,
         totalPages: 240,
         tocLayoutMode: .horizontalList,

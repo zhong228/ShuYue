@@ -10,7 +10,7 @@ enum AozoraDocumentDetector {
     static let prefixCharacterLimit = 64 * 1024
     static let suffixCharacterLimit = 16 * 1024
 
-    static let notationTitle = "テキスト中に現れる記号について"
+    static let notationTitle = "テキスト中に现れる记号について"
 
     /// A titled notation block (【テキスト中に現れる記号について】 between two
     /// hyphen lines), or a 底本： colophon plus ［＃ or ｜…《…》 in the text.

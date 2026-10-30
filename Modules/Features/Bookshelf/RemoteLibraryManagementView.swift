@@ -19,26 +19,26 @@ struct RemoteLibraryManagementView: View {
     var body: some View {
         Form {
             if loading {
-                Section { ProgressView(localized("正在檢查書庫功能")) }.interfaceSectionSurface()
+                Section { ProgressView(localized("正在检查书库功能")) }.interfaceSectionSurface()
             }
             if let capabilities {
                 if capabilities.canUpload {
                     Section {
                         Button { importing = true } label: {
-                            Label(localized("上傳書籍到此書庫"), systemImage: "arrow.up.doc")
+                            Label(localized("上传书籍到此书库"), systemImage: "arrow.up.doc")
                         }
                         .disabled(isWorking)
                     } footer: {
-                        Text(localized("選取的檔案會傳送到目前的遠端書庫；不會自動加入本機書架。"))
+                        Text(localized("选取的档案会传送到目前的远端书库；不会自动加入本机书架。"))
                             .dsSectionFooter()
                     }
                     .interfaceSectionSurface()
                 }
                 if capabilities.canCreateFolder {
                     Section {
-                        TextField(localized("資料夾名稱"), text: $folderName)
+                        TextField(localized("资料夹名称"), text: $folderName)
                             .autocorrectionDisabled()
-                        Button(localized("建立資料夾")) {
+                        Button(localized("建立资料夹")) {
                             let name = folderName
                             perform {
                                 _ = try await dependencies.remoteLibraryWriting.createFolder(name: name,
@@ -60,7 +60,7 @@ struct RemoteLibraryManagementView: View {
             }
             if isWorking {
                 Section {
-                    ProgressView(localized("正在更新遠端書庫"))
+                    ProgressView(localized("正在更新远端书库"))
                     Button(localized("取消"), role: .cancel) { task?.cancel() }
                 }
                 .interfaceSectionSurface()
@@ -70,14 +70,14 @@ struct RemoteLibraryManagementView: View {
                     Label(message, systemImage: failed ? "exclamationmark.triangle" : "checkmark.circle")
                         .foregroundStyle(failed ? DSColor.destructive : DSColor.textSecondary)
                     if capabilities == nil {
-                        Button(localized("重試")) { task = Task { await loadCapabilities() } }
+                        Button(localized("重试")) { task = Task { await loadCapabilities() } }
                     }
                 }
                 .interfaceSectionSurface()
             }
         }
         .softScrollEdges()
-        .navigationTitle(localized("管理遠端書庫"))
+        .navigationTitle(localized("管理远端书库"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .bookshelf)
         .task { await loadCapabilities() }
@@ -120,11 +120,11 @@ struct RemoteLibraryManagementView: View {
             defer { isWorking = false }
             do {
                 try await operation()
-                message = localized("遠端書庫已更新")
+                message = localized("远端书库已更新")
                 failed = false
                 UIAccessibility.post(notification: .announcement, argument: message)
             } catch {
-                message = Task.isCancelled ? localized("操作已取消，請重新整理書庫確認伺服器狀態") : error.localizedDescription
+                message = Task.isCancelled ? localized("操作已取消，请重新整理书库确认伺服器状态") : error.localizedDescription
                 failed = true
             }
         }
@@ -157,20 +157,20 @@ struct RemoteLibraryBookEditor: View {
         Form {
             Section {
                 if capabilities.canEditMetadata {
-                    TextField(localized("書名"), text: $title)
+                    TextField(localized("书名"), text: $title)
                     TextField(localized("作者"), text: $author)
                 } else if capabilities.canMove {
-                    TextField(localized("檔案名稱"), text: $filename).autocorrectionDisabled()
+                    TextField(localized("档案名称"), text: $filename).autocorrectionDisabled()
                 }
             } footer: {
-                Text(localized("儲存會修改遠端書庫，本機閱讀進度和書籤會保留。"))
+                Text(localized("储存会修改远端书库，本机阅读进度和书签会保留。"))
                     .dsSectionFooter()
             }
             .disabled(working)
             .interfaceSectionSurface()
             if working {
                 Section {
-                    ProgressView(localized("正在更新遠端書庫"))
+                    ProgressView(localized("正在更新远端书库"))
                     Button(localized("取消"), role: .cancel) { task?.cancel() }
                 }.interfaceSectionSurface()
             }
@@ -181,13 +181,13 @@ struct RemoteLibraryBookEditor: View {
             }
         }
         .softScrollEdges()
-        .navigationTitle(localized("編輯遠端資料"))
+        .navigationTitle(localized("编辑远端资料"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .bookshelf)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: save) {
-                    Label(localized("儲存"), systemImage: "checkmark").labelStyle(.iconOnly)
+                    Label(localized("储存"), systemImage: "checkmark").labelStyle(.iconOnly)
                 }.disabled(working || (capabilities.canEditMetadata ? title : filename).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     || (capabilities.canEditMetadata && author.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
             }
@@ -216,10 +216,10 @@ struct RemoteLibraryBookEditor: View {
                             mimeType: original.mimeType, size: original.size)])
                 }
                 onSaved(updated)
-                UIAccessibility.post(notification: .announcement, argument: localized("遠端書庫已更新"))
+                UIAccessibility.post(notification: .announcement, argument: localized("远端书库已更新"))
                 dismiss()
             } catch {
-                errorMessage = Task.isCancelled ? localized("操作已取消，請重新整理書庫確認伺服器狀態") : error.localizedDescription
+                errorMessage = Task.isCancelled ? localized("操作已取消，请重新整理书库确认伺服器状态") : error.localizedDescription
             }
         }
     }
@@ -230,18 +230,18 @@ struct CalibreProgressStatusView: View {
     @ObservedObject var service: CalibreProgressService
 
     var body: some View {
-        Section(localized("Calibre 閱讀進度")) {
+        Section(localized("Calibre 阅读进度")) {
             switch service.state(for: bookID) {
             case .idle:
-                Text(localized("閱讀時會回傳可精確對應的位置"))
+                Text(localized("阅读时会回传可精确对应的位置"))
                     .foregroundStyle(DSColor.textSecondary)
             case .syncing:
-                ProgressView(localized("正在回傳閱讀進度"))
+                ProgressView(localized("正在回传阅读进度"))
             case .synced:
-                Label(localized("閱讀進度已回傳"), systemImage: "checkmark.circle")
+                Label(localized("阅读进度已回传"), systemImage: "checkmark.circle")
             case .failed(let message):
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.destructive)
-                Button(localized("重新回傳進度")) { Task { await service.retry(bookID: bookID) } }
+                Button(localized("重新回传进度")) { Task { await service.retry(bookID: bookID) } }
             }
         }
         .interfaceSectionSurface()

@@ -36,13 +36,13 @@ struct ReaderStyleAssetLibraryView: View {
     var body: some View {
         List {
             if isLoading {
-                ProgressView(localized("正在載入素材"))
+                ProgressView(localized("正在载入素材"))
                     .frame(maxWidth: .infinity)
             } else if assets.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("尚無素材"), systemImage: "photo.on.rectangle.angled")
+                    UnavailableLabel(localized("尚无素材"), systemImage: "photo.on.rectangle.angled")
                 } description: {
-                    Text(localized("從相簿或檔案加入圖片，之後可供所有閱讀樣式重用。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("从相簿或档案加入图片，之后可供所有阅读样式重用。")).foregroundStyle(DSColor.textSecondary)
                 }
             } else {
                 ForEach(assets) { asset in
@@ -51,12 +51,12 @@ struct ReaderStyleAssetLibraryView: View {
             }
         }
         .softScrollEdges()
-        .navigationTitle(localized("素材庫"))
+        .navigationTitle(localized("素材库"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 ImageSourcePickerButton(
-                    accessibilityTitle: localized("加入圖片"),
+                    accessibilityTitle: localized("加入图片"),
                     onPick: { handlePick($0, replacing: nil) }
                 ) {
                     Image(systemName: "plus")
@@ -75,9 +75,9 @@ struct ReaderStyleAssetLibraryView: View {
             get: { editingAsset != nil },
             set: { if !$0 { editingAsset = nil } }
         )) {
-            TextField(localized("名稱"), text: $renameText)
+            TextField(localized("名称"), text: $renameText)
             Button(localized("取消"), role: .cancel) { editingAsset = nil }
-            Button(localized("儲存")) { renameSelectedAsset() }
+            Button(localized("储存")) { renameSelectedAsset() }
         }
         .alert(
             deleteTitle,
@@ -88,7 +88,7 @@ struct ReaderStyleAssetLibraryView: View {
             presenting: pendingDeletion
         ) { asset in
             Button(localized("取消"), role: .cancel) {}
-            Button(localized("刪除"), role: .destructive) {
+            Button(localized("删除"), role: .destructive) {
                 delete(asset, removingReferences: !(references[asset.id] ?? []).isEmpty)
             }
         } message: { asset in
@@ -98,7 +98,7 @@ struct ReaderStyleAssetLibraryView: View {
             Alert(
                 title: Text(localized(value.titleKey)),
                 message: Text(value.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
     }
@@ -116,10 +116,10 @@ struct ReaderStyleAssetLibraryView: View {
         .badge(references[asset.id]?.count ?? 0)
         .accessibilityLabel(asset.name)
         .accessibilityValue(assetAccessibilityValue(asset))
-        .accessibilityHint(localized("套用這個素材"))
+        .accessibilityHint(localized("套用这个素材"))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) { pendingDeletion = asset } label: {
-                Label(localized("刪除"), systemImage: "trash")
+                Label(localized("删除"), systemImage: "trash")
             }
             Button { beginRename(asset) } label: {
                 Label(localized("重新命名"), systemImage: "pencil")
@@ -131,13 +131,13 @@ struct ReaderStyleAssetLibraryView: View {
                 Label(localized("重新命名"), systemImage: "pencil")
             }
             ImageSourcePickerButton(
-                accessibilityTitle: localized("替換圖片"),
+                accessibilityTitle: localized("替换图片"),
                 onPick: { handlePick($0, replacing: asset) }
             ) {
-                Label(localized("替換圖片"), systemImage: "arrow.triangle.2.circlepath")
+                Label(localized("替换图片"), systemImage: "arrow.triangle.2.circlepath")
             }
             Button(role: .destructive) { pendingDeletion = asset } label: {
-                Label(localized("刪除"), systemImage: "trash")
+                Label(localized("删除"), systemImage: "trash")
             }
         }
     }
@@ -146,27 +146,27 @@ struct ReaderStyleAssetLibraryView: View {
         let dimensions = "\(asset.pixelWidth) × \(asset.pixelHeight)"
         let count = references[asset.id]?.count ?? 0
         guard count > 0 else { return dimensions }
-        return [dimensions, String(format: localized("%d 個引用"), count)]
+        return [dimensions, String(format: localized("%d 个引用"), count)]
             .joined(separator: localized("、"))
     }
 
     private var deleteTitle: String {
-        guard let pendingDeletion else { return localized("刪除素材？") }
+        guard let pendingDeletion else { return localized("删除素材？") }
         return (references[pendingDeletion.id] ?? []).isEmpty
-            ? localized("刪除素材？")
-            : localized("刪除素材與引用？")
+            ? localized("删除素材？")
+            : localized("删除素材与引用？")
     }
 
     private func deleteMessage(for asset: ReaderStyleAsset) -> String {
         let count = references[asset.id]?.count ?? 0
         if count == 0 {
-            return String(format: localized("「%@」會被永久刪除。"), asset.name)
+            return String(format: localized("「%@」会被永久删除。"), asset.name)
         }
         let owners = (references[asset.id] ?? [])
             .map(\.displayName)
             .joined(separator: localized("、"))
         return String(
-            format: localized("「%@」目前有 %d 個引用（%@）。強制刪除後，這些樣式會移除對該圖片的設定。"),
+            format: localized("「%@」目前有 %d 个引用（%@）。强制删除后，这些样式会移除对该图片的设定。"),
             asset.name,
             count,
             owners
@@ -227,7 +227,7 @@ struct ReaderStyleAssetLibraryView: View {
     ) throws -> (Data, String) {
         switch try result.get() {
         case .data(let data):
-            return (data, localized("相簿圖片"))
+            return (data, localized("相簿图片"))
         case .file(let url):
             return (try Data(contentsOf: url), url.deletingPathExtension().lastPathComponent)
         }
@@ -262,7 +262,7 @@ struct ReaderStyleAssetLibraryView: View {
     @MainActor
     private func showError(_ error: Error) {
         alert = ReaderStyleAssetLibraryAlert(
-            titleKey: "操作失敗",
+            titleKey: "操作失败",
             message: error.localizedDescription
         )
     }
@@ -307,9 +307,9 @@ private extension ReaderStyleAssetReference {
     var displayName: String {
         switch self {
         case .chapterLayer(let name):
-            return String(format: localized("章節圖層：%@"), name)
+            return String(format: localized("章节图层：%@"), name)
         case .regexRule(let name):
-            return String(format: localized("正則規則：%@"), name)
+            return String(format: localized("正则规则：%@"), name)
         }
     }
 }

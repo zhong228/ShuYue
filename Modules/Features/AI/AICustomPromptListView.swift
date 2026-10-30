@@ -13,11 +13,11 @@ struct AICustomPromptListView: View {
             }
             if store.prompts.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("還沒有自訂提示詞"), systemImage: "text.badge.plus")
+                    UnavailableLabel(localized("还没有自订提示词"), systemImage: "text.badge.plus")
                 } description: {
-                    Text(localized("常用的問法存成提示詞，就會出現在 AI 對話的快捷按鈕裡。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("常用的问法存成提示词，就会出现在 AI 对话的快捷按钮里。")).foregroundStyle(DSColor.textSecondary)
                 } actions: {
-                    Button(localized("新增提示詞")) { editing = .init(title: "", instruction: "") }
+                    Button(localized("新增提示词")) { editing = .init(title: "", instruction: "") }
                 }
                 .listRowBackground(Color.clear)
             } else {
@@ -29,7 +29,7 @@ struct AICustomPromptListView: View {
             }
         }
         .softScrollEdges()
-        .navigationTitle(localized("自訂提示詞"))
+        .navigationTitle(localized("自订提示词"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .toolbar {
@@ -38,7 +38,7 @@ struct AICustomPromptListView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button { editing = .init(title: "", instruction: "") } label: { Image(systemName: "plus") }
-                    .accessibilityLabel(localized("新增提示詞"))
+                    .accessibilityLabel(localized("新增提示词"))
             }
         }
         .sheet(item: $editing) { prompt in
@@ -79,26 +79,26 @@ private struct AICustomPromptEditor: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField(localized("名稱"), text: $prompt.title)
+                    TextField(localized("名称"), text: $prompt.title)
                     Picker(localized("使用情境"), selection: $prompt.context) {
                         ForEach(AICustomPrompt.Context.allCases, id: \.self) { context in
                             Text(context.title).tag(context)
                         }
                     }
-                    Toggle(localized("啟用"), isOn: $prompt.isEnabled)
+                    Toggle(localized("启用"), isOn: $prompt.isEnabled)
                 }
                 Section {
                     TextEditor(text: $prompt.instruction)
                         .frame(minHeight: DSLayout.minimumTapTarget * 4)
-                        .accessibilityLabel(localized("提示詞內容"))
-                } header: { Text(localized("提示詞內容")).foregroundStyle(DSColor.textSecondary) }
-                footer: { Text(localized("選文與閱讀內容會自動帶入，仍受對話的已讀範圍限制。")).dsSectionFooter() }
+                        .accessibilityLabel(localized("提示词内容"))
+                } header: { Text(localized("提示词内容")).foregroundStyle(DSColor.textSecondary) }
+                footer: { Text(localized("选文与阅读内容会自动带入，仍受对话的已读范围限制。")).dsSectionFooter() }
             }
             .softScrollEdges()
-            .alert(localized("無法儲存"), isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
-                Button(localized("確定"), role: .cancel) { failure = nil }
+            .alert(localized("无法储存"), isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+                Button(localized("确定"), role: .cancel) { failure = nil }
             } message: { Text(failure ?? "") }
-            .navigationTitle(localized("自訂提示詞"))
+            .navigationTitle(localized("自订提示词"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -109,7 +109,7 @@ private struct AICustomPromptEditor: View {
                     Button {
                         do { try save(prompt); dismiss() } catch { failure = error.localizedDescription }
                     } label: { Image(systemName: "checkmark") }
-                        .accessibilityLabel(localized("儲存"))
+                        .accessibilityLabel(localized("储存"))
                         .disabled(prompt.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || prompt.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }

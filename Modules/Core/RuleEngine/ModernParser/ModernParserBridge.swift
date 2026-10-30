@@ -1445,7 +1445,7 @@ class ModernParserBridge {
         // getComments itself. Only semantic IDs/counts are logged — never chapter prose or token.
         let shouldProbeTongrenReviews =
             source.bookSourceName.contains("同人小说网")
-            || source.bookSourceName.contains("同人小說網")
+            || source.bookSourceName.contains("同人小说网")
         if shouldProbeTongrenReviews {
             _ = jsEngine.evaluate(
                 """
@@ -1688,10 +1688,10 @@ class ModernParserBridge {
         )
         // #region agent log
         if source.bookSourceName.contains("企点") {
-            NSLog("[企點診斷] searchBooks fetch URL → %@", finalUrl)
-            NSLog("[企點診斷] searchBooks response(前200字) → %@", String(body.prefix(200)))
+            NSLog("[企点诊断] searchBooks fetch URL → %@", finalUrl)
+            NSLog("[企点诊断] searchBooks response(前200字) → %@", String(body.prefix(200)))
         }
-        _dbgLog("聚合/JS 搜尋", data: [
+        _dbgLog("聚合/JS 搜寻", data: [
             "source": source.bookSourceName,
             "变量": Self.sourceVariableLogSummary(
                 BookSourceRuntimeStateStore.shared.sourceVariableJSON(
@@ -1718,7 +1718,7 @@ class ModernParserBridge {
             ruleUrl: source.searchUrl, key: keyword, page: page
         )
         // #region agent log
-        _dbgLog("聚合/JS 搜尋", data: [
+        _dbgLog("聚合/JS 搜寻", data: [
             "source": source.bookSourceName,
             "变量": Self.sourceVariableLogSummary(
                 BookSourceRuntimeStateStore.shared.sourceVariableJSON(
@@ -2634,8 +2634,8 @@ class ModernParserBridge {
         }
 
         if sourceRuleData.source.bookSourceName.contains("企点") {
-            NSLog("[企點診斷] fetch 請求 URL → %@", request.url?.absoluteString ?? "nil")
-            NSLog("[企點診斷] fetch 請求 method → %@ body → %@",
+            NSLog("[企点诊断] fetch 请求 URL → %@", request.url?.absoluteString ?? "nil")
+            NSLog("[企点诊断] fetch 请求 method → %@ body → %@",
                   request.httpMethod ?? "GET",
                   request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? "nil")
         }

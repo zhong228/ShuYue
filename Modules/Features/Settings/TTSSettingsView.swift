@@ -73,7 +73,7 @@ struct TTSSettingsView: View {
                     Button { dismissSettings() } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     importToolbarControl
@@ -86,7 +86,7 @@ struct TTSSettingsView: View {
             ) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
                     DismissalSequencedActionChooser(
-                        title: localized("匯入"),
+                        title: localized("汇入"),
                         actions: [
                             DismissalSequencedAction(
                                 route: .local,
@@ -119,7 +119,7 @@ struct TTSSettingsView: View {
                         gs.importedTTSSources = merged
                         pendingSourceReview = nil
                         sourceImportMessage = String(
-                            format: localized("已匯入 %d 個語音源"), count)
+                            format: localized("已汇入 %d 个语音源"), count)
                     },
                     onCancel: { pendingSourceReview = nil }
                 )
@@ -133,7 +133,7 @@ struct TTSSettingsView: View {
                     }
                 )
             ) {
-                Button(localized("確定"), role: .cancel) {}
+                Button(localized("确定"), role: .cancel) {}
             } message: {
                 Text(sourceImportMessage ?? "")
             }
@@ -174,7 +174,7 @@ struct TTSSettingsView: View {
             } label: {
                 Image(systemName: "plus")
             }
-            .accessibilityLabel(localized("匯入"))
+            .accessibilityLabel(localized("汇入"))
         } else {
             Menu {
                 Button {
@@ -190,7 +190,7 @@ struct TTSSettingsView: View {
             } label: {
                 Image(systemName: "plus")
             }
-            .accessibilityLabel(localized("匯入"))
+            .accessibilityLabel(localized("汇入"))
         }
     }
 
@@ -216,7 +216,7 @@ struct TTSSettingsView: View {
                 DSSettingsGroupCard(
                     title: localized("预合成引擎"),
                     footer: {
-                        Text(localized("同時合成語音的請求數。適用於網路語音，下次開始朗讀時生效。"))
+                        Text(localized("同时合成语音的请求数。适用于网路语音，下次开始朗读时生效。"))
                             .dsSectionFooter()
                     }
                 ) {
@@ -263,7 +263,7 @@ struct TTSSettingsView: View {
                     titleAccessibilityIdentifier: "tts_imported_section"
                 ) {
                     if filteredSources.isEmpty {
-                        Text(localized("尚無語音源"))
+                        Text(localized("尚无语音源"))
                             .font(DSFont.body)
                             .foregroundStyle(DSColor.textSecondary)
                             .dsSettingsCardRow()
@@ -300,8 +300,8 @@ struct TTSSettingsView: View {
             .accessibilityIdentifier("tts_imported_\(source.id)")
             .accessibilityValue(sourceAccessibilityValue(source))
             .accessibilityAddTraits(sourceAccessibilityTraits(source))
-            .accessibilityHint(localized("點兩下設為使用中"))
-            .accessibilityCustomContent(Text(localized("網址")), Text(source.urlTemplate))
+            .accessibilityHint(localized("点两下设为使用中"))
+            .accessibilityCustomContent(Text(localized("网址")), Text(source.urlTemplate))
             .accessibilityAction { selectSource(source) }
             .accessibilityActions { sourceRotorActions(source) }
     }
@@ -311,7 +311,7 @@ struct TTSSettingsView: View {
     private func sourceAccessibilityValue(_ source: ImportedTTSSource) -> String {
         var parts: [String] = []
         if isSelected(source) { parts.append(localized("使用中")) }
-        if source.loginUi != nil { parts.append(localized("需設定帳號")) }
+        if source.loginUi != nil { parts.append(localized("需设定帐号")) }
         return parts.joined(separator: "，")
     }
 
@@ -328,21 +328,21 @@ struct TTSSettingsView: View {
     /// controls in `sourceRowContent` — the merged element is VoiceOver's only route to them.
     @ViewBuilder
     private func sourceRotorActions(_ source: ImportedTTSSource) -> some View {
-        Button(localized(selectedSourceIds.contains(source.id) ? "取消選取" : "選取")) {
+        Button(localized(selectedSourceIds.contains(source.id) ? "取消选取" : "选取")) {
             toggleSelection(source.id)
         }
-        Button(localized("測試播放")) {
+        Button(localized("测试播放")) {
             testPlayback(source)
         }
         if source.loginUi != nil {
-            Button(localized("帳號設定")) {
+            Button(localized("帐号设定")) {
                 openLoginForm(source)
             }
         }
-        Button(localized("複製 JSON")) {
+        Button(localized("复制 JSON")) {
             copySourceJSON(source)
         }
-        Button(localized("刪除"), role: .destructive) {
+        Button(localized("删除"), role: .destructive) {
             deleteSource(source)
         }
     }
@@ -378,27 +378,27 @@ struct TTSSettingsView: View {
                 Button {
                     selectSource(source)
                 } label: {
-                    Label(localized("設為使用"), systemImage: "checkmark.circle")
+                    Label(localized("设为使用"), systemImage: "checkmark.circle")
                 }
 
                 Button {
                     testPlayback(source)
                 } label: {
-                    Label(localized("測試播放"), systemImage: "play.circle")
+                    Label(localized("测试播放"), systemImage: "play.circle")
                 }
 
                 if source.loginUi != nil {
                     Button {
                         openLoginForm(source)
                     } label: {
-                        Label(localized("帳號設定"), systemImage: "person.fill")
+                        Label(localized("帐号设定"), systemImage: "person.fill")
                     }
                 }
 
                 Button {
                     copySourceJSON(source)
                 } label: {
-                    Label(localized("複製 JSON"), systemImage: "doc.on.doc")
+                    Label(localized("复制 JSON"), systemImage: "doc.on.doc")
                 }
 
                 Divider()
@@ -406,7 +406,7 @@ struct TTSSettingsView: View {
                 Button(role: .destructive) {
                     deleteSource(source)
                 } label: {
-                    Label(localized("刪除"), systemImage: "trash")
+                    Label(localized("删除"), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -436,14 +436,14 @@ struct TTSSettingsView: View {
                             ? DSColor.accent : Color(UIColor.systemGray3)
                     )
                     .accessibilityHidden(true)
-                    Text(localized("全選") + "(\(selectedSourceIds.count)/\(gs.importedTTSSources.count))")
+                    Text(localized("全选") + "(\(selectedSourceIds.count)/\(gs.importedTTSSources.count))")
                         .font(DSFont.fixed(size: 13))
                         .foregroundColor(DSColor.textPrimary)
                 }
             }
             .buttonStyle(.plain)
             .padding(.leading, 16)
-            .accessibilityLabel(localized("全選"))
+            .accessibilityLabel(localized("全选"))
             .accessibilityValue("\(selectedSourceIds.count)/\(gs.importedTTSSources.count)")
 
             Spacer()
@@ -451,7 +451,7 @@ struct TTSSettingsView: View {
             Button {
                 invertSelection()
             } label: {
-                Text(localized("反選"))
+                Text(localized("反选"))
                     .font(DSFont.fixed(size: 13))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
@@ -467,7 +467,7 @@ struct TTSSettingsView: View {
             Button(role: .destructive) {
                 deleteSelectedSources()
             } label: {
-                Text(localized("刪除"))
+                Text(localized("删除"))
                     .font(DSFont.fixed(size: 13))
                     .foregroundColor(selectedSourceIds.isEmpty ? .secondary : .red)
                     .padding(.horizontal, 16)
@@ -484,7 +484,7 @@ struct TTSSettingsView: View {
                 Button(role: .destructive) {
                     clearSources()
                 } label: {
-                    Label(localized("清除已匯入語音源"), systemImage: "trash")
+                    Label(localized("清除已汇入语音源"), systemImage: "trash")
                 }
                 .disabled(gs.importedTTSSources.isEmpty)
             } label: {
@@ -509,7 +509,7 @@ struct TTSSettingsView: View {
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "network").foregroundColor(DSColor.accent)
-                    Text(localized("輸入語音源 JSON 的網路地址，支援直接返回 JSON 的 URL。"))
+                    Text(localized("输入语音源 JSON 的网路地址，支援直接返回 JSON 的 URL。"))
                         .font(DSFont.caption)
                         .foregroundColor(DSColor.textSecondary)
                 }
@@ -518,7 +518,7 @@ struct TTSSettingsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .padding()
 
-                TextField(localized("語音源 JSON URL"), text: $sourceListURL)
+                TextField(localized("语音源 JSON URL"), text: $sourceListURL)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
@@ -592,13 +592,13 @@ struct TTSSettingsView: View {
                 preview: {
                     gs.selectEdgeTTSVoice(gs.selectedEdgeTTSVoice)
                     testCoordinator.speak(
-                        text: localized("你好，歡迎使用微軟語音朗讀。選一本喜歡的書，開始聆聽吧。"),
-                        title: localized("測試播放")
+                        text: localized("你好，欢迎使用微软语音朗读。选一本喜欢的书，开始聆听吧。"),
+                        title: localized("测试播放")
                     )
                 }
             )
 
-            Picker(localized("微軟語音音色"), selection: Binding(
+            Picker(localized("微软语音音色"), selection: Binding(
                 get: { gs.selectedEdgeTTSVoice.id },
                 set: { id in
                     guard let voice = EdgeTTSVoice.voice(id: id) else { return }
@@ -616,7 +616,7 @@ struct TTSSettingsView: View {
 
             if gs.usesEdgeTTS, testCoordinator.playbackState == .playing,
                !testCoordinator.hasAudiblePlaybackStarted {
-                ProgressView(localized("正在連接微軟語音…"))
+                ProgressView(localized("正在连接微软语音…"))
                     .accessibilityIdentifier("tts_edge_connecting")
             }
         }
@@ -642,8 +642,8 @@ struct TTSSettingsView: View {
             .buttonStyle(.borderless)
             .accessibilityIdentifier("\(identifier)_source")
             .accessibilityLabel(title)
-            .accessibilityValue(isSelected ? localized("使用中") : localized("未選取"))
-            .accessibilityHint(localized("點兩下設為使用中"))
+            .accessibilityValue(isSelected ? localized("使用中") : localized("未选取"))
+            .accessibilityHint(localized("点两下设为使用中"))
 
             Button {
                 testCoordinator.stop(reason: "changed voice preview")
@@ -655,7 +655,7 @@ struct TTSSettingsView: View {
             }
             .buttonStyle(.borderless)
             .accessibilityIdentifier("\(identifier)_preview")
-            .accessibilityLabel(localized(isPreviewing ? "停止試聽" : "測試播放"))
+            .accessibilityLabel(localized(isPreviewing ? "停止试听" : "测试播放"))
         }
     }
 
@@ -705,7 +705,7 @@ struct TTSSettingsView: View {
         guard SystemTTSVoiceCatalog.selectedIdentifier(forLanguage: language) != nil,
               let voice = SystemTTSVoiceCatalog.selectedVoice(forLanguage: language)
         else {
-            return localized("跟隨系統預設")
+            return localized("跟随系统预设")
         }
         return voice.name
     }
@@ -713,7 +713,7 @@ struct TTSSettingsView: View {
     private func testSystemPlayback() {
         selectSystemVoice()
         testCoordinator.stop(reason: "restart system voice test")
-        testCoordinator.speak(text: "這是一段測試文字，用於確認系統離線語音是否正常。", title: "測試")
+        testCoordinator.speak(text: "这是一段测试文字，用于确认系统离线语音是否正常。", title: "测试")
     }
 
     private func toggleSelection(_ id: String) {
@@ -747,14 +747,14 @@ struct TTSSettingsView: View {
         case .stopped:
             break
         }
-        testCoordinator.speak(text: "這是一段測試文字，用於確認 HTTP TTS 引擎設定是否正確。", title: "測試")
+        testCoordinator.speak(text: "这是一段测试文字，用于确认 HTTP TTS 引擎设定是否正确。", title: "测试")
     }
 
     private func copySourceJSON(_ source: ImportedTTSSource) {
         if let data = try? JSONEncoder().encode(source),
            let string = String(data: data, encoding: .utf8) {
             UIPasteboard.general.string = string
-            sourceImportMessage = localized("已複製語音源 JSON")
+            sourceImportMessage = localized("已复制语音源 JSON")
         }
     }
 
@@ -812,7 +812,7 @@ struct TTSSettingsView: View {
     private func importTTSSources() async {
         let trimmed = sourceListURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed) else {
-            sourceImportMessage = localized("語音源 JSON URL 無效")
+            sourceImportMessage = localized("语音源 JSON URL 无效")
             return
         }
 
@@ -823,7 +823,7 @@ struct TTSSettingsView: View {
         do {
             let (data, response) = try await MediaSession.shared.data(from: url)
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                sourceImportMessage = String(format: localized("載入失敗：HTTP %d"), http.statusCode)
+                sourceImportMessage = String(format: localized("载入失败：HTTP %d"), http.statusCode)
                 return
             }
             let imported = try TTSSourceJSONParser.parse(data: data)
@@ -831,7 +831,7 @@ struct TTSSettingsView: View {
             // `queueSourceReview` closes this sheet and sequences the confirmation list.
             queueSourceReview(imported)
         } catch {
-            sourceImportMessage = String(format: localized("載入失敗：%@"), error.localizedDescription)
+            sourceImportMessage = String(format: localized("载入失败：%@"), error.localizedDescription)
         }
     }
 
@@ -841,7 +841,7 @@ struct TTSSettingsView: View {
             guard let url = urls.first else { return }
             Task { await importTTSSources(from: url) }
         case .failure(let error):
-            sourceImportMessage = String(format: localized("載入失敗：%@"), error.localizedDescription)
+            sourceImportMessage = String(format: localized("载入失败：%@"), error.localizedDescription)
         }
     }
 
@@ -862,7 +862,7 @@ struct TTSSettingsView: View {
             let data = try Data(contentsOf: fileURL)
             queueSourceReview(try TTSSourceJSONParser.parse(data: data))
         } catch {
-            sourceImportMessage = String(format: localized("無法讀取語音源檔案：%@"), error.localizedDescription)
+            sourceImportMessage = String(format: localized("无法读取语音源档案：%@"), error.localizedDescription)
         }
     }
 
@@ -943,14 +943,14 @@ struct TTSSourceLoginView: View {
             DSSettingsGroupCard(
                 title: "",
                 footer: {
-                    Text(String(format: localized("在 %@ 登入後，Cookie 會自動帶進朗讀請求。"), webLogin.url.host ?? webLogin.url.absoluteString))
+                    Text(String(format: localized("在 %@ 登入后，Cookie 会自动带进朗读请求。"), webLogin.url.host ?? webLogin.url.absoluteString))
                         .dsSectionFooter()
                 }
             ) {
                 Button {
                     onOpenWebLogin()
                 } label: {
-                    Label(localized("網頁登入"), systemImage: "globe")
+                    Label(localized("网页登入"), systemImage: "globe")
                 }
                 .dsSettingsCardRow()
             }
@@ -967,7 +967,7 @@ struct TTSSourceLoginView: View {
 
                     if fields.isEmpty, SourceWebLogin(ttsSource: source) == nil {
                         DSSettingsGroupCard(title: "") {
-                            Text(localized("無可設定的欄位"))
+                            Text(localized("无可设定的栏位"))
                                 .font(DSFont.body)
                                 .foregroundStyle(DSColor.textSecondary)
                                 .dsSettingsCardRow()
@@ -1003,12 +1003,12 @@ struct TTSSourceLoginView: View {
                     Button(localized("取消")) { onDismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(localized("儲存")) { saveLoginInfo() }
+                    Button(localized("储存")) { saveLoginInfo() }
                         .disabled(saved)
                 }
             }
-            .alert(localized("已儲存"), isPresented: $saved) {
-                Button(localized("確定"), role: .cancel) {
+            .alert(localized("已储存"), isPresented: $saved) {
+                Button(localized("确定"), role: .cancel) {
                     onDismiss()
                 }
             }

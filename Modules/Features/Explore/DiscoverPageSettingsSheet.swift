@@ -24,7 +24,7 @@ struct DiscoverPageSettingsSheet: View {
     }
 
     private var groups: [DiscoverCategoryGroup] {
-        discover.categoryGroups(defaultTitle: localized("分類"))
+        discover.categoryGroups(defaultTitle: localized("分类"))
     }
 
     private var trimmedQuery: String {
@@ -69,7 +69,7 @@ struct DiscoverPageSettingsSheet: View {
                         ProgressView()
                     } else {
                         ContentUnavailableView {
-                            UnavailableLabel(localized("暫無發現內容"), systemImage: "sparkles")
+                            UnavailableLabel(localized("暂无发现内容"), systemImage: "sparkles")
                         }
                     }
                 } else if !trimmedQuery.isEmpty && visibleGroups.isEmpty {
@@ -79,19 +79,19 @@ struct DiscoverPageSettingsSheet: View {
             .softScrollEdges()
             .scrollDismissesKeyboard(.immediately)
             .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
-            .navigationTitle(localized("發現頁設定"))
+            .navigationTitle(localized("发现页设定"))
             .toolbarTitleDisplayMode(.inline)
-            .modifier(SubtitleWhereAvailable(subtitle: localized("選擇想看的分區")))
+            .modifier(SubtitleWhereAvailable(subtitle: localized("选择想看的分区")))
             .pageBackgroundToolbar(for: .explore)
             .searchable(
                 text: $query,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: localized("搜尋發現項目")
+                prompt: localized("搜寻发现项目")
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        Label(localized("關閉"), systemImage: "xmark")
+                        Label(localized("关闭"), systemImage: "xmark")
                     }
                 }
             }
@@ -103,9 +103,9 @@ struct DiscoverPageSettingsSheet: View {
                 ),
                 presenting: editingInput
             ) { input in
-                TextField(localized("輸入"), text: $inputDraft)
+                TextField(localized("输入"), text: $inputDraft)
                 Button(localized("取消"), role: .cancel) {}
-                Button(localized("確定")) {
+                Button(localized("确定")) {
                     let text = inputDraft
                     Task { await discover.submitText(text, for: input, presentToast: Self.presentToast) }
                 }
@@ -123,7 +123,7 @@ struct DiscoverPageSettingsSheet: View {
         DiscoverChipCard(title: localized("快捷操作"), minimumChipWidth: chipMinWidth) {
             let showsAll = !discover.hasCustomCategorySelection
             Button { discover.showAllCategories() } label: {
-                DSCapsuleLabel(title: localized("全部顯示"), isSelected: showsAll, fillsWidth: true, onCard: true)
+                DSCapsuleLabel(title: localized("全部显示"), isSelected: showsAll, fillsWidth: true, onCard: true)
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(showsAll ? .isSelected : [])
@@ -144,7 +144,7 @@ struct DiscoverPageSettingsSheet: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint(localized("在瀏覽器中開啟"))
+                    .accessibilityHint(localized("在浏览器中开启"))
                 }
             }
         }
@@ -181,7 +181,7 @@ struct DiscoverPageSettingsSheet: View {
                     title: name,
                     fillsWidth: true,
                     onCard: true,
-                    detail: value.isEmpty ? localized("輸入") : value
+                    detail: value.isEmpty ? localized("输入") : value
                 )
             case .toggle:
                 let current = action.toggleValue(in: discover.quickActionValues)
@@ -226,7 +226,7 @@ private struct SubtitleWhereAvailable: ViewModifier {
 
 #Preview {
     var source = BookSource()
-    source.bookSourceName = "範例書源"
+    source.bookSourceName = "范例书源"
     source.bookSourceUrl = "https://example.com"
     return DiscoverPageSettingsSheet(discover: DiscoverViewModel(source: source), onOpenPage: { _ in })
 }

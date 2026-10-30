@@ -24,11 +24,11 @@ struct AIReaderAnnotationSet: Equatable, Sendable {
 
 enum AIReaderAnnotations {
     /// A question about the reader's own marks gets all of them that are readable, newest first.
-    static let noteTerms = ["筆記", "笔记", "劃線", "划线", "畫線", "画线", "標註", "标注", "標記", "标记", "摘錄", "摘录",
+    static let noteTerms = ["笔记", "笔记", "划线", "划线", "画线", "画线", "标注", "标注", "标记", "标记", "摘录", "摘录",
                             "highlight", "underline", "annotation", "my note"]
     /// A question reaching past this book searches the other books' marks too.
-    static let libraryTerms = ["其他書", "其他书", "別本書", "别本书", "別的書", "别的书", "跨書", "跨书", "所有書", "所有书",
-                               "書架", "书架", "other book", "my library"]
+    static let libraryTerms = ["其他书", "其他书", "别本书", "别本书", "别的书", "别的书", "跨书", "跨书", "所有书", "所有书",
+                               "书架", "书架", "other book", "my library"]
     /// Items and characters of marks per request, so they cannot crowd out the book's text.
     static let maximumItems = 30
     static let maximumCharacters = 4_000
@@ -99,17 +99,17 @@ enum AIReaderAnnotations {
             var text = "- "
             if let title = mark.bookTitle { text += "《\(title)》" }
             if !mark.chapterTitle.isEmpty { text += "〈\(mark.chapterTitle)〉" }
-            if !mark.excerpt.isEmpty { text += "劃線原文：「\(mark.excerpt)」" }
-            if !mark.note.isEmpty { text += (mark.excerpt.isEmpty ? "" : " ") + "讀者筆記：\(mark.note)" }
+            if !mark.excerpt.isEmpty { text += "划线原文：「\(mark.excerpt)」" }
+            if !mark.note.isEmpty { text += (mark.excerpt.isEmpty ? "" : " ") + "读者笔记：\(mark.note)" }
             return text
         }
         var blocks: [String] = []
         if !marks.book.isEmpty {
-            blocks.append("讀者在這本書的劃線與筆記（讀者自己的標註；筆記是讀者的想法，不是書中事實）：\n"
+            blocks.append("读者在这本书的划线与笔记（读者自己的标注；笔记是读者的想法，不是书中事实）：\n"
                 + marks.book.map(line).joined(separator: "\n"))
         }
         if !marks.library.isEmpty {
-            blocks.append("讀者在其他書的劃線與筆記（不屬於這本書）：\n" + marks.library.map(line).joined(separator: "\n"))
+            blocks.append("读者在其他书的划线与笔记（不属于这本书）：\n" + marks.library.map(line).joined(separator: "\n"))
         }
         return blocks.joined(separator: "\n\n")
     }

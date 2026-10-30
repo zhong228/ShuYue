@@ -11,15 +11,15 @@ enum EdgeTTSError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidVoice:
-            return localized("微軟語音無效，請重新選擇音色。")
+            return localized("微软语音无效，请重新选择音色。")
         case .invalidResponse:
-            return localized("微軟語音回應格式異常，請稍後再試。")
+            return localized("微软语音回应格式异常，请稍后再试。")
         case .emptyAudio:
-            return localized("微軟語音未傳回音訊，請更換音色或稍後再試。")
+            return localized("微软语音未传回音讯，请更换音色或稍后再试。")
         case .serviceStatus(let status):
-            return String(format: localized("微軟語音服務無法使用（HTTP %d），請稍後再試。"), status)
+            return String(format: localized("微软语音服务无法使用（HTTP %d），请稍后再试。"), status)
         case .responseTooLarge:
-            return localized("微軟語音回應超過大小限制。")
+            return localized("微软语音回应超过大小限制。")
         }
     }
 }

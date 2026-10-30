@@ -745,7 +745,7 @@ final class CoreTextScrollEngine: ObservableObject, ScrollReaderEngine {
 
     // MARK: - Loading placeholder
 
-    /// Stands a chapter up as "title + 載入中" while its content is fetched, matching what
+    /// Stands a chapter up as "title + 载入中" while its content is fetched, matching what
     /// paged mode already does with a placeholder page. Without this a chapter whose
     /// content has not arrived contributes zero chunks, so jumping into it — or scrolling
     /// to a chapter boundary — showed a blank surface with nothing to indicate a fetch was
@@ -826,7 +826,7 @@ final class CoreTextScrollEngine: ObservableObject, ScrollReaderEngine {
         let bodyParagraph = NSMutableParagraphStyle()
         bodyParagraph.alignment = .center
         result.append(NSAttributedString(
-            string: localized("載入中…"),
+            string: localized("载入中…"),
             attributes: [
                 .font: UserReaderFontResolver.bodyFont(
                     size: renderSettings.fontSize,

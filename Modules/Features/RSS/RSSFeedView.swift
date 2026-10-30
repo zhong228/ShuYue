@@ -85,7 +85,7 @@ struct RSSSmartFeedView: View {
                                     store.markRead(articleId: article.id, isRead: !article.isRead)
                                 } label: {
                                     Label(
-                                        article.isRead ? localized("標為未讀") : localized("標為已讀"),
+                                        article.isRead ? localized("标为未读") : localized("标为已读"),
                                         systemImage: article.isRead ? "envelope.badge" : "envelope.open"
                                     )
                                 }
@@ -135,7 +135,7 @@ struct RSSSmartFeedView: View {
                     Button {
                         store.markAllRead(smartFeed: kind)
                     } label: {
-                        Label(localized("標記全部已讀"), systemImage: "checkmark.circle")
+                        Label(localized("标记全部已读"), systemImage: "checkmark.circle")
                     }
                     .disabled(unreadCount == 0)
                 } label: {
@@ -153,18 +153,18 @@ struct RSSSmartFeedView: View {
         case .all:
             switch kind {
             case .today:
-                return localized("沒有今日文章")
+                return localized("没有今日文章")
             case .allUnread:
-                return localized("沒有未讀文章")
+                return localized("没有未读文章")
             case .starred:
-                return localized("沒有加星文章")
+                return localized("没有加星文章")
             }
         case .unread:
-            return localized("沒有未讀文章")
+            return localized("没有未读文章")
         case .read:
-            return localized("沒有已讀文章")
+            return localized("没有已读文章")
         case .favorite:
-            return localized("沒有收藏文章")
+            return localized("没有收藏文章")
         }
     }
 }
@@ -244,7 +244,7 @@ struct RSSFeedView: View {
                         Button {
                             presentedWebPageURL = fallbackURL
                         } label: {
-                            Label(localized("以網頁開啟"), systemImage: "safari")
+                            Label(localized("以网页开启"), systemImage: "safari")
                                 .font(DSFont.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.borderedProminent)
@@ -300,7 +300,7 @@ struct RSSFeedView: View {
                             store.markRead(articleId: article.id, isRead: !article.isRead)
                         } label: {
                             Label(
-                                article.isRead ? localized("標為未讀") : localized("標為已讀"),
+                                article.isRead ? localized("标为未读") : localized("标为已读"),
                                 systemImage: article.isRead ? "envelope.badge" : "envelope.open"
                             )
                         }
@@ -359,7 +359,7 @@ struct RSSFeedView: View {
                     Button {
                         Task { await refresh() }
                     } label: {
-                        Label(localized("刷新訂閱"), systemImage: "arrow.clockwise")
+                        Label(localized("刷新订阅"), systemImage: "arrow.clockwise")
                     }
                     .disabled(fetcher.isLoading)
                 } label: {
@@ -384,13 +384,13 @@ struct RSSFeedView: View {
     private var emptyMessage: String {
         switch filter {
         case .all:
-            return localized("目前沒有文章")
+            return localized("目前没有文章")
         case .unread:
-            return localized("沒有未讀文章")
+            return localized("没有未读文章")
         case .read:
-            return localized("沒有已讀文章")
+            return localized("没有已读文章")
         case .favorite:
-            return localized("沒有收藏文章")
+            return localized("没有收藏文章")
         }
     }
 
@@ -405,7 +405,7 @@ struct RSSFeedView: View {
                 .font(DSFont.headline)
                 .foregroundColor(DSColor.textPrimary)
 
-            Text(localized("此訂閱源以網頁方式瀏覽"))
+            Text(localized("此订阅源以网页方式浏览"))
                 .font(DSFont.subheadline)
                 .foregroundColor(DSColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -413,7 +413,7 @@ struct RSSFeedView: View {
             Button {
                 presentedWebPageURL = url
             } label: {
-                Label(localized("開啟網頁"), systemImage: "safari")
+                Label(localized("开启网页"), systemImage: "safari")
                     .font(DSFont.subheadline.weight(.semibold))
             }
             .buttonStyle(.borderedProminent)
@@ -504,9 +504,9 @@ enum RSSArticleTimelineFilter: String, CaseIterable, Identifiable {
         case .all:
             return localized("全部文章")
         case .unread:
-            return localized("未讀文章")
+            return localized("未读文章")
         case .read:
-            return localized("已讀文章")
+            return localized("已读文章")
         case .favorite:
             return localized("收藏文章")
         }
@@ -562,7 +562,7 @@ private struct RSSArticleRow: View {
                     .padding(.top, 4)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(article.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? localized("暫無資料") : article.title.trimmingCharacters(in: .whitespacesAndNewlines))
+                    Text(article.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? localized("暂无资料") : article.title.trimmingCharacters(in: .whitespacesAndNewlines))
                         .font(DSFont.headline)
                         .fontWeight(.bold)
                         .foregroundColor(DSColor.textPrimary)
@@ -659,7 +659,7 @@ private struct RSSFeedSearchBarIOS18: ViewModifier {
             .searchable(
                 text: $searchText,
                 placement: .toolbar,
-                prompt: localized("搜尋文章")
+                prompt: localized("搜寻文章")
             )
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -676,7 +676,7 @@ private struct RSSFeedSearchBar: ViewModifier {
             .searchable(
                 text: $searchText,
                 placement: .toolbar,
-                prompt: localized("搜尋文章")
+                prompt: localized("搜寻文章")
             )
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -691,7 +691,7 @@ private struct RSSFeedSearchBar: ViewModifier {
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: localized("搜尋文章")
+                prompt: localized("搜寻文章")
             )
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()

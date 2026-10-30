@@ -44,7 +44,7 @@ enum AIQuestionSourceReader {
     }
 
     static func isCurrentPositionQuestion(_ query: String) -> Bool {
-        ["剛剛", "刚刚", "這一段", "这一段", "這段", "这段", "目前這", "目前这", "current passage", "just read", "what just happened"].contains { query.localizedCaseInsensitiveContains($0) }
+        ["刚刚", "刚刚", "这一段", "这一段", "这段", "这段", "目前这", "目前这", "current passage", "just read", "what just happened"].contains { query.localizedCaseInsensitiveContains($0) }
     }
 
     /// The boundary-crossing prefix is request-local and cannot enter the persisted index.

@@ -35,7 +35,7 @@ final class EPUBMediaOverlayPlaybackCoordinator: ObservableObject {
         guard let first = overlay.fragments.first,
               let url = resourceURL(first.audioHref)
         else {
-            errorMessage = localized("無法載入媒體旁白")
+            errorMessage = localized("无法载入媒体旁白")
             return
         }
 

@@ -22,8 +22,8 @@ enum DefaultCoverStorageError: LocalizedError {
 
     var messageKey: String {
         switch self {
-        case .unsupportedImageFile: return "僅支援圖片檔案"
-        case .cannotReadImage: return "無法讀取圖片。"
+        case .unsupportedImageFile: return "仅支援图片档案"
+        case .cannotReadImage: return "无法读取图片。"
         }
     }
 

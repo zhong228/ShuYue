@@ -36,7 +36,7 @@ struct ChapterTitleStyleExportPayload: Transferable {
     let style: ChapterTitleStyle
 
     init(style: ChapterTitleStyle) {
-        self.filename = ReaderStyleExportFilename.make(localized("章節標題樣式"))
+        self.filename = ReaderStyleExportFilename.make(localized("章节标题样式"))
         self.style = style
     }
 
@@ -61,7 +61,7 @@ struct RegexHighlightExportPayload: Transferable {
     let configuration: RegexHighlightConfiguration
 
     init(configuration: RegexHighlightConfiguration) {
-        self.filename = ReaderStyleExportFilename.make(localized("正則高亮"))
+        self.filename = ReaderStyleExportFilename.make(localized("正则高亮"))
         self.configuration = configuration
     }
 

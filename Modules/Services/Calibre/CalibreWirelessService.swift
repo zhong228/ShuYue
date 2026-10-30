@@ -336,7 +336,7 @@ final class CalibreWirelessService: ObservableObject {
         let paths = rawPaths.compactMap(\.string)
         guard paths.count == rawPaths.count else { throw CalibreWirelessError.invalidFrame }
         guard !registry.books.contains(where: { paths.contains($0.lpath) && isBookInUse($0.bookID) }) else {
-            let error = CalibreWirelessError.message(localized("書籍正在閱讀中，請關閉閱讀器後再從 Calibre 刪除"))
+            let error = CalibreWirelessError.message(localized("书籍正在阅读中，请关闭阅读器后再从 Calibre 删除"))
             try await transport.send(CalibreFrame(20, ["message": .string(error.localizedDescription)]))
             throw error
         }

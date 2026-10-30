@@ -373,7 +373,7 @@ final class DiscoverViewModel: ObservableObject {
         )
         runningQuickActionID = nil
         if let error = outcome.errorMessage {
-            presentToast(String(format: localized("%@：%@"), localized("書源腳本錯誤"), error))
+            presentToast(String(format: localized("%@：%@"), localized("书源脚本错误"), error))
         }
         if outcome.refreshesExplore {
             reload(forceRefresh: true)
@@ -690,7 +690,7 @@ final class DiscoverViewModel: ObservableObject {
                 displays = await Self.makeDisplays(loaded, source: source)
                 ok = true
             } catch is SectionLoadTimeoutError {
-                reason = "載入逾時"
+                reason = "载入逾时"
             } catch {
                 reason = (error as NSError).localizedDescription
             }

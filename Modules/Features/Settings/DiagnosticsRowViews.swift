@@ -83,7 +83,7 @@ struct DiagnosticEntryRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(entry.severity.localizedName)，\(entry.category.localizedName)，\(timeText)")
         .accessibilityValue(isExpanded ? "\(entry.message)。\(entry.detail ?? "")" : entry.message)
-        .accessibilityHint(hasDetail ? localized("點兩下展開詳細內容") : "")
+        .accessibilityHint(hasDetail ? localized("点两下展开详细内容") : "")
         .accessibilityAddTraits(hasDetail ? .isButton : [])
     }
 
@@ -138,10 +138,10 @@ struct DiagnosticAnomalyBanner: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                Text(String(format: localized("偵測到 %d 個非預期行為"), count))
+                Text(String(format: localized("侦测到 %d 个非预期行为"), count))
                     .font(DSFont.bodyBold)
                     .foregroundStyle(DSColor.textPrimary)
-                Text(localized("這些是 app 沒有照自己的規則運作的地方。匯出後傳給開發者，就能知道發生了什麼。"))
+                Text(localized("这些是 app 没有照自己的规则运作的地方。汇出后传给开发者，就能知道发生了什么。"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

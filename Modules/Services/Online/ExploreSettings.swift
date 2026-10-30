@@ -24,7 +24,7 @@ enum ExploreSettings {
     /// set 探索 matched before the list could be edited. A title matches a keyword
     /// whatever its letter case, so `top` also covers `TOP` and `Top`.
     static let defaultRankedKeywords = [
-        "榜", "排行", "畅销", "暢銷", "热销", "熱銷", "热门", "熱門", "完本", "完结", "完結", "top",
+        "榜", "排行", "畅销", "畅销", "热销", "热销", "热门", "热门", "完本", "完结", "完结", "top",
     ]
 
     /// Books in each chart column: four, as before the setting.
@@ -74,7 +74,7 @@ enum ExploreSourcePageLayout: String, CaseIterable, Identifiable {
     var titleKey: String {
         switch self {
         case .list: "列表"
-        case .magazine: "雜誌"
+        case .magazine: "杂志"
         }
     }
 

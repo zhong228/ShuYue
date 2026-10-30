@@ -2,8 +2,8 @@ import Foundation
 
 /// Watches the reading position for moves the reader never asked for.
 ///
-/// The reader has had a recurring, hard-to-pin family of bugs — "翻頁跳章節",
-/// "章末往前撥會連跳到下一章第二頁" — that users can feel but cannot evidence. The
+/// The reader has had a recurring, hard-to-pin family of bugs — "翻页跳章节",
+/// "章末往前拨会连跳到下一章第二页" — that users can feel but cannot evidence. The
 /// logs needed to diagnose them already exist (`[FlipTrace]`), but reading them
 /// requires knowing which of several hundred lines was the wrong one. That judgement
 /// is exactly what this type makes mechanical.
@@ -262,8 +262,8 @@ final class ReaderPositionSentry {
 
             if position == expectation.start {
                 // A swipe that ran its animation and put the reader back where it
-                // started. This is the reported symptom — "翻過去有翻頁動畫但還是
-                //同一個頁面, 必須重進才顯示正常" — and the previous version of this
+                // started. This is the reported symptom — "翻过去有翻页动画但还是
+                //同一个页面, 必须重进才显示正常" — and the previous version of this
                 // guard treated it as legal, so the one shape worth catching was the
                 // one it let through. An abandoned swipe is not this: UIKit reports
                 // that with `completed == false`, which cancels the expectation before
@@ -287,7 +287,7 @@ final class ReaderPositionSentry {
             }
 
             report(
-                localized("翻頁落點與步進目的地不符"),
+                localized("翻页落点与步进目的地不符"),
                 english: "page turn landed off its stepped destination",
                 severity: isPlaceholder ? .notice : .anomaly,
                 lines: [
@@ -315,7 +315,7 @@ final class ReaderPositionSentry {
         let spineDelta = position.spineIndex - previous.spineIndex
         if !readerDriven {
             report(
-                localized("位置變動沒有來源"),
+                localized("位置变动没有来源"),
                 english: "the reading position changed with nothing accounting for it",
                 severity: .notice,
                 lines: [
@@ -334,7 +334,7 @@ final class ReaderPositionSentry {
         let delta = abs(spineDelta)
         guard delta >= 2 else { return }
         report(
-            localized("章節位置無故跳動"),
+            localized("章节位置无故跳动"),
             english: "reading position jumped chapters with nothing asking it to",
             severity: isPlaceholder ? .notice : .anomaly,
             lines: [
@@ -366,7 +366,7 @@ final class ReaderPositionSentry {
         hasReportedNoOpRun = true
 
         report(
-            localized("翻頁動畫跑完但頁面沒有前進"),
+            localized("翻页动画跑完但页面没有前进"),
             english: "a completed swipe left the reader on the same page",
             severity: .anomaly,
             lines: [
@@ -435,7 +435,7 @@ final class ReaderPositionSentry {
         if resolveIntent(against: landed) { return }
 
         report(
-            localized("捲動時內容在讀者底下移動了"),
+            localized("卷动时内容在读者底下移动了"),
             english: "content moved under the reader in scroll mode",
             severity: .anomaly,
             lines: [
@@ -463,7 +463,7 @@ final class ReaderPositionSentry {
         }).map({ $0 - 1 }) else { return }
 
         report(
-            localized("章節在捲動視圖裡順序錯亂"),
+            localized("章节在卷动视图里顺序错乱"),
             english: "chapters are laid out in the scroll view out of reading order",
             severity: .anomaly,
             lines: [
@@ -509,7 +509,7 @@ final class ReaderPositionSentry {
         if current.unmatchedCommits >= Self.intentCommitBudget {
             intent = nil
             report(
-                localized("導航要求沒有抵達目的地"),
+                localized("导航要求没有抵达目的地"),
                 english: "declared navigation never reached its target",
                 severity: .notice,
                 lines: [

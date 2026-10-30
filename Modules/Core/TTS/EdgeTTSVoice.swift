@@ -10,16 +10,16 @@ struct EdgeTTSVoice: Identifiable, Equatable, Sendable {
     // An internal identifier, never an HTTP template or an imported/deletable source.
     static let sourcePrefix = "yuedu-edge-tts:"
     static let voices: [EdgeTTSVoice] = [
-        .init(id: "zh-TW-HsiaoChenNeural", nameKey: "曉臻・台灣華語・女聲"),
-        .init(id: "zh-TW-HsiaoYuNeural", nameKey: "曉雨・台灣華語・女聲"),
-        .init(id: "zh-TW-YunJheNeural", nameKey: "雲哲・台灣華語・男聲"),
-        .init(id: "zh-CN-XiaoxiaoNeural", nameKey: "曉曉・普通話・女聲"),
-        .init(id: "zh-CN-YunxiNeural", nameKey: "雲希・普通話・男聲"),
-        .init(id: "zh-CN-YunjianNeural", nameKey: "雲健・普通話・男聲"),
-        .init(id: "zh-HK-HiuGaaiNeural", nameKey: "曉佳・粵語・女聲"),
-        .init(id: "zh-HK-WanLungNeural", nameKey: "雲龍・粵語・男聲"),
-        .init(id: "en-US-AriaNeural", nameKey: "Aria・美式英語・女聲"),
-        .init(id: "en-US-GuyNeural", nameKey: "Guy・美式英語・男聲"),
+        .init(id: "zh-TW-HsiaoChenNeural", nameKey: "晓臻・台湾华语・女声"),
+        .init(id: "zh-TW-HsiaoYuNeural", nameKey: "晓雨・台湾华语・女声"),
+        .init(id: "zh-TW-YunJheNeural", nameKey: "云哲・台湾华语・男声"),
+        .init(id: "zh-CN-XiaoxiaoNeural", nameKey: "晓晓・普通话・女声"),
+        .init(id: "zh-CN-YunxiNeural", nameKey: "云希・普通话・男声"),
+        .init(id: "zh-CN-YunjianNeural", nameKey: "云健・普通话・男声"),
+        .init(id: "zh-HK-HiuGaaiNeural", nameKey: "晓佳・粤语・女声"),
+        .init(id: "zh-HK-WanLungNeural", nameKey: "云龙・粤语・男声"),
+        .init(id: "en-US-AriaNeural", nameKey: "Aria・美式英语・女声"),
+        .init(id: "en-US-GuyNeural", nameKey: "Guy・美式英语・男声"),
     ]
     static let defaultVoice = voices[0]
 

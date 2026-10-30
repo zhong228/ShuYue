@@ -179,7 +179,7 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
         // say what this page is *about* to draw. A position guard being green does not
         // mean the right text is on screen: the view holds a **copy** of the layout, so a
         // re-pagination leaves it drawing the old content at a position everyone now
-        // agrees on — "位置對但畫錯", which no guard in this app can currently see.
+        // agrees on — "位置对但画错", which no guard in this app can currently see.
         //
         // Cross-reference the character range here against the `⟐ layoutGeneration` lines
         // in the same log and a stale draw is identifiable. It is not *detectable*: that
@@ -302,12 +302,12 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
         accessibilityTraits = .staticText
         accessibilityLabel = accessibilityPageText
         refreshBarAccessibilityContent()
-        accessibilityHint = localized("點兩下展開閱讀工具，三指左右滑動翻頁")
+        accessibilityHint = localized("点两下展开阅读工具，三指左右滑动翻页")
         accessibilityCustomActions = [
-            accessibilityAction(named: localized("下一頁"), action: .nextPage),
-            accessibilityAction(named: localized("上一頁"), action: .prevPage),
-            accessibilityAction(named: localized("選單"), action: .toggleMenu),
-            accessibilityAction(named: localized("目錄"), action: .tableOfContents),
+            accessibilityAction(named: localized("下一页"), action: .nextPage),
+            accessibilityAction(named: localized("上一页"), action: .prevPage),
+            accessibilityAction(named: localized("选单"), action: .toggleMenu),
+            accessibilityAction(named: localized("目录"), action: .tableOfContents),
         ]
     }
 
@@ -381,7 +381,7 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
             .isEmpty == false
         let removesExistingUnderline = existingAnnotation == nil && selectedRangeHasExactUnderline()
         let underlineAction = UIAction(
-            title: localized(removesExistingUnderline ? "解除下劃線" : "下劃線"),
+            title: localized(removesExistingUnderline ? "解除下划线" : "下划线"),
             image: UIImage(systemName: "underline"),
             state: existingAnnotation?.style == .underline || removesExistingUnderline ? .on : .off,
             handler: { [weak self] _ in
@@ -412,7 +412,7 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
         var actions = suggestedActions
         if interactor.tappedAnnotation != nil {
             actions.append(UIAction(
-                title: localized("刪除標註"),
+                title: localized("删除标注"),
                 image: UIImage(systemName: "trash"),
                 attributes: .destructive,
                 handler: { [weak self] _ in
@@ -421,14 +421,14 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
             ))
         }
         actions.append(UIAction(
-            title: localized("替換"),
+            title: localized("替换"),
             image: UIImage(systemName: "eraser"),
             handler: { [weak self] _ in
                 self?.requestReplaceRule()
             }
         ))
         actions.append(UIAction(
-            title: localized("重點"),
+            title: localized("重点"),
             image: UIImage(systemName: "highlighter"),
             handler: { [weak self] _ in
                 self?.presentEmphasisEditMenu()
@@ -438,7 +438,7 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
         // 「這一點該開編輯頁還是付費牆」的判斷只有 ReaderView 那一處，這裡純顯示。
         let canEditNote = premium.allowsParagraphNoteEditing
         actions.append(UIAction(
-            title: localized(noteMenuTitleIsEdit ? "編輯筆記" : "筆記"),
+            title: localized(noteMenuTitleIsEdit ? "编辑笔记" : "笔记"),
             image: UIImage(systemName: canEditNote ? "note.text" : "lock.fill"),
             handler: { [weak self] _ in
                 self?.requestNoteEdit()
@@ -501,9 +501,9 @@ final class CoreTextPageView: UIView, UIGestureRecognizerDelegate, UIEditMenuInt
 
     private func emphasisColorName(for color: AnnotationColor) -> String {
         switch color {
-        case .yellow: return localized("黃色")
-        case .green: return localized("綠色")
-        case .blue: return localized("藍色")
+        case .yellow: return localized("黄色")
+        case .green: return localized("绿色")
+        case .blue: return localized("蓝色")
         case .pink: return localized("粉色")
         case .orange: return localized("橙色")
         }
@@ -2687,7 +2687,7 @@ final class CoreTextPageViewController: UIViewController, ReaderBookmarkRibbonHo
 
     private func presentReviewFailure(_ error: Error) {
         let alert = UIAlertController(
-            title: localized("段評"),
+            title: localized("段评"),
             message: error.localizedDescription,
             preferredStyle: .alert
         )
@@ -2958,7 +2958,7 @@ final class PlaceholderPageViewController: UIViewController {
         ])
     }
 
-    /// Read as one element so VoiceOver announces "<chapter> 載入中…" instead of
+    /// Read as one element so VoiceOver announces "<chapter> 载入中…" instead of
     /// landing on a silent spinner, and keep the reader commands reachable — a
     /// blind user must not be stranded on a loading page with no way back to the
     /// toolbar. Mirrors `CoreTextPageView`'s accessibility contract.
@@ -2966,12 +2966,12 @@ final class PlaceholderPageViewController: UIViewController {
         view.isAccessibilityElement = true
         view.accessibilityTraits = .staticText
         let title = titleLabel.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let loading = localized("載入中…")
+        let loading = localized("载入中…")
         view.accessibilityLabel = title.isEmpty ? loading : "\(title)，\(loading)"
-        view.accessibilityHint = localized("點兩下展開閱讀工具，三指左右滑動翻頁")
+        view.accessibilityHint = localized("点两下展开阅读工具，三指左右滑动翻页")
         view.accessibilityCustomActions = [
-            accessibilityAction(named: localized("選單"), action: .toggleMenu),
-            accessibilityAction(named: localized("目錄"), action: .tableOfContents),
+            accessibilityAction(named: localized("选单"), action: .toggleMenu),
+            accessibilityAction(named: localized("目录"), action: .tableOfContents),
         ]
     }
 

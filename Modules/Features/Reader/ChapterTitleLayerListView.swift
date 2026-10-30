@@ -20,12 +20,12 @@ struct ChapterTitleLayerListView: View {
             }
             .interfaceSectionSurface()
 
-            Section(localized("圖層")) {
+            Section(localized("图层")) {
                 if model.draft.layers.isEmpty {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("尚無元素"), systemImage: "square.dashed")
+                        UnavailableLabel(localized("尚无元素"), systemImage: "square.dashed")
                     } description: {
-                        Text(localized("加入章節數、章節名、文字、線條、色塊或圖片。")).foregroundStyle(DSColor.textSecondary)
+                        Text(localized("加入章节数、章节名、文字、线条、色块或图片。")).foregroundStyle(DSColor.textSecondary)
                     }
                 } else {
                     ForEach(model.draft.layers) { layer in
@@ -36,7 +36,7 @@ struct ChapterTitleLayerListView: View {
                                     model.setVisible(!layer.isVisible, id: layer.id)
                                 } label: {
                                     Label(
-                                        localized(layer.isVisible ? "隱藏" : "顯示"),
+                                        localized(layer.isVisible ? "隐藏" : "显示"),
                                         systemImage: layer.isVisible ? "eye.slash" : "eye"
                                     )
                                 }
@@ -44,31 +44,31 @@ struct ChapterTitleLayerListView: View {
                                     model.setLocked(!layer.isLocked, id: layer.id)
                                 } label: {
                                     Label(
-                                        localized(layer.isLocked ? "解鎖" : "鎖定"),
+                                        localized(layer.isLocked ? "解锁" : "锁定"),
                                         systemImage: layer.isLocked ? "lock.open" : "lock"
                                     )
                                 }
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) { model.delete(id: layer.id) } label: {
-                                    Label(localized("刪除"), systemImage: "trash")
+                                    Label(localized("删除"), systemImage: "trash")
                                 }
                                 Button { model.duplicate(id: layer.id) } label: {
-                                    Label(localized("複製"), systemImage: "plus.square.on.square")
+                                    Label(localized("复制"), systemImage: "plus.square.on.square")
                                 }
                             }
                             .contextMenu {
                                 Button { model.duplicate(id: layer.id) } label: {
-                                    Label(localized("複製"), systemImage: "plus.square.on.square")
+                                    Label(localized("复制"), systemImage: "plus.square.on.square")
                                 }
                                 Button { move(layer, offset: 1) } label: {
-                                    Label(localized("向前移動"), systemImage: "square.2.layers.3d.top.filled")
+                                    Label(localized("向前移动"), systemImage: "square.2.layers.3d.top.filled")
                                 }
                                 Button { move(layer, offset: -1) } label: {
-                                    Label(localized("向後移動"), systemImage: "square.2.layers.3d.bottom.filled")
+                                    Label(localized("向后移动"), systemImage: "square.2.layers.3d.bottom.filled")
                                 }
                                 Button(role: .destructive) { model.delete(id: layer.id) } label: {
-                                    Label(localized("刪除"), systemImage: "trash")
+                                    Label(localized("删除"), systemImage: "trash")
                                 }
                             }
                     }
@@ -93,8 +93,8 @@ struct ChapterTitleLayerListView: View {
     private func layerAccessibilityValue(_ layer: ChapterTitleLayer) -> String {
         [
             localized(layer.kind.titleKey),
-            localized(layer.isVisible ? "顯示" : "隱藏"),
-            localized(layer.isLocked ? "已鎖定" : "未鎖定"),
+            localized(layer.isVisible ? "显示" : "隐藏"),
+            localized(layer.isLocked ? "已锁定" : "未锁定"),
         ].joined(separator: localized("、"))
     }
 
@@ -117,14 +117,14 @@ private extension ChapterTitleLayerKind {
 
     var titleKey: String {
         switch self {
-        case .chapterNumber: "章節數"
-        case .chapterName: "章節名"
-        case .originalTitle: "原始標題"
+        case .chapterNumber: "章节数"
+        case .chapterName: "章节名"
+        case .originalTitle: "原始标题"
         case .customText: "文字"
-        case .ornament: "裝飾"
-        case .line: "線條"
-        case .colorBlock: "色塊"
-        case .image: "圖片"
+        case .ornament: "装饰"
+        case .line: "线条"
+        case .colorBlock: "色块"
+        case .image: "图片"
         }
     }
 

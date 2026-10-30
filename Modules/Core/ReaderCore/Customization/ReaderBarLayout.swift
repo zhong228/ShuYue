@@ -17,8 +17,8 @@ enum ReaderBar: String, CaseIterable, Codable, Equatable, Hashable, Sendable, Id
 
     var titleKey: String {
         switch self {
-        case .header: return "頁眉"
-        case .footer: return "頁腳"
+        case .header: return "页眉"
+        case .footer: return "页脚"
         }
     }
 }
@@ -52,13 +52,13 @@ enum ReaderBarSlot: String, CaseIterable, Codable, Equatable, Hashable, Sendable
 
     var titleKey: String {
         switch self {
-        case .hidden: return "隱藏"
-        case .headerLeft: return "頁眉靠左"
-        case .headerCenter: return "頁眉置中"
-        case .headerRight: return "頁眉靠右"
-        case .footerLeft: return "頁腳靠左"
-        case .footerCenter: return "頁腳置中"
-        case .footerRight: return "頁腳靠右"
+        case .hidden: return "隐藏"
+        case .headerLeft: return "页眉靠左"
+        case .headerCenter: return "页眉置中"
+        case .headerRight: return "页眉靠右"
+        case .footerLeft: return "页脚靠左"
+        case .footerCenter: return "页脚置中"
+        case .footerRight: return "页脚靠右"
         }
     }
 

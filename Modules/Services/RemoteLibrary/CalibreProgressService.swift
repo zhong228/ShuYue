@@ -10,12 +10,12 @@ enum CalibreProgressError: LocalizedError {
     case webUpdateFailed(String)
     var errorDescription: String? {
         switch self {
-        case .loginRequired: return localized("Calibre 進度同步需要登入帳號")
-        case .unsupportedServer: return localized("此伺服器不支援 Calibre 進度同步")
-        case .preparing: return localized("Calibre 正在準備閱讀資料，請稍後重試")
-        case .unmappedPosition: return localized("無法精確對應 Calibre 閱讀位置，已保留本機進度")
-        case .invalidData: return localized("Calibre 閱讀資料無效")
-        case .webUpdateFailed(let reason): return String(format: localized("Calibre 網頁進度回傳失敗：%@"), reason)
+        case .loginRequired: return localized("Calibre 进度同步需要登入帐号")
+        case .unsupportedServer: return localized("此伺服器不支援 Calibre 进度同步")
+        case .preparing: return localized("Calibre 正在准备阅读资料，请稍后重试")
+        case .unmappedPosition: return localized("无法精确对应 Calibre 阅读位置，已保留本机进度")
+        case .invalidData: return localized("Calibre 阅读资料无效")
+        case .webUpdateFailed(let reason): return String(format: localized("Calibre 网页进度回传失败：%@"), reason)
         }
     }
 }
@@ -73,7 +73,7 @@ final class CalibreProgressService: ObservableObject {
             do {
                 let saved = try JSONDecoder().decode([Snapshot].self, from: Data(contentsOf: storageURL))
                 pending = Dictionary(saved.map { ($0.bookID, $0) }, uniquingKeysWith: { _, new in new })
-                for id in pending.keys { states[id] = .failed(localized("上次 Calibre 進度尚未回傳")) }
+                for id in pending.keys { states[id] = .failed(localized("上次 Calibre 进度尚未回传")) }
             } catch { AppLogger.error("Unable to load pending Calibre progress: \(error)") }
         }
     }

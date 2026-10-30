@@ -85,7 +85,7 @@ enum ChapterAlignment {
         value = value.lowercased()
         value = value.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         value = value.replacingOccurrences(
-            of: "^第[^章节節回卷集话話部篇]{0,10}[章节節回卷集话話部篇]",
+            of: "^第[^章节节回卷集话话部篇]{0,10}[章节节回卷集话话部篇]",
             with: "",
             options: .regularExpression
         )
@@ -114,11 +114,11 @@ enum ChapterAlignment {
     // MARK: - Chapter number extraction
 
     private static let markedNumberRegex = try? NSRegularExpression(
-        pattern: "第([0-9零〇一二两兩三四五六七八九十百千万萬壹贰貳叁參肆伍陆陸柒捌玖拾佰仟]+)[章节節篇回集话話卷部]"
+        pattern: "第([0-9零〇一二两两三四五六七八九十百千万万壹贰贰叁参肆伍陆陆柒捌玖拾佰仟]+)[章节节篇回集话话卷部]"
     )
 
     private static let leadingNumberRegex = try? NSRegularExpression(
-        pattern: "^([0-9零〇一二两兩三四五六七八九十百千万萬]+)[、,，.．:： ]"
+        pattern: "^([0-9零〇一二两两三四五六七八九十百千万万]+)[、,，.．:： ]"
     )
 
     /// Extracts the chapter's ordinal from its title ("第一百零三章 …" → 103,
@@ -148,11 +148,11 @@ enum ChapterAlignment {
         "0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
         "零": 0, "〇": 0,
         "一": 1, "壹": 1,
-        "二": 2, "两": 2, "兩": 2, "贰": 2, "貳": 2,
-        "三": 3, "叁": 3, "參": 3,
+        "二": 2, "两": 2, "两": 2, "贰": 2, "贰": 2,
+        "三": 3, "叁": 3, "参": 3,
         "四": 4, "肆": 4,
         "五": 5, "伍": 5,
-        "六": 6, "陆": 6, "陸": 6,
+        "六": 6, "陆": 6, "陆": 6,
         "七": 7, "柒": 7,
         "八": 8, "捌": 8,
         "九": 9, "玖": 9,
@@ -171,7 +171,7 @@ enum ChapterAlignment {
         guard !raw.isEmpty else { return nil }
         if let direct = Int(raw) { return direct }
 
-        let hasUnit = raw.contains { smallUnitMap[$0] != nil || $0 == "万" || $0 == "萬" }
+        let hasUnit = raw.contains { smallUnitMap[$0] != nil || $0 == "万" || $0 == "万" }
         if !hasUnit {
             // Digit-wise concatenation: 一二三 → 123.
             var result = 0
@@ -193,7 +193,7 @@ enum ChapterAlignment {
                 // "十" with no leading digit means 1 (十五 → 15).
                 total += (current == 0 ? 1 : current) * unit
                 current = 0
-            } else if ch == "万" || ch == "萬" {
+            } else if ch == "万" || ch == "万" {
                 total = (total + current) * 10_000
                 current = 0
             } else {

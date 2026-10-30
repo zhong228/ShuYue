@@ -56,7 +56,7 @@ struct ReaderTopBar: View {
                     // queries `app.buttons["reader_back_button"]`, so it has to live on the
                     // element that stays visible to accessibility.
                     .accessibilityIdentifier("reader_back_button")
-                    .accessibilityLabel(localized("退出閱讀"))
+                    .accessibilityLabel(localized("退出阅读"))
 
                     // Balances the trailing side, so a visible title stays centred: one
                     // placeholder per trailing control past the first (搜尋 always, 選單 when shown).
@@ -100,7 +100,7 @@ struct ReaderTopBar: View {
                             .accessibilityHidden(true)
                     }
                     .animation(DSAnimation.fast, value: isBookmarked)
-                    .accessibilityLabel(localized("書籤"))
+                    .accessibilityLabel(localized("书签"))
                     .accessibilityValue(localized(isBookmarked ? "已加入" : "未加入"))
 
                     if showsMenu {
@@ -130,11 +130,11 @@ struct ReaderTopBar: View {
             } label: {
                 menuGlyph
             }
-            .accessibilityLabel(localized("選單"))
+            .accessibilityLabel(localized("选单"))
             .sheet(isPresented: $showsLegacyMenu, onDismiss: runLegacyMenuChoice) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
                     DismissalSequencedActionChooser(
-                        title: localized("選單"),
+                        title: localized("选单"),
                         actions: legacyMenuActions,
                         onSelect: { legacyMenuSequence.select($0) }
                     )
@@ -157,13 +157,13 @@ struct ReaderTopBar: View {
                 }
                 if let onOpenBookDetail {
                     Button(action: onOpenBookDetail) {
-                        Label(localized("書籍詳情"), systemImage: "info.circle")
+                        Label(localized("书籍详情"), systemImage: "info.circle")
                     }
                 }
             } label: {
                 menuGlyph
             }
-            .accessibilityLabel(localized("選單"))
+            .accessibilityLabel(localized("选单"))
         }
     }
 
@@ -187,7 +187,7 @@ struct ReaderTopBar: View {
         if onOpenBookDetail != nil {
             actions.append(DismissalSequencedAction(
                 route: .bookDetail,
-                title: localized("書籍詳情"),
+                title: localized("书籍详情"),
                 systemImage: "info.circle"
             ))
         }
@@ -206,7 +206,7 @@ struct ReaderTopBar: View {
     }
 }
 
-#Preview("經典頂欄") {
+#Preview("经典顶栏") {
     ZStack(alignment: .top) {
         ReaderTheme.white.backgroundColor
             .ignoresSafeArea()
@@ -224,7 +224,7 @@ struct ReaderTopBar: View {
             onToggleBookmark: {},
             menuActions: [
                 ReaderSecondaryAction(id: .aiAssistant, icon: "sparkles", label: "AI 助手", isLocked: true, action: {}),
-                ReaderSecondaryAction(id: .translation, icon: "translate", label: "AI 翻譯", isLocked: true, action: {}),
+                ReaderSecondaryAction(id: .translation, icon: "translate", label: "AI 翻译", isLocked: true, action: {}),
             ],
             onOpenBookDetail: {}
         )

@@ -10,7 +10,7 @@ struct AddToCustomPageItems: View {
     var body: some View {
         if store.pages.isEmpty {
             Button {} label: {
-                Text(localized("尚未建立自訂頁"))
+                Text(localized("尚未建立自订页"))
             }
             .disabled(true)
         } else {
@@ -43,7 +43,7 @@ struct AddToCustomPageMenu: View {
         Menu {
             AddToCustomPageItems(reference: reference)
         } label: {
-            Label(localized("加入自訂頁"), systemImage: "rectangle.stack.badge.plus")
+            Label(localized("加入自订页"), systemImage: "rectangle.stack.badge.plus")
         }
     }
 }

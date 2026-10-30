@@ -21,7 +21,7 @@ struct SearchSourceScopeCapsule: View {
         .frame(minHeight: DSLayout.minimumTapTarget, alignment: .leading)
         .contentShape(Rectangle())
         .tint(DSColor.appAccent)
-        .accessibilityLabel(localized("搜索範圍"))
+        .accessibilityLabel(localized("搜索范围"))
         .accessibilityValue(title)
     }
 }
@@ -49,10 +49,10 @@ struct SearchSourceScopeSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(localized("搜索範圍")) {
-                    Picker(localized("搜索範圍"), selection: $mode) {
-                        Text(localized("全部書源")).tag(SearchSourceScope.Mode.all)
-                        Text(localized("自選書源")).tag(SearchSourceScope.Mode.custom)
+                Section(localized("搜索范围")) {
+                    Picker(localized("搜索范围"), selection: $mode) {
+                        Text(localized("全部书源")).tag(SearchSourceScope.Mode.all)
+                        Text(localized("自选书源")).tag(SearchSourceScope.Mode.custom)
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(DSColor.surface)
@@ -68,9 +68,9 @@ struct SearchSourceScopeSheet: View {
             .scrollContentBackground(.hidden)
             .background(PageBackgroundView(scope: .search).ignoresSafeArea())
             .pageBackgroundToolbar(for: .search)
-            .navigationTitle(localized("搜索範圍"))
+            .navigationTitle(localized("搜索范围"))
             .toolbarTitleDisplayMode(.inline)
-            .searchable(text: $sourceQuery, prompt: localized("搜索書源"))
+            .searchable(text: $sourceQuery, prompt: localized("搜索书源"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -96,8 +96,8 @@ struct SearchSourceScopeSheet: View {
     }
 
     private var quickSelectionSection: some View {
-        Section(localized("快速選擇")) {
-            Button(localized("全選")) {
+        Section(localized("快速选择")) {
+            Button(localized("全选")) {
                 selectedSourceURLs = Set(enabledSources.compactMap { source in
                     let key = SearchSourceScope.sourceKey(for: source)
                     return key.isEmpty ? nil : key
@@ -117,7 +117,7 @@ struct SearchSourceScopeSheet: View {
         Section {
             if enabledSources.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("尚未設置書源"), systemImage: "exclamationmark.triangle")
+                    UnavailableLabel(localized("尚未设置书源"), systemImage: "exclamationmark.triangle")
                 }
                 .listRowBackground(Color.clear)
             } else if filteredSources.isEmpty {
@@ -130,7 +130,7 @@ struct SearchSourceScopeSheet: View {
             }
         } footer: {
             if !canSave {
-                Text(localized("請至少選擇一個可用書源"))
+                Text(localized("请至少选择一个可用书源"))
                     .dsSectionFooter(color: DSColor.destructive)
             }
         }
@@ -159,7 +159,7 @@ struct SearchSourceScopeSheet: View {
                 }
                 Spacer(minLength: DSSpacing.sm)
                 if isSelected {
-                    Label(localized("已選取"), systemImage: "checkmark")
+                    Label(localized("已选取"), systemImage: "checkmark")
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.accent)
                         .accessibilityHidden(true)
@@ -170,7 +170,7 @@ struct SearchSourceScopeSheet: View {
         .buttonStyle(.plain)
         .listRowBackground(DSColor.surface)
         .accessibilityLabel(source.bookSourceName)
-        .accessibilityValue(localized(isSelected ? "已選取" : "未選取"))
+        .accessibilityValue(localized(isSelected ? "已选取" : "未选取"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -209,15 +209,15 @@ struct SearchSourceScopeSheet: View {
 
 private let searchSourceScopePreviewSources: [BookSource] = {
     var first = BookSource()
-    first.bookSourceName = "示例書源 A"
+    first.bookSourceName = "示例书源 A"
     first.bookSourceUrl = "https://source-a.example"
     var second = BookSource()
-    second.bookSourceName = "示例書源 B"
+    second.bookSourceName = "示例书源 B"
     second.bookSourceUrl = "https://source-b.example"
     return [first, second]
 }()
 
-#Preview("搜索範圍") {
+#Preview("搜索范围") {
     SearchSourceScopeSheet(
         enabledSources: searchSourceScopePreviewSources,
         initialScope: SearchSourceScope(

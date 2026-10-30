@@ -56,7 +56,7 @@ struct BookmarkSelectionList: View {
                             Button(role: .destructive) {
                                 onDelete(bm)
                             } label: {
-                                Label(localized("刪除"), systemImage: "trash")
+                                Label(localized("删除"), systemImage: "trash")
                             }
                         }
                     }
@@ -87,7 +87,7 @@ struct BookmarkSelectionList: View {
                 Button { onSelectChapter(group) } label: { title }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(.isHeader)
-                    .accessibilityHint(localized("點兩下跳至本章開頭"))
+                    .accessibilityHint(localized("点两下跳至本章开头"))
             }
         }
         .textCase(nil)
@@ -140,7 +140,7 @@ private struct BookmarkCardRow: View {
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .lineLimit(2)
-                    .accessibilityLabel(String(format: localized("筆記：%@"), note))
+                    .accessibilityLabel(String(format: localized("笔记：%@"), note))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,11 +155,11 @@ private struct BookmarkCardRow: View {
                 Button(action: onSelect) { content }
                     .buttonStyle(.borderless)
                     .accessibilityLabel("\(primary)，\(metaText)")
-                    .accessibilityHint(localized("點兩下跳至此頁"))
+                    .accessibilityHint(localized("点两下跳至此页"))
 
                 Menu {
                     Button(role: .destructive, action: onDelete) {
-                        Label(localized("刪除"), systemImage: "trash")
+                        Label(localized("删除"), systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis")

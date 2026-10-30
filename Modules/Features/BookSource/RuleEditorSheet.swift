@@ -108,7 +108,7 @@ struct RuleEditorSheet: View {
             .padding(.vertical, 8)
         }
         .background(DSColor.neutralControlFill)
-        .accessibilityLabel(localized("規則插入"))
+        .accessibilityLabel(localized("规则插入"))
     }
 
     private func insert(_ chip: String) {

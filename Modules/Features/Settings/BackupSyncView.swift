@@ -11,7 +11,7 @@ struct BackupSyncView: View {
                 AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     // 分组卡片：iCloud 与 WebDAV 两个同步入口合为一张卡片（2026-10-25）。
-                    DSSettingsGroupCard(title: localized("備份與同步方式")) {
+                    DSSettingsGroupCard(title: localized("备份与同步方式")) {
                         DSSettingsCardNavRow(
                             icon: "icloud.fill",
                             title: localized("iCloud 同步"),
@@ -45,7 +45,7 @@ struct BackupSyncView: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
             }
             .task {
@@ -56,11 +56,11 @@ struct BackupSyncView: View {
 
     private var webDAVDetail: String {
         if webDAVManager.serverUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return localized("尚未設定伺服器")
+            return localized("尚未设定伺服器")
         }
         return webDAVManager.lastSyncDate == nil
-            ? localized("已設定，尚未同步")
-            : localized("已設定")
+            ? localized("已设定，尚未同步")
+            : localized("已设定")
     }
 }
 

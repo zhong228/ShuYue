@@ -19,82 +19,82 @@ struct AIStatusView: View {
     var body: some View {
         Form {
             Section {
-                ThemedLabeledContent(localized("章節目錄"), value: "\(adapter.manifest.chapters.count)")
-                ThemedLabeledContent(localized("本機可用正文"), value: "\(adapter.manifest.chapters.count - missingChapters.count) / \(adapter.manifest.chapters.count)")
-                ThemedLabeledContent(localized("已索引章節"), value: "\(service.indexedChapterCounts[adapter.chunkBookID] ?? 0)")
-                ThemedLabeledContent(localized("檢索索引"), value: indexDescription)
+                ThemedLabeledContent(localized("章节目录"), value: "\(adapter.manifest.chapters.count)")
+                ThemedLabeledContent(localized("本机可用正文"), value: "\(adapter.manifest.chapters.count - missingChapters.count) / \(adapter.manifest.chapters.count)")
+                ThemedLabeledContent(localized("已索引章节"), value: "\(service.indexedChapterCounts[adapter.chunkBookID] ?? 0)")
+                ThemedLabeledContent(localized("检索索引"), value: indexDescription)
                 if !missingChapters.isEmpty {
                     DisclosureGroup {
                         ForEach(missingChapters, id: \.order) { chapter in
                             ThemedLabeledContent(String(format: localized("第 %d 章"), chapter.order + 1), value: availability(chapter.status))
                         }
                     } label: {
-                        ThemedLabeledContent(localized("缺少正文的章節"), value: "\(missingChapters.count)")
+                        ThemedLabeledContent(localized("缺少正文的章节"), value: "\(missingChapters.count)")
                     }
                 }
             } header: {
-                Text(localized("本書內容"))
+                Text(localized("本书内容"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("未下載或抽取失敗的章節不在搜尋範圍，也不會自動下載。"))
+                Text(localized("未下载或抽取失败的章节不在搜寻范围，也不会自动下载。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
             Section {
-                ThemedLabeledContent(localized("每題模型呼叫上限"), value: "\(AIQuestionBudget().maximumModelCalls)")
-                ThemedLabeledContent(localized("每題搜尋詞上限"), value: "\(AIQuestionBudget().maximumQueries)")
+                ThemedLabeledContent(localized("每题模型呼叫上限"), value: "\(AIQuestionBudget().maximumModelCalls)")
+                ThemedLabeledContent(localized("每题搜寻词上限"), value: "\(AIQuestionBudget().maximumQueries)")
             } header: {
-                Text(localized("問答預算"))
+                Text(localized("问答预算"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("每次模型呼叫都可能由服務商計費。"))
+                Text(localized("每次模型呼叫都可能由服务商计费。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
             Section {
-                Toggle(localized("下一次請求保留敏感診斷內容"), isOn: $diagnostics.captureNextRequestContent)
-                Toggle(localized("匯出 messages 與讀者輸入"), isOn: $includeMessages)
-                Toggle(localized("匯出檢索原文"), isOn: $includeEvidence)
-                Toggle(localized("匯出模型回覆與自評"), isOn: $includeResponse)
+                Toggle(localized("下一次请求保留敏感诊断内容"), isOn: $diagnostics.captureNextRequestContent)
+                Toggle(localized("汇出 messages 与读者输入"), isOn: $includeMessages)
+                Toggle(localized("汇出检索原文"), isOn: $includeEvidence)
+                Toggle(localized("汇出模型回复与自评"), isOn: $includeResponse)
                 if let trace = diagnostics.latest, trace.bookID == adapter.chunkBookID {
-                    ThemedLabeledContent(localized("診斷請求"), value: trace.requestID.uuidString)
+                    ThemedLabeledContent(localized("诊断请求"), value: trace.requestID.uuidString)
                 }
-                Button(localized("匯出本機診斷")) { export() }
+                Button(localized("汇出本机诊断")) { export() }
                     .disabled(diagnostics.latest?.bookID != adapter.chunkBookID)
                 if let exportError {
                     Label(exportError, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(DSColor.destructive)
                 }
             } header: {
-                Text(localized("診斷匯出"))
+                Text(localized("诊断汇出"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("預設只保存 metadata；匯出只含勾選內容並遮蔽憑證、帳號與網址，不會自動上傳。"))
+                Text(localized("预设只保存 metadata；汇出只含勾选内容并遮蔽凭证、帐号与网址，不会自动上传。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("AI 狀態與診斷"))
+        .navigationTitle(localized("AI 状态与诊断"))
         .toolbarTitleDisplayMode(.inline)
         .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "ShuYue-AI-diagnostics") { result in
-            if case .failure = result { exportError = localized("診斷匯出失敗") }
+            if case .failure = result { exportError = localized("诊断汇出失败") }
         }
     }
     private var indexDescription: String {
         switch service.indexState[adapter.chunkBookID] ?? .idle {
         case .idle: return localized("尚未建立")
         case .building: return localized("建立中…")
-        case let .ready(count): return String(format: localized("已索引 %d 個片段"), count)
+        case let .ready(count): return String(format: localized("已索引 %d 个片段"), count)
         case let .failed(message): return message
         }
     }
     private func availability(_ status: AISourceManifest.Availability) -> String {
         switch status {
         case .available: return localized("正文已取得")
-        case .notDownloaded: return localized("尚未下載")
-        case .extractionFailed: return localized("正文抽取失敗")
+        case .notDownloaded: return localized("尚未下载")
+        case .extractionFailed: return localized("正文抽取失败")
         case .unsupported: return localized("格式不支援正文抽取")
         }
     }
@@ -107,7 +107,7 @@ struct AIStatusView: View {
             guard let trace = diagnostics.latest, trace.bookID == adapter.chunkBookID else { return }
             document = AIDiagnosticDocument(data: try trace.export(including: categories))
             exporting = true
-        } catch { exportError = localized("診斷匯出失敗") }
+        } catch { exportError = localized("诊断汇出失败") }
     }
 }
 struct AIDiagnosticDocument: FileDocument {

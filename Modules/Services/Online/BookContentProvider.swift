@@ -41,11 +41,11 @@ enum BookContentProviderError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .chapterIndexOutOfRange(let index):
-            return "章節索引超出範圍：\(index)"
+            return "章节索引超出范围：\(index)"
         case .contentNotCached(let index):
-            return "章節尚未快取：\(index)"
+            return "章节尚未快取：\(index)"
         case .unsupportedChapterContent(let type):
-            return "不支援的章節內容：\(type)"
+            return "不支援的章节内容：\(type)"
         }
     }
 }

@@ -24,8 +24,8 @@ enum AppearanceReaderInterface: String, CaseIterable, Identifiable, Codable {
 
     var titleKey: String {
         switch self {
-        case .classic: return "經典"
-        case .modern: return "現代"
+        case .classic: return "经典"
+        case .modern: return "现代"
         case .appleBooks: return "Apple Books"
         }
     }
@@ -483,12 +483,12 @@ struct AppearanceThemePreset: Identifiable, Hashable {
 
     static let classicID = "classic"
 
-    /// "默認" — what the app looked like before appearance themes existed.
+    /// "默认" — what the app looked like before appearance themes existed.
     /// Selecting it applies no tint override (see `ContentView`); the colors
     /// here only drive the preview tile and serve as a base for custom copies.
     /// 书悦品牌化：accent 由墨悦青绿改为朱砂红（暖书卷方向），背景保持暖纸米。
     static let classic = AppearanceThemePreset(
-        id: classicID, nameKey: "默認",
+        id: classicID, nameKey: "默认",
         displayName: nil,
         background: hex(0xF7F3EA), text: hex(0x2E2A25),
         bar: hex(0xFDFBF5), accent: hex(0xB94A2E), dialogue: hex(0xDFE9E1),
@@ -541,7 +541,7 @@ struct AppearanceThemePreset: Identifiable, Hashable {
             requiresPro: false, isImagePreset: false, isCustom: false
         ),
         AppearanceThemePreset(
-            id: "rose_pink", nameKey: "緋霞",
+            id: "rose_pink", nameKey: "绯霞",
             displayName: nil,
             background: hex(0xF8EDEE), text: hex(0x3D2D31),
             bar: hex(0xEFDADA), accent: hex(0xB05A62), dialogue: hex(0xE9CFD0),
@@ -757,7 +757,7 @@ struct AppearanceThemePreset: Identifiable, Hashable {
             // 图标/icons: tab-bar icon assets, not backgrounds.
             // 界面背景: loose background library reserved for the upcoming
             // background-import feature — not a coherent theme pack.
-            return value == "图标" || value == "圖標" || lower == "icon" || lower == "icons"
+            return value == "图标" || value == "图标" || lower == "icon" || lower == "icons"
                 || value == "界面背景"
         }
     }

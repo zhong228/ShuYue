@@ -16,12 +16,12 @@ struct AppearancePageBackgroundView: View {
             AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
                 // 分组卡片：页面背景设置与预览各成卡片，替代系统 Form Section（2026-10-25）。
-                DSSettingsGroupCard(title: localized("頁面背景"), footer: {
-                    Text(localized("沒有單獨設定的分頁，用「全域預設」的背景。"))
+                DSSettingsGroupCard(title: localized("页面背景"), footer: {
+                    Text(localized("没有单独设定的分页，用「全域预设」的背景。"))
                         .dsSectionFooter()
                 }) {
                     DSSettingsCardPicker(
-                        title: localized("編輯範圍"),
+                        title: localized("编辑范围"),
                         systemImage: "rectangle.stack",
                         selection: $pageBackgroundScope
                     ) {
@@ -30,13 +30,13 @@ struct AppearancePageBackgroundView: View {
                         }
                     }
                     DSSettingsCardDivider()
-                    colorRow(titleKey: "亮色主色調", scheme: .light, slot: .primary)
+                    colorRow(titleKey: "亮色主色调", scheme: .light, slot: .primary)
                     DSSettingsCardDivider()
-                    colorRow(titleKey: "亮色輔色調", scheme: .light, slot: .secondary)
+                    colorRow(titleKey: "亮色辅色调", scheme: .light, slot: .secondary)
                     DSSettingsCardDivider()
-                    colorRow(titleKey: "深色主色調", scheme: .dark, slot: .primary)
+                    colorRow(titleKey: "深色主色调", scheme: .dark, slot: .primary)
                     DSSettingsCardDivider()
-                    colorRow(titleKey: "深色輔色調", scheme: .dark, slot: .secondary)
+                    colorRow(titleKey: "深色辅色调", scheme: .dark, slot: .secondary)
                     DSSettingsCardDivider()
                     imagePickerRow(scheme: .light)
                     if hasBackgroundImage(scheme: .light) {
@@ -51,7 +51,7 @@ struct AppearancePageBackgroundView: View {
                     }
                 }
 
-                DSSettingsGroupCard(title: localized("預覽")) {
+                DSSettingsGroupCard(title: localized("预览")) {
                     previewCard
                         .dsSettingsCardRow(minHeight: 0)
                         .padding(.vertical, DSSpacing.sm)
@@ -63,17 +63,17 @@ struct AppearancePageBackgroundView: View {
         }
         }
         .softScrollEdges()
-        .navigationTitle(localized("頁面背景"))
+        .navigationTitle(localized("页面背景"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .alert(
-            localized("匯入失敗"),
+            localized("汇入失败"),
             isPresented: Binding(
                 get: { importFailure != nil },
                 set: { if !$0 { importFailure = nil } }
             )
         ) {
-            Button(localized("確定"), role: .cancel) {}
+            Button(localized("确定"), role: .cancel) {}
         } message: {
             Text(importFailure ?? "")
         }
@@ -142,13 +142,13 @@ struct AppearancePageBackgroundView: View {
 
     /// The whole row opens the picker: the picture, once chosen, shows at its end.
     private func imagePickerRow(scheme: ColorScheme) -> some View {
-        let titleKey = scheme == .dark ? "深色背景圖" : "亮色背景圖"
+        let titleKey = scheme == .dark ? "深色背景图" : "亮色背景图"
         let fileName = settings.pageBackgroundConfig(for: pageBackgroundScope).imageFileName(for: scheme)
         return ImageSourcePickerButton(
             accessibilityTitle: localized(titleKey),
             extraActions: fileName == nil ? [] : [
                 ImageSourcePickerAction(
-                    title: localized("移除背景圖"),
+                    title: localized("移除背景图"),
                     systemImage: "trash",
                     isDestructive: true,
                     action: {
@@ -175,7 +175,7 @@ struct AppearancePageBackgroundView: View {
                         )
                         .accessibilityHidden(true)
                 } else {
-                    Text(localized("選擇"))
+                    Text(localized("选择"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
             } label: {
@@ -242,7 +242,7 @@ struct AppearancePageBackgroundView: View {
             importFailure = localized(error.messageKey)
         } catch {
             AppLogger.error("⟐ page background picture import failed", error: error)
-            importFailure = localized("無法讀取圖片。")
+            importFailure = localized("无法读取图片。")
         }
     }
 
@@ -264,13 +264,13 @@ struct AppearancePageBackgroundView: View {
                 DSColor.groupedBackground
             }
             VStack(spacing: DSSpacing.sm) {
-                Text(localized("背景預覽"))
+                Text(localized("背景预览"))
                     .font(DSFont.headline)
                     .foregroundStyle(DSColor.textPrimary)
                 Text("\(pageBackgroundScope.localizedTitle) · \(modeName)")
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
-                Text(localized("弱文字樣例"))
+                Text(localized("弱文字样例"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary.opacity(0.72))
             }

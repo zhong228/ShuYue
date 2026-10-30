@@ -27,7 +27,7 @@ struct AutoReadPill: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: DSSpacing.xs) {
-                Text(localized("設置自動閱讀"))
+                Text(localized("设置自动阅读"))
                 Image(systemName: "chevron.up")
                     .font(DSFont.caption)
                     .accessibilityHidden(true)
@@ -45,7 +45,7 @@ struct AutoReadPill: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("設置自動閱讀"))
+        .accessibilityLabel(localized("设置自动阅读"))
         .accessibilityValue(AutoReadController.secondsText(secondsPerPage))
     }
 }
@@ -88,113 +88,4 @@ struct AutoReadControlPanel: View {
             fill: fill
         )
         .shadow(color: DSColor.coverHeroShadow, radius: 18, y: 8)
-        .padding(.horizontal, DSSpacing.md)
-    }
-
-    /// The counterpart to the pill's 「∧」, and the answer to "how do I put this
-    /// away". legado's dialog needs no such handle: it is a real dialog window, so
-    /// tapping outside it is the obvious move. This one sits on the page with the
-    /// reveal still running behind it, so the way back has to be *visible* rather
-    /// than discovered. Tapping the page does the same thing.
-    private var collapseHandle: some View {
-        Button(action: onCollapse) {
-            Image(systemName: "chevron.down")
-                .font(DSFont.caption)
-                .foregroundStyle(tint.opacity(0.55))
-                .frame(maxWidth: .infinity, minHeight: 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(localized("收起"))
-    }
-
-    /// 「翻頁速度  10s」 over a 1–120 slider, the same readout and range legado's
-    /// `dialog_auto_read.xml` uses. Bigger is slower: the number is how long one
-    /// page takes, so it needs no mental arithmetic to read.
-    private var speedRow: some View {
-        VStack(spacing: DSSpacing.xs) {
-            HStack {
-                Text(localized("翻頁速度"))
-                Spacer()
-                Text(autoReader.secondsText)
-                    .monospacedDigit()
-            }
-            .font(DSFont.footnote)
-            .foregroundStyle(tint.opacity(0.7))
-            .accessibilityHidden(true)
-
-            // A Slider has no name of its own and announces a fraction of its
-            // range, so it carries the label and the value shown above it —
-            // docs/design.md §7.1.
-            Slider(
-                value: Binding(
-                    get: { autoReader.secondsPerPage },
-                    set: { autoReader.setSecondsPerPage($0) }
-                ),
-                in: AutoReadController.secondsPerPageRange,
-                step: 1
-            )
-            .tint(accent)
-            .accessibilityLabel(localized("翻頁速度"))
-            .accessibilityValue(autoReader.intervalDescription)
-        }
-    }
-
-    /// 目錄 / 主選單 / 退出 / 設置 — legado's row and its order
-    /// (`dialog_auto_read.xml`), 主選單 included this time. Leaving it out made the
-    /// panel a dead end: with the mode's own chrome the only thing on screen, the
-    /// reading menu was reachable only by collapsing this and tapping again.
-    private var actionRow: some View {
-        HStack(spacing: 0) {
-            action(icon: "list.bullet", title: localized("目錄"), action: onOpenTOC)
-            action(icon: "ellipsis.circle", title: localized("主選單"), action: onOpenReadingMenu)
-            action(icon: "stop.circle", title: localized("退出自動閱讀"), action: onClose)
-            action(icon: "textformat.size", title: localized("設置"), action: onOpenSettings)
-        }
-    }
-
-    private func action(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: DSSpacing.xs) {
-                Image(systemName: icon)
-                    .font(DSFont.fixed(size: 20))
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(DSFont.caption)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-    }
-}
-
-#Preview("自動閱讀控制") {
-    ZStack {
-        Color(uiColor: ReaderTheme.sepia.uiBackgroundColor).ignoresSafeArea()
-        VStack(spacing: DSSpacing.xl) {
-            Spacer()
-            AutoReadPill(
-                secondsPerPage: AutoReadController.defaultSecondsPerPage,
-                fill: ReaderTheme.sepia.barColor,
-                tint: ReaderTheme.sepia.textColor,
-                onTap: {}
-            )
-            AutoReadControlPanel(
-                autoReader: AutoReadController(),
-                fill: ReaderTheme.sepia.barColor,
-                tint: ReaderTheme.sepia.textColor,
-                accent: ReaderTheme.sepia.accentColor,
-                onOpenTOC: {},
-                onOpenReadingMenu: {},
-                onOpenSettings: {},
-                onCollapse: {},
-                onClose: {}
-            )
-        }
-    }
-}
+        .padding(.horizontal, DSSpa

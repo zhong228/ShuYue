@@ -19,22 +19,22 @@ struct RemoteLibraryReadFailure: Hashable, Sendable {
             return nil
         case .errorResponse(let response):
             switch response.status.rawValue {
-            case 401, 403: message = localized("認證失敗，請確認帳號和密碼")
-            case 412: message = localized("遠端書籍已更新，請返回書籍詳情重新開啟")
-            default: message = String(format: localized("連線失敗（HTTP %d）"), response.status.rawValue)
+            case 401, 403: message = localized("认证失败，请确认帐号和密码")
+            case 412: message = localized("远端书籍已更新，请返回书籍详情重新开启")
+            default: message = String(format: localized("连线失败（HTTP %d）"), response.status.rawValue)
             }
         case .offline, .unreachable:
-            message = localized("無法連線至書庫，請檢查網路與伺服器。")
+            message = localized("无法连线至书库，请检查网路与伺服器。")
         case .timeout:
-            message = localized("連線逾時")
+            message = localized("连线逾时")
         case .rangeNotSupported:
-            message = localized("伺服器不支援分段讀取")
+            message = localized("伺服器不支援分段读取")
         case .malformedRequest, .malformedResponse:
-            message = localized("伺服器傳回的書籍資料無效")
+            message = localized("伺服器传回的书籍资料无效")
         case .security(let underlying):
-            message = underlying?.localizedDescription ?? localized("無法建立安全連線")
+            message = underlying?.localizedDescription ?? localized("无法建立安全连线")
         case .redirection(let underlying):
-            message = underlying?.localizedDescription ?? localized("伺服器重新導向失敗")
+            message = underlying?.localizedDescription ?? localized("伺服器重新导向失败")
         case .fileSystem(let underlying):
             message = underlying.localizedDescription
         case .other(let underlying):

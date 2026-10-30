@@ -22,7 +22,7 @@ struct BookSourceImportConfirmSheet: View {
                 content
                     .navigationTitle(
                         handler.activeKind == .rssSource
-                            ? localized("匯入訂閱源") : localized("匯入書源")
+                            ? localized("汇入订阅源") : localized("汇入书源")
                     )
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -73,7 +73,7 @@ struct BookSourceImportConfirmSheet: View {
                 tint: DSColor.success,
                 message: String(
                     format: handler.activeKind == .rssSource
-                        ? localized("成功匯入 %d 個訂閱源") : localized("成功匯入 %d 個書源"),
+                        ? localized("成功汇入 %d 个订阅源") : localized("成功汇入 %d 个书源"),
                     count
                 ),
                 actionTitle: localized("完成")
@@ -92,13 +92,13 @@ struct BookSourceImportConfirmSheet: View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             Text(
                 handler.activeKind == .rssSource
-                    ? localized("確認從外部來源匯入訂閱源？") : localized("確認從外部來源匯入書源？")
+                    ? localized("确认从外部来源汇入订阅源？") : localized("确认从外部来源汇入书源？")
             )
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
 
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                Text(localized("來源："))
+                Text(localized("来源："))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
                 Text(sourceURL.absoluteString)
@@ -118,7 +118,7 @@ struct BookSourceImportConfirmSheet: View {
             Button {
                 handler.confirm()
             } label: {
-                Label(localized("確認匯入"), systemImage: "square.and.arrow.down")
+                Label(localized("确认汇入"), systemImage: "square.and.arrow.down")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -134,7 +134,7 @@ struct BookSourceImportConfirmSheet: View {
             Spacer()
             ProgressView()
                 .controlSize(.large)
-            Text(localized("匯入中，請稍候…"))
+            Text(localized("汇入中，请稍候…"))
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.textSecondary)
             Spacer()

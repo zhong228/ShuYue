@@ -31,7 +31,7 @@ struct AIBookSummaryView: View {
             if let plan, !plan.readVolumes.isEmpty { volumeSection(plan) }
             if record.book != nil || !record.digests.isEmpty {
                 Section {
-                    Button(localized("清除本書摘要"), role: .destructive) { confirmClear = true }
+                    Button(localized("清除本书摘要"), role: .destructive) { confirmClear = true }
                         .disabled(isRunning)
                 }
                 .interfaceSectionSurface()
@@ -39,7 +39,7 @@ struct AIBookSummaryView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("全書與分卷摘要"))
+        .navigationTitle(localized("全书与分卷摘要"))
         .toolbarTitleDisplayMode(.inline)
         .task(id: adapter.contentFingerprint) { await refreshPlan() }
         // A finished or paused run changes what is left to do.
@@ -50,7 +50,7 @@ struct AIBookSummaryView: View {
         .onChange(of: scenePhase) { _, phase in if phase != .active { service.pause(book: book) } }
         .onDisappear { service.pause(book: book) }
         .sheet(item: $proposal) { consent($0) }
-        .confirmationDialog(localized("清除本書摘要？"), isPresented: $confirmClear, titleVisibility: .visible) {
+        .confirmationDialog(localized("清除本书摘要？"), isPresented: $confirmClear, titleVisibility: .visible) {
             Button(localized("清除"), role: .destructive) {
                 Task {
                     do { try await service.clear(book: book) } catch { planError = error.localizedDescription }
@@ -59,7 +59,7 @@ struct AIBookSummaryView: View {
             }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("已整理的逐章、分卷與全書摘要都會刪除，重新整理需要再次呼叫模型。"))
+            Text(localized("已整理的逐章、分卷与全书摘要都会删除，重新整理需要再次呼叫模型。"))
         }
     }
 
@@ -72,17 +72,17 @@ struct AIBookSummaryView: View {
                     .padding(.vertical, DSSpacing.xs)
             } else {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("還沒有全書摘要"), systemImage: "text.book.closed")
+                    UnavailableLabel(localized("还没有全书摘要"), systemImage: "text.book.closed")
                 } description: {
-                    Text(localized("依已讀章節逐章整理，再彙整成分卷與全書摘要。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("依已读章节逐章整理，再汇整成分卷与全书摘要。")).foregroundStyle(DSColor.textSecondary)
                 }
             }
         } header: {
-            Text(localized("全書摘要"))
+            Text(localized("全书摘要"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             if let summary = record.book {
-                Text(String(format: localized("涵蓋到第 %d 章"), summary.throughChapter + 1))
+                Text(String(format: localized("涵盖到第 %d 章"), summary.throughChapter + 1))
                     .dsSectionFooter()
             }
         }
@@ -97,7 +97,7 @@ struct AIBookSummaryView: View {
                     Text(String(format: localized("整理中…（%1$d / %2$d）"), progress.completed, progress.total))
                         .foregroundStyle(DSColor.textPrimary)
                 }
-                Button(localized("暫停")) { service.pause(book: book) }
+                Button(localized("暂停")) { service.pause(book: book) }
             default:
                 if let message = statusMessage {
                     Label(message, systemImage: statusSymbol)
@@ -105,17 +105,17 @@ struct AIBookSummaryView: View {
                 }
                 if let plan {
                     if plan.isUpToDate {
-                        Label(localized("摘要已涵蓋目前的閱讀進度。"), systemImage: "checkmark.circle")
+                        Label(localized("摘要已涵盖目前的阅读进度。"), systemImage: "checkmark.circle")
                             .foregroundStyle(DSColor.textSecondary)
                     } else {
                         Button(actionTitle) { propose(plan) }
                     }
                 } else if planError == nil {
-                    ProgressView(localized("載入中…"))
+                    ProgressView(localized("载入中…"))
                 }
             }
         } footer: {
-            Text(localized("只整理已讀、且本機有正文的章節；離開此頁會暫停，已完成的部分會保留。"))
+            Text(localized("只整理已读、且本机有正文的章节；离开此页会暂停，已完成的部分会保留。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -153,7 +153,7 @@ struct AIBookSummaryView: View {
 
     private var actionTitle: String {
         switch run {
-        case .paused, .budgetReached: return localized("繼續整理")
+        case .paused, .budgetReached: return localized("继续整理")
         default: return record.book == nil && record.digests.isEmpty ? localized("整理摘要") : localized("更新摘要")
         }
     }
@@ -166,8 +166,8 @@ struct AIBookSummaryView: View {
     private var statusMessage: String? {
         if let planError { return planError }
         switch run {
-        case .budgetReached: return localized("已用完這次確認的呼叫次數，已暫停。")
-        case .paused: return localized("已暫停，已完成的部分會保留。")
+        case .budgetReached: return localized("已用完这次确认的呼叫次数，已暂停。")
+        case .paused: return localized("已暂停，已完成的部分会保留。")
         case let .failed(message): return message
         case .idle, .running: return nil
         }
@@ -187,21 +187,21 @@ struct AIBookSummaryView: View {
         return NavigationStack {
             Form {
                 Section {
-                    ThemedLabeledContent(localized("生成服務"), value: proposal.service.name)
+                    ThemedLabeledContent(localized("生成服务"), value: proposal.service.name)
                     ThemedLabeledContent(localized("生成模型"), value: proposal.service.model)
-                    ThemedLabeledContent(localized("要整理的章節"), value: "\(chapters)")
-                    ThemedLabeledContent(localized("預計模型呼叫"), value: "\(plan.estimatedCalls)")
-                    ThemedLabeledContent(localized("送出的正文"), value: String(format: localized("約 %d 字"), plan.sourceUTF16))
+                    ThemedLabeledContent(localized("要整理的章节"), value: "\(chapters)")
+                    ThemedLabeledContent(localized("预计模型呼叫"), value: "\(plan.estimatedCalls)")
+                    ThemedLabeledContent(localized("送出的正文"), value: String(format: localized("约 %d 字"), plan.sourceUTF16))
                     if !plan.missingChapters.isEmpty {
-                        ThemedLabeledContent(localized("缺少正文的章節"), value: "\(plan.missingChapters.count)")
+                        ThemedLabeledContent(localized("缺少正文的章节"), value: "\(plan.missingChapters.count)")
                     }
                 } footer: {
-                    Text(localized("會把這些章節的本機正文分批傳送到你的 AI 服務，可能產生費用。超過預計次數時會先暫停。"))
+                    Text(localized("会把这些章节的本机正文分批传送到你的 AI 服务，可能产生费用。超过预计次数时会先暂停。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
                 Section {
-                    Button(localized("開始整理")) {
+                    Button(localized("开始整理")) {
                         self.proposal = nil
                         do { try service.start(plan: plan, source: adapter) } catch { planError = error.localizedDescription }
                     }
@@ -210,7 +210,7 @@ struct AIBookSummaryView: View {
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .navigationTitle(localized("確認整理摘要"))
+            .navigationTitle(localized("确认整理摘要"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -252,12 +252,12 @@ private struct AIVolumeSummaryView: View {
                     AIAnswerMarkdownView(text: summary.text)
                         .padding(.vertical, DSSpacing.xs)
                 } else {
-                    Text(localized("這一卷還沒有摘要。"))
+                    Text(localized("这一卷还没有摘要。"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
             } footer: {
                 if let summary = record.volumes[volume.id] {
-                    Text(String(format: localized("涵蓋到第 %d 章"), summary.throughChapter + 1))
+                    Text(String(format: localized("涵盖到第 %d 章"), summary.throughChapter + 1))
                         .dsSectionFooter()
                 }
             }

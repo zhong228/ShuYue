@@ -30,13 +30,13 @@ enum LocalMangaArchiveError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFileType:
-            return localized("不支援的漫畫格式")
+            return localized("不支援的漫画格式")
         case .cannotReadArchive:
-            return localized("無法讀取漫畫壓縮檔")
+            return localized("无法读取漫画压缩档")
         case .noImagesFound:
-            return localized("漫畫壓縮檔中未找到圖片")
+            return localized("漫画压缩档中未找到图片")
         case .extractionFailed:
-            return localized("漫畫圖片解壓失敗")
+            return localized("漫画图片解压失败")
         }
     }
 }

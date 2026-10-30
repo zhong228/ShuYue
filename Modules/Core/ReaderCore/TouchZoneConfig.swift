@@ -2,14 +2,14 @@ import Foundation
 
 // MARK: - Grid Touch Zone Actions
 enum TouchAction: String, CaseIterable, Codable, Equatable {
-    case prevPage = "上一頁"
-    case nextPage = "下一頁"
-    case toggleMenu = "選單"
-    case none = "無動作"
+    case prevPage = "上一页"
+    case nextPage = "下一页"
+    case toggleMenu = "选单"
+    case none = "无动作"
     case previousChapter = "上一章"
     case nextChapter = "下一章"
-    case toggleBookmark = "添加/移除書籤"
-    case tableOfContents = "目錄"
+    case toggleBookmark = "添加/移除书签"
+    case tableOfContents = "目录"
 }
 
 enum ReaderTouchCommand: Equatable {

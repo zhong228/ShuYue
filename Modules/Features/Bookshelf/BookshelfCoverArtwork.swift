@@ -431,10 +431,10 @@ private struct CoverSlotState: Equatable {
     var phase: Phase = .pending
 }
 
-#Preview("書架封面 – 無封面／生成封面") {
+#Preview("书架封面 – 无封面／生成封面") {
     HStack(spacing: DSSpacing.lg) {
         BookshelfCoverStyle.artwork(
-            for: ReadingBook(title: "宿命之環", author: "愛潛水的烏賊", contentFilename: "x.txt"),
+            for: ReadingBook(title: "宿命之环", author: "爱潜水的乌贼", contentFilename: "x.txt"),
             colorScheme: .light,
             displaySize: CGSize(width: 45, height: 65)
         )
@@ -442,7 +442,7 @@ private struct CoverSlotState: Equatable {
         .clipShape(RoundedRectangle(cornerRadius: DSRadius.sm))
 
         BookshelfCoverStyle.artwork(
-            for: ReadingBook(title: "劍燭大荒", author: "青山鶴", contentFilename: "y.txt"),
+            for: ReadingBook(title: "剑烛大荒", author: "青山鹤", contentFilename: "y.txt"),
             colorScheme: .light,
             displaySize: CGSize(width: 110, height: 165)
         )

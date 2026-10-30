@@ -111,7 +111,7 @@ struct PaywallView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { purchaseBar }
         .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
         .pageBackgroundToolbar(for: .settings)
-        .navigationTitle(localized("閱讀Pro"))
+        .navigationTitle(localized("阅读Pro"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -120,7 +120,7 @@ struct PaywallView: View {
                 } label: {
                     Image(systemName: "xmark")
                 }
-                .accessibilityLabel(localized("關閉"))
+                .accessibilityLabel(localized("关闭"))
             }
         }
     }
@@ -189,9 +189,9 @@ struct PaywallView: View {
         let price = store.product(for: selectedProduct)?.displayPrice
         switch selectedProduct {
         case .lifetime:
-            return price.map { String(format: localized("永久解鎖・%@"), $0) } ?? localized("購買 閱讀Pro")
+            return price.map { String(format: localized("永久解锁・%@"), $0) } ?? localized("购买 阅读Pro")
         case .monthly:
-            return price.map { String(format: localized("訂閱・%@／月"), $0) } ?? localized("訂閱 閱讀Pro")
+            return price.map { String(format: localized("订阅・%@／月"), $0) } ?? localized("订阅 阅读Pro")
         }
     }
 
@@ -199,14 +199,14 @@ struct PaywallView: View {
     private var purchaseReassurance: String {
         switch selectedProduct {
         case .lifetime: return localized("一次付清，永久使用全部 Pro 功能")
-        case .monthly: return localized("透過 Apple 付款，可隨時在帳號設定取消")
+        case .monthly: return localized("透过 Apple 付款，可随时在帐号设定取消")
         }
     }
 
     private func planTitle(_ pro: SubscriptionStore.ProProduct) -> String {
         switch pro {
-        case .lifetime: return localized("永久會員")
-        case .monthly: return localized("月會員")
+        case .lifetime: return localized("永久会员")
+        case .monthly: return localized("月会员")
         }
     }
 
@@ -215,9 +215,9 @@ struct PaywallView: View {
         case .lifetime:
             // What lifetime is worth in the other plan's terms: the anchor the monthly
             // price gives it.
-            guard let months = lifetimeInMonthsText else { return localized("一次性購買，永久有效") }
-            return String(format: localized("一次付清・約 %@ 個月的月費"), months)
-        case .monthly: return localized("每月自動續訂，可隨時取消")
+            guard let months = lifetimeInMonthsText else { return localized("一次性购买，永久有效") }
+            return String(format: localized("一次付清・约 %@ 个月的月费"), months)
+        case .monthly: return localized("每月自动续订，可随时取消")
         }
     }
 
@@ -312,14 +312,14 @@ struct PaywallView: View {
                     if store.isRedeemingOfferCode {
                         ProgressView()
                     } else {
-                        Label(localized("兌換優惠碼"), systemImage: "ticket.fill")
+                        Label(localized("兑换优惠码"), systemImage: "ticket.fill")
                     }
                 }
                 .font(DSFont.subheadline)
                 .frame(minHeight: 44)
             }
             .disabled(store.isRedeemingOfferCode)
-            .accessibilityLabel(localized("兌換優惠碼"))
+            .accessibilityLabel(localized("兑换优惠码"))
 
             Button {
                 Task { await store.restore() }
@@ -327,7 +327,7 @@ struct PaywallView: View {
                 if store.isRestoring {
                     ProgressView()
                 } else {
-                    Text(localized("恢復購買"))
+                    Text(localized("恢复购买"))
                         .font(DSFont.subheadline)
                 }
             }
@@ -335,10 +335,10 @@ struct PaywallView: View {
 
             HStack(spacing: DSSpacing.md) {
                 if let paidTermsURL {
-                    Link(localized("使用條款 (EULA)"), destination: paidTermsURL)
+                    Link(localized("使用条款 (EULA)"), destination: paidTermsURL)
                 }
                 if let privacyPolicyURL {
-                    Link(localized("隱私政策"), destination: privacyPolicyURL)
+                    Link(localized("隐私政策"), destination: privacyPolicyURL)
                 }
             }
             .font(DSFont.caption)

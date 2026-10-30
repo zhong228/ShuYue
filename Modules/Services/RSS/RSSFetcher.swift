@@ -1093,7 +1093,7 @@ final class RSSFetcher: ObservableObject {
             if let url = source.webPageURL {
                 webPageURL = url
             } else {
-                error = localized("RSS URL 無效")
+                error = localized("RSS URL 无效")
             }
             return
         }
@@ -1117,7 +1117,7 @@ final class RSSFetcher: ObservableObject {
         }
 
         guard let request = RSSRequestFactory.feedRequest(for: source, metadata: metadata) else {
-            error = localized("RSS URL 無效")
+            error = localized("RSS URL 无效")
             return
         }
 
@@ -1156,7 +1156,7 @@ final class RSSFetcher: ObservableObject {
                 self.response = .updated(items: rssItems, metadata: fetchMeta, feedInfo: feedInfo)
 
                 if rssItems.isEmpty {
-                    error = localized("RSS 解析成功，但沒有找到文章。")
+                    error = localized("RSS 解析成功，但没有找到文章。")
                 }
                 return
             }
@@ -1176,7 +1176,7 @@ final class RSSFetcher: ObservableObject {
                     // A web page without any discoverable feed (typical for Legado
                     // singleUrl sources imported by older app versions): offer to
                     // open it as a web page instead of surfacing an XML error.
-                    error = localized("此來源是網頁而非 RSS 訂閱，可直接以網頁開啟。")
+                    error = localized("此来源是网页而非 RSS 订阅，可直接以网页开启。")
                     webPageFallbackURL = request.url ?? source.webPageURL
                     items = []
                     return
@@ -1199,11 +1199,11 @@ final class RSSFetcher: ObservableObject {
             self.response = .updated(items: parsedItems, metadata: fetchMeta, feedInfo: parser.feedInfo)
 
             if parsedItems.isEmpty {
-                error = localized("RSS 解析成功，但沒有找到文章。")
+                error = localized("RSS 解析成功，但没有找到文章。")
             }
         } catch {
             if isATSBlockedError(error) {
-                self.error = localized("此來源使用不安全的 HTTP 連線，已被 iOS 安全政策阻擋。")
+                self.error = localized("此来源使用不安全的 HTTP 连线，已被 iOS 安全政策阻挡。")
             } else {
                 self.error = error.localizedDescription
             }
@@ -1238,17 +1238,17 @@ final class RSSFetcher: ObservableObject {
         let reason: String
         switch statusCode {
         case 401:
-            reason = localized("此來源需要認證（401），請檢查 URL 是否包含帳號密碼，或是否為私人訂閱源。")
+            reason = localized("此来源需要认证（401），请检查 URL 是否包含帐号密码，或是否为私人订阅源。")
         case 403:
-            reason = localized("伺服器拒絕存取（403），此來源可能封鎖了請求。")
+            reason = localized("伺服器拒绝存取（403），此来源可能封锁了请求。")
         case 404:
-            reason = localized("找不到此 RSS 來源（404），連結可能已失效。")
+            reason = localized("找不到此 RSS 来源（404），连结可能已失效。")
         case 429:
-            reason = localized("請求過於頻繁（429），請稍後再試。")
+            reason = localized("请求过于频繁（429），请稍后再试。")
         case 500...599:
-            reason = String(format: localized("伺服器錯誤（HTTP %d），來源暫時無法存取。"), statusCode)
+            reason = String(format: localized("伺服器错误（HTTP %d），来源暂时无法存取。"), statusCode)
         default:
-            reason = String(format: localized("RSS 請求失敗：HTTP %d"), statusCode)
+            reason = String(format: localized("RSS 请求失败：HTTP %d"), statusCode)
         }
         return reason
     }
@@ -1273,11 +1273,11 @@ final class RSSFetcher: ObservableObject {
             let metadata = RSSFeedFetchMetadata(lastFetchedAt: Date())
             self.response = .updated(items: parsedItems, metadata: metadata, feedInfo: nil)
             if parsedItems.isEmpty {
-                error = localized("RSS 解析成功，但沒有找到文章。")
+                error = localized("RSS 解析成功，但没有找到文章。")
             }
         } catch {
             if isATSBlockedError(error) {
-                self.error = localized("此來源使用不安全的 HTTP 連線，已被 iOS 安全政策阻擋。")
+                self.error = localized("此来源使用不安全的 HTTP 连线，已被 iOS 安全政策阻挡。")
             } else {
                 self.error = error.localizedDescription
             }
@@ -1330,7 +1330,7 @@ final class RSSXMLParser: NSObject, XMLParserDelegate {
         let parser = XMLParser(data: data)
         parser.delegate = self
         if parser.parse() { return parsedItems }
-        error = parser.parserError?.localizedDescription ?? localized("RSS XML 解析失敗。")
+        error = parser.parserError?.localizedDescription ?? localized("RSS XML 解析失败。")
         return parsedItems
     }
 
@@ -1481,8 +1481,8 @@ enum RSSContentSanitizer {
         guard line.count >= 8 else { return false }
         let noisePrefixes = [
             "Article Information", "Author,", "Role,", "Reporting from,", "Image source,",
-            "圖像來源", "图像来源", "圖片來源", "图片来源", "閱讀時間", "阅读时间",
-            "廣告", "广告", "熱讀", "热读", "Skip ", "End of "
+            "图像来源", "图像来源", "图片来源", "图片来源", "阅读时间", "阅读时间",
+            "广告", "广告", "热读", "热读", "Skip ", "End of "
         ]
         return !noisePrefixes.contains { line.hasPrefix($0) }
     }

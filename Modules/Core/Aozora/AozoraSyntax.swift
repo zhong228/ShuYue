@@ -26,19 +26,19 @@ enum AozoraEmphasisStyle: String, CaseIterable, Equatable, Sendable {
 
 /// The five 傍線 shapes of aozora2html `command_table.yml`.
 enum AozoraSidelineStyle: String, CaseIterable, Equatable, Sendable {
-    case solid = "傍線"
-    case double = "二重傍線"
-    case chain = "鎖線"
-    case dashed = "破線"
-    case wave = "波線"
+    case solid = "傍线"
+    case double = "二重傍线"
+    case chain = "锁线"
+    case dashed = "破线"
+    case wave = "波线"
 }
 
 /// 上付き／下付き小文字 and 行右／行左小書き.
 enum AozoraScriptKind: String, CaseIterable, Equatable, Sendable {
     case upper = "上付き小文字"
     case lower = "下付き小文字"
-    case lineRight = "行右小書き"
-    case lineLeft = "行左小書き"
+    case lineRight = "行右小书き"
+    case lineLeft = "行左小书き"
 }
 
 /// 大・中・小見出し.

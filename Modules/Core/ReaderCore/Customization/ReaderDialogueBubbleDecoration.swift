@@ -19,11 +19,11 @@ enum ReaderDialogueBubbleDecorationKind: String, Codable, CaseIterable, Sendable
 
     var localizedNameKey: String {
         switch self {
-        case .star: return "裝飾・星星"
-        case .heart: return "裝飾・愛心"
-        case .flower: return "裝飾・小花"
-        case .dot: return "裝飾・圓點"
-        case .bow: return "裝飾・蝴蝶結"
+        case .star: return "装饰・星星"
+        case .heart: return "装饰・爱心"
+        case .flower: return "装饰・小花"
+        case .dot: return "装饰・圆点"
+        case .bow: return "装饰・蝴蝶结"
         }
     }
 }

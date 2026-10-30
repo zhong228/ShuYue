@@ -58,8 +58,8 @@ struct SearchRecentsWorkbench: View {
     private var booksSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             SearchRecentsWorkbenchHeader(
-                title: localized("最近閱讀"),
-                clearAccessibilityLabel: localized("清除最近閱讀"),
+                title: localized("最近阅读"),
+                clearAccessibilityLabel: localized("清除最近阅读"),
                 onClear: onClearBooks
             )
             if books.isEmpty {
@@ -326,10 +326,10 @@ private struct FlowLayout: Layout {
     }
 }
 
-#Preview("最近搜索與最近閱讀工作台") {
+#Preview("最近搜索与最近阅读工作台") {
     ScrollView {
         SearchRecentsWorkbench(
-            queries: ["紅樓夢", "三體", "斗羅大陸", "凡人修仙傳"],
+            queries: ["红楼梦", "三体", "斗罗大陆", "凡人修仙传"],
             books: [],
             onSearch: { _ in },
             onClearQueries: {},

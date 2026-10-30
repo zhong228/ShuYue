@@ -8,7 +8,7 @@ import UIKit
 
 enum TextConversion: String, CaseIterable {
     case original = "原文"
-    case toTraditional = "繁體"
+    case toTraditional = "繁体"
     case toSimplified = "简体"
 }
 
@@ -21,9 +21,9 @@ enum ReaderTextUnderlineStyle: Int, CaseIterable, Codable {
 
     var localizedTitleKey: String {
         switch self {
-        case .solid: return "底線樣式.實線"
-        case .dashed: return "底線樣式.虛線"
-        case .dotted: return "底線樣式.點線"
+        case .solid: return "底线样式.实线"
+        case .dashed: return "底线样式.虚线"
+        case .dotted: return "底线样式.点线"
         }
     }
 
@@ -41,10 +41,10 @@ enum ReaderTextUnderlineStyle: Int, CaseIterable, Codable {
 // MARK: - Page-Turn Style
 
 enum PageTurnStyle: String, CaseIterable {
-    case slide = "滑動"
-    case cover = "覆蓋翻頁"
-    case curl = "仿真翻書"
-    case none = "無動畫"
+    case slide = "滑动"
+    case cover = "覆盖翻页"
+    case curl = "仿真翻书"
+    case none = "无动画"
 }
 
 enum ReaderCommentBubblePresetMode: String, CaseIterable, Identifiable {
@@ -56,9 +56,9 @@ enum ReaderCommentBubblePresetMode: String, CaseIterable, Identifiable {
 
     var titleKey: String {
         switch self {
-        case .builtin: return "氣泡"
+        case .builtin: return "气泡"
         case .square: return "方泡"
-        case .custom: return "自訂 SVG"
+        case .custom: return "自订 SVG"
         }
     }
 
@@ -76,10 +76,10 @@ enum ReaderCustomBackgroundMode: String, CaseIterable, Identifiable {
 // MARK: - Reader Theme
 
 enum ReaderTheme: String, CaseIterable {
-    case night = "夜間"
+    case night = "夜间"
     case white = "白天"
-    case green = "護眼綠"
-    case sepia = "護眼"
+    case green = "护眼绿"
+    case sepia = "护眼"
 
     private static let userDefaultsKey = "yd_reader_theme"
     private static let lastLightThemeKey = "lastLightTheme"
@@ -98,7 +98,7 @@ enum ReaderTheme: String, CaseIterable {
         switch self {
         case .night: return "黑色"
         case .white: return "白色"
-        case .green: return "護眼綠"
+        case .green: return "护眼绿"
         case .sepia: return "棕色"
         }
     }
@@ -529,7 +529,7 @@ class GlobalSettings: ObservableObject {
     /// rectangle" is a lozenge and the artwork loses its corners entirely.
     static let bookshelfCoverCornerRadiusRange: ClosedRange<Double> = 0...24
     static let defaultBookshelfCoverCornerRadius: Double = 8
-    /// "默認" (classic) — the app's original look; also the fallback when a
+    /// "默认" (classic) — the app's original look; also the fallback when a
     /// selected Pro theme becomes unavailable (entitlement lapse / deletion).
     static let defaultAppearanceThemeID = AppearanceThemePreset.classicID
     static let defaultAppearanceFollowsSystem = true
@@ -769,7 +769,7 @@ class GlobalSettings: ObservableObject {
             recordReadingSettingEdit { $0.chapterTitleStyle = chapterTitleStyle }
         }
     }
-    /// User-saved chapter-title presets ("我的預設"). Built-ins live in code.
+    /// User-saved chapter-title presets ("我的预设"). Built-ins live in code.
     @Published private(set) var chapterTitleCustomPresets: [ChapterTitleStylePreset] {
         didSet { Self.saveChapterTitleCustomPresets(chapterTitleCustomPresets) }
     }
@@ -2095,7 +2095,7 @@ class GlobalSettings: ObservableObject {
         let legacyName = defaults.string(forKey: Self.commentBubbleCustomStyleNameKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let migratedName = legacyName.flatMap { $0.isEmpty ? nil : $0 }
-            ?? localized("自訂 SVG")
+            ?? localized("自订 SVG")
         let recoverableLegacyStyles = ReaderCommentBubbleCustomStyleLibrary.migratingLegacyStyleIfNeeded(
             in: [],
             legacySVG: defaults.string(forKey: Self.commentBubbleCustomSVGKey) ?? "",
@@ -3235,7 +3235,7 @@ class GlobalSettings: ObservableObject {
     ) -> AppearanceCustomTheme {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var custom = preset.customCopy(
-            name: uniqueCustomThemeName(base: trimmed.isEmpty ? localized("自訂主題") : trimmed)
+            name: uniqueCustomThemeName(base: trimmed.isEmpty ? localized("自订主题") : trimmed)
         )
         // A full snapshot, unlike the per-field write-back: pressing 保存為新主題 is the
         // user saying "this whole look is the theme", covers, page backgrounds, font,
@@ -3472,7 +3472,7 @@ class GlobalSettings: ObservableObject {
         return AppearanceCustomTheme(
             name: uniqueCustomThemeName(
                 base: file.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? localized("自訂主題")
+                    ? localized("自订主题")
                     : file.name
             ),
             backgroundHex: file.backgroundHex,
@@ -3647,9 +3647,9 @@ enum ReaderCustomBackgroundStorageError: Error {
     var messageKey: String {
         switch self {
         case .unsupportedImageFile:
-            return "只支援 WebP、JPG、JPEG、PNG 圖片。"
+            return "只支援 WebP、JPG、JPEG、PNG 图片。"
         case .cannotReadImage:
-            return "無法讀取圖片。"
+            return "无法读取图片。"
         }
     }
 }
@@ -3773,9 +3773,9 @@ enum LaunchImageStorageError: Error {
     var messageKey: String {
         switch self {
         case .unsupportedImageFile:
-            return "只支援 WebP、JPG、JPEG 或 PNG 圖片。"
+            return "只支援 WebP、JPG、JPEG 或 PNG 图片。"
         case .cannotReadImage:
-            return "無法讀取圖片。"
+            return "无法读取图片。"
         }
     }
 }

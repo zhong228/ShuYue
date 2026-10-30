@@ -45,7 +45,7 @@ struct ReaderBatterySVGImportView: View {
                             .foregroundStyle(DSColor.destructive)
                             .accessibilityElement(children: .combine)
                         if issue == .loadFailed {
-                            Button(localized("重試")) {
+                            Button(localized("重试")) {
                                 isLoading = true
                                 Task { await reload() }
                             }
@@ -57,7 +57,7 @@ struct ReaderBatterySVGImportView: View {
                 Section {
                     content
                 } header: {
-                    Text(localized("電量 SVG 模板"))
+                    Text(localized("电量 SVG 模板"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
@@ -66,11 +66,11 @@ struct ReaderBatterySVGImportView: View {
                     Button {
                         showingImporter = true
                     } label: {
-                        Label(localized("匯入 SVG"), systemImage: "square.and.arrow.down")
+                        Label(localized("汇入 SVG"), systemImage: "square.and.arrow.down")
                     }
                     .disabled(isImporting)
                 } footer: {
-                    Text(localized("只會匯入通過安全驗證的 SVG，動態標記會保留供分享。"))
+                    Text(localized("只会汇入通过安全验证的 SVG，动态标记会保留供分享。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
@@ -78,14 +78,14 @@ struct ReaderBatterySVGImportView: View {
             .softScrollEdges()
             .listStyle(.insetGrouped)
             .themedAppSurface()
-            .navigationTitle(localized("電量 SVG 模板"))
+            .navigationTitle(localized("电量 SVG 模板"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -94,7 +94,7 @@ struct ReaderBatterySVGImportView: View {
                         Image(systemName: "plus")
                     }
                     .disabled(isImporting)
-                    .accessibilityLabel(localized("匯入 SVG"))
+                    .accessibilityLabel(localized("汇入 SVG"))
                 }
             }
         }
@@ -114,23 +114,23 @@ struct ReaderBatterySVGImportView: View {
                 set: { if !$0 { assetPendingRename = nil } }
             )
         ) {
-            TextField(localized("模板名稱"), text: $renameDraft)
+            TextField(localized("模板名称"), text: $renameDraft)
             Button(localized("取消"), role: .cancel) {
                 assetPendingRename = nil
             }
-            Button(localized("儲存")) {
+            Button(localized("储存")) {
                 renamePendingAsset()
             }
         }
         .alert(
-            localized("刪除 SVG 模板？"),
+            localized("删除 SVG 模板？"),
             isPresented: Binding(
                 get: { assetPendingDeletion != nil },
                 set: { if !$0 { assetPendingDeletion = nil } }
             ),
             presenting: assetPendingDeletion
         ) { asset in
-            Button(localized("刪除"), role: .destructive) {
+            Button(localized("删除"), role: .destructive) {
                 delete(asset)
             }
             Button(localized("取消"), role: .cancel) {
@@ -138,9 +138,9 @@ struct ReaderBatterySVGImportView: View {
             }
         } message: { asset in
             if referencedAssetIDs.contains(asset.id) {
-                Text(localized("此模板仍被頁首頁尾使用。刪除後會自動改用系統電池圖示。"))
+                Text(localized("此模板仍被页首页尾使用。删除后会自动改用系统电池图示。"))
             } else {
-                Text(localized("此模板會被永久刪除。"))
+                Text(localized("此模板会被永久删除。"))
             }
         }
         .task {
@@ -153,18 +153,18 @@ struct ReaderBatterySVGImportView: View {
         if isLoading {
             HStack(spacing: DSSpacing.sm) {
                 ProgressView()
-                Text(localized("正在載入 SVG 模板"))
+                Text(localized("正在载入 SVG 模板"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
             }
             .accessibilityElement(children: .combine)
         } else if assets.isEmpty {
             ContentUnavailableView {
-                UnavailableLabel(localized("尚無電量 SVG 模板"), systemImage: "battery.100")
+                UnavailableLabel(localized("尚无电量 SVG 模板"), systemImage: "battery.100")
             } description: {
-                Text(localized("匯入 SVG 模板後，可用於閱讀頁的電量元件。")).foregroundStyle(DSColor.textSecondary)
+                Text(localized("汇入 SVG 模板后，可用于阅读页的电量元件。")).foregroundStyle(DSColor.textSecondary)
             } actions: {
-                Button(localized("匯入 SVG")) {
+                Button(localized("汇入 SVG")) {
                     showingImporter = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -188,7 +188,7 @@ struct ReaderBatterySVGImportView: View {
                     Button(role: .destructive) {
                         assetPendingDeletion = asset
                     } label: {
-                        Label(localized("刪除"), systemImage: "trash")
+                        Label(localized("删除"), systemImage: "trash")
                     }
                     Button {
                         beginRename(asset)
@@ -203,7 +203,7 @@ struct ReaderBatterySVGImportView: View {
         if isImporting {
             HStack(spacing: DSSpacing.sm) {
                 ProgressView()
-                Text(localized("正在驗證 SVG 模板"))
+                Text(localized("正在验证 SVG 模板"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
             }
@@ -346,7 +346,7 @@ private struct ReaderBatterySVGAssetRow: View {
                     )
                 }
                 Button(role: .destructive, action: onDelete) {
-                    Label(localized("刪除"), systemImage: "trash")
+                    Label(localized("删除"), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -373,7 +373,7 @@ private struct ReaderBatterySVGAssetRow: View {
                     .foregroundStyle(DSColor.textPrimary)
                 if usesFallbackPreview {
                     Label(
-                        localized("模板無法載入，將使用系統電池。"),
+                        localized("模板无法载入，将使用系统电池。"),
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(DSFont.caption)
@@ -496,7 +496,7 @@ struct ReaderBatterySVGStatePreviewStrip: View {
 
             if didFail {
                 Label(
-                    localized("模板無法載入，將使用系統電池。"),
+                    localized("模板无法载入，将使用系统电池。"),
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(DSFont.caption)
@@ -621,7 +621,7 @@ private enum ReaderBatterySVGPreviewState: String, CaseIterable, Identifiable {
                 format: localized("ReaderOverlay.Format.Percent"),
                 Int((level * 100).rounded())
             )
-        case .charging: localized("充電中")
+        case .charging: localized("充电中")
         }
     }
 
@@ -649,13 +649,13 @@ private enum ReaderBatterySVGImportIssue: Identifiable, Equatable {
     var messageKey: String {
         switch self {
         case .importFailed:
-            "SVG 模板匯入失敗。請確認檔案是安全且有效的 SVG。"
+            "SVG 模板汇入失败。请确认档案是安全且有效的 SVG。"
         case .loadFailed:
-            "SVG 模板載入失敗。"
+            "SVG 模板载入失败。"
         case .invalidName:
-            "模板名稱不能為空白。"
+            "模板名称不能为空白。"
         case .operationFailed:
-            "SVG 模板操作失敗。"
+            "SVG 模板操作失败。"
         }
     }
 }

@@ -11,16 +11,16 @@ struct BrowserBookmarkMenuItems: View {
 
     var body: some View {
         Button(action: onOpen) {
-            Label(localized("開啟網頁"), systemImage: "safari")
+            Label(localized("开启网页"), systemImage: "safari")
         }
         Button(action: onTranscode) {
-            Label(localized("直接轉碼閱讀"), systemImage: "book")
+            Label(localized("直接转码阅读"), systemImage: "book")
         }
         Divider()
         Button(role: .destructive) {
             BrowserBookmarkStore.shared.remove(bookmark)
         } label: {
-            Label(localized("刪除"), systemImage: "trash")
+            Label(localized("删除"), systemImage: "trash")
         }
     }
 }
@@ -40,9 +40,9 @@ struct BrowserSitesList: View {
 
     var body: some View {
         List {
-            Section(localized("書籤")) {
+            Section(localized("书签")) {
                 if store.bookmarks.isEmpty {
-                    Text(localized("在網頁點「加入書籤」，網站就會出現在這裡。"))
+                    Text(localized("在网页点「加入书签」，网站就会出现在这里。"))
                         .font(DSFont.footnote)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -72,7 +72,7 @@ struct BrowserSitesList: View {
 
             Section {
                 if history.entries.isEmpty {
-                    Text(localized("瀏覽過的網頁會出現在這裡"))
+                    Text(localized("浏览过的网页会出现在这里"))
                         .font(DSFont.footnote)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -92,7 +92,7 @@ struct BrowserSitesList: View {
                 }
             } header: {
                 HStack {
-                    Text(localized("最近瀏覽"))
+                    Text(localized("最近浏览"))
                     Spacer()
                     if !history.entries.isEmpty {
                         Button(localized("清除"), role: .destructive) { confirmsHistoryClear = true }
@@ -107,7 +107,7 @@ struct BrowserSitesList: View {
         .scrollContentBackground(.hidden)
         .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
         .confirmationDialog(
-            localized("要清除所有瀏覽記錄嗎？"),
+            localized("要清除所有浏览记录吗？"),
             isPresented: $confirmsHistoryClear,
             titleVisibility: .visible
         ) {
@@ -118,9 +118,9 @@ struct BrowserSitesList: View {
 
     static func relativeTime(_ date: Date) -> String {
         let seconds = Int(Date().timeIntervalSince(date))
-        if seconds < 60 { return localized("剛剛") }
-        if seconds < 3600 { return String(format: localized("%d 分鐘前"), seconds / 60) }
-        if seconds < 86400 { return String(format: localized("%d 小時前"), seconds / 3600) }
+        if seconds < 60 { return localized("刚刚") }
+        if seconds < 3600 { return String(format: localized("%d 分钟前"), seconds / 60) }
+        if seconds < 86400 { return String(format: localized("%d 小时前"), seconds / 3600) }
         if seconds < 86400 * 7 { return String(format: localized("%d 天前"), seconds / 86400) }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy/MM/dd"
@@ -142,7 +142,7 @@ struct BrowserBookmarksSheet: View {
                 onTranscode: { dismiss(); onTranscode($0) }
             )
             .pageBackgroundToolbar(for: .explore)
-            .navigationTitle(localized("書籤"))
+            .navigationTitle(localized("书签"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -249,7 +249,7 @@ struct BrowserStartPage: View {
                 // Safari's 編輯: a small white capsule lifted off the page; the tap
                 // area keeps the full control height around it.
                 Button { showsCustomize = true } label: {
-                    Text(localized("編輯"))
+                    Text(localized("编辑"))
                         .font(DSFont.body.weight(.semibold))
                         .foregroundStyle(DSColor.textPrimary)
                         .padding(.horizontal, DSSpacing.lg)
@@ -261,7 +261,7 @@ struct BrowserStartPage: View {
                 }
                 .buttonStyle(ExploreTileButtonStyle())
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel(localized("自訂起始頁"))
+                .accessibilityLabel(localized("自订起始页"))
             }
             .padding(.horizontal, DSSpacing.lg)
             .padding(.vertical, DSSpacing.lg)
@@ -277,17 +277,17 @@ struct BrowserStartPage: View {
     private var bookmarksSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             HStack(alignment: .firstTextBaseline) {
-                sectionTitle(localized("書籤"))
+                sectionTitle(localized("书签"))
                 Spacer(minLength: DSSpacing.sm)
                 if store.bookmarks.count > Self.foldedCount {
-                    Button(showsAllBookmarks ? localized("收合") : localized("顯示全部")) {
+                    Button(showsAllBookmarks ? localized("收合") : localized("显示全部")) {
                         showsAllBookmarks.toggle()
                     }
                     .font(DSFont.subheadline)
                 }
             }
             if store.bookmarks.isEmpty {
-                Text(localized("在網頁點「加入書籤」，網站就會出現在這裡。"))
+                Text(localized("在网页点「加入书签」，网站就会出现在这里。"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
             } else {
@@ -312,7 +312,7 @@ struct BrowserStartPage: View {
 
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
-            sectionTitle(localized("最近瀏覽"))
+            sectionTitle(localized("最近浏览"))
             LazyVGrid(columns: columns, alignment: .leading, spacing: DSSpacing.lg) {
                 ForEach(recentSites) { entry in
                     Button { onOpen(entry.url) } label: {
@@ -324,7 +324,7 @@ struct BrowserStartPage: View {
                     .buttonStyle(ExploreTileButtonStyle())
                     .contextMenu {
                         Button(role: .destructive) { history.remove(entry) } label: {
-                            Label(localized("刪除"), systemImage: "trash")
+                            Label(localized("删除"), systemImage: "trash")
                         }
                     }
                 }
@@ -398,10 +398,10 @@ private struct BrowserStartCustomizeSheet: View {
             Form {
                 Section {
                     Toggle(isOn: $showsBookmarks) {
-                        SettingsRowLabel(localized("書籤"), systemImage: "book")
+                        SettingsRowLabel(localized("书签"), systemImage: "book")
                     }
                     Toggle(isOn: $showsHistory) {
-                        SettingsRowLabel(localized("最近瀏覽"), systemImage: "clock")
+                        SettingsRowLabel(localized("最近浏览"), systemImage: "clock")
                     }
                 }
                 .interfaceSectionSurface()
@@ -409,16 +409,16 @@ private struct BrowserStartCustomizeSheet: View {
                     NavigationLink {
                         BrowserBookmarksEditor()
                     } label: {
-                        SettingsRowLabel(localized("編輯書籤"), systemImage: "square.and.pencil")
+                        SettingsRowLabel(localized("编辑书签"), systemImage: "square.and.pencil")
                     }
                     Button(role: .destructive) { confirmsHistoryClear = true } label: {
-                        SettingsRowLabel(localized("清除瀏覽記錄"), systemImage: "trash", role: .destructive)
+                        SettingsRowLabel(localized("清除浏览记录"), systemImage: "trash", role: .destructive)
                     }
                     .disabled(history.entries.isEmpty)
                 }
                 .interfaceSectionSurface()
             }
-            .navigationTitle(localized("自訂起始頁"))
+            .navigationTitle(localized("自订起始页"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .explore)
             .toolbar {
@@ -430,7 +430,7 @@ private struct BrowserStartCustomizeSheet: View {
                 }
             }
             .confirmationDialog(
-                localized("要清除所有瀏覽記錄嗎？"),
+                localized("要清除所有浏览记录吗？"),
                 isPresented: $confirmsHistoryClear,
                 titleVisibility: .visible
             ) {
@@ -466,22 +466,22 @@ private struct BrowserBookmarksEditor: View {
         .overlay {
             if store.bookmarks.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("尚無書籤"), systemImage: "book")
+                    UnavailableLabel(localized("尚无书签"), systemImage: "book")
                 }
             }
         }
-        .navigationTitle(localized("編輯書籤"))
+        .navigationTitle(localized("编辑书签"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .explore)
     }
 }
 
-#Preview("起始頁") {
+#Preview("起始页") {
     NavigationStack {
         BrowserStartPage(onOpen: { _ in }, onTranscode: { _ in })
     }
 }
 
-#Preview("書籤") {
+#Preview("书签") {
     BrowserBookmarksSheet(onOpen: { _ in }, onTranscode: { _ in })
 }

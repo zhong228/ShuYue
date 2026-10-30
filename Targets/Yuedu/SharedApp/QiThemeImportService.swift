@@ -109,7 +109,7 @@ enum QiThemeImportService {
                     outcome.readerUsesInstalledFont = true
                 }
             } else {
-                outcome.notes.append(localized("外觀包附帶的字型無法安裝，已略過。"))
+                outcome.notes.append(localized("外观包附带的字型无法安装，已略过。"))
             }
         }
 
@@ -150,7 +150,7 @@ enum QiThemeImportService {
             }
         } catch {
             AppLogger.parse("⟐ qitheme appearance apply failed", context: ["error": "\(error)"])
-            outcome.notes.append(localized("外觀部分套用失敗，其餘項目仍已匯入。"))
+            outcome.notes.append(localized("外观部分套用失败，其余项目仍已汇入。"))
         }
 
         // 5. No theme came out of the import, so the reading setup has nothing to ride —
@@ -161,7 +161,7 @@ enum QiThemeImportService {
             if let id = reading.readerBackgroundID.flatMap(UUID.init(uuidString:)) {
                 settings.deleteReaderCustomBackground(id: id)
             }
-            outcome.notes.append(localized("外觀主題沒有匯入成功，閱讀設定沒有主題可以跟隨，已略過。"))
+            outcome.notes.append(localized("外观主题没有汇入成功，阅读设定没有主题可以跟随，已略过。"))
         }
         return outcome
     }
@@ -177,7 +177,7 @@ enum QiThemeImportService {
                 layout = try ReaderLayoutPresetImporter.decode(data: config)
             } catch {
                 AppLogger.parse("⟐ qitheme layout decode failed", context: ["error": "\(error)"])
-                notes.append(localized("排版參數無法讀取，其餘項目仍已匯入。"))
+                notes.append(localized("排版参数无法读取，其余项目仍已汇入。"))
             }
         }
         return ReaderSettingsImportPlan(
@@ -237,7 +237,7 @@ enum QiThemeImportService {
                 reading.followsSystemTheme = false
             } catch {
                 AppLogger.parse("⟐ qitheme reader background unreadable", error: error)
-                outcome.notes.append(localized("閱讀背景圖無法讀取，已略過。"))
+                outcome.notes.append(localized("阅读背景图无法读取，已略过。"))
             }
         }
         return reading.isEmpty ? nil : reading
@@ -357,7 +357,7 @@ enum QiThemeImportService {
            requested.compare(info.familyName, options: .caseInsensitive) != .orderedSame {
             isReaderFont = false
             outcome.notes.append(String(
-                format: localized("閱讀字型「%@」未隨外觀包附帶，正文仍使用原本的字型。"),
+                format: localized("阅读字型「%@」未随外观包附带，正文仍使用原本的字型。"),
                 requested
             ))
         }
@@ -418,7 +418,7 @@ enum QiThemeImportService {
         theme.chapterTitleStyle = style.sanitized()
 
         outcome.notes.append(String(
-            format: localized("章節標題使用的字型未隨外觀包附帶：%@，已改用閱讀字型顯示。"),
+            format: localized("章节标题使用的字型未随外观包附带：%@，已改用阅读字型显示。"),
             missing.sorted().joined(separator: localized("、"))
         ))
     }

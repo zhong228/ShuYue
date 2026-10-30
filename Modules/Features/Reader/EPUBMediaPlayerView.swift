@@ -61,7 +61,7 @@ struct EPUBMediaPlayerView: View {
                 Button {
                     togglePlayback()
                 } label: {
-                    Label(isPlaying ? localized("暫停") : localized("播放"), systemImage: isPlaying ? "pause.fill" : "play.fill")
+                    Label(isPlaying ? localized("暂停") : localized("播放"), systemImage: isPlaying ? "pause.fill" : "play.fill")
                         .font(DSFont.headline)
                         .frame(maxWidth: .infinity)
                 }
@@ -97,7 +97,7 @@ struct EPUBMediaPlayerView: View {
             } else {
                 ProgressView()
                     .tint(.white)
-                Text(localized("載入中..."))
+                Text(localized("载入中..."))
                     .foregroundStyle(.white)
             }
         }
@@ -128,10 +128,10 @@ struct EPUBMediaPlayerView: View {
         do {
             playableURL = try await EPUBMediaURLResolver.playableURL(for: media)
         } catch EPUBMediaURLError.invalidURL {
-            errorMessage = localized("無效的媒體網址")
+            errorMessage = localized("无效的媒体网址")
             return
         } catch {
-            errorMessage = localized("無法載入媒體")
+            errorMessage = localized("无法载入媒体")
             return
         }
 
@@ -155,7 +155,7 @@ struct EPUBMediaPlayerView: View {
                 try? await Task.sleep(nanoseconds: 250_000_000)
                 switch item.status {
                 case .failed:
-                    errorMessage = localized("無法播放此影片")
+                    errorMessage = localized("无法播放此影片")
                     return
                 case .readyToPlay:
                     return

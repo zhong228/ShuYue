@@ -23,7 +23,7 @@ struct AIProviderPreset: Identifiable, Equatable, Sendable {
 
     static let custom = AIProviderPreset(
         id: "custom",
-        displayName: "自訂",
+        displayName: "自订",
         baseURL: "",
         suggestedModel: "",
         symbol: "slider.horizontal.3"
@@ -50,14 +50,14 @@ struct AIProviderPreset: Identifiable, Equatable, Sendable {
         ),
         AIProviderPreset(
             id: "zhipu",
-            displayName: "智譜 GLM",
+            displayName: "智谱 GLM",
             baseURL: "https://open.bigmodel.cn/api/paas/v4",
             suggestedModel: "glm-4-flash",
             symbol: "cube.transparent"
         ),
         AIProviderPreset(
             id: "dashscope",
-            displayName: "阿里雲百鍊",
+            displayName: "阿里云百炼",
             baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
             suggestedModel: "qwen-plus",
             symbol: "cloud"
@@ -71,7 +71,7 @@ struct AIProviderPreset: Identifiable, Equatable, Sendable {
         ),
         AIProviderPreset(
             id: "siliconflow",
-            displayName: "矽基流動",
+            displayName: "矽基流动",
             baseURL: "https://api.siliconflow.cn/v1",
             suggestedModel: "Qwen/Qwen2.5-7B-Instruct",
             symbol: "square.stack.3d.up"

@@ -30,13 +30,13 @@ enum ReaderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .network(let err):
-            return "網路錯誤：\(err.localizedDescription)"
+            return "网路错误：\(err.localizedDescription)"
         case .parse(let err):
-            return "解析失敗：\(err.localizedDescription)"
+            return "解析失败：\(err.localizedDescription)"
         case .rendering(let err):
-            return "渲染失敗：\(err.localizedDescription)"
+            return "渲染失败：\(err.localizedDescription)"
         case .cache(let err):
-            return "快取錯誤：\(err.localizedDescription)"
+            return "快取错误：\(err.localizedDescription)"
         case .unsupportedFormat(let msg):
             return "格式不支援：\(msg)"
         case .unknown(let err):

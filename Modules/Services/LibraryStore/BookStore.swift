@@ -241,15 +241,15 @@ class BookStore: ObservableObject, BookProvider {
             )
             return placeholder.makePackage(pipelineKind: .epub, originalSourceURL: epubURL)
         case .html:
-            throw ReaderError.unsupportedFormat("HTML 渲染尚待 CoreText 遷移完成，目前不支援")
+            throw ReaderError.unsupportedFormat("HTML 渲染尚待 CoreText 迁移完成，目前不支援")
         case .txt:
-            throw ReaderError.unsupportedFormat("TXT 渲染尚待 CoreText 遷移完成，目前不支援")
+            throw ReaderError.unsupportedFormat("TXT 渲染尚待 CoreText 迁移完成，目前不支援")
         case .manga:
-            throw ReaderError.unsupportedFormat("漫畫使用獨立的圖片閱讀器，無 CoreText 套件")
+            throw ReaderError.unsupportedFormat("漫画使用独立的图片阅读器，无 CoreText 套件")
         case .fixedPage:
-            throw ReaderError.unsupportedFormat("固定頁面文件使用獨立的固定頁面閱讀器，無 CoreText 套件")
+            throw ReaderError.unsupportedFormat("固定页面文件使用独立的固定页面阅读器，无 CoreText 套件")
         case .audio:
-            throw ReaderError.unsupportedFormat("有聲書使用獨立的音訊播放器，無 CoreText 套件")
+            throw ReaderError.unsupportedFormat("有声书使用独立的音讯播放器，无 CoreText 套件")
         }
     }
 
@@ -780,7 +780,7 @@ class BookStore: ObservableObject, BookProvider {
     func importWeb(
         content: String,
         title: String,
-        author: String = "網路書籍",
+        author: String = "网路书籍",
         sourceURL: String,
         format: ImportedBookContentFormat = .plainText
     ) throws -> ReadingBook {
@@ -1181,7 +1181,7 @@ class BookStore: ObservableObject, BookProvider {
             from: records[idx].bookmarks.compactMap(\.coreTextTextAnnotation)
         )
         guard !removedIDs.isEmpty else {
-            AppLogger.cache("劃線：要刪除的範圍沒有完全相同的標註 spine=\(position.spineIndex) range=\(range)")
+            AppLogger.cache("划线：要删除的范围没有完全相同的标注 spine=\(position.spineIndex) range=\(range)")
             return
         }
         // 只刪命中的那一條。以前會把同章其他劃線重建成空摘錄、新 id、新建立時間。
@@ -1710,7 +1710,7 @@ class BookStore: ObservableObject, BookProvider {
         // Every chapter is about to go back to the network for the first time since the
         // download was made. Doing that against a table of contents the cache has been
         // replaying unchanged — it is keyed by `(sourceId, url)` and outlives the book — is
-        // what turned 移除下載 into "the whole book fails and only 換源 fixes it".
+        // what turned 移除下載 into "the whole book fails and only 换源 fixes it".
         if let sourceId = removing.bookSourceId,
            let source = BookSourceStore.shared.sources.first(where: { $0.id == sourceId }) {
             BookSourceFetcher.shared.clearTOCAndBookInfoCache(
@@ -1791,7 +1791,7 @@ class BookStore: ObservableObject, BookProvider {
         guard let source = BookSourceStore.shared.sources.first(where: { $0.id == origin.sourceId })
         else {
             throw NSError(
-                domain: "BookStore", code: -1, userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
+                domain: "BookStore", code: -1, userInfo: [NSLocalizedDescriptionKey: localized("找不到书源")])
         }
         let tocPackage: TOCPackage
         if let preparedTOC {
@@ -1808,7 +1808,7 @@ class BookStore: ObservableObject, BookProvider {
         guard !tocPackage.chapters.isEmpty else {
             throw NSError(
                 domain: "BookStore", code: -5,
-                userInfo: [NSLocalizedDescriptionKey: localized("此書源取不到目錄")])
+                userInfo: [NSLocalizedDescriptionKey: localized("此书源取不到目录")])
         }
         let oldRefs = await MainActor.run {
             chapterStore.chapters(for: bookId) ?? []
@@ -1862,7 +1862,7 @@ class BookStore: ObservableObject, BookProvider {
             records.first(where: { $0.id == bookId }).flatMap { $0.isOnline ? $0 : nil }
         }) else {
             throw NSError(
-                domain: "BookStore", code: -2, userInfo: [NSLocalizedDescriptionKey: localized("找不到線上書籍")])
+                domain: "BookStore", code: -2, userInfo: [NSLocalizedDescriptionKey: localized("找不到线上书籍")])
         }
 
         // Snapshot of what the user has already seen, so the final merge can tell
@@ -1883,13 +1883,13 @@ class BookStore: ObservableObject, BookProvider {
             BookSourceStore.shared.sources.first(where: { $0.id == sourceId })
         }) else {
             throw NSError(
-                domain: "BookStore", code: -3, userInfo: [NSLocalizedDescriptionKey: localized("找不到書源")])
+                domain: "BookStore", code: -3, userInfo: [NSLocalizedDescriptionKey: localized("找不到书源")])
         }
 
         let bookURL = normalizedOnlineValue(snapshot.bookInfoURL ?? snapshot.source)
         guard !bookURL.isEmpty else {
             throw NSError(
-                domain: "BookStore", code: -4, userInfo: [NSLocalizedDescriptionKey: localized("缺少書籍詳情頁 URL")])
+                domain: "BookStore", code: -4, userInfo: [NSLocalizedDescriptionKey: localized("缺少书籍详情页 URL")])
         }
 
         var runtimeVariables = snapshot.runtimeVariables

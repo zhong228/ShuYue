@@ -139,14 +139,14 @@ struct ContentView: View {
         }
         .overlay(alignment: .bottom) {
             if importDrainer.activeImportCount > 0 {
-                ProgressView(localized("匯入中，請稍候…"))
+                ProgressView(localized("汇入中，请稍候…"))
                     .padding(DSSpacing.md)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.md))
                     .padding(DSSpacing.md)
             }
         }
         .alert(
-            localized("匯入"),
+            localized("汇入"),
             isPresented: Binding(
                 get: { importDrainer.lastOutcome != nil },
                 set: { isPresented in
@@ -155,7 +155,7 @@ struct ContentView: View {
             ),
             presenting: importDrainer.lastOutcome
         ) { _ in
-            Button(localized("確定"), role: .cancel) {
+            Button(localized("确定"), role: .cancel) {
                 importDrainer.lastOutcome = nil
             }
         } message: { outcome in
@@ -294,12 +294,12 @@ struct ContentView: View {
         let imported = outcome.importedCount
         let failed = outcome.failureCount
         if imported > 0 && failed == 0 {
-            return String(format: localized("成功匯入 %d 個項目"), imported)
+            return String(format: localized("成功汇入 %d 个项目"), imported)
         } else if imported > 0 {
             return String(
-                format: localized("成功匯入 %1$d 個項目，%2$d 個失敗"), imported, failed)
+                format: localized("成功汇入 %1$d 个项目，%2$d 个失败"), imported, failed)
         } else {
-            return String(format: localized("%d 個項目匯入失敗"), failed)
+            return String(format: localized("%d 个项目汇入失败"), failed)
         }
     }
 
@@ -473,7 +473,7 @@ private struct ThemedSurfaceBackground: ViewModifier {
     /// `_ConditionalContent` per state, which gives the tab's whole subtree a new
     /// identity the moment the state flips — and SwiftUI rebuilds a subtree whose
     /// identity changed. That is what popped every pushed screen back to the tab
-    /// root ("閃回設定頁") whenever the theme moved between 默認 (no override) and
+    /// root ("闪回设定页") whenever the theme moved between 默認 (no override) and
     /// any real theme, or a page background appeared. Keep `content` wrapped in
     /// exactly one `.background`; branch *inside* it, where an identity change
     /// only costs a redraw of the backdrop.
@@ -607,7 +607,7 @@ struct NowPlayingMiniPlayer: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(nowPlayingLabel)
-            .accessibilityHint(localized("打開播放控制面板"))
+            .accessibilityHint(localized("打开播放控制面板"))
             .accessibilityIdentifier("now_playing_\(placement.rawValue)_open_panel")
 
             Button {
@@ -622,7 +622,7 @@ struct NowPlayingMiniPlayer: View {
                     .background(.thinMaterial, in: Circle())
                     .overlay(Circle().stroke(Color.secondary.opacity(0.35), lineWidth: 2))
             }
-            .accessibilityLabel(localized(hub.playbackState == .playing ? "暫停" : "播放"))
+            .accessibilityLabel(localized(hub.playbackState == .playing ? "暂停" : "播放"))
             .accessibilityIdentifier("now_playing_\(placement.rawValue)_play_pause")
 
             Button {
@@ -667,7 +667,7 @@ struct NowPlayingMiniPlayer: View {
     /// on the enclosing `HStack` propagates down and gives all three buttons the same
     /// name, so VoiceOver read the book title three times over play/pause and stop.
     private var nowPlayingLabel: String {
-        hub.title.isEmpty ? localized("語音朗讀") : hub.title
+        hub.title.isEmpty ? localized("语音朗读") : hub.title
     }
 
     /// The leading 56pt tappable artwork: both TTS and audiobook spin the book cover
@@ -752,7 +752,7 @@ struct NowPlayingMiniPlayer: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("展開"))
+        .accessibilityLabel(localized("展开"))
         .accessibilityValue(nowPlayingLabel)
         .accessibilityFocused($focusedControl, equals: .edgeHandle)
     }

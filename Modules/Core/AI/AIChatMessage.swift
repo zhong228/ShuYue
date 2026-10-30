@@ -95,7 +95,7 @@ struct AIChatSession: Identifiable, Equatable, Codable, Sendable {
     var title: String {
         let first = messages.first { $0.role == .user }?.text
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let first, !first.isEmpty else { return localized("新對話") }
+        guard let first, !first.isEmpty else { return localized("新对话") }
         return String(first.prefix(40))
     }
 
@@ -130,9 +130,9 @@ struct AIChatSuggestion: Identifiable, Equatable {
         ),
         AIChatSuggestion(
             id: "recent",
-            title: "剛剛發生了什麼",
+            title: "刚刚发生了什么",
             symbol: "clock.arrow.circlepath",
-            kind: .prompt("我剛剛讀到的這一段發生了什麼事？")
+            kind: .prompt("我刚刚读到的这一段发生了什么事？")
         ),
     ]
 }

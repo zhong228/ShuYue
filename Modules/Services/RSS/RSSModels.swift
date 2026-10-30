@@ -289,9 +289,9 @@ enum RSSSmartFeedKind: String, CaseIterable, Identifiable, Codable {
         case .today:
             return localized("今天")
         case .allUnread:
-            return localized("所有未讀")
+            return localized("所有未读")
         case .starred:
-            return localized("已加星號")
+            return localized("已加星号")
         }
     }
 

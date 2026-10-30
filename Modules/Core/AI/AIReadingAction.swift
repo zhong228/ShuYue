@@ -7,14 +7,14 @@ enum AIReadingAction: String, Codable, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .question: return localized("問 AI")
-        case .explain: return localized("AI 解釋")
-        case .translate: return localized("AI 翻譯")
-        case .chapterSummary: return localized("本章已讀摘要")
-        case .recap: return localized("前情回顧")
-        case .custom: return localized("自訂提示詞")
-        case .annotationReview: return localized("整理我的劃線")
-        case .lookup: return localized("AI 查詞")
+        case .question: return localized("问 AI")
+        case .explain: return localized("AI 解释")
+        case .translate: return localized("AI 翻译")
+        case .chapterSummary: return localized("本章已读摘要")
+        case .recap: return localized("前情回顾")
+        case .custom: return localized("自订提示词")
+        case .annotationReview: return localized("整理我的划线")
+        case .lookup: return localized("AI 查词")
         }
     }
 
@@ -76,9 +76,9 @@ struct AICustomPrompt: Identifiable, Codable, Equatable, Sendable {
         case selection, chapter, book
         var title: String {
             switch self {
-            case .selection: return localized("選取文字")
-            case .chapter: return localized("目前章節")
-            case .book: return localized("本書問答")
+            case .selection: return localized("选取文字")
+            case .chapter: return localized("目前章节")
+            case .book: return localized("本书问答")
             }
         }
     }

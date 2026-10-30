@@ -21,10 +21,19 @@ enum AIAnswerLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
     var id: String { rawValue }
 
     /// The interface language, which is also the default answer and translation language.
-    static var current: AIAnswerLanguage { matching(Bundle.main.preferredLocalizations.first) }
+    ///
+    /// Reads the device language preference directly. `Bundle.main.preferredLocalizations`
+    /// is unreliable here: the app ships without per-language resource bundles, so it falls
+    /// back to the development region and reports `en` on a Chinese device, which made every
+    /// preset answer (前情回顾, 本章已读摘要…) come back in English — or, depending on the
+    /// model, in traditional characters. `Locale.preferredLanguages` always reflects what the
+    /// reader actually set, so a 简体中文 device answers in 简体中文.
+    static var current: AIAnswerLanguage {
+        matching(Locale.preferredLanguages.first ?? Locale.current.identifier)
+    }
 
     static func matching(_ identifier: String?) -> AIAnswerLanguage {
-        guard let identifier else { return .english }
+        guard let identifier, !identifier.isEmpty else { return .simplifiedChinese }
         if let exact = AIAnswerLanguage(rawValue: identifier) { return exact }
         let lowered = identifier.lowercased()
         if lowered.hasPrefix("zh") {
@@ -91,15 +100,15 @@ enum AIAnswerLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
 
     /// The line an answer prompt carries in place of a fixed language. A reader who asks for
     /// another one in their own words still gets it.
-    var answerRule: String { "用\(promptName)回答；讀者明確要求其他語言時，照讀者的要求。" }
+    var answerRule: String { "用\(promptName)回答；读者明确要求其他语言时，照读者的要求。" }
 
     var promptName: String {
         switch self {
-        case .traditionalChinese: return "繁體中文"
-        case .simplifiedChinese: return "簡體中文"
+        case .traditionalChinese: return "繁体中文"
+        case .simplifiedChinese: return "简体中文"
         case .english: return "英文"
         case .japanese: return "日文"
-        case .korean: return "韓文"
+        case .korean: return "韩文"
         case .french: return "法文"
         case .german: return "德文"
         case .spanish: return "西班牙文"

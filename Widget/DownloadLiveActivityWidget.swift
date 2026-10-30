@@ -10,7 +10,7 @@ import WidgetKit
 /// Strings are written in place rather than localized, and colors are system semantic values:
 /// the widget extension syncs only `Widget/`, so it can reach neither `Resources/*.lproj` and
 /// `localized()` nor `DSColor` in `Modules/SharedUI`. The existing `YueduWidget` already does
-/// this (`"閱讀進度"`); following it beats inventing a second convention.
+/// this (`"阅读进度"`); following it beats inventing a second convention.
 struct DownloadLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DownloadActivityAttributes.self) { context in
@@ -50,9 +50,9 @@ struct DownloadLiveActivityWidget: Widget {
 /// rather than methods so the Lock Screen view and the Dynamic Island phrase things the same
 /// way — they are two presentations of one activity, not two features.
 private func titleLine(_ state: DownloadActivityAttributes.ContentState) -> String {
-    guard let featured = state.books.first else { return "下載已完成" }
-    if state.isPaused { return "已暫停《\(featured.title)》" }
-    return "正在下載《\(featured.title)》"
+    guard let featured = state.books.first else { return "下载已完成" }
+    if state.isPaused { return "已暂停《\(featured.title)》" }
+    return "正在下载《\(featured.title)》"
 }
 
 /// The progress line: this book, then the queue behind it. Mirrors "852.9 MB of 1.07 GB".
@@ -74,8 +74,8 @@ private func chapterCount(_ state: DownloadActivityAttributes.ContentState) -> S
 /// so it never reads a symbol name or a bare fraction; only the button keeps its own label,
 /// because it is the only thing here that can be activated.
 private func spokenSummary(_ state: DownloadActivityAttributes.ContentState) -> String {
-    guard let featured = state.books.first else { return "下載已完成" }
-    let status = state.isPaused ? "下載已暫停" : "正在下載"
+    guard let featured = state.books.first else { return "下载已完成" }
+    let status = state.isPaused ? "下载已暂停" : "正在下载"
     let queue = state.books.count > 1 ? "，另有 \(state.books.count - 1) 本等待中" : ""
     return "\(status)：\(featured.title)，已完成 \(featured.completedChapters) 章，共 \(featured.totalChapters) 章\(queue)"
 }
@@ -143,7 +143,7 @@ private struct PauseButton: View {
         .contentShape(Circle())
         .buttonStyle(.plain)
         .tint(.widgetAccent)
-        .accessibilityLabel(book.isPaused ? "繼續下載" : "暫停下載")
+        .accessibilityLabel(book.isPaused ? "继续下载" : "暂停下载")
     }
 }
 
@@ -199,7 +199,7 @@ private let previewState = DownloadActivityAttributes.ContentState(
     books: [
         .init(
             id: UUID().uuidString,
-            title: "巫師：從合成寶石開始",
+            title: "巫师：从合成宝石开始",
             completedChapters: 4,
             totalChapters: 50,
             isPaused: false,
@@ -231,7 +231,7 @@ private let previewState = DownloadActivityAttributes.ContentState(
             books: [
                 .init(
                     id: UUID().uuidString,
-                    title: "巫師：從合成寶石開始",
+                    title: "巫师：从合成宝石开始",
                     completedChapters: 4,
                     totalChapters: 50,
                     isPaused: true,

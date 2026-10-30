@@ -200,7 +200,7 @@ enum AozoraDocumentParser {
     /// body text instead; one of them would have dropped 1,125 lines of poems.
     static func explainsNotation(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
-        if trimmed.contains("記号について") || trimmed.contains("表記について") { return true }
+        if trimmed.contains("记号について") || trimmed.contains("表记について") { return true }
         for symbol in ["《》", "｜", "［＃］", "〔〕", "／＼", "／″＼", "※"] {
             if trimmed.hasPrefix(symbol + "：") || trimmed.hasPrefix(symbol + ":") { return true }
         }
@@ -1086,7 +1086,7 @@ private final class AozoraBlockParser {
             appendNote(.editorialNote, command, source: token.range)
             return
         }
-        if command.hasSuffix("終わり") {
+        if command.hasSuffix("终わり") {
             handleRangeEnd(String(command.dropLast(3)), token: token)
             return
         }
@@ -1135,7 +1135,7 @@ private final class AozoraBlockParser {
             }
             return
         }
-        if ["注記付き", "左に注記付き", "ルビ付き", "左にルビ付き"].contains(command) {
+        if ["注记付き", "左に注记付き", "ルビ付き", "左にルビ付き"].contains(command) {
             openRange(command, container: .ruby(reading: "", side: command.hasPrefix("左") ? .left : .right),
                       token: token)
             return
@@ -1218,8 +1218,8 @@ private final class AozoraBlockParser {
             if !endBlock(name) { diagnostics.record(.unopenedRangeEnd) }
             return
         }
-        if name.hasSuffix("注記付き") || name.hasSuffix("ルビ付き"),
-           let index = openRanges.lastIndex(where: { $0.command.hasSuffix("注記付き") || $0.command.hasSuffix("ルビ付き") }) {
+        if name.hasSuffix("注记付き") || name.hasSuffix("ルビ付き"),
+           let index = openRanges.lastIndex(where: { $0.command.hasSuffix("注记付き") || $0.command.hasSuffix("ルビ付き") }) {
             // ［＃注記付き］X［＃「Y」の注記付き終わり］ and
             // ［＃左にルビ付き］X［＃左に「Y」のルビ付き終わり］: Y is X's ruby.
             var reading = ""
@@ -1308,11 +1308,11 @@ private final class AozoraBlockParser {
         }
         let headingLevel = AozoraCommandTable.headingLevel(in: body)
         if headingLevel != nil { style.kinds.insert(.heading) }
-        if let limit = AozoraCommandTable.count(before: "字詰め", in: body) {
+        if let limit = AozoraCommandTable.count(before: "字诘め", in: body) {
             style.characterLimit = limit
             style.kinds.insert(.characterLimit)
         }
-        if body.contains("横組み") { style.kinds.insert(.horizontal) }
+        if body.contains("横组み") { style.kinds.insert(.horizontal) }
         if body.contains("罫囲み") { style.kinds.insert(.boxed) }
         if body.contains("キャプション") { style.kinds.insert(.caption) }
         if body.contains("太字") { style.kinds.insert(.bold) }
@@ -1351,13 +1351,13 @@ private final class AozoraBlockParser {
     /// (aozora2html `detect_command_mode`).
     private func endBlock(_ body: String) -> Bool {
         let kind: BlockKind?
-        if body.hasSuffix("地付き終わり") || body.hasSuffix("字上げ終わり") || body.hasSuffix("地付き")
+        if body.hasSuffix("地付き终わり") || body.hasSuffix("字上げ终わり") || body.hasSuffix("地付き")
             || body.hasSuffix("字上げ") {
             kind = .endAlignment
         } else {
             let words: [(String, BlockKind)] = [
-                ("字下げ", .indent), ("地付き", .endAlignment), ("見出し", .heading), ("字詰め", .characterLimit),
-                ("横組み", .horizontal), ("罫囲み", .boxed), ("キャプション", .caption), ("太字", .bold),
+                ("字下げ", .indent), ("地付き", .endAlignment), ("见出し", .heading), ("字诘め", .characterLimit),
+                ("横组み", .horizontal), ("罫囲み", .boxed), ("キャプション", .caption), ("太字", .bold),
                 ("斜体", .italic), ("大きな文字", .size), ("小さな文字", .size),
             ]
             kind = words.first { body.contains($0.0) }?.1
@@ -1407,9 +1407,9 @@ private final class AozoraBlockParser {
         return nil
     }
 
-    private static let leftRuby = try! NSRegularExpression(pattern: "^(?:左|下)に「(.*)」の(?:ルビ|注記)$")
-    private static let rightRuby = try! NSRegularExpression(pattern: "^(?:右に)?「(.*)」の(?:ルビ|注記)$")
-    private static let sideMark = try! NSRegularExpression(pattern: "^「(.)」の傍記$")
+    private static let leftRuby = try! NSRegularExpression(pattern: "^(?:左|下)に「(.*)」の(?:ルビ|注记)$")
+    private static let rightRuby = try! NSRegularExpression(pattern: "^(?:右に)?「(.*)」の(?:ルビ|注记)$")
+    private static let sideMark = try! NSRegularExpression(pattern: "^「(.)」の傍记$")
 
     private enum ForwardAction {
         case style(AozoraCommandTable.Style)
@@ -1469,7 +1469,7 @@ private final class AozoraBlockParser {
                 actions.append(.style(style))
             } else if part == "返り点" {
                 actions.append(.kaeriten)
-            } else if part == "訓点送り仮名" {
+            } else if part == "训点送り仮名" {
                 actions.append(.okurigana)
             } else {
                 actions = []

@@ -9,9 +9,9 @@ enum ReaderDownloadStartOption: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .currentChapter:
-            return localized("從當前章開始")
+            return localized("从当前章开始")
         case .firstChapter:
-            return localized("從第一章開始")
+            return localized("从第一章开始")
         }
     }
 }
@@ -95,7 +95,7 @@ struct ReaderDownloadOptionsView: View {
                 }
             }
             .softScrollEdges()
-            .navigationTitle(localized("下載章節"))
+            .navigationTitle(localized("下载章节"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {
@@ -135,8 +135,8 @@ struct ReaderDownloadOptionsView: View {
         }
         .interfaceSectionSurface()
 
-        Section(header: Text(localized("下載範圍")).foregroundStyle(DSColor.textSecondary)) {
-            Picker(localized("開始位置"), selection: $startOption) {
+        Section(header: Text(localized("下载范围")).foregroundStyle(DSColor.textSecondary)) {
+            Picker(localized("开始位置"), selection: $startOption) {
                 ForEach(ReaderDownloadStartOption.allCases) { option in
                     Text(option.title).tag(option)
                 }
@@ -147,7 +147,7 @@ struct ReaderDownloadOptionsView: View {
             }
 
             HStack {
-                Text(localized("開始章節"))
+                Text(localized("开始章节"))
                     .foregroundStyle(DSColor.textPrimary)
                 Spacer()
                 Text(String(format: localized("第 %d 章"), selectedStartIndex + 1))
@@ -156,7 +156,7 @@ struct ReaderDownloadOptionsView: View {
         }
         .interfaceSectionSurface()
 
-        Section(header: Text(localized("章數")).foregroundStyle(DSColor.textSecondary)) {
+        Section(header: Text(localized("章数")).foregroundStyle(DSColor.textSecondary)) {
             if maxSelectableCount > 1 {
                 Slider(
                     value: Binding(
@@ -169,10 +169,10 @@ struct ReaderDownloadOptionsView: View {
             }
 
             HStack {
-                Text(localized("手動輸入"))
+                Text(localized("手动输入"))
                     .foregroundStyle(DSColor.textPrimary)
                 Spacer()
-                TextField(localized("章數"), text: $chapterCountText)
+                TextField(localized("章数"), text: $chapterCountText)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 96)
@@ -181,7 +181,7 @@ struct ReaderDownloadOptionsView: View {
                     }
             }
 
-            Text(String(format: localized("最多可下載 %d 章"), maxSelectableCount))
+            Text(String(format: localized("最多可下载 %d 章"), maxSelectableCount))
                 .font(DSFont.caption)
                 .foregroundColor(DSColor.textSecondary)
         }
@@ -189,7 +189,7 @@ struct ReaderDownloadOptionsView: View {
 
         if totalChapters <= 0 {
             Section {
-                Label(localized("沒有可下載章節"), systemImage: "exclamationmark.triangle")
+                Label(localized("没有可下载章节"), systemImage: "exclamationmark.triangle")
                     .foregroundColor(DSColor.textSecondary)
             }
             .interfaceSectionSurface()
@@ -220,8 +220,8 @@ struct ReaderDownloadOptionsView: View {
         .interfaceSectionSurface()
 
         if let task = clampedTask, !task.failedChapters.isEmpty {
-            Section(header: Text(localized("失敗章節")).foregroundStyle(DSColor.textSecondary)) {
-                Text(String(format: localized("%d 章失敗"), task.failedChapters.count))
+            Section(header: Text(localized("失败章节")).foregroundStyle(DSColor.textSecondary)) {
+                Text(String(format: localized("%d 章失败"), task.failedChapters.count))
                     .foregroundColor(DSColor.textSecondary)
                 ForEach(task.failedChapters.values.sorted { $0.chapterIndex < $1.chapterIndex }.prefix(3), id: \.chapterIndex) { failure in
                     Text(failure.title)
@@ -242,10 +242,10 @@ struct ReaderDownloadOptionsView: View {
             } label: {
                 Label(
                     downloadState == .downloading
-                        ? localized("暫停下載")
+                        ? localized("暂停下载")
                         : (downloadState == .partial || downloadState == .failed
-                            ? localized("重試失敗章節")
-                            : localized("繼續下載")),
+                            ? localized("重试失败章节")
+                            : localized("继续下载")),
                     systemImage: downloadState == .downloading ? "pause.fill" : "arrow.clockwise"
                 )
             }
@@ -253,7 +253,7 @@ struct ReaderDownloadOptionsView: View {
                 Button {
                     onSkipFailed()
                 } label: {
-                    Label(localized("略過失敗章節"), systemImage: "forward.end")
+                    Label(localized("略过失败章节"), systemImage: "forward.end")
                 }
             }
             if downloadState != .downloading {
@@ -275,7 +275,7 @@ struct ReaderDownloadOptionsView: View {
                     .lineLimit(2)
                     .foregroundStyle(DSColor.textPrimary)
                 HStack {
-                    Label(localized("下載完成"), systemImage: "checkmark.circle.fill")
+                    Label(localized("下载完成"), systemImage: "checkmark.circle.fill")
                         .font(DSFont.subheadline)
                         .foregroundColor(.green)
                     Spacer()
@@ -292,7 +292,7 @@ struct ReaderDownloadOptionsView: View {
             Button {
                 isAddingRange = true
             } label: {
-                Label(localized("新增下載範圍"), systemImage: "plus.circle")
+                Label(localized("新增下载范围"), systemImage: "plus.circle")
             }
             Button(role: .destructive) {
                 onRemove()
@@ -327,17 +327,17 @@ struct ReaderDownloadOptionsView: View {
     private var statusTitle: String {
         switch downloadState {
         case .downloading:
-            return localized("下載中")
+            return localized("下载中")
         case .paused:
-            return localized("已暫停")
+            return localized("已暂停")
         case .failed:
-            return localized("下載失敗")
+            return localized("下载失败")
         case .available:
-            return localized("下載完成")
+            return localized("下载完成")
         case .partial:
             return localized("部分完成")
         case .none:
-            return localized("未下載")
+            return localized("未下载")
         }
     }
 
@@ -360,7 +360,7 @@ struct ReaderDownloadOptionsView: View {
     }
 
     private var summaryText: String {
-        guard totalChapters > 0 else { return localized("沒有可下載章節") }
+        guard totalChapters > 0 else { return localized("没有可下载章节") }
         return String(
             format: localized("第 %d 到 %d 章，共 %d 章"),
             selectedStartIndex + 1,
@@ -415,10 +415,10 @@ private enum ReaderDownloadPreview {
     private static let chapterCount = 120
 
     private static let books: [State: ReadingBook] = [
-        .range: makeBook(title: "巫師：從合成寶石開始", state: .none, completed: 0),
-        .downloading: makeBook(title: "劍來", state: .downloading, completed: 37),
-        .partial: makeBook(title: "詭祕之主", state: .partial, completed: 80, failed: 3),
-        .completed: makeBook(title: "全職高手", state: .available, completed: chapterCount),
+        .range: makeBook(title: "巫师：从合成宝石开始", state: .none, completed: 0),
+        .downloading: makeBook(title: "剑来", state: .downloading, completed: 37),
+        .partial: makeBook(title: "诡秘之主", state: .partial, completed: 80, failed: 3),
+        .completed: makeBook(title: "全职高手", state: .available, completed: chapterCount),
     ]
 
     static let store: BookStore = {
@@ -432,7 +432,7 @@ private enum ReaderDownloadPreview {
 
     @MainActor
     static func canvas(for state: State) -> some View {
-        let book = books[state] ?? makeBook(title: "預覽", state: .none, completed: 0)
+        let book = books[state] ?? makeBook(title: "预览", state: .none, completed: 0)
         return ReaderDownloadOptionsView(
             bookId: book.id,
             bookTitle: book.title,

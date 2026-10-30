@@ -199,8 +199,8 @@ final class AIBookSummaryService: ObservableObject {
                 let digest = AIBookSummaryPrompt.inputDigest(items, language: plan.language)
                 guard record.volumes[volume.id]?.inputDigest != digest else { continue }
                 let through = min(volume.chapters.upperBound, plan.throughChapter)
-                let heading = "卷：\(AIBookSummaryPlanner.title(of: volume))\n範圍：第 \(volume.chapters.lowerBound + 1)–\(through + 1) 章"
-                let text = try await reduce(scope: "這一卷（已讀部分）", heading: heading, items: items)
+                let heading = "卷：\(AIBookSummaryPlanner.title(of: volume))\n范围：第 \(volume.chapters.lowerBound + 1)–\(through + 1) 章"
+                let text = try await reduce(scope: "这一卷（已读部分）", heading: heading, items: items)
                 record.volumes[volume.id] = AISummaryText(text: text, inputDigest: digest, promptVersion: AIBookSummaryPlanner.recipe(plan.language),
                     throughChapter: through, model: model, createdAt: Date())
                 try await commit()
@@ -212,8 +212,8 @@ final class AIBookSummaryService: ObservableObject {
             }
             let bookDigest = AIBookSummaryPrompt.inputDigest(volumeItems, language: plan.language)
             if !volumeItems.isEmpty, record.book?.inputDigest != bookDigest {
-                let heading = "範圍：第 1–\(plan.throughChapter + 1) 章"
-                let text = try await reduce(scope: "全書（已讀部分）", heading: heading, items: volumeItems)
+                let heading = "范围：第 1–\(plan.throughChapter + 1) 章"
+                let text = try await reduce(scope: "全书（已读部分）", heading: heading, items: volumeItems)
                 record.book = AISummaryText(text: text, inputDigest: bookDigest, promptVersion: AIBookSummaryPlanner.recipe(plan.language),
                     throughChapter: plan.throughChapter, model: model, createdAt: Date())
                 try await commit()

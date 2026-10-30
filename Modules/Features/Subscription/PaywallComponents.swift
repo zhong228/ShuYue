@@ -27,7 +27,7 @@ struct PaywallPillarList: View {
                 if isUnlocked {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(DSColor.success)
-                        .accessibilityLabel(localized("已解鎖"))
+                        .accessibilityLabel(localized("已解锁"))
                 }
             }
             // One element: the pillar's name, then 已解鎖 when owned.
@@ -155,11 +155,11 @@ struct PaywallPlanCard: View {
 #Preview("Paywall components") {
     ScrollView {
         VStack(spacing: DSSpacing.lg) {
-            PaywallPlanCard(title: "永久會員", tag: "最超值", detail: "一次付清・約 7.5 個月的月費",
+            PaywallPlanCard(title: "永久会员", tag: "最超值", detail: "一次付清・约 7.5 个月的月费",
                             price: .shown("US$14.99"), mark: .choice(selected: true))
-            PaywallPlanCard(title: "月會員", tag: nil, detail: "每月自動續訂，可隨時取消",
+            PaywallPlanCard(title: "月会员", tag: nil, detail: "每月自动续订，可随时取消",
                             price: .loading, mark: .choice(selected: false))
-            PaywallPlanCard(title: "永久會員", tag: "目前方案", detail: "一次性購買，永久有效",
+            PaywallPlanCard(title: "永久会员", tag: "目前方案", detail: "一次性购买，永久有效",
                             price: .hidden, mark: .owned)
             PaywallPillarList(leading: .customFonts, isUnlocked: true)
         }

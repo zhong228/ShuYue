@@ -3,7 +3,7 @@ import CoreText
 import SwiftUI
 import UIKit
 
-/// "章節標題樣式" — the sub-page reached from reader settings. Two modes:
+/// "章节标题样式" — the sub-page reached from reader settings. Two modes:
 ///
 /// - 高級 CSS 樣式 ON: preset picker (all built-ins are HTML/CSS templates),
 ///   "my presets", a live preview rendered through the real CoreText pipeline
@@ -48,7 +48,7 @@ struct ChapterTitleStyleSettingsView: View {
             actionSection
         }
         .softScrollEdges()
-        .navigationTitle(localized("章節標題樣式"))
+        .navigationTitle(localized("章节标题样式"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .onDisappear {
@@ -60,31 +60,31 @@ struct ChapterTitleStyleSettingsView: View {
                 updateStyle { $0.design = design }
             }
         }
-        .alert(localized("樣式名稱"), isPresented: $showingSavePresetDialog) {
-            TextField(localized("樣式名稱"), text: $savePresetName)
+        .alert(localized("样式名称"), isPresented: $showingSavePresetDialog) {
+            TextField(localized("样式名称"), text: $savePresetName)
             Button(localized("取消"), role: .cancel) { savePresetName = "" }
-            Button(localized("儲存")) { saveCurrentAsPreset() }
+            Button(localized("储存")) { saveCurrentAsPreset() }
         } message: {
-            Text(localized("為目前的章節標題樣式取一個名字。"))
+            Text(localized("为目前的章节标题样式取一个名字。"))
         }
         .alert(
-            localized("刪除這個預設？"),
+            localized("删除这个预设？"),
             isPresented: Binding(
                 get: { presetPendingDeletion != nil },
                 set: { if !$0 { presetPendingDeletion = nil } }
             ),
             presenting: presetPendingDeletion
         ) { preset in
-            Button(localized("刪除"), role: .destructive) { deletePreset(preset) }
+            Button(localized("删除"), role: .destructive) { deletePreset(preset) }
             Button(localized("取消"), role: .cancel) {}
         } message: { preset in
-            Text(String(format: localized("「%@」會被永久刪除，此操作無法復原。"), preset.name))
+            Text(String(format: localized("「%@」会被永久删除，此操作无法复原。"), preset.name))
         }
         .alert(item: $importAlert) { alert in
             Alert(
                 title: Text(localized(alert.titleKey)),
                 message: Text(alert.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
     }
@@ -93,15 +93,15 @@ struct ChapterTitleStyleSettingsView: View {
 
     private var advancedCSSSection: some View {
         Section {
-            Toggle(localized("高級 CSS 樣式"), isOn: binding(\ChapterTitleStyle.advancedCSSEnabled))
+            Toggle(localized("高级 CSS 样式"), isOn: binding(\ChapterTitleStyle.advancedCSSEnabled))
                 .font(DSFont.body)
             if style.advancedCSSEnabled {
                 Button(action: openDesigner) {
-                    Label(localized("編輯設計"), systemImage: "slider.horizontal.3")
+                    Label(localized("编辑设计"), systemImage: "slider.horizontal.3")
                 }
             }
         } footer: {
-            Text(localized("開啟後使用 HTML/CSS 模板渲染章節標題，支持自定義排版和樣式。"))
+            Text(localized("开启后使用 HTML/CSS 模板渲染章节标题，支持自定义排版和样式。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -115,10 +115,10 @@ struct ChapterTitleStyleSettingsView: View {
                 presetRow(preset)
             }
         } header: {
-            Text(localized("選擇預設"))
+            Text(localized("选择预设"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("自動適配淺色和深色。選好後可繼續微調。"))
+            Text(localized("自动适配浅色和深色。选好后可继续微调。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -127,7 +127,7 @@ struct ChapterTitleStyleSettingsView: View {
     private var myPresetSection: some View {
         Section {
             if settings.chapterTitleCustomPresets.isEmpty {
-                Text(localized("調好後點「存為我的預設」保存"))
+                Text(localized("调好后点「存为我的预设」保存"))
                     .font(DSFont.body)
                     .foregroundStyle(DSColor.textSecondary)
             } else {
@@ -137,13 +137,13 @@ struct ChapterTitleStyleSettingsView: View {
                             Button(role: .destructive) {
                                 presetPendingDeletion = preset
                             } label: {
-                                Label(localized("刪除"), systemImage: "trash")
+                                Label(localized("删除"), systemImage: "trash")
                             }
                         }
                 }
             }
         } header: {
-            Text(localized("我的預設"))
+            Text(localized("我的预设"))
                 .foregroundStyle(DSColor.textSecondary)
         }
         .interfaceSectionSurface()
@@ -180,8 +180,8 @@ struct ChapterTitleStyleSettingsView: View {
 
     private var previewSection: some View {
         Section {
-            Picker(localized("預覽"), selection: $previewIsDark) {
-                Text(localized("淺色")).tag(false)
+            Picker(localized("预览"), selection: $previewIsDark) {
+                Text(localized("浅色")).tag(false)
                 Text(localized("深色")).tag(true)
             }
             .pickerStyle(.segmented)
@@ -190,11 +190,11 @@ struct ChapterTitleStyleSettingsView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
         } header: {
-            Text(localized("預覽"))
+            Text(localized("预览"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             if style.advancedCSSEnabled {
-                Text(localized("切換淺色／深色查看對應外觀的模板。"))
+                Text(localized("切换浅色／深色查看对应外观的模板。"))
                     .dsSectionFooter()
             }
         }
@@ -203,12 +203,12 @@ struct ChapterTitleStyleSettingsView: View {
     // MARK: - Layout (advanced CSS: shared spacing + em anchor)
 
     private var cssLayoutSection: some View {
-        Section(header: Text(localized("佈局")).foregroundStyle(DSColor.textSecondary)) {
-            Toggle(localized("顯示標題"), isOn: binding(\ChapterTitleStyle.visible))
+        Section(header: Text(localized("布局")).foregroundStyle(DSColor.textSecondary)) {
+            Toggle(localized("显示标题"), isOn: binding(\ChapterTitleStyle.visible))
                 .font(DSFont.body)
-            sliderRow(localized("標題大小"), value: binding(\ChapterTitleStyle.size), range: ChapterTitleStyle.sizeRange, step: 1, unit: "pt")
-            sliderRow(localized("上方間距"), value: binding(\ChapterTitleStyle.topSpacing), range: ChapterTitleStyle.topSpacingRange, step: 1, unit: "pt")
-            sliderRow(localized("與正文間距"), value: binding(\ChapterTitleStyle.bottomSpacing), range: ChapterTitleStyle.bottomSpacingRange, step: 1, unit: "pt")
+            sliderRow(localized("标题大小"), value: binding(\ChapterTitleStyle.size), range: ChapterTitleStyle.sizeRange, step: 1, unit: "pt")
+            sliderRow(localized("上方间距"), value: binding(\ChapterTitleStyle.topSpacing), range: ChapterTitleStyle.topSpacingRange, step: 1, unit: "pt")
+            sliderRow(localized("与正文间距"), value: binding(\ChapterTitleStyle.bottomSpacing), range: ChapterTitleStyle.bottomSpacingRange, step: 1, unit: "pt")
         }
         .interfaceSectionSurface()
     }
@@ -216,15 +216,15 @@ struct ChapterTitleStyleSettingsView: View {
     // MARK: - Layout (manual mode)
 
     private var layoutSection: some View {
-        Section(header: Text(localized("佈局")).foregroundStyle(DSColor.textSecondary)) {
-            Toggle(localized("顯示標題"), isOn: binding(\ChapterTitleStyle.visible))
+        Section(header: Text(localized("布局")).foregroundStyle(DSColor.textSecondary)) {
+            Toggle(localized("显示标题"), isOn: binding(\ChapterTitleStyle.visible))
                 .font(DSFont.body)
 
-            sliderRow(localized("標題大小"), value: binding(\ChapterTitleStyle.size), range: ChapterTitleStyle.sizeRange, step: 1, unit: "pt")
-            sliderRow(localized("上方間距"), value: binding(\ChapterTitleStyle.topSpacing), range: ChapterTitleStyle.topSpacingRange, step: 1, unit: "pt")
-            sliderRow(localized("與正文間距"), value: binding(\ChapterTitleStyle.bottomSpacing), range: ChapterTitleStyle.bottomSpacingRange, step: 1, unit: "pt")
+            sliderRow(localized("标题大小"), value: binding(\ChapterTitleStyle.size), range: ChapterTitleStyle.sizeRange, step: 1, unit: "pt")
+            sliderRow(localized("上方间距"), value: binding(\ChapterTitleStyle.topSpacing), range: ChapterTitleStyle.topSpacingRange, step: 1, unit: "pt")
+            sliderRow(localized("与正文间距"), value: binding(\ChapterTitleStyle.bottomSpacing), range: ChapterTitleStyle.bottomSpacingRange, step: 1, unit: "pt")
 
-            Picker(localized("對齊"), selection: binding(\ChapterTitleStyle.alignment)) {
+            Picker(localized("对齐"), selection: binding(\ChapterTitleStyle.alignment)) {
                 ForEach(ChapterTitleAlignment.allCases, id: \.self) { align in
                     Image(systemName: align.systemImageName)
                         .accessibilityLabel(localized(align.localizedNameKey))
@@ -239,12 +239,12 @@ struct ChapterTitleStyleSettingsView: View {
                 }
             }
 
-            Toggle(localized("拆分章節數與章節名"), isOn: binding(\ChapterTitleStyle.splitEnabled))
+            Toggle(localized("拆分章节数与章节名"), isOn: binding(\ChapterTitleStyle.splitEnabled))
                 .font(DSFont.body)
 
             if style.splitEnabled {
                 sliderRow(
-                    localized("章節數字號比例"),
+                    localized("章节数字号比例"),
                     value: binding(\ChapterTitleStyle.numberRelativeSize),
                     range: ChapterTitleStyle.numberRelativeSizeRange,
                     step: 0.05,
@@ -259,15 +259,15 @@ struct ChapterTitleStyleSettingsView: View {
     // MARK: - Fonts (manual mode)
 
     private var fontSection: some View {
-        Section(header: Text(localized("字體")).foregroundStyle(DSColor.textSecondary)) {
-            Toggle(localized("跟隨閱讀字體"), isOn: binding(\ChapterTitleStyle.followsBodyFont))
+        Section(header: Text(localized("字体")).foregroundStyle(DSColor.textSecondary)) {
+            Toggle(localized("跟随阅读字体"), isOn: binding(\ChapterTitleStyle.followsBodyFont))
                 .font(DSFont.body)
 
             if !style.followsBodyFont {
-                fontMenu(localized("章節數字體"), current: style.numberFontPostScript) { name in
+                fontMenu(localized("章节数字体"), current: style.numberFontPostScript) { name in
                     updateStyle { $0.numberFontPostScript = name }
                 }
-                fontMenu(localized("章節名字體"), current: style.nameFontPostScript) { name in
+                fontMenu(localized("章节名字体"), current: style.nameFontPostScript) { name in
                     updateStyle { $0.nameFontPostScript = name }
                 }
             }
@@ -280,7 +280,7 @@ struct ChapterTitleStyleSettingsView: View {
             Button {
                 onSelect(nil)
             } label: {
-                Label(localized("跟隨閱讀字體"), systemImage: current == nil ? "checkmark" : "textformat")
+                Label(localized("跟随阅读字体"), systemImage: current == nil ? "checkmark" : "textformat")
             }
             ForEach(settings.userFonts, id: \.postScriptName) { font in
                 Button {
@@ -302,25 +302,25 @@ struct ChapterTitleStyleSettingsView: View {
                 savePresetName = ""
                 showingSavePresetDialog = true
             } label: {
-                Label(localized("存為我的預設"), systemImage: "square.and.arrow.down")
+                Label(localized("存为我的预设"), systemImage: "square.and.arrow.down")
             }
             ShareLink(
                 item: exportPayload,
-                preview: SharePreview(localized("章節標題樣式"))
+                preview: SharePreview(localized("章节标题样式"))
             ) {
-                Label(localized("匯出樣式檔案"), systemImage: "square.and.arrow.up")
+                Label(localized("汇出样式档案"), systemImage: "square.and.arrow.up")
             }
             if let onOpenImporter {
                 Button {
                     onOpenImporter()
                 } label: {
-                    Label(localized("從檔案匯入樣式"), systemImage: "tray.and.arrow.down")
+                    Label(localized("从档案汇入样式"), systemImage: "tray.and.arrow.down")
                 }
             }
             Button(role: .destructive) {
                 applyStyle(.default)
             } label: {
-                Label(localized("恢復官方預設"), systemImage: "arrow.counterclockwise")
+                Label(localized("恢复官方预设"), systemImage: "arrow.counterclockwise")
             }
         }
         .interfaceSectionSurface()
@@ -347,7 +347,7 @@ struct ChapterTitleStyleSettingsView: View {
 
     private func saveCurrentAsPreset() {
         let trimmed = savePresetName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = trimmed.isEmpty ? localized("我的樣式") : trimmed
+        let name = trimmed.isEmpty ? localized("我的样式") : trimmed
         settings.upsertChapterTitleCustomPreset(
             ChapterTitleStylePreset(name: name, style: style)
         )
@@ -389,7 +389,7 @@ struct ChapterTitleStyleSettingsView: View {
     private func fontDisplayName(_ postScript: String?) -> String {
         guard let postScript,
               let font = settings.userFonts.first(where: { $0.postScriptName == postScript })
-        else { return localized("跟隨閱讀字體") }
+        else { return localized("跟随阅读字体") }
         return font.displayName
     }
 
@@ -399,7 +399,7 @@ struct ChapterTitleStyleSettingsView: View {
             showingDesigner = true
         } catch {
             importAlert = TitleStyleAlert(
-                titleKey: "操作失敗",
+                titleKey: "操作失败",
                 message: String(describing: error)
             )
         }
@@ -455,7 +455,7 @@ private struct ChapterTitlePreviewCard: View {
                 ChapterTitleCoreTextPreview(attributed: rendered)
             } else if rendered != nil {
                 // Built but empty: the title is hidden by the style.
-                Text(localized("標題已隱藏"))
+                Text(localized("标题已隐藏"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
                     .padding(.vertical, DSSpacing.xl)

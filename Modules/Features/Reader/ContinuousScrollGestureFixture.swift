@@ -85,8 +85,8 @@ struct ContinuousScrollGestureFixture: UIViewControllerRepresentable {
         private var previousReleased = false
         private var waiting: [CheckedContinuation<Void, Never>] = []
         private lazy var txtBuilder: TXTLazyAttributedStringBuilder = {
-            let body = String(repeating: "這是連續捲動的真實手勢測試，前章完成時不能中斷減速或改變正在看的位置。\n", count: 200)
-            let file = TXTMappedTextFile(data: Data(("第1章 前章\n" + body + "\n第2章 當前章\n" + body).utf8), encoding: .utf8)
+            let body = String(repeating: "这是连续卷动的真实手势测试，前章完成时不能中断减速或改变正在看的位置。\n", count: 200)
+            let file = TXTMappedTextFile(data: Data(("第1章 前章\n" + body + "\n第2章 当前章\n" + body).utf8), encoding: .utf8)
             return TXTLazyAttributedStringBuilder(mappedTextFile: file,
                 chapterIndexes: TXTChapterParser.parseMappedChapterIndexes(file, bookTitle: "Scroll gesture"))
         }()

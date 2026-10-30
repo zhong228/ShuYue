@@ -11,16 +11,16 @@ enum ReaderDialogueSpeakerDetector {
     /// Verbs that mark the word before them as a speaker. Longest first, so
     /// `說道` is stripped before `說`.
     private static let speechVerbs = [
-        "說道", "说道", "問道", "问道", "答道", "喊道", "叫道", "吼道", "喝道",
-        "笑道", "嘆道", "叹道", "回道", "應道", "应道", "開口", "开口",
-        "說", "说", "道", "問", "问", "答", "喊", "叫", "吼", "笑", "嘆", "叹",
+        "说道", "说道", "问道", "问道", "答道", "喊道", "叫道", "吼道", "喝道",
+        "笑道", "叹道", "叹道", "回道", "应道", "应道", "开口", "开口",
+        "说", "说", "道", "问", "问", "答", "喊", "叫", "吼", "笑", "叹", "叹",
     ]
 
     /// Manner adverbs and particles that sit between the name and its verb.
     private static let modifiers: Set<Character> = [
-        "地", "的", "得", "大", "小", "又", "才", "便", "就", "也", "還", "还",
-        "忙", "急", "連", "连", "冷", "淡", "微", "輕", "轻", "緩", "缓", "沉",
-        "低", "高", "笑", "怒", "哼", "一", "再", "接", "著", "着", "續", "续",
+        "地", "的", "得", "大", "小", "又", "才", "便", "就", "也", "还", "还",
+        "忙", "急", "连", "连", "冷", "淡", "微", "轻", "轻", "缓", "缓", "沉",
+        "低", "高", "笑", "怒", "哼", "一", "再", "接", "著", "着", "续", "续",
     ]
 
     /// Particles that lead a manner phrase rather than a name — `的景象` is what the
@@ -34,12 +34,12 @@ enum ReaderDialogueSpeakerDetector {
     /// A name genuinely ending in 聲 exists (雷聲 as a nickname) but is far rarer than the
     /// adverb, and the cost is asymmetric: a missed attribution reads in the narrator's
     /// voice, while a bogus one puts a manner adverb in the cast.
-    private static let mannerSuffixes: Set<Character> = ["聲", "声", "氣", "气", "音"]
+    private static let mannerSuffixes: Set<Character> = ["声", "声", "气", "气", "音"]
 
     /// Words a name never contains; they mark the candidate as a clause.
     private static let functionWords: Set<Character> = [
-        "沒", "没", "無", "无", "不", "這", "这", "那", "誰", "谁", "們", "们",
-        "裡", "里", "中", "上", "下", "外", "有", "是", "了", "個", "个", "都",
+        "没", "没", "无", "无", "不", "这", "这", "那", "谁", "谁", "们", "们",
+        "里", "里", "中", "上", "下", "外", "有", "是", "了", "个", "个", "都",
     ]
 
     private static let separators = CharacterSet(charactersIn: "，,。.！!？?；;：:、…—－-·　 \t\n\r「」『』“”\"'()（）")
@@ -125,7 +125,7 @@ enum ReaderDialogueSpeakerDetector {
     ///
     /// A one-character verb only counts when the clause ends right after it.
     /// `道` is a verb in `張三道。` and a name in `齊源老道面露無奈` — without this
-    /// the second one gets cut into "齊源老".
+    /// the second one gets cut into "齐源老".
     private static func firstVerbStart(in text: String) -> String.Index? {
         var index = text.startIndex
         while index < text.endIndex {

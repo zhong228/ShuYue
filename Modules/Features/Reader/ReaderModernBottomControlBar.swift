@@ -123,7 +123,7 @@ struct ReaderModernBottomControlBar: View {
                     }
                 }
             )
-            .accessibilityLabel(localized("閱讀進度"))
+            .accessibilityLabel(localized("阅读进度"))
             .accessibilityValue(progressPercentText)
 
             Button(action: onNextChapter) {
@@ -136,7 +136,7 @@ struct ReaderModernBottomControlBar: View {
             }
             .buttonStyle(.plain)
             .disabled(!canGoNextChapter)
-            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "書末頁"))
+            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "书末页"))
         }
     }
 
@@ -155,9 +155,9 @@ struct ReaderModernBottomControlBar: View {
     private func toolButton(for item: ReaderChromeToolItem) -> some View {
         switch item {
         case .tableOfContents:
-            toolBtn(item: item, label: localized("目錄"), action: onOpenTOC)
+            toolBtn(item: item, label: localized("目录"), action: onOpenTOC)
         case .bookmarks:
-            toolBtn(item: item, label: localized("書籤"), action: onOpenBookmarks)
+            toolBtn(item: item, label: localized("书签"), action: onOpenBookmarks)
         case .nightMode:
             toolBtn(
                 item: item,
@@ -166,7 +166,7 @@ struct ReaderModernBottomControlBar: View {
                 action: onToggleDarkMode
             )
         case .settings:
-            toolBtn(item: item, label: localized("設置"), action: onOpenSettings)
+            toolBtn(item: item, label: localized("设置"), action: onOpenSettings)
         }
     }
 
@@ -239,7 +239,7 @@ struct ReaderModernBottomControlBar: View {
     ZStack {
         theme.backgroundColor.ignoresSafeArea()
 
-        Text(String(repeating: "正文墊在浮動底欄後面，檢查是否穿透。", count: 24))
+        Text(String(repeating: "正文垫在浮动底栏后面，检查是否穿透。", count: 24))
             .font(DSFont.fixed(size: 17))
             .foregroundColor(theme.textColor)
             .padding(20)
@@ -249,7 +249,7 @@ struct ReaderModernBottomControlBar: View {
             overlayContentMaxWidth: 640,
             canGoPrevChapter: true,
             canGoNextChapter: true,
-            chapterTitle: "第四回 薄命女偏逢薄命郎 葫蘆僧亂判葫蘆案",
+            chapterTitle: "第四回 薄命女偏逢薄命郎 葫芦僧乱判葫芦案",
             chapterPageInfo: "7 / 18",
             chapterSliderProgressValue: { 0.32 },
             applyChapterSliderProgress: { _ in },

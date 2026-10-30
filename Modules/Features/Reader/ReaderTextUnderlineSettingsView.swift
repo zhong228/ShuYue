@@ -11,10 +11,10 @@ struct ReaderTextUnderlineSettingsView: View {
         Form {
             Section {
                 Toggle(isOn: $settings.readerTextUnderlineDecorationEnabled) {
-                    SettingsRowLabel(localized("文字底線"), systemImage: "underline")
+                    SettingsRowLabel(localized("文字底线"), systemImage: "underline")
                 }
             } footer: {
-                Text(localized("在每行水平正文下方顯示淡底線。"))
+                Text(localized("在每行水平正文下方显示淡底线。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -22,7 +22,7 @@ struct ReaderTextUnderlineSettingsView: View {
             if settings.readerTextUnderlineDecorationEnabled {
                 Section {
                     ColorPicker(selection: colorBinding, supportsOpacity: false) {
-                        SettingsRowLabel(localized("底線顏色"), systemImage: "paintbrush")
+                        SettingsRowLabel(localized("底线颜色"), systemImage: "paintbrush")
                     }
                     Picker(selection: $settings.readerTextUnderlineStyle) {
                         ForEach(ReaderTextUnderlineStyle.allCases, id: \.self) { style in
@@ -30,10 +30,10 @@ struct ReaderTextUnderlineSettingsView: View {
                                 .tag(style)
                         }
                     } label: {
-                        SettingsRowLabel(localized("底線樣式"), systemImage: "line.3.horizontal")
+                        SettingsRowLabel(localized("底线样式"), systemImage: "line.3.horizontal")
                     }
                     SettingsSliderRow(
-                        title: localized("粗細"),
+                        title: localized("粗细"),
                         systemImage: "lineweight",
                         valueText: String(format: "%.1f pt", settings.readerTextUnderlineThickness),
                         value: $settings.readerTextUnderlineThickness,
@@ -49,7 +49,7 @@ struct ReaderTextUnderlineSettingsView: View {
                         step: 0.5
                     )
                 } header: {
-                    Text(localized("樣式"))
+                    Text(localized("样式"))
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
@@ -57,7 +57,7 @@ struct ReaderTextUnderlineSettingsView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("文字底線"))
+        .navigationTitle(localized("文字底线"))
         .toolbarTitleDisplayMode(.inline)
         .animation(reduceMotion ? nil : DSAnimation.standard, value: settings.readerTextUnderlineDecorationEnabled)
     }

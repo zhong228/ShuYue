@@ -56,7 +56,7 @@ final class RegexHighlightSettingsModel: ObservableObject {
     /// Returns an isolated draft. The configuration is not mutated until the
     /// rule editor completes its atomic save.
     func makeCustomDraft() -> RegexHighlightRule {
-        RegexHighlightRule.custom(name: localized("新規則"), pattern: "")
+        RegexHighlightRule.custom(name: localized("新规则"), pattern: "")
     }
 
     func copyAsCustom(ruleID: String) {

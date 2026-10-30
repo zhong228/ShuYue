@@ -36,7 +36,7 @@ enum BookCustomVariable {
     static func comment(source: BookSource?) -> String {
         SourceVariableEditing.displayComment(
             source: source,
-            hint: localized("書籍變量可在 JS 中通過 book.getVariable(\"custom\") 取得")
+            hint: localized("书籍变量可在 JS 中通过 book.getVariable(\"custom\") 取得")
         )
     }
 }
@@ -57,7 +57,7 @@ enum SourceVariableEditing {
     static func comment(source: BookSource) -> String {
         displayComment(
             source: source,
-            hint: localized("源變量可在 JS 中通過 source.getVariable() 取得")
+            hint: localized("源变量可在 JS 中通过 source.getVariable() 取得")
         )
     }
 
@@ -83,7 +83,7 @@ extension View {
             .sheet(isPresented: showsSourceVariable) {
                 if let source {
                     RuntimeVariableEditorView(
-                        title: localized("設置源變量"),
+                        title: localized("设置源变量"),
                         comment: SourceVariableEditing.comment(source: source),
                         initialValue: SourceVariableEditing.currentValue(for: source)
                     ) { value in
@@ -94,7 +94,7 @@ extension View {
             }
             .sheet(isPresented: showsBookVariable) {
                 RuntimeVariableEditorView(
-                    title: localized("設置書籍變量"),
+                    title: localized("设置书籍变量"),
                     comment: BookCustomVariable.comment(source: source),
                     initialValue: bookVariable()
                 ) { value in
@@ -124,10 +124,10 @@ struct BookDetailMoreMenu: View {
             } else {
                 Menu {
                     Button(action: onSetSourceVariable) {
-                        Label(localized("設置源變量"), systemImage: "curlybraces")
+                        Label(localized("设置源变量"), systemImage: "curlybraces")
                     }
                     Button(action: onSetBookVariable) {
-                        Label(localized("設置書籍變量"), systemImage: "character.book.closed")
+                        Label(localized("设置书籍变量"), systemImage: "character.book.closed")
                     }
                 } label: {
                     label
@@ -180,12 +180,12 @@ private struct BookDetailMoreChooser: ViewModifier {
                     actions: [
                         DismissalSequencedAction(
                             route: .sourceVariable,
-                            title: localized("設置源變量"),
+                            title: localized("设置源变量"),
                             systemImage: "curlybraces"
                         ),
                         DismissalSequencedAction(
                             route: .bookVariable,
-                            title: localized("設置書籍變量"),
+                            title: localized("设置书籍变量"),
                             systemImage: "character.book.closed"
                         ),
                     ],

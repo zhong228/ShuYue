@@ -107,7 +107,7 @@ struct BookSourceGroupPickerSheet: View {
                             }
                             .accessibilityLabel(candidate.name)
                             .accessibilityValue(
-                                String(format: localized("%d 個書源"), candidate.count))
+                                String(format: localized("%d 个书源"), candidate.count))
                         }
                     }
                     .interfaceSectionSurface()
@@ -119,7 +119,7 @@ struct BookSourceGroupPickerSheet: View {
                             select(newGroupName)
                         } label: {
                             Label(
-                                String(format: localized("新增分組「%@」"), newGroupName),
+                                String(format: localized("新增分组「%@」"), newGroupName),
                                 systemImage: "folder.badge.plus"
                             )
                             .foregroundColor(DSColor.accent)
@@ -130,7 +130,7 @@ struct BookSourceGroupPickerSheet: View {
 
                 if filteredCandidates.isEmpty && !showsDefaultGroupRow && newGroupName == nil {
                     Section {
-                        Text(localized("沒有符合的分組"))
+                        Text(localized("没有符合的分组"))
                             .font(DSFont.subheadline)
                             .foregroundColor(DSColor.textSecondary)
                     }
@@ -143,7 +143,7 @@ struct BookSourceGroupPickerSheet: View {
             .searchable(
                 text: $query,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: localized("搜索分組")
+                prompt: localized("搜索分组")
             )
             .navigationTitle(title)
             // Modal sheet — `.inline`, never `.inlineLarge` (docs/design.md).
@@ -167,31 +167,31 @@ struct BookSourceGroupPickerSheet: View {
     }
 }
 
-#Preview("移動到分組") {
+#Preview("移动到分组") {
     BookSourceGroupPickerSheet(
-        title: "移動到分組",
-        subtitle: "示例書源",
+        title: "移动到分组",
+        subtitle: "示例书源",
         candidates: [
             BookSourceGroupCandidate(name: "言情", count: 124),
             BookSourceGroupCandidate(name: "玄幻", count: 88),
             BookSourceGroupCandidate(name: "m.qidian.com", count: 4),
         ],
         excluded: "聚合源",
-        defaultGroupTitle: "移出分組",
-        defaultGroupName: "默認分組",
+        defaultGroupTitle: "移出分组",
+        defaultGroupName: "默认分组",
         allowsNewGroup: true,
         onSelect: { _ in }
     )
 }
 
-#Preview("合併到其他分組 — 空") {
+#Preview("合并到其他分组 — 空") {
     BookSourceGroupPickerSheet(
-        title: "合併到其他分組",
-        subtitle: "言情 · 124 個書源",
+        title: "合并到其他分组",
+        subtitle: "言情 · 124 个书源",
         candidates: [],
         excluded: "言情",
-        defaultGroupTitle: "默認分組",
-        defaultGroupName: "默認分組",
+        defaultGroupTitle: "默认分组",
+        defaultGroupName: "默认分组",
         allowsNewGroup: false,
         onSelect: { _ in }
     )

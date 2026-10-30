@@ -62,9 +62,9 @@ final class FixedPageTransitionViewController: UIViewController {
             headerLabel.text = currentTitle
             if let next = nextTitle, !next.isEmpty {
                 titleLabel.text = String(format: localized("下一章：%@"), next)
-                hintLabel.text = localized("繼續翻頁進入下一章")
+                hintLabel.text = localized("继续翻页进入下一章")
             } else {
-                titleLabel.text = localized("已是最後一章")
+                titleLabel.text = localized("已是最后一章")
                 hintLabel.text = ""
             }
         case .previous(let currentTitle, let prevTitle):
@@ -72,7 +72,7 @@ final class FixedPageTransitionViewController: UIViewController {
             headerLabel.text = currentTitle
             if let prev = prevTitle, !prev.isEmpty {
                 titleLabel.text = String(format: localized("上一章：%@"), prev)
-                hintLabel.text = localized("繼續翻頁回到上一章")
+                hintLabel.text = localized("继续翻页回到上一章")
             } else {
                 titleLabel.text = localized("已是第一章")
                 hintLabel.text = ""
@@ -82,7 +82,7 @@ final class FixedPageTransitionViewController: UIViewController {
         container.addArrangedSubview(icon)
         container.addArrangedSubview(headerLabel)
         container.addArrangedSubview(titleLabel)
-        if !(hintLabel.text ?? "").isEmpty {
+        if hintLabel.text?.isEmpty == false {
             container.addArrangedSubview(hintLabel)
         }
 

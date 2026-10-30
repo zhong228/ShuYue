@@ -24,9 +24,9 @@ struct ChapterTitleInspectorView: View {
                 contrastSection(layer).interfaceSectionSurface()
             } else {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("未選擇元素"), systemImage: "square.dashed")
+                    UnavailableLabel(localized("未选择元素"), systemImage: "square.dashed")
                 } description: {
-                    Text(localized("在畫布或元素列表選擇一個圖層。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("在画布或元素列表选择一个图层。")).foregroundStyle(DSColor.textSecondary)
                 }
             }
         }
@@ -46,11 +46,11 @@ struct ChapterTitleInspectorView: View {
                         }
                     }
                 )
-                .navigationTitle(localized("素材庫"))
+                .navigationTitle(localized("素材库"))
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(localized("關閉")) { showingAssetLibrary = false }
+                        Button(localized("关闭")) { showingAssetLibrary = false }
                     }
                 }
             }
@@ -59,7 +59,7 @@ struct ChapterTitleInspectorView: View {
 
     private var appearanceSection: some View {
         Section {
-            Picker(localized("編輯外觀"), selection: $model.activeAppearance) {
+            Picker(localized("编辑外观"), selection: $model.activeAppearance) {
                 Text(localized("亮色模式")).tag(ReaderStyleAppearance.light)
                 Text(localized("深色模式")).tag(ReaderStyleAppearance.dark)
             }
@@ -70,21 +70,21 @@ struct ChapterTitleInspectorView: View {
     private func identitySection(_ layer: ChapterTitleLayer) -> some View {
         Section(localized("基本")) {
             TextField(
-                localized("名稱"),
+                localized("名称"),
                 text: Binding(
                     get: { selectedLayer?.name ?? layer.name },
                     set: { model.rename(id: layer.id, to: $0) }
                 )
             )
             Toggle(
-                localized("顯示"),
+                localized("显示"),
                 isOn: Binding(
                     get: { selectedLayer?.isVisible ?? layer.isVisible },
                     set: { model.setVisible($0, id: layer.id) }
                 )
             )
             Toggle(
-                localized("鎖定"),
+                localized("锁定"),
                 isOn: Binding(
                     get: { selectedLayer?.isLocked ?? layer.isLocked },
                     set: { model.setLocked($0, id: layer.id) }
@@ -96,7 +96,7 @@ struct ChapterTitleInspectorView: View {
     @ViewBuilder
     private func contentSection(_ layer: ChapterTitleLayer) -> some View {
         if case let .text(text) = layer.content {
-            Section(localized("內容")) {
+            Section(localized("内容")) {
                 TextField(
                     localized("文字"),
                     text: Binding(
@@ -110,15 +110,15 @@ struct ChapterTitleInspectorView: View {
                 )
             }
         } else if layer.kind == .image {
-            Section(localized("內容")) {
+            Section(localized("内容")) {
                 Button { showingAssetLibrary = true } label: {
-                    Label(localized("選擇圖片"), systemImage: "photo")
+                    Label(localized("选择图片"), systemImage: "photo")
                 }
                 if case let .image(assetID) = layer.content {
                     let presentation = appearanceStyle(layer).imagePresentation
                         ?? ReaderStyleImagePresentation(assetID: assetID, contentMode: .fit)
                     Picker(
-                        localized("圖片填充方式"),
+                        localized("图片填充方式"),
                         selection: contentImageBinding(
                             layer,
                             assetID: assetID,
@@ -131,7 +131,7 @@ struct ChapterTitleInspectorView: View {
                         }
                     }
                     metricSlider(
-                        localized("圖片透明度"),
+                        localized("图片透明度"),
                         value: contentImageBinding(
                             layer,
                             assetID: assetID,
@@ -146,14 +146,14 @@ struct ChapterTitleInspectorView: View {
                     Button(role: .destructive) {
                         model.updateContent(id: layer.id, content: .none)
                     } label: {
-                        Label(localized("移除圖片"), systemImage: "trash")
+                        Label(localized("移除图片"), systemImage: "trash")
                     }
                 }
             }
         } else if case let .line(line) = layer.content {
-            Section(localized("線條")) {
+            Section(localized("线条")) {
                 metricSlider(
-                    localized("線條粗細"),
+                    localized("线条粗细"),
                     value: doubleBinding(
                         get: {
                             guard case let .line(value) = selectedLayer?.content else { return line.width }
@@ -171,7 +171,7 @@ struct ChapterTitleInspectorView: View {
                     unit: "pt"
                 )
                 ColorPicker(
-                    localized("線條顏色"),
+                    localized("线条颜色"),
                     selection: colorBinding(hex: line.colorHex) { hex in
                         var updated = line
                         if case let .line(current) = selectedLayer?.content { updated = current }
@@ -181,7 +181,7 @@ struct ChapterTitleInspectorView: View {
                     supportsOpacity: false
                 )
                 Toggle(
-                    localized("虛線"),
+                    localized("虚线"),
                     isOn: Binding(
                         get: {
                             guard case let .line(value) = selectedLayer?.content else { return line.isDashed }
@@ -203,7 +203,7 @@ struct ChapterTitleInspectorView: View {
         let style = appearanceStyle(layer)
         return Section(localized("文字")) {
             Menu {
-                Button(localized("跟隨閱讀字體")) {
+                Button(localized("跟随阅读字体")) {
                     mutateStyle(layer) { $0.ruleStyle.text.fontPostScriptName = nil }
                 }
                 ForEach(settings.userFonts, id: \.postScriptName) { font in
@@ -213,12 +213,12 @@ struct ChapterTitleInspectorView: View {
                 }
             } label: {
                 LabeledContent(
-                    localized("字體"),
+                    localized("字体"),
                     value: fontDisplayName(style.ruleStyle.text.fontPostScriptName)
                 )
             }
             ColorPicker(
-                localized("文字顏色"),
+                localized("文字颜色"),
                 selection: colorBinding(
                     hex: style.ruleStyle.text.colorHex ?? defaultTextHex,
                     update: { value in mutateStyle(layer) { $0.ruleStyle.text.colorHex = value } }
@@ -226,7 +226,7 @@ struct ChapterTitleInspectorView: View {
                 supportsOpacity: false
             )
             metricSlider(
-                localized("字號"),
+                localized("字号"),
                 value: doubleBinding(
                     get: { appearanceStyle(selectedLayer ?? layer).ruleStyle.text.fontSize ?? 24 },
                     set: { value in mutateStyle(layer) { $0.ruleStyle.text.fontSize = value } }
@@ -246,19 +246,19 @@ struct ChapterTitleInspectorView: View {
                 ThemedLabeledContent(localized("字重"), value: "\(appearanceStyle(selectedLayer ?? layer).ruleStyle.text.fontWeight ?? 400)")
             }
             Toggle(
-                localized("斜體"),
+                localized("斜体"),
                 isOn: optionalBoolBinding(layer, keyPath: \.italic)
             )
             Toggle(
-                localized("底線"),
+                localized("底线"),
                 isOn: optionalBoolBinding(layer, keyPath: \.underline)
             )
             Toggle(
-                localized("刪除線"),
+                localized("删除线"),
                 isOn: optionalBoolBinding(layer, keyPath: \.strikethrough)
             )
             Picker(
-                localized("對齊"),
+                localized("对齐"),
                 selection: Binding(
                     get: { appearanceStyle(selectedLayer ?? layer).textAlignment },
                     set: { value in mutateStyle(layer) { $0.textAlignment = value } }
@@ -276,7 +276,7 @@ struct ChapterTitleInspectorView: View {
         let decoration = appearanceStyle(layer).ruleStyle.decoration
         return Section(localized("背景")) {
             ColorPicker(
-                localized("背景顏色"),
+                localized("背景颜色"),
                 selection: colorBinding(
                     hex: decoration.backgroundColorHex ?? defaultBackgroundHex,
                     update: { value in mutateStyle(layer) { $0.ruleStyle.decoration.backgroundColorHex = value } }
@@ -284,7 +284,7 @@ struct ChapterTitleInspectorView: View {
                 supportsOpacity: false
             )
             Toggle(
-                localized("漸層背景"),
+                localized("渐层背景"),
                 isOn: Binding(
                     get: { appearanceStyle(selectedLayer ?? layer).ruleStyle.decoration.backgroundGradient != nil },
                     set: { enabled in
@@ -304,7 +304,7 @@ struct ChapterTitleInspectorView: View {
             )
             if let gradient = decoration.backgroundGradient {
                 metricSlider(
-                    localized("漸層角度"),
+                    localized("渐层角度"),
                     value: doubleBinding(
                         get: {
                             appearanceStyle(selectedLayer ?? layer).ruleStyle.decoration.backgroundGradient?.angleDegrees
@@ -320,7 +320,7 @@ struct ChapterTitleInspectorView: View {
                 )
                 ForEach(gradient.stops.indices, id: \.self) { index in
                     ColorPicker(
-                        String(format: localized("漸層顏色 %d"), index + 1),
+                        String(format: localized("渐层颜色 %d"), index + 1),
                         selection: colorBinding(hex: gradient.stops[index].colorHex) { hex in
                             mutateStyle(layer) { style in
                                 guard style.ruleStyle.decoration.backgroundGradient?.stops.indices.contains(index) == true else { return }
@@ -343,14 +343,14 @@ struct ChapterTitleInspectorView: View {
                 displayMultiplier: 100
             )
             Button { showingAssetLibrary = true } label: {
-                Label(localized("選擇背景圖片"), systemImage: "photo.on.rectangle")
+                Label(localized("选择背景图片"), systemImage: "photo.on.rectangle")
             }
             if decoration.backgroundImage != nil {
                 imagePresentationControls(layer, presentation: decoration.backgroundImage!)
                 Button(role: .destructive) {
                     mutateStyle(layer) { $0.ruleStyle.decoration.backgroundImage = nil }
                 } label: {
-                    Label(localized("移除背景圖"), systemImage: "trash")
+                    Label(localized("移除背景图"), systemImage: "trash")
                 }
             }
         }
@@ -362,7 +362,7 @@ struct ChapterTitleInspectorView: View {
         presentation: ReaderStyleImagePresentation
     ) -> some View {
         Picker(
-            localized("圖片填充方式"),
+            localized("图片填充方式"),
             selection: Binding(
                 get: {
                     appearanceStyle(selectedLayer ?? layer).ruleStyle.decoration.backgroundImage?.contentMode
@@ -378,7 +378,7 @@ struct ChapterTitleInspectorView: View {
             }
         }
         metricSlider(
-            localized("圖片焦點 X"),
+            localized("图片焦点 X"),
             value: imagePresentationBinding(layer, keyPath: \.focalX, fallback: presentation.focalX),
             range: 0...1,
             step: 0.05,
@@ -386,7 +386,7 @@ struct ChapterTitleInspectorView: View {
             displayMultiplier: 100
         )
         metricSlider(
-            localized("圖片焦點 Y"),
+            localized("图片焦点 Y"),
             value: imagePresentationBinding(layer, keyPath: \.focalY, fallback: presentation.focalY),
             range: 0...1,
             step: 0.05,
@@ -394,7 +394,7 @@ struct ChapterTitleInspectorView: View {
             displayMultiplier: 100
         )
         metricSlider(
-            localized("圖片透明度"),
+            localized("图片透明度"),
             value: imagePresentationBinding(layer, keyPath: \.opacity, fallback: presentation.opacity),
             range: 0...1,
             step: 0.05,
@@ -404,10 +404,10 @@ struct ChapterTitleInspectorView: View {
     }
 
     private func spacingSection(_ layer: ChapterTitleLayer) -> some View {
-        Section(localized("邊距")) {
+        Section(localized("边距")) {
             ForEach(ReaderStyleEdge.allCases, id: \.rawValue) { edge in
                 metricSlider(
-                    String(format: localized("%@內距"), localized(edge.titleKey)),
+                    String(format: localized("%@内距"), localized(edge.titleKey)),
                     value: edgeBinding(layer, edge: edge),
                     range: 0...48,
                     step: 1,
@@ -415,7 +415,7 @@ struct ChapterTitleInspectorView: View {
                 )
             }
             metricSlider(
-                localized("圓角"),
+                localized("圆角"),
                 value: doubleBinding(
                     get: { appearanceStyle(selectedLayer ?? layer).ruleStyle.decoration.cornerRadius ?? 0 },
                     set: { value in mutateStyle(layer) { $0.ruleStyle.decoration.cornerRadius = value } }
@@ -430,9 +430,9 @@ struct ChapterTitleInspectorView: View {
     private func borderSection(_ layer: ChapterTitleLayer) -> some View {
         let border = appearanceStyle(layer).ruleStyle.decoration.borders?[.top]
             ?? ReaderStyleBorder(width: 0, colorHex: 0x8E8E93)
-        return Section(localized("邊框與陰影")) {
+        return Section(localized("边框与阴影")) {
             metricSlider(
-                localized("邊框粗細"),
+                localized("边框粗细"),
                 value: doubleBinding(
                     get: { appearanceStyle(selectedLayer ?? layer).ruleStyle.decoration.borders?[.top]?.width ?? 0 },
                     set: { value in
@@ -449,7 +449,7 @@ struct ChapterTitleInspectorView: View {
                 unit: "pt"
             )
             ColorPicker(
-                localized("邊框顏色"),
+                localized("边框颜色"),
                 selection: colorBinding(hex: border.colorHex) { hex in
                     mutateStyle(layer) { style in
                         let width = style.ruleStyle.decoration.borders?[.top]?.width ?? 1
@@ -468,12 +468,12 @@ struct ChapterTitleInspectorView: View {
                     )
                 }
             } label: {
-                Label(localized("新增陰影"), systemImage: "plus")
+                Label(localized("新增阴影"), systemImage: "plus")
             }
             ForEach(Array(appearanceStyle(layer).ruleStyle.decoration.shadows.enumerated()), id: \.offset) { index, shadow in
-                DisclosureGroup(String(format: localized("陰影 %d"), index + 1)) {
+                DisclosureGroup(String(format: localized("阴影 %d"), index + 1)) {
                     ColorPicker(
-                        localized("陰影顏色"),
+                        localized("阴影颜色"),
                         selection: colorBinding(hex: shadow.colorHex) { hex in
                             mutateShadow(layer, index: index) { $0.colorHex = hex }
                         },
@@ -506,7 +506,7 @@ struct ChapterTitleInspectorView: View {
                             style.ruleStyle.decoration.shadows.remove(at: index)
                         }
                     } label: {
-                        Label(String(format: localized("刪除陰影 %d"), index + 1), systemImage: "trash")
+                        Label(String(format: localized("删除阴影 %d"), index + 1), systemImage: "trash")
                     }
                 }
             }
@@ -524,7 +524,7 @@ struct ChapterTitleInspectorView: View {
            ), !contrastAcknowledged {
             Section {
                 Label(
-                    String(format: localized("文字與背景對比度為 %.1f:1。"), warning.ratio),
+                    String(format: localized("文字与背景对比度为 %.1f:1。"), warning.ratio),
                     systemImage: "exclamationmark.triangle"
                 )
                 .foregroundStyle(DSColor.warning)
@@ -695,7 +695,7 @@ struct ChapterTitleInspectorView: View {
     private var defaultBackgroundHex: UInt32 { model.activeAppearance == .light ? 0xFFFFFF : 0x1C1C1E }
 
     private func fontDisplayName(_ postScriptName: String?) -> String {
-        guard let postScriptName else { return localized("跟隨閱讀字體") }
+        guard let postScriptName else { return localized("跟随阅读字体") }
         return settings.userFonts.first(where: { $0.postScriptName == postScriptName })?.displayName
             ?? postScriptName
     }
@@ -704,9 +704,9 @@ struct ChapterTitleInspectorView: View {
 private extension ReaderStyleImageContentMode {
     var titleKey: String {
         switch self {
-        case .fill: "填滿"
-        case .fit: "適應"
-        case .tile: "平鋪"
+        case .fill: "填满"
+        case .fit: "适应"
+        case .tile: "平铺"
         case .stretch: "拉伸"
         }
     }

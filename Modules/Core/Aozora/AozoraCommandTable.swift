@@ -40,10 +40,10 @@ enum AozoraCommandTable {
         if let steps = sizeSteps(name) { return .size(steps) }
         switch name {
         case "縦中横": return .tateChuYoko
-        case "横組み": return .horizontal
+        case "横组み": return .horizontal
         case "罫囲み": return .boxed
         case "キャプション": return .caption
-        case "割り注", "割書": return .warichu
+        case "割り注", "割书": return .warichu
         default: break
         }
         // 右に／左に／上に／下に: aozora2html moves 傍点 to the left side for 左
@@ -77,13 +77,13 @@ enum AozoraCommandTable {
             kind = .window
             rest = rest.dropFirst()
         }
-        guard rest.count == 4, rest.hasSuffix("見出し"), let level = headingLevel(rest.first) else { return nil }
+        guard rest.count == 4, rest.hasSuffix("见出し"), let level = headingLevel(rest.first) else { return nil }
         return (level, kind)
     }
 
     /// The level named anywhere in a command (ここから中見出し, 「…」は大見出し).
     static func headingLevel(in command: String) -> AozoraHeadingLevel? {
-        for (mark, level) in [("大見出し", AozoraHeadingLevel.large), ("中見出し", .medium), ("小見出し", .small)]
+        for (mark, level) in [("大见出し", AozoraHeadingLevel.large), ("中见出し", .medium), ("小见出し", .small)]
         where command.contains(mark) {
             return level
         }
@@ -105,7 +105,7 @@ enum AozoraCommandTable {
         }
     }
 
-    private static let sizePattern = try! NSRegularExpression(pattern: "(.*)段階(大き|小さ)な文字")
+    private static let sizePattern = try! NSRegularExpression(pattern: "(.*)段阶(大き|小さ)な文字")
 
     /// N段階大きな文字 → +N, N段階小さな文字 → −N (aozora2html PAT_CHARSIZE).
     static func sizeSteps(_ command: String) -> Int? {
@@ -120,10 +120,10 @@ enum AozoraCommandTable {
 
     static func pageBreak(_ command: String) -> AozoraPageBreakKind? {
         switch command {
-        case "改ページ", "改頁": return .page
+        case "改ページ", "改页": return .page
         case "改丁": return .leaf
         case "改段": return .column
-        case "改見開き": return .spread
+        case "改见开き": return .spread
         default: return nil
         }
     }
@@ -142,8 +142,8 @@ enum AozoraCommandTable {
     /// `structure` rules. A reader never sees them.
     static func isEditorial(_ command: String) -> Bool {
         if command.hasPrefix("本文") || command.hasPrefix("ここから本文") { return true }
-        let markers = ["底本", "ママ", "入力者", "校訂", "編集", "原文", "誤植", "脱字", "衍字", "誤訳", "誤記",
-                       "余分", "本当は", "ルビの「", "の誤り", "か？", "では「", "ルビは「"]
+        let markers = ["底本", "ママ", "入力者", "校订", "编集", "原文", "误植", "脱字", "衍字", "误訳", "误记",
+                       "余分", "本当は", "ルビの「", "の误り", "か？", "では「", "ルビは「"]
         return markers.contains { command.contains($0) }
     }
 

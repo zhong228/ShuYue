@@ -10,10 +10,10 @@ enum FixedPageReadingMode: Int, CaseIterable, Codable {
 
     var localizedName: String {
         switch self {
-        case .rtl:      return localized("從右到左")
-        case .ltr:      return localized("從左到右")
-        case .vertical: return localized("直向翻頁")
-        case .webtoon:  return localized("條漫")
+        case .rtl:      return localized("从右到左")
+        case .ltr:      return localized("从左到右")
+        case .vertical: return localized("直向翻页")
+        case .webtoon:  return localized("条漫")
         }
     }
 

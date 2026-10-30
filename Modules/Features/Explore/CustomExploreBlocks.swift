@@ -49,7 +49,7 @@ struct CustomExploreBlockView: View {
                     Text(block.component.displayTitle)
                         .font(DSFont.title3.weight(.bold))
                         .foregroundStyle(DSColor.textPrimary)
-                    Label(localized("書源已被刪除"), systemImage: "exclamationmark.triangle")
+                    Label(localized("书源已被删除"), systemImage: "exclamationmark.triangle")
                         .font(DSFont.footnote)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -151,14 +151,14 @@ private struct CustomExploreShelfBlock: View {
             .frame(width: DSLayout.customExploreCardCoverWidth, alignment: .leading)
             .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
-            .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+            .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
         } else {
             // The cover is hidden from VoiceOver; the link reads the book instead.
             cover
                 .contentShape(Rectangle())
                 .accessibilityElement()
                 .accessibilityLabel(display.book.name)
-                .accessibilityValue(display.isAudiobook ? localized("有聲書") : display.book.author)
+                .accessibilityValue(display.isAudiobook ? localized("有声书") : display.book.author)
         }
     }
 }
@@ -205,7 +205,7 @@ private struct CustomExploreRankingBlock: View {
                         withAnimation(reduceMotion ? nil : DSAnimation.standard) { isExpanded.toggle() }
                     } label: {
                         HStack(spacing: DSSpacing.xs) {
-                            Text(isExpanded ? localized("收起") : localized("顯示全部"))
+                            Text(isExpanded ? localized("收起") : localized("显示全部"))
                             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                                 .font(DSFont.caption.weight(.semibold))
                                 .accessibilityHidden(true)
@@ -281,7 +281,7 @@ private struct CustomExploreRankedRow: View {
         .padding(.vertical, DSSpacing.sm)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+        .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
     }
 }
 
@@ -362,7 +362,7 @@ private struct CustomExploreGridBlock: View {
                             }
                             .contentShape(Rectangle())
                             .accessibilityElement(children: .combine)
-                            .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+                            .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
                         }
                         .buttonStyle(.plain)
                     }
@@ -571,7 +571,7 @@ private struct CustomExploreWaterfallBlock: View {
         } else if let reason = paging.errorReason {
             Button(action: onLoadMore) {
                 VStack(spacing: DSSpacing.xs) {
-                    Label(localized("載入失敗，點按重試"), systemImage: "arrow.clockwise")
+                    Label(localized("载入失败，点按重试"), systemImage: "arrow.clockwise")
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.accent)
                     if !reason.isEmpty {
@@ -627,6 +627,6 @@ private struct CustomExploreWaterfallCard: View {
         .interfaceCardSurface(in: RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityValue(display.isAudiobook ? localized("有聲書") : "")
+        .accessibilityValue(display.isAudiobook ? localized("有声书") : "")
     }
 }

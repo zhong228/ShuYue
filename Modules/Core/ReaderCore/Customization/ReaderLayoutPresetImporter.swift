@@ -34,13 +34,13 @@ enum ReaderLayoutPresetImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedFile:
-            return localized("不支援的排版檔案格式")
+            return localized("不支援的排版档案格式")
         case .cannotReadFile:
-            return localized("無法讀取排版檔案")
+            return localized("无法读取排版档案")
         case .missingReadConfig:
-            return localized("壓縮檔中未找到 readConfig.json")
+            return localized("压缩档中未找到 readConfig.json")
         case .invalidReadConfig:
-            return localized("排版參數格式不正確")
+            return localized("排版参数格式不正确")
         }
     }
 }

@@ -32,7 +32,7 @@ struct ReaderNavigationContainer<Content: View>: View {
 
 #Preview {
     NavigationStack {
-        ReaderNavigationContainer { Text(localized("閱讀")) }
+        ReaderNavigationContainer { Text(localized("阅读")) }
             .environment(\.readerUsesParentNavigationStack, true)
     }
 }

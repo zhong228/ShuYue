@@ -33,7 +33,7 @@ enum ReaderSettingsImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyFile:
-            return localized("這個檔案沒有可匯入的內容。")
+            return localized("这个档案没有可汇入的内容。")
         }
     }
 }
@@ -231,7 +231,7 @@ enum ReaderOverlayLayoutPersistenceError: LocalizedError {
     case writeFailed
 
     var errorDescription: String? {
-        localized("無法儲存頁首頁尾設定")
+        localized("无法储存页首页尾设定")
     }
 }
 
@@ -259,7 +259,7 @@ enum ReaderSettingsExportSnapshot {
         let readerConfig = ReaderConfig.shared
         let style = readerConfig.chapterTitleStyle
         let snapshot = ReaderLayoutSnapshot(
-            name: localized("閱讀設定"),
+            name: localized("阅读设定"),
             fontSize: readerConfig.fontSize,
             isBold: readerConfig.readerFontBold,
             lineHeightMultiple: readerConfig.lineHeightMultiple,

@@ -54,7 +54,7 @@ enum ReaderBackgroundMigration {
             now: now,
             measure: measure
         )
-        let defaultName = localized("自訂背景")
+        let defaultName = localized("自订背景")
         let overrides = (defaults.dictionary(forKey: "yd_reader_text_color_overrides") as? [String: Int] ?? [:])
             .mapValues { UInt32(clamping: $0) }
 
@@ -239,7 +239,7 @@ enum ReaderBackgroundMigration {
         guard let themes = decode([AppearanceCustomTheme].self, key: GlobalSettings.customAppearanceThemesKey, defaults) else {
             return
         }
-        let defaultName = localized("自訂背景")
+        let defaultName = localized("自订背景")
         var backgrounds = GlobalSettings.loadReaderCustomBackgrounds(defaults: defaults)
         var renamed = Set<UUID>()
         for theme in themes where theme.originalExtras != nil {

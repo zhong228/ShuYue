@@ -131,7 +131,7 @@ final class AIReadingConversation: ObservableObject {
             } catch {
                 guard owns(frozen), let index = session.messages.firstIndex(where: { $0.id == turn.assistant }) else { return }
                 session.messages[index].isPending = false
-                session.messages[index].errorMessage = error is CancellationError ? localized("回覆已中止") : error.localizedDescription
+                session.messages[index].errorMessage = error is CancellationError ? localized("回复已中止") : error.localizedDescription
                 session.messages[index].provenance?.status = error is CancellationError ? .cancelled : .failed
                 requestID = nil; task = nil; persist()
             }
@@ -150,7 +150,7 @@ final class AIReadingConversation: ObservableObject {
         task?.cancel(); task = nil; requestID = nil
         for index in session.messages.indices where session.messages[index].isPending {
             session.messages[index].isPending = false
-            session.messages[index].errorMessage = localized("回覆已中止")
+            session.messages[index].errorMessage = localized("回复已中止")
             session.messages[index].provenance?.status = .cancelled
         }
         persist()

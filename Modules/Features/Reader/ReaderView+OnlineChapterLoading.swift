@@ -291,7 +291,7 @@ extension ReaderView {
                 .font(DSFont.fixed(size: 34))
                 .foregroundStyle(DSColor.textSecondary)
                 .accessibilityHidden(true)
-            Text(localized("章節載入失敗"))
+            Text(localized("章节载入失败"))
                 .font(DSFont.body.weight(.semibold))
                 .foregroundStyle(DSColor.textPrimary)
             Text(localized(message))
@@ -303,14 +303,14 @@ extension ReaderView {
                 // The source asked for a device id and got none, and the toggle that
                 // fixes it lives in 書源編輯 → 基本 — unreachable from here. Offer it
                 // where the failure is. See `AndroidIdentityRecovery`.
-                Text(localized("此書源要求裝置識別碼，目前沒有提供給它"))
+                Text(localized("此书源要求装置识别码，目前没有提供给它"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
                 Button {
                     enableAndroidIdentityAndRetry(source: repairSource)
                 } label: {
-                    Text(localized("提供裝置識別碼並重試"))
+                    Text(localized("提供装置识别码并重试"))
                         .font(DSFont.body.weight(.semibold))
                         .padding(.horizontal, DSSpacing.lg)
                 }
@@ -335,7 +335,7 @@ extension ReaderView {
         Button {
             retryCurrentChapterLoad()
         } label: {
-            Text(localized("重試"))
+            Text(localized("重试"))
                 .font(DSFont.body.weight(.semibold))
                 .padding(.horizontal, DSSpacing.lg)
         }

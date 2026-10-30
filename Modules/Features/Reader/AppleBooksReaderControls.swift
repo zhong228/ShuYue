@@ -101,7 +101,7 @@ struct AppleBooksReaderControls: View {
             VStack(spacing: DSSpacing.sm) {
                 progressMenuRow
 
-                menuRow(localized("書籤"), icon: "bookmark") {
+                menuRow(localized("书签"), icon: "bookmark") {
                     performPanelAction(onOpenBookmarks)
                 }
 
@@ -236,7 +236,7 @@ struct AppleBooksReaderControls: View {
                         }
                 )
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(localized("閱讀進度"))
+                .accessibilityLabel(localized("阅读进度"))
                 .accessibilityValue(progressAccessibilityValue(value))
                 .accessibilityAdjustableAction { direction in
                     adjustProgress(direction)
@@ -257,7 +257,7 @@ struct AppleBooksReaderControls: View {
                     .accessibilityHidden(true)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(localized("目錄"))
+            .accessibilityLabel(localized("目录"))
         }
         .frame(height: DSLayout.readerAppleBooksMenuRowHeight)
         .background(DSColor.neutralControlEmphasizedFill, in: Capsule())
@@ -366,19 +366,19 @@ struct AppleBooksReaderControls: View {
                 ReaderSecondaryAction(
                     id: .playback,
                     icon: "headphones",
-                    label: localized("聽書"),
+                    label: localized("听书"),
                     action: {}
                 ),
                 ReaderSecondaryAction(
                     id: .download,
                     icon: "arrow.down.circle",
-                    label: localized("下載"),
+                    label: localized("下载"),
                     action: {}
                 ),
                 ReaderSecondaryAction(
                     id: .changeSource,
                     icon: "arrow.left.and.right",
-                    label: localized("換源"),
+                    label: localized("换源"),
                     action: {}
                 ),
                 ReaderSecondaryAction(

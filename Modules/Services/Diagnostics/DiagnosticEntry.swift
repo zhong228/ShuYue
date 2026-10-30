@@ -45,13 +45,13 @@ enum DiagnosticSeverity: Int, Codable, CaseIterable, Comparable, Sendable {
 
     var localizedName: String {
         switch self {
-        case .trace:   return localized("追蹤")
-        case .info:    return localized("資訊")
+        case .trace:   return localized("追踪")
+        case .info:    return localized("资讯")
         case .notice:  return localized("提示")
         case .warning: return localized("警告")
-        case .error:   return localized("錯誤")
-        case .anomaly: return localized("異常")
-        case .fault:   return localized("嚴重")
+        case .error:   return localized("错误")
+        case .anomaly: return localized("异常")
+        case .fault:   return localized("严重")
         }
     }
 
@@ -87,14 +87,14 @@ enum DiagnosticCategory: String, Codable, CaseIterable, Sendable {
 
     var localizedName: String {
         switch self {
-        case .reader:   return localized("閱讀器")
-        case .network:  return localized("網路")
+        case .reader:   return localized("阅读器")
+        case .network:  return localized("网路")
         case .parse:    return localized("解析")
         case .cache:    return localized("快取")
-        case .tts:      return localized("朗讀")
+        case .tts:      return localized("朗读")
         case .sync:     return localized("同步")
         case .security: return localized("安全")
-        case .crash:    return localized("崩潰")
+        case .crash:    return localized("崩溃")
         // Deliberately not the 一般 key: that one is already the font weight
         // Regular in 閱讀器排版, and this category inherited its English
         // translation, rendering the catch-all category as "Regular".

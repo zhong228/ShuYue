@@ -9,7 +9,7 @@ enum AIReadingEvidence {
     static func collect(context: AIQuestionContext, index: AIBookRetrievalIndex) throws -> [AIQuestionEvidence] {
         if let selection = context.selection {
             guard selection.validated(in: context.source, boundary: context.boundary),
-                  context.source.chunkSections.indices.contains(selection.spineIndex) else { throw LLMError.providerError(localized("選文已變更或超出目前閱讀範圍，請重新選取。")) }
+                  context.source.chunkSections.indices.contains(selection.spineIndex) else { throw LLMError.providerError(localized("选文已变更或超出目前阅读范围，请重新选取。")) }
             let section = context.source.chunkSections[selection.spineIndex]
             var chunk = AIContentChunk(id: selectionIDPrefix + "\(selection.spineIndex):\(selection.range.location):\(selection.range.length)",
                 bookID: context.bookID, sectionID: section.id, ordinal: 0, text: selection.text,
@@ -123,19 +123,19 @@ enum AIReadingEvidence {
     static func instruction(_ context: AIQuestionContext) -> String {
         let task: String
         switch context.action {
-        case .question: task = "回答讀者的問題，延續安全的對話背景。"
-        case .explain, .lookup: task = "解釋選取文字在原文中的意思、指代及必要背景，先給簡潔說明。"
+        case .question: task = "回答读者的问题，延续安全的对话背景。"
+        case .explain, .lookup: task = "解释选取文字在原文中的意思、指代及必要背景，先给简洁说明。"
         case .translate:
             let language = context.answerLanguage.promptName
-            task = "把選取文字翻譯成\(language)，保留段落和語氣，必要譯註另外列出。原文已經是\(language)時：文言、古文譯成現代白話；否則說明它已是\(language)，再用白話解釋難懂的地方。"
-        case .chapterSummary: task = "摘要目前章節在允許範圍內的內容；若提供的正文不完整，明確說明只涵蓋部分。"
-        case .recap: task = "以最近已讀片段整理前情，幫助讀者接續閱讀，不聲稱涵蓋全部劇情。"
-        case .custom: task = "依讀者的自訂任務分析提供的內容。"
-        case .annotationReview: task = "整理讀者在已讀範圍內的劃線與筆記：依主題、人物或情節歸類，說明每處劃線在故事裡的作用，並回應筆記中的想法。筆記是讀者的觀點，不是書中事實。"
+            task = "把选取文字翻译成\(language)，保留段落和语气，必要译注另外列出。原文已经是\(language)时：文言、古文译成现代白话；否则说明它已是\(language)，再用白话解释难懂的地方。"
+        case .chapterSummary: task = "摘要目前章节在允许范围内的内容；若提供的正文不完整，明确说明只涵盖部分。"
+        case .recap: task = "以最近已读片段整理前情，帮助读者接续阅读，不声称涵盖全部剧情。"
+        case .custom: task = "依读者的自订任务分析提供的内容。"
+        case .annotationReview: task = "整理读者在已读范围内的划线与笔记：依主题、人物或情节归类，说明每处划线在故事里的作用，并回应笔记中的想法。笔记是读者的观点，不是书中事实。"
         }
-        let selection = context.selection == nil ? "" : "讀者選取的文字在 selected-text 標記裡，只有它是「選取文字」；其他片段是它前後的上下文。\n"
-        return task + "\n" + selection + "回答裡不要提到 selected-text、current-reading-context 這些資料標記。\n" + (context.allowsBackgroundKnowledge ? "概念、典故與翻譯可使用模型知識，另以『補充解釋』標示；不得以模型記憶補寫本書情節。找不到書中事實時說明無法確認。" : "書中事實只依提供的原文。") +
-            (context.boundary.wholeBook ? "" : "\n禁止揭露目前已讀原文之外的情節、身分或結局，即使你知道本書。")
+        let selection = context.selection == nil ? "" : "读者选取的文字在 selected-text 标记里，只有它是「选取文字」；其他片段是它前后的上下文。\n"
+        return task + "\n" + selection + "回答里不要提到 selected-text、current-reading-context 这些资料标记。\n" + (context.allowsBackgroundKnowledge ? "概念、典故与翻译可使用模型知识，另以『补充解释』标示；不得以模型记忆补写本书情节。找不到书中事实时说明无法确认。" : "书中事实只依提供的原文。") +
+            (context.boundary.wholeBook ? "" : "\n禁止揭露目前已读原文之外的情节、身分或结局，即使你知道本书。")
     }
 }
 

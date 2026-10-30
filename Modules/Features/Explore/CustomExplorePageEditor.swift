@@ -39,7 +39,7 @@ struct CustomExplorePageEditor: View {
                 .onMove { store.moveComponents(fromOffsets: $0, toOffset: $1, inPage: pageID) }
             } footer: {
                 if components.contains(where: { $0.kind == .waterfall }) {
-                    Text(localized("錯位瀑布流會一直往下載入，固定在最後。"))
+                    Text(localized("错位瀑布流会一直往下载入，固定在最后。"))
                         .dsSectionFooter()
                 }
             }
@@ -48,14 +48,14 @@ struct CustomExplorePageEditor: View {
         .overlay {
             if components.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("還沒有元件"), systemImage: "rectangle.3.group")
+                    UnavailableLabel(localized("还没有元件"), systemImage: "rectangle.3.group")
                 } actions: {
                     Button(localized("新增元件")) { sheet = .add }
                         .buttonStyle(.borderedProminent)
                 }
             }
         }
-        .navigationTitle(localized("編輯元件"))
+        .navigationTitle(localized("编辑元件"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .explore)
         .toolbar {

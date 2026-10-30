@@ -111,16 +111,16 @@ enum CalibreWirelessError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .invalidFrame: localized("Calibre 傳輸資料格式無效")
-        case .unsupportedProtocol: localized("此 Calibre 無線裝置協定版本尚未支援")
-        case .disconnected: localized("Calibre 連線已中斷，未完成的檔案不會加入書架")
-        case .invalidAddress: localized("請輸入有效的電腦位址與連接埠")
-        case .invalidBook: localized("Calibre 傳來的書籍格式或大小無效")
-        case .insufficientSpace: localized("可用空間不足，無法接收書籍")
-        case .passwordRejected: localized("Calibre 無線裝置密碼不正確")
-        case .busy: localized("Calibre 已連接其他裝置，請先中斷該連線")
-        case .unsupportedCommand: localized("此 Calibre 裝置操作尚未支援")
-        case .changedBook: localized("此 Calibre 書籍已有不同的本機副本，請先移除舊副本再傳送")
+        case .invalidFrame: localized("Calibre 传输资料格式无效")
+        case .unsupportedProtocol: localized("此 Calibre 无线装置协定版本尚未支援")
+        case .disconnected: localized("Calibre 连线已中断，未完成的档案不会加入书架")
+        case .invalidAddress: localized("请输入有效的电脑位址与连接埠")
+        case .invalidBook: localized("Calibre 传来的书籍格式或大小无效")
+        case .insufficientSpace: localized("可用空间不足，无法接收书籍")
+        case .passwordRejected: localized("Calibre 无线装置密码不正确")
+        case .busy: localized("Calibre 已连接其他装置，请先中断该连线")
+        case .unsupportedCommand: localized("此 Calibre 装置操作尚未支援")
+        case .changedBook: localized("此 Calibre 书籍已有不同的本机副本，请先移除旧副本再传送")
         case .message(let message): message
         }
     }

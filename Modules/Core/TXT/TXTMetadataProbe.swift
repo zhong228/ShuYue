@@ -32,7 +32,7 @@ enum TXTMetadataProbe {
         let explicitTitle = firstCapture(
             in: sample,
             patterns: [
-                #"(?im)^\s*(?:書名|书名|作品名|作品名稱|作品名称|Title)\s*[：:﹕]\s*(.{1,80}?)\s*$"#
+                #"(?im)^\s*(?:书名|书名|作品名|作品名称|作品名称|Title)\s*[：:﹕]\s*(.{1,80}?)\s*$"#
             ],
             maximumLength: 80
         )

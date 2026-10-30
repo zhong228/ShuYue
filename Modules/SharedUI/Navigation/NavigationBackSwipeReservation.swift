@@ -164,7 +164,7 @@ final class NavigationBackSwipeReservationController: NSObject, UIGestureRecogni
 
 #Preview {
     NavigationStack {
-        Text(localized("閱讀"))
+        Text(localized("阅读"))
             .reservingNavigationBackSwipe()
     }
 }

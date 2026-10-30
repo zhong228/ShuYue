@@ -52,12 +52,12 @@ enum RemoteLibraryError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingConnection: return localized("找不到書庫連線，請重新設定伺服器")
-        case .unsupportedFormat: return localized("此格式暫不支援閱讀")
-        case .missingBook: return localized("找不到閱讀紀錄")
-        case .contentChanged: return localized("遠端書籍已更新，請返回書籍詳情重新開啟")
-        case .invalidResponse: return localized("伺服器傳回的書籍資料無效")
-        case .offlineContentMissing: return localized("目前沒有可用的離線內容，請連線後再試")
+        case .missingConnection: return localized("找不到书库连线，请重新设定伺服器")
+        case .unsupportedFormat: return localized("此格式暂不支援阅读")
+        case .missingBook: return localized("找不到阅读纪录")
+        case .contentChanged: return localized("远端书籍已更新，请返回书籍详情重新开启")
+        case .invalidResponse: return localized("伺服器传回的书籍资料无效")
+        case .offlineContentMissing: return localized("目前没有可用的离线内容，请连线后再试")
         }
     }
 }

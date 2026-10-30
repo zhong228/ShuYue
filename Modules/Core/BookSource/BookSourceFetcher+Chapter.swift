@@ -115,7 +115,7 @@ extension BookSourceFetcher {
         // #region agent log
         let baseForReferer = effectiveReferer
         _dbgLog(
-            "fetchChapter 進入",
+            "fetchChapter 进入",
             data: [
                 "refUrl": String(ref.url.prefix(120)),
                 "cleanUrl": String(cleanUrl.prefix(120)),

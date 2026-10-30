@@ -122,7 +122,7 @@ private struct ReaderStyleImportPresentationModifier: ViewModifier {
                 Alert(
                     title: Text(localized(alert.titleKey)),
                     message: Text(alert.message),
-                    dismissButton: .default(Text(localized("確定")))
+                    dismissButton: .default(Text(localized("确定")))
                 )
             }
             .sheet(item: $importProgress) { progress in
@@ -165,7 +165,7 @@ private struct ReaderStyleImportPresentationModifier: ViewModifier {
                 )
             } catch {
                 alert = ReaderStyleImportAlert(
-                    titleKey: "匯入失敗",
+                    titleKey: "汇入失败",
                     message: error.localizedDescription
                 )
             }
@@ -186,7 +186,7 @@ private struct ReaderStyleImportPresentationModifier: ViewModifier {
             ))
         } catch {
             alert = ReaderStyleImportAlert(
-                titleKey: "匯入失敗",
+                titleKey: "汇入失败",
                 message: error.localizedDescription
             )
         }

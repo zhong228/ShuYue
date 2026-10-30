@@ -44,11 +44,11 @@ extension SearchBookListRowContent {
     init(shelfBook book: ReadingBook) {
         self.init(
             title: book.title,
-            titleTag: book.resolvedPipelineKind == .audio ? localized("有聲書") : nil,
+            titleTag: book.resolvedPipelineKind == .audio ? localized("有声书") : nil,
             author: book.author,
             detail: book.currentPosition >= 0.99
-                ? localized("已讀完")
-                : String(format: localized("已讀 %d%%"), Int(book.currentPosition * 100))
+                ? localized("已读完")
+                : String(format: localized("已读 %d%%"), Int(book.currentPosition * 100))
         )
     }
 
@@ -65,15 +65,15 @@ extension SearchBookListRowContent {
 
     static func kindTitle(_ kind: OnlineBookContentKind) -> String {
         switch kind {
-        case .text: localized("小說")
-        case .audio: localized("有聲書")
-        case .manga: localized("漫畫")
+        case .text: localized("小说")
+        case .audio: localized("有声书")
+        case .manga: localized("漫画")
         }
     }
 
     /// Audiobooks carry the tag, where the cover used to carry a headphones badge.
     static func titleTag(for kind: OnlineBookContentKind) -> String? {
-        kind == .audio ? localized("有聲書") : nil
+        kind == .audio ? localized("有声书") : nil
     }
 }
 
@@ -265,20 +265,20 @@ enum SearchTitleTag {
 #Preview("搜索列") {
     List {
         SearchBookListRow(content: SearchBookListRowContent(
-            title: "斗羅大陸",
+            title: "斗罗大陆",
             titleTag: nil,
             author: "唐家三少",
-            detail: "小說 · 3 源"
+            detail: "小说 · 3 源"
         )) {
-            BookCoverImage(coverURL: "", title: "斗羅大陸", author: "唐家三少")
+            BookCoverImage(coverURL: "", title: "斗罗大陆", author: "唐家三少")
         }
         SearchBookListRow(content: SearchBookListRowContent(
-            title: "三體：地球往事・黑暗森林・死神永生（廣播劇全集）",
-            titleTag: "有聲書",
-            author: "劉慈欣",
-            detail: "有聲書 · 1 源"
+            title: "三体：地球往事・黑暗森林・死神永生（广播剧全集）",
+            titleTag: "有声书",
+            author: "刘慈欣",
+            detail: "有声书 · 1 源"
         )) {
-            BookCoverImage(coverURL: "", title: "三體", author: "劉慈欣")
+            BookCoverImage(coverURL: "", title: "三体", author: "刘慈欣")
         }
     }
     .listStyle(.plain)

@@ -459,7 +459,7 @@ struct HomeView: View {
             }
             .themedAppSurface(for: .bookshelf)
             .animation(DSAnimation.standard, value: store.books.isEmpty)
-            .rootTabTitle(localized("書庫"), onScroll: .fadesTitle)
+            .rootTabTitle(localized("书库"), onScroll: .fadesTitle)
             .toolbar { shelfToolbar(addsBooks: true) }
             // 书悦入口与墨悦不同：添加入口是右下角悬浮加号，多选操作条也悬浮在
             // 书架内容之上，而不是系统导航栏/bottomBar。
@@ -523,7 +523,7 @@ struct HomeView: View {
             ) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
                     DismissalSequencedActionChooser(
-                        title: localized("添加圖書"),
+                        title: localized("添加图书"),
                         actions: [
                             DismissalSequencedAction(
                                 route: .local,
@@ -623,23 +623,23 @@ struct HomeView: View {
                 }
             }
             .alert(
-                localized("確認刪除"),
+                localized("确认删除"),
                 isPresented: Binding(
                     get: { bookToDelete != nil },
                     set: { if !$0 { bookToDelete = nil } }
                 )
             ) {
-                Button(localized("刪除"), role: .destructive) {
+                Button(localized("删除"), role: .destructive) {
                     if let b = bookToDelete { store.delete(bookId: b.id) }
                 }
                 Button(localized("取消"), role: .cancel) {}
             } message: {
                 if let b = bookToDelete {
-                    Text(String(format: localized("確定要從書坊刪除《%@》嗎？"), b.title))
+                    Text(String(format: localized("确定要从书坊删除《%@》吗？"), b.title))
                 }
             }
-            .alert(localized("確認刪除"), isPresented: $showBulkDeleteAlert) {
-                Button(localized("刪除"), role: .destructive) {
+            .alert(localized("确认删除"), isPresented: $showBulkDeleteAlert) {
+                Button(localized("删除"), role: .destructive) {
                     let ids = selectedBookIds
                     withAnimation(reduceMotion ? nil : DSAnimation.standard) {
                         ids.forEach { store.delete(bookId: $0) }
@@ -648,7 +648,7 @@ struct HomeView: View {
                 }
                 Button(localized("取消"), role: .cancel) {}
             } message: {
-                Text(String(format: localized("確定要刪除 %d 本書嗎？"), selectedBookIds.count))
+                Text(String(format: localized("确定要删除 %d 本书吗？"), selectedBookIds.count))
             }
             // Keep the probe inside this NavigationStack's root destination.
             // Its responder chain resolves this shelf's UIKit navigation
@@ -715,9 +715,9 @@ struct HomeView: View {
                 .shadow(color: DSColor.appAccent.opacity(0.35), radius: 12, x: 0, y: 6)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("添加圖書"))
+        .accessibilityLabel(localized("添加图书"))
         .accessibilityIdentifier("home_add_book")
-        .accessibilityHint(localized("打開添加圖書動作單"))
+        .accessibilityHint(localized("打开添加图书动作单"))
     }
 
     /// 多选模式底部的悬浮操作条：移动书架 · 删除 · 分享，左侧全选。不占系统
@@ -732,7 +732,7 @@ struct HomeView: View {
                 }
             } label: {
                 Label(
-                    localized(isAllSelected ? "全不選" : "全選"),
+                    localized(isAllSelected ? "全不选" : "全选"),
                     systemImage: isAllSelected ? "checkmark.circle.fill" : "checkmark.circle"
                 )
                 .font(DSFont.subheadline.weight(.medium))
@@ -754,7 +754,7 @@ struct HomeView: View {
             Button(role: .destructive) {
                 if !selectedBookIds.isEmpty { showBulkDeleteAlert = true }
             } label: {
-                Label(localized("刪除"), systemImage: "trash")
+                Label(localized("删除"), systemImage: "trash")
                     .font(DSFont.subheadline.weight(.medium))
                     .foregroundStyle(DSColor.destructive)
             }
@@ -795,7 +795,7 @@ struct HomeView: View {
             }
         } label: {
             // Two `Text`s: the second is the menu row's subtitle.
-            Text(localized("智能歸類"))
+            Text(localized("智能归类"))
             if locked {
                 Text(localized("需要 Pro"))
             }
@@ -808,7 +808,7 @@ struct HomeView: View {
             Button {
                 withAnimation(reduceMotion ? nil : DSAnimation.standard) { editMode = .active }
             } label: {
-                Label(localized("多選"), systemImage: "checkmark.circle")
+                Label(localized("多选"), systemImage: "checkmark.circle")
             }
             organizerMenuItem
 
@@ -819,7 +819,7 @@ struct HomeView: View {
             Button {
                 showScrapeView = true
             } label: {
-                Label(localized("補全書封"), systemImage: "sparkle.magnifyingglass")
+                Label(localized("补全书封"), systemImage: "sparkle.magnifyingglass")
             }
 
             Divider()
@@ -835,10 +835,10 @@ struct HomeView: View {
             Divider()
 
             Picker("", selection: $sortOrder) {
-                Text(localized("最近閱讀")).tag(BookSortOrder.recentlyRead.rawValue)
-                Text(localized("書名")).tag(BookSortOrder.title.rawValue)
+                Text(localized("最近阅读")).tag(BookSortOrder.recentlyRead.rawValue)
+                Text(localized("书名")).tag(BookSortOrder.title.rawValue)
                 Text(localized("作者")).tag(BookSortOrder.author.rawValue)
-                Text(localized("手動")).tag(BookSortOrder.manual.rawValue)
+                Text(localized("手动")).tag(BookSortOrder.manual.rawValue)
             }
             .pickerStyle(.inline)
             .labelsHidden()
@@ -958,7 +958,7 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-                    .accessibilityLabel(localized("分組"))
+                    .accessibilityLabel(localized("分组"))
                     .accessibilityValue(page.isEmpty ? localized("全部") : page)
                     .accessibilityIdentifier("home_group_pill_\(page.isEmpty ? "all" : page)")
                 }
@@ -1429,7 +1429,7 @@ struct EditBookSheet: View {
                             } label: {
                                 Image(systemName: "xmark")
                             }
-                            .accessibilityLabel(localized("關閉"))
+                            .accessibilityLabel(localized("关闭"))
                         }
                         saveToolbarItem
                     }
@@ -1467,16 +1467,16 @@ struct EditBookSheet: View {
                 .padding(.bottom, DSSpacing.xl)
             }
             .softScrollEdges()
-            .navigationTitle(localized("書籍資訊"))
+            .navigationTitle(localized("书籍资讯"))
             .themedAppSurface(for: .bookshelf)
             .alert(
-                localized("封面設定失敗"),
+                localized("封面设定失败"),
                 isPresented: Binding(
                     get: { coverErrorMessage != nil },
                     set: { if !$0 { coverErrorMessage = nil } }
                 )
             ) {
-                Button(localized("確定"), role: .cancel) {}
+                Button(localized("确定"), role: .cancel) {}
             } message: {
                 Text(coverErrorMessage ?? "")
             }
@@ -1504,17 +1504,17 @@ struct EditBookSheet: View {
 
     private var infoCardSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(localized("基本資訊"))
+            Text(localized("基本资讯"))
                 .font(DSFont.subheadline.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
 
             VStack(spacing: 0) {
-                infoField(label: localized("書名"), text: $titleInput, placeholder: localized("書名"))
+                infoField(label: localized("书名"), text: $titleInput, placeholder: localized("书名"))
                 Divider().padding(.leading, DSSpacing.md)
                 infoField(label: localized("作者"), text: $authorInput, placeholder: localized("作者"))
                 Divider().padding(.leading, DSSpacing.md)
-                infoField(label: localized("分組"), text: $groupInput, placeholder: localized("未分組"))
+                infoField(label: localized("分组"), text: $groupInput, placeholder: localized("未分组"))
             }
             .background(DSColor.surface)
             .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
@@ -1575,7 +1575,7 @@ struct EditBookSheet: View {
 
     private var progressCardSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(localized("閱讀進度"))
+            Text(localized("阅读进度"))
                 .font(DSFont.subheadline.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -1589,7 +1589,7 @@ struct EditBookSheet: View {
                         Text("\(Int(book.currentPosition * 100))%")
                             .font(DSFont.title2.weight(.bold))
                             .foregroundStyle(DSColor.textPrimary)
-                        Text(localized("目前進度"))
+                        Text(localized("目前进度"))
                             .font(DSFont.caption)
                             .foregroundStyle(DSColor.textSecondary)
                     }
@@ -1599,12 +1599,12 @@ struct EditBookSheet: View {
                 Divider()
 
                 HStack(spacing: DSSpacing.lg) {
-                    infoStat(icon: "calendar", label: localized("加入時間"), value: book.addedDate, style: .date)
+                    infoStat(icon: "calendar", label: localized("加入时间"), value: book.addedDate, style: .date)
                     Divider().frame(height: 32)
                     infoStat(
                         icon: "doc.text",
-                        label: localized("來源"),
-                        value: book.source == "local" ? localized("本機文件") : localized("網頁匯入"),
+                        label: localized("来源"),
+                        value: book.source == "local" ? localized("本机文件") : localized("网页汇入"),
                         style: .text
                     )
                 }
@@ -1671,22 +1671,22 @@ struct EditBookSheet: View {
                 }
                 coverActionButton(
                     icon: "books.vertical",
-                    label: localized("換封面"),
+                    label: localized("换封面"),
                     isDestructive: false
                 ) {
                     showChangeCover = true
                 }
                 ImageSourcePickerButton(
-                    accessibilityTitle: localized("選擇封面圖片"),
+                    accessibilityTitle: localized("选择封面图片"),
                     onPick: handleCoverPick
                 ) {
-                    coverActionLabel(icon: "photo", label: localized("選擇圖片"), isDestructive: false)
+                    coverActionLabel(icon: "photo", label: localized("选择图片"), isDestructive: false)
                 }
                 .disabled(isApplyingCover)
                 if liveBook.hasCustomCover {
                     coverActionButton(
                         icon: "arrow.uturn.backward",
-                        label: localized("重設封面"),
+                        label: localized("重设封面"),
                         isDestructive: true
                     ) {
                         store.resetCover(bookId: book.id)
@@ -1731,12 +1731,12 @@ struct EditBookSheet: View {
     private var coverUrlPanel: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             HStack(spacing: DSSpacing.sm) {
-                TextField(localized("封面網址"), text: $coverUrlInput)
+                TextField(localized("封面网址"), text: $coverUrlInput)
                     .font(DSFont.body)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
-                    .accessibilityLabel(localized("封面網址"))
+                    .accessibilityLabel(localized("封面网址"))
 
                 Button {
                     applyCover(url: coverUrlInput, sourceId: liveBook.bookSourceId)
@@ -1758,7 +1758,7 @@ struct EditBookSheet: View {
                     .stroke(DSColor.separator, lineWidth: 0.5)
             )
 
-            Text(localized("貼上圖片網址後，點箭頭下載為封面。"))
+            Text(localized("贴上图片网址后，点箭头下载为封面。"))
                 .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -1869,7 +1869,7 @@ struct EditBookSheet: View {
             if applied {
                 coverUrlInput = trimmed
             } else {
-                coverErrorMessage = localized("無法下載這張封面，請換一張或檢查網路。")
+                coverErrorMessage = localized("无法下载这张封面，请换一张或检查网路。")
             }
         }
     }
@@ -1880,7 +1880,7 @@ struct EditBookSheet: View {
             storePickedCover(data)
         case .success(.file(let url)):
             guard let data = try? Data(contentsOf: url) else {
-                coverErrorMessage = localized("無法讀取圖片。")
+                coverErrorMessage = localized("无法读取图片。")
                 return
             }
             storePickedCover(data)
@@ -1891,7 +1891,7 @@ struct EditBookSheet: View {
 
     private func storePickedCover(_ data: Data) {
         guard store.applyCustomCover(bookId: book.id, imageData: data) else {
-            coverErrorMessage = localized("無法讀取圖片。")
+            coverErrorMessage = localized("无法读取图片。")
             return
         }
         coverUrlInput = ""
@@ -1951,10 +1951,10 @@ struct EmptyLibraryView: View {
                 }
                 .accessibilityHidden(true)
 
-                Text(localized("書庫還是空的"))
+                Text(localized("书库还是空的"))
                     .font(DSFont.serifSectionTitle)
                     .foregroundStyle(DSColor.textPrimary)
-                Text(localized("匯入 TXT 文件，或是輸入網址\n抓取網頁小說加入書庫"))
+                Text(localized("汇入 TXT 文件，或是输入网址\n抓取网页小说加入书库"))
                     .font(DSFont.subheadline)
                     .foregroundColor(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1964,7 +1964,7 @@ struct EmptyLibraryView: View {
                 Button {
                     showAdd = true
                 } label: {
-                    Label(localized("導入本地"), systemImage: "folder.badge.plus")
+                    Label(localized("导入本地"), systemImage: "folder.badge.plus")
                         .font(DSFont.headline.weight(.semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 28)
@@ -1976,7 +1976,7 @@ struct EmptyLibraryView: View {
                 NavigationLink {
                     SearchView()
                 } label: {
-                    Label(localized("從書源獲取"), systemImage: "sparkle.magnifyingglass")
+                    Label(localized("从书源获取"), systemImage: "sparkle.magnifyingglass")
                         .font(DSFont.subheadline.weight(.medium))
                         .foregroundStyle(DSColor.appAccent)
                         .padding(.horizontal, 20)
@@ -1989,7 +1989,7 @@ struct EmptyLibraryView: View {
                 Button {
                     rootTabSelection?.wrappedValue = .explore
                 } label: {
-                    Label(localized("瀏覽書城"), systemImage: "storefront")
+                    Label(localized("浏览书城"), systemImage: "storefront")
                         .font(DSFont.subheadline.weight(.medium))
                         .foregroundStyle(DSColor.textPrimary)
                         .padding(.horizontal, 20)
@@ -2043,10 +2043,10 @@ struct BookRow: View {
                 .accessibilityAction { openBook() }
                 .accessibilityActions {
                     if let onShowDetail {
-                        Button(localized("書籍詳情")) { onShowDetail() }
+                        Button(localized("书籍详情")) { onShowDetail() }
                     }
-                    Button(localized("編輯書籍資訊")) { onEdit() }
-                    Button(localized("刪除書籍"), role: .destructive) { onDelete() }
+                    Button(localized("编辑书籍资讯")) { onEdit() }
+                    Button(localized("删除书籍"), role: .destructive) { onDelete() }
                 }
                 .onLongPressGesture(minimumDuration: 0.5) {
                     onLongPressSelection?()
@@ -2169,7 +2169,7 @@ struct BookRow: View {
             .padding(.vertical, 2)
             .background(DSColor.appAccent)
             .clipShape(Capsule())
-            .accessibilityLabel(localized("有新章節"))
+            .accessibilityLabel(localized("有新章节"))
     }
 
     @ViewBuilder
@@ -2183,7 +2183,7 @@ struct BookRow: View {
                 .background(DSColor.appAccentDark)
                 .clipShape(Capsule())
         } else if book.currentPosition >= 0.99 {
-            Text(localized("已讀完"))
+            Text(localized("已读完"))
                 .font(DSFont.fixed(size: 12))
                 .foregroundColor(DSColor.textSecondary)
         } else {
@@ -2241,7 +2241,7 @@ private struct BookSyncIndicator: View {
             }
         }
         .frame(width: 26, height: 26)
-        .accessibilityLabel(localized("下載中"))
+        .accessibilityLabel(localized("下载中"))
     }
 }
 
@@ -2312,7 +2312,7 @@ struct BookGridCell: View {
                             .background(DSColor.appAccent)
                             .clipShape(Capsule())
                             .padding(6)
-                            .accessibilityLabel(localized("有新章節"))
+                            .accessibilityLabel(localized("有新章节"))
                     }
                 }
                 // While 選取 is on, a cover out of the selection dims and one in it
@@ -2377,10 +2377,10 @@ struct BookGridCell: View {
         .accessibilityActions {
             if !isEditing {
                 if let onShowDetail {
-                    Button(localized("書籍詳情")) { onShowDetail() }
+                    Button(localized("书籍详情")) { onShowDetail() }
                 }
-                Button(localized("編輯書籍資訊")) { onEdit() }
-                Button(localized("刪除書籍"), role: .destructive) { onDelete() }
+                Button(localized("编辑书籍资讯")) { onEdit() }
+                Button(localized("删除书籍"), role: .destructive) { onDelete() }
             }
         }
         .onLongPressGesture(minimumDuration: 0.5) {
@@ -2568,7 +2568,7 @@ struct BookshelfPlankCell: View {
                         .background(DSColor.appAccent)
                         .clipShape(Capsule())
                         .padding(6)
-                        .accessibilityLabel(localized("有新章節"))
+                        .accessibilityLabel(localized("有新章节"))
                 }
             }
             .opacity(isSelecting && !isSelected ? DSLayout.bookshelfUnselectedCoverOpacity : 1)
@@ -2587,25 +2587,25 @@ struct BookshelfPlankCell: View {
             Button {
                 onLongPressSelection?()
             } label: {
-                Label(localized("多選"), systemImage: "checkmark.circle")
+                Label(localized("多选"), systemImage: "checkmark.circle")
             }
             Button {
                 onEdit()
             } label: {
-                Label(localized("編輯書籍資訊"), systemImage: "info.circle")
+                Label(localized("编辑书籍资讯"), systemImage: "info.circle")
             }
             if let onShowDetail {
                 Button {
                     onShowDetail()
                 } label: {
-                    Label(localized("書籍詳情"), systemImage: "globe")
+                    Label(localized("书籍详情"), systemImage: "globe")
                 }
             }
             Divider()
             Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label(localized("刪除書籍"), systemImage: "trash")
+                Label(localized("删除书籍"), systemImage: "trash")
             }
         })
         .onChange(of: liveCoverFrame) { _, frame in
@@ -2867,7 +2867,7 @@ private struct BookshelfAddToGroupSheet: View {
                     showsNewGroupAlert = true
                 } label: {
                     Label {
-                        Text(localized("新建分組"))
+                        Text(localized("新建分组"))
                             .foregroundStyle(DSColor.textPrimary)
                     } icon: {
                         Image(systemName: "plus")
@@ -2895,7 +2895,7 @@ private struct BookshelfAddToGroupSheet: View {
                     }
                 }
             } header: {
-                Text(localized("加入分組"))
+                Text(localized("加入分组"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
                     .textCase(nil)
@@ -2920,8 +2920,8 @@ private struct BookshelfAddToGroupSheet: View {
         .softScrollEdges()
         .themedAppSurface(for: .bookshelf)
         .presentationDetents(detents)
-        .alert(localized("新建分組"), isPresented: $showsNewGroupAlert) {
-            TextField(localized("分組名稱"), text: $newGroupName)
+        .alert(localized("新建分组"), isPresented: $showsNewGroupAlert) {
+            TextField(localized("分组名称"), text: $newGroupName)
             Button(localized("新建")) {
                 choose(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines))
             }
@@ -2956,14 +2956,14 @@ private struct BookOverflowMenu: View {
         Menu {
             if let onShowDetail {
                 Button { onShowDetail() } label: {
-                    Label(localized("書籍詳情"), systemImage: "book")
+                    Label(localized("书籍详情"), systemImage: "book")
                 }
             }
             Button { onEdit() } label: {
-                Label(localized("編輯書籍資訊"), systemImage: "pencil")
+                Label(localized("编辑书籍资讯"), systemImage: "pencil")
             }
             Button(role: .destructive) { onDelete() } label: {
-                Label(localized("刪除書籍"), systemImage: "trash")
+                Label(localized("删除书籍"), systemImage: "trash")
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -2982,8 +2982,8 @@ private struct BookOverflowMenu: View {
 #if DEBUG
 private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
     var book = ReadingBook(
-        title: "示範線上小說",
-        author: "示範作者",
+        title: "示范线上小说",
+        author: "示范作者",
         source: "https://example.com",
         contentFilename: ""
     )
@@ -2991,14 +2991,14 @@ private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
     book.currentPosition = 0.42
     // A shelf record: the summary of its table of contents, not the list.
     book.applyChapterSummary(from: [
-        OnlineChapterRef(index: 0, title: "第一章 開始", url: "https://example.com/1"),
-        OnlineChapterRef(index: 1, title: "第一百零八章 大結局", url: "https://example.com/108"),
+        OnlineChapterRef(index: 0, title: "第一章 开始", url: "https://example.com/1"),
+        OnlineChapterRef(index: 1, title: "第一百零八章 大结局", url: "https://example.com/108"),
     ])
     book.hasNewChapterUpdate = hasUpdate
     return book
 }
 
-#Preview("BookRow – 有更新 / 無更新") {
+#Preview("BookRow – 有更新 / 无更新") {
     List {
         BookRow(book: previewOnlineBook(hasUpdate: true), onTap: { _ in }, onEdit: {}, onDelete: {})
         BookRow(book: previewOnlineBook(hasUpdate: false), onTap: { _ in }, onEdit: {}, onDelete: {})
@@ -3007,7 +3007,7 @@ private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
     .listStyle(.plain)
 }
 
-#Preview("BookGridCell – 有更新 / 無更新") {
+#Preview("BookGridCell – 有更新 / 无更新") {
     LazyVGrid(
         columns: Array(repeating: GridItem(.flexible(), spacing: DSSpacing.md), count: 3),
         spacing: DSSpacing.lg
@@ -3026,7 +3026,7 @@ private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
     .padding()
 }
 
-#Preview("BookGridCell – 選取中") {
+#Preview("BookGridCell – 选取中") {
     @Previewable @State var selected: Set<Int> = [1]
     let coverSize = CGSize(width: 110, height: 165)
     LazyVGrid(
@@ -3054,14 +3054,14 @@ private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
     .padding()
 }
 
-#Preview("分組資料夾 – 列表／格狀") {
+#Preview("分组资料夹 – 列表／格状") {
     let books = (0..<3).map { previewOnlineBook(hasUpdate: $0 == 0) }
     let coverSize = CGSize(width: 110, height: 165)
     VStack(spacing: 0) {
         List {
             BookshelfFolderRow(name: "在追", books: books) {}
             BookshelfFolderRow(name: "同人", books: Array(books.prefix(1))) {}
-            BookshelfFolderRow(name: "選取中", books: books, isSelecting: true) {}
+            BookshelfFolderRow(name: "选取中", books: books, isSelecting: true) {}
         }
         .listStyle(.plain)
         LazyVGrid(
@@ -3070,21 +3070,21 @@ private func previewOnlineBook(hasUpdate: Bool) -> ReadingBook {
         ) {
             BookshelfFolderGridCell(name: "在追", books: books, coverDisplaySize: coverSize) {}
             BookshelfFolderGridCell(name: "同人", books: Array(books.prefix(1)), coverDisplaySize: coverSize) {}
-            BookshelfFolderGridCell(name: "選取中", books: books, coverDisplaySize: coverSize, isSelecting: true) {}
+            BookshelfFolderGridCell(name: "选取中", books: books, coverDisplaySize: coverSize, isSelecting: true) {}
         }
         .padding()
     }
     .background(DSColor.groupedBackground)
 }
 
-#Preview("加入分組") {
+#Preview("加入分组") {
     Color.clear
         .sheet(isPresented: .constant(true)) {
             BookshelfAddToGroupSheet(groups: [("未看", 18), ("在追", 18), ("同人", 3)]) { _ in }
         }
 }
 
-#Preview("書籍資訊 – 封面區") {
+#Preview("书籍资讯 – 封面区") {
     EditBookSheet(book: previewOnlineBook(hasUpdate: false)) { _, _, _ in }
         .environmentObject(BookStore())
 }

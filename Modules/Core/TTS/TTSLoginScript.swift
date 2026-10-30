@@ -45,7 +45,7 @@ final class TTSLoginScript: @unchecked Sendable {
         let engine = loadedEngine()
         _ = engine.evaluate(script, result: nil, bindings: ["baseUrl": source.urlTemplate])
         if let error = engine.lastError {
-            AppLogger.error("[TTS] 語音源登入按鈕 JS 執行失敗", context: [
+            AppLogger.error("[TTS] 语音源登入按钮 JS 执行失败", context: [
                 "source": source.name,
                 "error": error
             ])
@@ -146,7 +146,7 @@ final class TTSLoginScript: @unchecked Sendable {
            !loginJs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             _ = e.evaluate(loginJs, result: nil, bindings: [:])
             if let error = e.lastError {
-                AppLogger.error("[TTS] 語音源 loginUrl JS 執行失敗", context: [
+                AppLogger.error("[TTS] 语音源 loginUrl JS 执行失败", context: [
                     "source": source.name,
                     "error": error
                 ])

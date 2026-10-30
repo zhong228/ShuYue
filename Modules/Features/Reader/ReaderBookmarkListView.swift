@@ -51,8 +51,8 @@ struct ReaderBookmarkListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("", selection: $segment) {
-                    Text(localized("書籤")).tag(Segment.bookmark)
-                    Text(localized("重點")).tag(Segment.highlight)
+                    Text(localized("书签")).tag(Segment.bookmark)
+                    Text(localized("重点")).tag(Segment.highlight)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -83,7 +83,7 @@ struct ReaderBookmarkListView: View {
                             Image(systemName: "trash")
                         }
                         .disabled(selection.isEmpty)
-                        .accessibilityLabel(localized("刪除"))
+                        .accessibilityLabel(localized("删除"))
                     }
                 }
             }
@@ -116,7 +116,7 @@ struct ReaderBookmarkListView: View {
         } label: {
             Image(systemName: isEditing ? "xmark" : "checklist")
         }
-        .accessibilityLabel(localized(isEditing ? "完成" : "編輯"))
+        .accessibilityLabel(localized(isEditing ? "完成" : "编辑"))
     }
 
     private var closeButton: some View {
@@ -146,8 +146,8 @@ struct ReaderBookmarkListView: View {
     // MARK: - Editing helpers
 
     private var selectedCountText: String {
-        let noun = segment == .bookmark ? localized("書籤") : localized("重點")
-        return String(format: localized("已選取 %1$d 個%2$@"), selection.count, noun)
+        let noun = segment == .bookmark ? localized("书签") : localized("重点")
+        return String(format: localized("已选取 %1$d 个%2$@"), selection.count, noun)
     }
 
     private func deleteSelected() {
@@ -176,15 +176,15 @@ struct BookmarkListSection: View {
         if items.isEmpty {
             if isBookmark {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("沒有書籤"), systemImage: "bookmark")
+                    UnavailableLabel(localized("没有书签"), systemImage: "bookmark")
                 } description: {
-                    Text(localized("在想記住的那一頁向下滑動，或點一下右上角的書籤按鈕。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("在想记住的那一页向下滑动，或点一下右上角的书签按钮。")).foregroundStyle(DSColor.textSecondary)
                 }
             } else {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("沒有重點"), systemImage: "highlighter")
+                    UnavailableLabel(localized("没有重点"), systemImage: "highlighter")
                 } description: {
-                    Text(localized("在閱讀時選取文字，加入底線或螢光筆即可在此查看。")).foregroundStyle(DSColor.textSecondary)
+                    Text(localized("在阅读时选取文字，加入底线或萤光笔即可在此查看。")).foregroundStyle(DSColor.textSecondary)
                 }
             }
         } else {
@@ -242,34 +242,34 @@ struct BookmarkListSection: View {
     }
 }
 
-#Preview("有資料") {
+#Preview("有资料") {
     ReaderBookmarkListView(
-        bookTitle: "劍來",
+        bookTitle: "剑来",
         bookmarks: [
             Bookmark(
                 chapterIndex: 118,
-                chapterTitle: "第 119 章 觀劍大會",
+                chapterTitle: "第 119 章 观剑大会",
                 position: CoreTextReadingPosition(spineIndex: 118, charOffset: 0),
-                excerpt: "他能在「一表人才」之外特地強調一句「天賦上佳」，那便說明這個年輕人的天賦不是一般的好。",
+                excerpt: "他能在「一表人才」之外特地强调一句「天赋上佳」，那便说明这个年轻人的天赋不是一般的好。",
                 date: Date().addingTimeInterval(-60)
             ),
             Bookmark(
                 chapterIndex: 118,
-                chapterTitle: "第 119 章 觀劍大會",
+                chapterTitle: "第 119 章 观剑大会",
                 position: CoreTextReadingPosition(spineIndex: 118, charOffset: 1240),
-                excerpt: "陸歡得了許可，立刻便像一隻得了赦令的小貓，輕手輕腳地跨過門檻，小碎步溜到沈回身邊站好。",
+                excerpt: "陆欢得了许可，立刻便像一只得了赦令的小猫，轻手轻脚地跨过门槛，小碎步溜到沈回身边站好。",
                 date: Date().addingTimeInterval(-90)
             ),
             Bookmark(
                 chapterIndex: 119,
-                chapterTitle: "第 120 章 劍氣長城",
+                chapterTitle: "第 120 章 剑气长城",
                 position: CoreTextReadingPosition(spineIndex: 119, charOffset: 640),
-                excerpt: "城頭上的風，吹了千年。",
+                excerpt: "城头上的风，吹了千年。",
                 date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
             ),
         ],
         pageNumber: { _ in 3 },
-        chapterTitle: { index in index == 118 ? "第 119 章 觀劍大會" : "第 120 章 劍氣長城" },
+        chapterTitle: { index in index == 118 ? "第 119 章 观剑大会" : "第 120 章 剑气长城" },
         onSelect: { _ in },
         onSelectChapter: { _ in },
         onDelete: { _ in },
@@ -277,9 +277,9 @@ struct BookmarkListSection: View {
     )
 }
 
-#Preview("空狀態") {
+#Preview("空状态") {
     ReaderBookmarkListView(
-        bookTitle: "劍來",
+        bookTitle: "剑来",
         bookmarks: [],
         pageNumber: { _ in nil },
         chapterTitle: { _ in "" },

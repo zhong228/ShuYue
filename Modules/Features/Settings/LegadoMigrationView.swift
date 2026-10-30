@@ -73,18 +73,18 @@ struct LegadoMigrationView: View {
     // MARK: - Sections
 
     private var descriptionSection: some View {
-        DSSettingsGroupCard(title: localized("說明")) {
+        DSSettingsGroupCard(title: localized("说明")) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(localized("支援從 Legado（閱讀）Android 應用匯入："))
+                Text(localized("支援从 Legado（阅读）Android 应用汇入："))
                     .font(DSFont.subheadline)
                     .foregroundColor(DSColor.textPrimary)
-                Text("• " + localized("書源 JSON（書源備份 / 分享檔）"))
+                Text("• " + localized("书源 JSON（书源备份 / 分享档）"))
                     .font(DSFont.caption)
                     .foregroundColor(DSColor.textSecondary)
-                Text("• " + localized("書籍 JSON（書架備份檔）"))
+                Text("• " + localized("书籍 JSON（书架备份档）"))
                     .font(DSFont.caption)
                     .foregroundColor(DSColor.textSecondary)
-                Text(localized("請從 Legado → 備份與恢復 中匯出對應 JSON 檔案後選擇匯入。"))
+                Text(localized("请从 Legado → 备份与恢复 中汇出对应 JSON 档案后选择汇入。"))
                     .font(DSFont.caption)
                     .foregroundColor(DSColor.textSecondary)
                     .padding(.top, 2)
@@ -97,8 +97,8 @@ struct LegadoMigrationView: View {
     }
 
     private var importSection: some View {
-        DSSettingsGroupCard(title: localized("匯入")) {
-            DSSettingsCardRow(icon: "doc.badge.plus", title: localized("選擇 JSON 檔案")) {
+        DSSettingsGroupCard(title: localized("汇入")) {
+            DSSettingsCardRow(icon: "doc.badge.plus", title: localized("选择 JSON 档案")) {
                 showFilePicker = true
             }
             .disabled(manager.isImporting)
@@ -108,7 +108,7 @@ struct LegadoMigrationView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: manager.progress)
                         .tint(DSColor.accent)
-                    Text(localized("匯入中，請稍候…"))
+                    Text(localized("汇入中，请稍候…"))
                         .font(DSFont.caption)
                         .foregroundColor(DSColor.textSecondary)
                 }
@@ -122,12 +122,12 @@ struct LegadoMigrationView: View {
 
     @ViewBuilder
     private func resultSection(_ result: LegadoMigrationManager.ImportResult) -> some View {
-        DSSettingsGroupCard(title: localized("結果")) {
+        DSSettingsGroupCard(title: localized("结果")) {
             if result.sourcesImported > 0 {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text(String(format: localized("書源：%d 個"), result.sourcesImported))
+                    Text(String(format: localized("书源：%d 个"), result.sourcesImported))
                         .foregroundStyle(DSColor.textPrimary)
                 }
                 .padding(.horizontal, DSSpacing.md)
@@ -141,7 +141,7 @@ struct LegadoMigrationView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text(String(format: localized("書籍：%d 本"), result.booksImported))
+                    Text(String(format: localized("书籍：%d 本"), result.booksImported))
                         .foregroundStyle(DSColor.textPrimary)
                 }
                 .padding(.horizontal, DSSpacing.md)
@@ -149,7 +149,7 @@ struct LegadoMigrationView: View {
                 .frame(minHeight: 54)
             }
             if result.sourcesImported == 0 && result.booksImported == 0 && result.errors.isEmpty {
-                Text(localized("未匯入任何資料"))
+                Text(localized("未汇入任何资料"))
                     .foregroundColor(DSColor.textSecondary)
                     .padding(.horizontal, DSSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -174,7 +174,7 @@ struct LegadoMigrationView: View {
     }
 
     private var logSection: some View {
-        DSSettingsGroupCard(title: localized("記錄")) {
+        DSSettingsGroupCard(title: localized("记录")) {
             ScrollViewReader { proxy in
                 ScrollView {
                     AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {

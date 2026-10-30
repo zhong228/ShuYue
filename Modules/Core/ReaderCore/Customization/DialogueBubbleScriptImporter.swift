@@ -58,7 +58,7 @@ enum DialogueBubbleScriptImporter {
 
         let canvasWidth = number(layout["canvasWidth"]) ?? defaultCanvasWidth
         let fontSize = dialogueFontSize(in: text)
-        notes.add(localized("氣泡文字改用閱讀字級，腳本裡的字級、行高與字距不會沿用。"))
+        notes.add(localized("气泡文字改用阅读字级，脚本里的字级、行高与字距不会沿用。"))
 
         var importedAssetIDs: [UUID] = []
         var sides: [ReaderDialogueBubbleSide: ReaderDialogueBubbleSideStyle] = [:]
@@ -78,7 +78,7 @@ enum DialogueBubbleScriptImporter {
                 importedAssetIDs.append(asset)
                 skin = makeSkin(assetID: asset, config: skinConfig, notes: &notes)
             } else if usesImage {
-                notes.add(localized("氣泡皮膚圖不是內嵌資料，改用純色氣泡。"))
+                notes.add(localized("气泡皮肤图不是内嵌资料，改用纯色气泡。"))
             }
 
             var avatar: ReaderDialogueBubbleAvatar?
@@ -330,7 +330,7 @@ enum DialogueBubbleScriptImporter {
         }
         guard let first = values.first else { return 0 }
         if values.count == 2, abs(values[0] - values[1]) > 0.5 {
-            notes.add(localized("腳本的左右氣泡尺寸不同，已統一採用較大的一邊。"))
+            notes.add(localized("脚本的左右气泡尺寸不同，已统一采用较大的一边。"))
         }
         return values.max() ?? first
     }
@@ -365,7 +365,7 @@ enum DialogueBubbleScriptImporter {
         }
 
         if mode != "nineSlice", mode != "stretch" {
-            notes.add(localized("氣泡皮膚圖的縮放方式不支援，已改為拉伸填滿。"))
+            notes.add(localized("气泡皮肤图的缩放方式不支援，已改为拉伸填满。"))
         }
 
         return ReaderDialogueBubbleSkin(
@@ -457,13 +457,13 @@ enum DialogueBubbleScriptImportError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notABubbleScript:
-            return localized("這不是可辨識的對話氣泡腳本檔。")
+            return localized("这不是可辨识的对话气泡脚本档。")
         case .configNotFound:
-            return localized("這個腳本裡找不到可讀的設定區塊。")
+            return localized("这个脚本里找不到可读的设定区块。")
         case .configEvaluationFailed:
-            return localized("這個腳本的設定區塊無法解析。")
+            return localized("这个脚本的设定区块无法解析。")
         case .skinDecodingFailed:
-            return localized("氣泡皮膚圖無法解碼。")
+            return localized("气泡皮肤图无法解码。")
         }
     }
 }

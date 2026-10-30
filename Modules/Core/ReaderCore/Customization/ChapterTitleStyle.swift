@@ -40,11 +40,11 @@ enum ChapterTitleWeight: String, Codable, CaseIterable, Sendable {
     /// Localization key for the picker label.
     var localizedNameKey: String {
         switch self {
-        case .light: return "字重・細體"
-        case .regular: return "字重・常規"
+        case .light: return "字重・细体"
+        case .regular: return "字重・常规"
         case .medium: return "字重・中黑"
         case .semibold: return "字重・半粗"
-        case .bold: return "字重・粗體"
+        case .bold: return "字重・粗体"
         }
     }
 }
@@ -77,9 +77,9 @@ enum ChapterTitleAlignment: String, Codable, CaseIterable, Sendable {
 
     var localizedNameKey: String {
         switch self {
-        case .left: return "對齊・靠左"
-        case .center: return "對齊・置中"
-        case .right: return "對齊・靠右"
+        case .left: return "对齐・靠左"
+        case .center: return "对齐・置中"
+        case .right: return "对齐・靠右"
         }
     }
 }
@@ -94,13 +94,13 @@ enum ChapterTitleAlignment: String, Codable, CaseIterable, Sendable {
 /// the full set; the EPUB `<h1>` path (`NodeAttributedStringRenderer`) reads
 /// only `visible`/`size`/`bottomSpacing`, matching its previous behaviour.
 struct ChapterTitleStyle: Codable, Equatable, Sendable {
-    /// "顯示標題": whether the in-content title is drawn at all.
+    /// "显示标题": whether the in-content title is drawn at all.
     var visible: Bool
     /// Absolute point size of the chapter *name* (the larger, lower line).
     var size: CGFloat
     /// Space above the title block, in points.
     var topSpacing: CGFloat
-    /// Space between the title block and the body ("與正文間距"), in points.
+    /// Space between the title block and the body ("与正文间距"), in points.
     var bottomSpacing: CGFloat
     var weight: ChapterTitleWeight
     var alignment: ChapterTitleAlignment
@@ -305,13 +305,13 @@ extension ChapterTitleStyle {
 ///
 /// Guards the real cases seen in TXT / web-novel tables of contents:
 /// "第1章 xxx" / "第一章：xxx" / "第十回 xxx". Titles with no such prefix
-/// ("序"、"楔子"、"番外"、"後記") or a bare prefix with no name ("第一章") fall
+/// ("序"、"楔子"、"番外"、"后记") or a bare prefix with no name ("第一章") fall
 /// back to a single line — so no spurious empty second line appears.
 /// Delete/replace this when the editable-regex feature lands.
 enum ChapterTitleSplitter {
     // 第 + (CJK/Arabic numerals) + chapter unit. Anchored at start.
     private static let prefixRegex = try! NSRegularExpression(
-        pattern: "^第[0-9０-９〇零一二三四五六七八九十百千兩两廿卅]+[章節节回卷話话集部篇折]",
+        pattern: "^第[0-9０-９〇零一二三四五六七八九十百千两两廿卅]+[章节节回卷话话集部篇折]",
         options: []
     )
 
@@ -376,42 +376,42 @@ extension ChapterTitleStylePreset {
     static let builtins: [ChapterTitleStylePreset] = [
         cssPreset(
             id: "builtin.css.centered",
-            name: "預設・簡約置中",
+            name: "预设・简约置中",
             size: 28, top: 16, bottom: 24,
             light: ChapterTitleStyle.defaultLightTemplate,
             dark: ChapterTitleStyle.defaultDarkTemplate
         ),
         cssPreset(
             id: "builtin.css.ink",
-            name: "預設・水墨留白",
+            name: "预设・水墨留白",
             size: 30, top: 28, bottom: 36,
             light: "<div style=\"text-align:center\"><div style=\"font-size:0.5em;letter-spacing:6px;color:#9A9AA0\">{number}</div><div style=\"font-size:1em;font-weight:300;letter-spacing:8px;color:#2C2C2E;margin-top:0.55em\">{name}</div><div style=\"font-size:0.35em;color:#C9C9CE;margin-top:0.7em\">────</div></div>",
             dark: "<div style=\"text-align:center\"><div style=\"font-size:0.5em;letter-spacing:6px;color:#7C7C82\">{number}</div><div style=\"font-size:1em;font-weight:300;letter-spacing:8px;color:#E5E5EA;margin-top:0.55em\">{name}</div><div style=\"font-size:0.35em;color:#48484A;margin-top:0.7em\">────</div></div>"
         ),
         cssPreset(
             id: "builtin.css.quote",
-            name: "預設・豎線引用",
+            name: "预设・竖线引用",
             size: 26, top: 16, bottom: 24,
             light: "<div style=\"text-align:left;border-left:3px solid #C7C7CC;padding-left:14px\"><div style=\"font-size:0.55em;letter-spacing:4px;color:#8A8A8E\">{number}</div><div style=\"font-size:1em;font-weight:600;color:#1C1C1E;margin-top:0.25em\">{name}</div></div>",
             dark: "<div style=\"text-align:left;border-left:3px solid #48484A;padding-left:14px\"><div style=\"font-size:0.55em;letter-spacing:4px;color:#8E8E93\">{number}</div><div style=\"font-size:1em;font-weight:600;color:#F2F2F7;margin-top:0.25em\">{name}</div></div>"
         ),
         cssPreset(
             id: "builtin.css.divider",
-            name: "預設・上下分隔",
+            name: "预设・上下分隔",
             size: 26, top: 20, bottom: 28,
             light: "<div style=\"text-align:center;border-top:1px solid #D1D1D6;border-bottom:1px solid #D1D1D6;padding-top:0.6em;padding-bottom:0.6em\"><div style=\"font-size:0.55em;letter-spacing:3px;color:#8A8A8E\">{number}</div><div style=\"font-size:1em;font-weight:700;color:#1C1C1E;margin-top:0.2em\">{name}</div></div>",
             dark: "<div style=\"text-align:center;border-top:1px solid #3A3A3C;border-bottom:1px solid #3A3A3C;padding-top:0.6em;padding-bottom:0.6em\"><div style=\"font-size:0.55em;letter-spacing:3px;color:#8E8E93\">{number}</div><div style=\"font-size:1em;font-weight:700;color:#F2F2F7;margin-top:0.2em\">{name}</div></div>"
         ),
         cssPreset(
             id: "builtin.css.right",
-            name: "預設・右對齊",
+            name: "预设・右对齐",
             size: 28, top: 16, bottom: 24,
             light: "<div style=\"text-align:right\"><div style=\"font-size:1em;font-weight:700;color:#1C1C1E\">{name}</div><div style=\"font-size:0.55em;letter-spacing:3px;color:#8A8A8E;margin-top:0.35em\">{number}</div></div>",
             dark: "<div style=\"text-align:right\"><div style=\"font-size:1em;font-weight:700;color:#F2F2F7\">{name}</div><div style=\"font-size:0.55em;letter-spacing:3px;color:#8E8E93;margin-top:0.35em\">{number}</div></div>"
         ),
         cssPreset(
             id: "builtin.css.diamond",
-            name: "預設・菱形裝飾",
+            name: "预设・菱形装饰",
             size: 27, top: 24, bottom: 32,
             light: "<div style=\"text-align:center\"><div style=\"font-size:0.45em;letter-spacing:2px;color:#B4B4BA\">── ◆ ──</div><div style=\"font-size:0.55em;letter-spacing:3px;color:#8A8A8E;margin-top:0.6em\">{number}</div><div style=\"font-size:1em;font-weight:600;color:#1C1C1E;margin-top:0.25em\">{name}</div><div style=\"font-size:0.45em;letter-spacing:2px;color:#B4B4BA;margin-top:0.6em\">── ◇ ──</div></div>",
             dark: "<div style=\"text-align:center\"><div style=\"font-size:0.45em;letter-spacing:2px;color:#5A5A5E\">── ◆ ──</div><div style=\"font-size:0.55em;letter-spacing:3px;color:#8E8E93;margin-top:0.6em\">{number}</div><div style=\"font-size:1em;font-weight:600;color:#F2F2F7;margin-top:0.25em\">{name}</div><div style=\"font-size:0.45em;letter-spacing:2px;color:#5A5A5E;margin-top:0.6em\">── ◇ ──</div></div>"

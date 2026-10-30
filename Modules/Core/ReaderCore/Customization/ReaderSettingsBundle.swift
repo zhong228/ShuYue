@@ -74,13 +74,13 @@ struct ReaderSettingsImportSummary: Equatable, Sendable {
 
     var localizedDescription: String {
         var parts: [String] = []
-        if appliedLayout { parts.append(localized("排版參數")) }
-        if appliedChapterTitleStyle { parts.append(localized("章節標題樣式")) }
-        if appliedRegexHighlights { parts.append(localized("正則高亮")) }
-        if appliedDialogueBubbleStyle { parts.append(localized("對話氣泡")) }
-        guard !parts.isEmpty else { return localized("這個檔案沒有可匯入的內容。") }
+        if appliedLayout { parts.append(localized("排版参数")) }
+        if appliedChapterTitleStyle { parts.append(localized("章节标题样式")) }
+        if appliedRegexHighlights { parts.append(localized("正则高亮")) }
+        if appliedDialogueBubbleStyle { parts.append(localized("对话气泡")) }
+        guard !parts.isEmpty else { return localized("这个档案没有可汇入的内容。") }
         return String(
-            format: localized("已匯入 %@。"),
+            format: localized("已汇入 %@。"),
             parts.joined(separator: localized("、"))
         )
     }

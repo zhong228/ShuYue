@@ -71,12 +71,12 @@ struct PaywallMemberPage: View {
         }
         .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
         .pageBackgroundToolbar(for: .settings)
-        .navigationTitle(localized("閱讀Pro"))
+        .navigationTitle(localized("阅读Pro"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button { dismiss() } label: { Image(systemName: "xmark") }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
             }
         }
         .sensoryFeedback(.success, trigger: hasAppeared) { _, appeared in
@@ -96,7 +96,7 @@ struct PaywallMemberPage: View {
                 )
             }
             // The sheet changed under a VoiceOver user without their doing; say what happened.
-            AccessibilityNotification.Announcement(localized("已解鎖 閱讀Pro")).post()
+            AccessibilityNotification.Announcement(localized("已解锁 阅读Pro")).post()
         }
     }
 
@@ -105,7 +105,7 @@ struct PaywallMemberPage: View {
     private var header: some View {
         VStack(spacing: DSSpacing.sm) {
             PaywallAppIcon(celebrates: celebrates)
-            Text(localized(celebrates ? "已解鎖 閱讀Pro" : "你已經是 閱讀Pro"))
+            Text(localized(celebrates ? "已解锁 阅读Pro" : "你已经是 阅读Pro"))
                 .font(DSFont.largeTitle.weight(.bold))
                 .foregroundStyle(DSColor.textPrimary)
                 .multilineTextAlignment(.center)
@@ -123,10 +123,10 @@ struct PaywallMemberPage: View {
 
     private var subtitle: String? {
         if celebrates {
-            return localized("感謝你的支持，所有 Pro 功能現在都已啟用")
+            return localized("感谢你的支持，所有 Pro 功能现在都已启用")
         }
         // Pro with no plan on this Apple Account behind it: no plan card will say it is on.
-        return store.ownedPlan == nil ? localized("所有 Pro 功能都已啟用") : nil
+        return store.ownedPlan == nil ? localized("所有 Pro 功能都已启用") : nil
     }
 
     // MARK: - Plan
@@ -134,9 +134,9 @@ struct PaywallMemberPage: View {
     /// The plan they have, as the offer showed it — on the thank-you page, the receipt.
     private func planCard(_ plan: SubscriptionStore.ProProduct) -> some View {
         PaywallPlanCard(
-            title: localized(plan == .lifetime ? "永久會員" : "月會員"),
+            title: localized(plan == .lifetime ? "永久会员" : "月会员"),
             tag: localized("目前方案"),
-            detail: localized(plan == .lifetime ? "一次性購買，永久有效" : "每月自動續訂，可隨時取消"),
+            detail: localized(plan == .lifetime ? "一次性购买，永久有效" : "每月自动续订，可随时取消"),
             price: price(of: plan),
             mark: .owned
         )
@@ -167,11 +167,11 @@ struct PaywallMemberPage: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(DSColor.warning)
                     .accessibilityHidden(true)
-                Text(localized("請取消月訂閱"))
+                Text(localized("请取消月订阅"))
                     .font(DSFont.bodyBold)
                     .foregroundStyle(DSColor.textPrimary)
             }
-            Text(localized("你已擁有永久會員，月訂閱不會自動停止，需要你手動取消才不會繼續扣款。"))
+            Text(localized("你已拥有永久会员，月订阅不会自动停止，需要你手动取消才不会继续扣款。"))
                 .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -179,7 +179,7 @@ struct PaywallMemberPage: View {
                 Button {
                     openURL(manageSubscriptionsURL)
                 } label: {
-                    Text(localized("前往取消訂閱"))
+                    Text(localized("前往取消订阅"))
                         .font(DSFont.bodyBold)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: DSLayout.minimumTapTarget)
@@ -214,7 +214,7 @@ struct PaywallMemberPage: View {
             .disabled(store.isPurchasing || store.product(for: .lifetime) == nil)
             .accessibilityIdentifier("pro_status_plan_action")
             // Said before they pay, not only after.
-            Text(localized("升級後請記得取消月訂閱，否則會繼續扣款"))
+            Text(localized("升级后请记得取消月订阅，否则会继续扣款"))
                 .font(DSFont.caption)
                 .foregroundStyle(DSColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -223,8 +223,8 @@ struct PaywallMemberPage: View {
 
     private var upgradeTitle: String {
         store.product(for: .lifetime)
-            .map { String(format: localized("升級為永久會員・%@"), $0.displayPrice) }
-            ?? localized("升級為永久會員")
+            .map { String(format: localized("升级为永久会员・%@"), $0.displayPrice) }
+            ?? localized("升级为永久会员")
     }
 
     // MARK: - Manage
@@ -235,7 +235,7 @@ struct PaywallMemberPage: View {
                 Button {
                     openURL(manageSubscriptionsURL)
                 } label: {
-                    Text(localized("管理訂閱"))
+                    Text(localized("管理订阅"))
                         .font(DSFont.subheadline)
                         .frame(minHeight: DSLayout.minimumTapTarget)
                 }
@@ -248,7 +248,7 @@ struct PaywallMemberPage: View {
                     if store.isRestoring {
                         ProgressView()
                     } else {
-                        Text(localized("恢復購買"))
+                        Text(localized("恢复购买"))
                             .font(DSFont.subheadline)
                     }
                 }
@@ -257,7 +257,7 @@ struct PaywallMemberPage: View {
             .disabled(store.isRestoring)
             .accessibilityIdentifier("pro_status_restore")
             if store.subscriptionManagement == .monthlyAlongsideLifetime, !showsCancellationCard {
-                Text(localized("升級後請記得取消月訂閱，否則會繼續扣款"))
+                Text(localized("升级后请记得取消月订阅，否则会继续扣款"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -280,7 +280,7 @@ struct PaywallMemberPage: View {
         Button {
             dismiss()
         } label: {
-            Text(localized("開始使用"))
+            Text(localized("开始使用"))
                 .font(DSFont.bodyBold)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: DSLayout.minimumTapTarget)

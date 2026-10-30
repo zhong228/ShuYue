@@ -38,7 +38,7 @@ struct DiagnosticsView: View {
             switch self {
             case .all:            return localized("全部")
             case .noticeAndUp:    return localized("提示以上")
-            case .reportableOnly: return localized("只看異常")
+            case .reportableOnly: return localized("只看异常")
             }
         }
 
@@ -119,7 +119,7 @@ struct DiagnosticsView: View {
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: localized("搜尋紀錄")
+            prompt: localized("搜寻纪录")
         )
         .navigationTitle(localized("帮助与诊断"))
         .toolbarTitleDisplayMode(.inline)
@@ -131,14 +131,14 @@ struct DiagnosticsView: View {
                         UIPasteboard.general.string = exportBundle.render()
                         showCopiedAlert = true
                     } label: {
-                        Label(localized("複製全部"), systemImage: "doc.on.doc")
+                        Label(localized("复制全部"), systemImage: "doc.on.doc")
                     }
                     MenuShareRow(
-                        label: localized("匯出目前篩選"),
+                        label: localized("汇出目前筛选"),
                         systemImage: "line.3.horizontal.decrease.circle",
                         makeExport: {
                             PendingShareExport(
-                                title: localized("匯出目前篩選"),
+                                title: localized("汇出目前筛选"),
                                 name: exportFilename,
                                 item: filteredExportBundle
                             )
@@ -166,30 +166,30 @@ struct DiagnosticsView: View {
                     Button(role: .destructive) {
                         showClearConfirmation = true
                     } label: {
-                        Label(localized("清除紀錄"), systemImage: "trash")
+                        Label(localized("清除纪录"), systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis")
                         .accessibilityHidden(true)
                 }
-                .accessibilityLabel(localized("更多動作"))
+                .accessibilityLabel(localized("更多动作"))
             }
         }
         .confirmationDialog(
-            localized("清除所有診斷紀錄？"),
+            localized("清除所有诊断纪录？"),
             isPresented: $showClearConfirmation,
             titleVisibility: .visible
         ) {
             Button(localized("清除"), role: .destructive) { model.clear() }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("清除後無法復原。如果要回報問題，請先匯出。"))
+            Text(localized("清除后无法复原。如果要回报问题，请先汇出。"))
         }
         .sheet(item: $pendingShare) { ShareExportSheet(export: $0) }
-        .alert(localized("已複製"), isPresented: $showCopiedAlert) {
+        .alert(localized("已复制"), isPresented: $showCopiedAlert) {
             Button(localized("好"), role: .cancel) {}
         } message: {
-            Text(localized("診斷紀錄已複製到剪貼簿。"))
+            Text(localized("诊断纪录已复制到剪贴簿。"))
         }
         .task { model.loadIfNeeded() }
     }
@@ -204,7 +204,7 @@ struct DiagnosticsView: View {
             }
             ShareLink(item: exportBundle, preview: SharePreview(exportBundle.filename)) {
                 Label(
-                    reportableCount > 0 ? localized("匯出並回報") : localized("匯出紀錄"),
+                    reportableCount > 0 ? localized("汇出并回报") : localized("汇出纪录"),
                     systemImage: "square.and.arrow.up"
                 )
                 .font(DSFont.subheadline.weight(.medium))
@@ -217,7 +217,7 @@ struct DiagnosticsView: View {
             }
             .padding(.horizontal, DSSpacing.md)
             .padding(.top, reportableCount > 0 ? 0 : DSSpacing.sm)
-            Text(localized("包含這次啟動的完整紀錄，不受下方篩選影響。"))
+            Text(localized("包含这次启动的完整纪录，不受下方筛选影响。"))
                 .font(DSFont.caption2)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -230,7 +230,7 @@ struct DiagnosticsView: View {
 
     private var crashSessionsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(localized("上次未正常結束"))
+            Text(localized("上次未正常结束"))
                 .font(DSFont.footnote.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -244,7 +244,7 @@ struct DiagnosticsView: View {
                     cardDivider
                 }
             }
-            Text(localized("App 在使用中結束，不是被系統回收。詳細內容下次啟動後才會送達。"))
+            Text(localized("App 在使用中结束，不是被系统回收。详细内容下次启动后才会送达。"))
                 .font(DSFont.caption2)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -256,7 +256,7 @@ struct DiagnosticsView: View {
 
     private var filterCard: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            Text(localized("篩選"))
+            Text(localized("筛选"))
                 .font(DSFont.footnote.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -268,11 +268,11 @@ struct DiagnosticsView: View {
             cardDivider
 
             HStack {
-                Text(localized("分類"))
+                Text(localized("分类"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textPrimary)
                 Spacer()
-                Picker(localized("分類"), selection: $categoryFilter) {
+                Picker(localized("分类"), selection: $categoryFilter) {
                     Text(localized("全部")).tag(DiagnosticCategory?.none)
                     ForEach(DiagnosticCategory.allCases, id: \.self) { category in
                         Text(category.localizedName).tag(DiagnosticCategory?.some(category))
@@ -286,12 +286,12 @@ struct DiagnosticsView: View {
 
             cardDivider
 
-            Toggle(localized("記錄詳細追蹤"), isOn: $model.isVerboseEnabled)
+            Toggle(localized("记录详细追踪"), isOn: $model.isVerboseEnabled)
                 .tint(DSColor.appAccent)
                 .padding(.horizontal, DSSpacing.md)
                 .padding(.vertical, DSSpacing.sm)
 
-            Text(localized("記下每一次翻頁與解析步驟。關閉時仍會記錄錯誤。"))
+            Text(localized("记下每一次翻页与解析步骤。关闭时仍会记录错误。"))
                 .font(DSFont.caption2)
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -333,7 +333,7 @@ struct DiagnosticsView: View {
 
     private var logListCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(localized("紀錄"))
+            Text(localized("纪录"))
                 .font(DSFont.footnote.weight(.semibold))
                 .foregroundStyle(DSColor.textSecondary)
                 .padding(.horizontal, DSSpacing.md)
@@ -343,7 +343,7 @@ struct DiagnosticsView: View {
             if model.isLoading {
                 HStack(spacing: DSSpacing.md) {
                     ProgressView()
-                    Text(localized("載入中…"))
+                    Text(localized("载入中…"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -370,11 +370,11 @@ struct DiagnosticsView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            UnavailableLabel(localized("沒有符合的紀錄"), systemImage: "text.magnifyingglass")
+            UnavailableLabel(localized("没有符合的纪录"), systemImage: "text.magnifyingglass")
         } description: {
             Text(model.entries.isEmpty
-                 ? localized("目前沒有任何診斷紀錄。繼續使用 app，有狀況時就會出現在這裡。")
-                 : localized("換一個篩選條件或搜尋字詞試試。")).foregroundStyle(DSColor.textSecondary)
+                 ? localized("目前没有任何诊断纪录。继续使用 app，有状况时就会出现在这里。")
+                 : localized("换一个筛选条件或搜寻字词试试。")).foregroundStyle(DSColor.textSecondary)
         }
     }
 

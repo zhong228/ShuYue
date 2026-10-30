@@ -17,7 +17,7 @@ import Foundation
 /// count bubble and returns `data:image/svg+xml;base64,<real payload>`. Our chapter sanitizer
 /// strips the `,{json}` suffix (it has to: its inner quotes break SwiftSoup's attribute parsing),
 /// which threw the `js` away with it, so all 67 bubbles in a chapter resolved to an empty data URI:
-/// nothing drawn, but every `<img>` still claimed a line box — the "段評開了之後排版全亂" report.
+/// nothing drawn, but every `<img>` still claimed a line box — the "段评开了之后排版全乱" report.
 ///
 /// Resolution happens **at chapter-fetch time, in the session that just parsed the content**, not
 /// lazily at image-load time, and that timing is load-bearing: `createSvg()` double-duties as the

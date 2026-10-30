@@ -101,7 +101,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
         guard !segments.isEmpty else {
             ttsLog("[TTS][SystemEngine] speak aborted no chunks")
             AppLogger.error(
-                "[TTS] 系統語音沒有可朗讀的文字",
+                "[TTS] 系统语音没有可朗读的文字",
                 context: ["textCount": text.count, "title": title],
                 level: .warning
             )
@@ -181,7 +181,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
         }
         ttsLog("[TTS][SystemEngine] recovering after media-services reset index=\(currentIndex) offset=\(spokenUTF16Offset)")
         AppLogger.info(
-            "[TTS] 音訊服務重置後重新朗讀",
+            "[TTS] 音讯服务重置后重新朗读",
             context: ["index": currentIndex, "offset": spokenUTF16Offset],
             level: .notice
         )
@@ -391,7 +391,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
         // nothing in the diagnostics export, which is why a stopped offline session used to
         // leave the log completely silent.
         AppLogger.anomaly(
-            localized("聽書因系統語音中斷而停止"),
+            localized("听书因系统语音中断而停止"),
             category: .tts,
             detail: """
             index=\(currentIndex)/\(segments.count)
@@ -424,14 +424,14 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
             // here means the host said "ready" and handed over nothing. Indistinguishable from
             // finishing the book on screen; not indistinguishable in the log.
             AppLogger.anomaly(
-                localized("聽書停止：下一段沒有可朗讀的內容"),
+                localized("听书停止：下一段没有可朗读的内容"),
                 category: .tts,
                 detail: "finishedChunks=\(segments.count)"
             )
             resetPlaybackState()
             onStop?()
         case .finished:
-            AppLogger.info("[TTS] 朗讀到結尾", context: ["chunks": segments.count], level: .notice)
+            AppLogger.info("[TTS] 朗读到结尾", context: ["chunks": segments.count], level: .notice)
             resetPlaybackState()
             onStop?()
         }
@@ -452,7 +452,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
         // of a following `supplyPendingUnit` is what separates "the chapter never arrived" from
         // "the engine died".
         AppLogger.info(
-            "[TTS] 等待下一段內容",
+            "[TTS] 等待下一段内容",
             context: ["finishedChunks": segments.count],
             level: .notice
         )
@@ -468,7 +468,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
             // 「聽幾章就停」 lands here: the host answered the wait with nothing to read, which
             // is a supply failure wearing the same clothes as the end of the book.
             AppLogger.anomaly(
-                localized("聽書停止：下一段沒有可朗讀的內容"),
+                localized("听书停止：下一段没有可朗读的内容"),
                 category: .tts,
                 detail: "waitingSince=\(currentIndex)/\(segments.count)"
             )
@@ -643,7 +643,7 @@ final class SystemTTSEngine: NSObject, TTSPlayable, @unchecked Sendable {
         guard backgroundTask == .invalid else { return }
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "System TTS Playback") { [weak self] in
             ttsLog("[TTS][SystemEngine] background task expired")
-            AppLogger.error("[TTS] 背景執行時間用完", level: .warning)
+            AppLogger.error("[TTS] 背景执行时间用完", level: .warning)
             self?.endBackgroundTask()
         }
         ttsLog("[TTS][SystemEngine] background task started id=\(backgroundTask.rawValue)")

@@ -13,5 +13,5 @@ extension View {
 }
 
 #Preview {
-    Text("閱讀內容").readerSelectionTranslation(isPresented: .constant(false), text: "閱讀內容")
+    Text("阅读内容").readerSelectionTranslation(isPresented: .constant(false), text: "阅读内容")
 }

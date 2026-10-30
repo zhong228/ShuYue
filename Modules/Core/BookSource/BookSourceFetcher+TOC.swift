@@ -70,7 +70,7 @@ extension BookSourceFetcher {
         }
         // #region agent log
         _dbgLog(
-            "fetchTOC 進入",
+            "fetchTOC 进入",
             data: [
                 "tocUrl": String(tocUrl.prefix(80)),
                 "source": source.bookSourceName,
@@ -83,7 +83,7 @@ extension BookSourceFetcher {
         // #endregion
         // #region agent log
         if source.ruleToc.chapterList.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            _dbgLog("fetchTOC chapterList 為空", data: ["source": source.bookSourceName], hyp: "H1")
+            _dbgLog("fetchTOC chapterList 为空", data: ["source": source.bookSourceName], hyp: "H1")
         }
         // #endregion
 
@@ -195,7 +195,7 @@ extension BookSourceFetcher {
 
         // #region agent log
         _dbgLog(
-            "fetchTOC 初次解析結果",
+            "fetchTOC 初次解析结果",
             data: [
                 "source": source.bookSourceName,
                 "chaptersCount": chapters.count,

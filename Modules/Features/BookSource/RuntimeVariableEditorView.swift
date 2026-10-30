@@ -20,7 +20,7 @@ struct RuntimeVariableEditorView: View {
         NavigationStack {
             Form {
                 if !comment.isEmpty {
-                    Section(localized("變量說明")) {
+                    Section(localized("变量说明")) {
                         Text(comment)
                             .font(DSFont.footnote)
                             .foregroundStyle(DSColor.textSecondary)
@@ -61,7 +61,7 @@ struct RuntimeVariableEditorView: View {
                     Button(localized("取消")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(localized("儲存")) {
+                    Button(localized("储存")) {
                         if let error = onSave(text) {
                             errorText = error
                         } else {
@@ -79,20 +79,20 @@ struct RuntimeVariableEditorView: View {
     }
 }
 
-#Preview("源變量") {
+#Preview("源变量") {
     RuntimeVariableEditorView(
-        title: "設置源變量",
-        comment: "填入代理地址，例如 https://example.com\n第二行可填音質 1-3",
+        title: "设置源变量",
+        comment: "填入代理地址，例如 https://example.com\n第二行可填音质 1-3",
         initialValue: "{\"proxy\":\"https://example.com\"}",
         onSave: { _ in nil }
     )
 }
 
-#Preview("書籍變量") {
+#Preview("书籍变量") {
     RuntimeVariableEditorView(
-        title: "設置書籍變量",
+        title: "设置书籍变量",
         comment: "",
         initialValue: "{}",
-        onSave: { _ in "JSON 格式錯誤" }
+        onSave: { _ in "JSON 格式错误" }
     )
 }

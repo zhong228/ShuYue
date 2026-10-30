@@ -39,7 +39,7 @@ extension BookSourceFetcher {
         }
         // #region agent log
         _dbgLog(
-            "fetchBookInfo 進入",
+            "fetchBookInfo 进入",
             data: ["url": String(url.prefix(80)), "source": source.bookSourceName], hyp: "A")
         // #endregion
 
@@ -102,7 +102,7 @@ extension BookSourceFetcher {
         ).merging(searchResult: knownBook, canReName: canReName)
         // #region agent log
         _dbgLog(
-            "fetchBookInfo 結果",
+            "fetchBookInfo 结果",
             data: [
                 "source": source.bookSourceName, "author": package.author,
                 "name": String(package.name.prefix(30)), "tocUrlEmpty": package.tocUrl.isEmpty,

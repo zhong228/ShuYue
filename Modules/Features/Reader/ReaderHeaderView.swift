@@ -16,12 +16,12 @@ enum ReaderHeaderField: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .bookTitle: return localized("書名")
-        case .chapterTitle: return localized("章節名")
-        case .page: return localized("頁碼")
-        case .progress: return localized("進度")
-        case .time: return localized("時間")
-        case .battery: return localized("電量")
+        case .bookTitle: return localized("书名")
+        case .chapterTitle: return localized("章节名")
+        case .page: return localized("页码")
+        case .progress: return localized("进度")
+        case .time: return localized("时间")
+        case .battery: return localized("电量")
         }
     }
 }
@@ -38,7 +38,7 @@ enum ReaderHeaderFieldPosition: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .hidden: return localized("隱藏")
+        case .hidden: return localized("隐藏")
         case .left: return localized("靠左")
         case .center: return localized("置中")
         case .right: return localized("靠右")

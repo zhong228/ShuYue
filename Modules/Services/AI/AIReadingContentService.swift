@@ -27,7 +27,7 @@ enum AIReadingContentService {
             try Task.checkCancellation()
             let extracted = await renderer.localChapterText(at: index)
             guard let body = extracted.text, extracted.status == .available else {
-                throw LLMError.providerError(localized("章節已取得，但無法讀取可驗證的正文。"))
+                throw LLMError.providerError(localized("章节已取得，但无法读取可验证的正文。"))
             }
             return body.converted(to: conversion)
         }
@@ -69,7 +69,7 @@ enum AIReadingContentService {
     static func validateSelection(_ context: AIQuestionContext) throws -> AIQuestionContext {
         guard let selection = context.selection else { return context }
         guard selection.validated(in: context.source, boundary: context.boundary) else {
-            throw LLMError.providerError(localized("選文已變更或超出目前閱讀範圍，請重新選取。"))
+            throw LLMError.providerError(localized("选文已变更或超出目前阅读范围，请重新选取。"))
         }
         return context
     }
@@ -78,12 +78,12 @@ enum AIReadingContentService {
                                boundary: AIReadingBoundary, renderer: EPUBPageRenderer) async throws -> Int {
         try await citationOffset(citation, source: source, boundary: boundary) { index in
             guard let engine = renderer.engine else {
-                throw LLMError.providerError(localized("無法載入引用章節。"))
+                throw LLMError.providerError(localized("无法载入引用章节。"))
             }
             let outcome = await engine.preloadChapter(at: index)
             try Task.checkCancellation()
             guard outcome.isReady, let text = engine.chapterText(forSpine: index) else {
-                throw LLMError.providerError(localized("無法載入引用章節。"))
+                throw LLMError.providerError(localized("无法载入引用章节。"))
             }
             return text
         }
@@ -97,22 +97,22 @@ enum AIReadingContentService {
         try Task.checkCancellation()
         guard source.chunkSections.indices.contains(citation.spineIndex),
               boundary.sourceVersion == source.contentFingerprint else {
-            throw LLMError.providerError(localized("來源已變更，無法驗證引用位置。"))
+            throw LLMError.providerError(localized("来源已变更，无法验证引用位置。"))
         }
         let text = source.chunkSections[citation.spineIndex].text
         guard let offset = AITextCoordinates.citationOffset(citation, sourceVersion: source.contentFingerprint,
                 sourceText: text, renderedText: text) else {
-            throw LLMError.providerError(localized("來源已變更，無法驗證引用位置。"))
+            throw LLMError.providerError(localized("来源已变更，无法验证引用位置。"))
         }
         guard boundary.allows(.init(spineIndex: citation.spineIndex,
                   charOffset: offset + citation.quote.utf16.count, progress: 0)) else {
-            throw LLMError.providerError(localized("引用超出目前閱讀範圍。"))
+            throw LLMError.providerError(localized("引用超出目前阅读范围。"))
         }
         let rendered = try await load(citation.spineIndex)
         try Task.checkCancellation()
         guard let renderedOffset = AITextCoordinates.citationOffset(citation, sourceVersion: source.contentFingerprint,
                 sourceText: text, renderedText: rendered) else {
-            throw LLMError.providerError(localized("來源已變更，無法驗證引用位置。"))
+            throw LLMError.providerError(localized("来源已变更，无法验证引用位置。"))
         }
         return renderedOffset
     }

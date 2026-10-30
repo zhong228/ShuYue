@@ -64,7 +64,7 @@ struct BookshelfSelectionMark: View {
 }
 
 #if DEBUG
-#Preview("選取標記") {
+#Preview("选取标记") {
     // A white cover, where the ring leans on its halo, then the generated-cover colours.
     let covers = [DSColor.background] + DSColor.coverGradients.map { $0[0] }
     HStack(spacing: DSSpacing.sm) {

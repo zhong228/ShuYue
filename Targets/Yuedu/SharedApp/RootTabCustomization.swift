@@ -15,9 +15,9 @@ enum RootTabItem: String, CaseIterable, Codable, Hashable, Identifiable {
     /// and each `.lproj` translates them; zh-Hans shows 书库/书城/检索/追更/我的.
     var titleKey: String {
         switch self {
-        case .bookshelf: return "書庫"
-        case .explore: return "書城"
-        case .search: return "檢索"
+        case .bookshelf: return "书库"
+        case .explore: return "书城"
+        case .search: return "检索"
         case .rss: return "追更"
         case .settings: return "我的"
         }
@@ -52,8 +52,8 @@ enum RootTabIconSlot: String, CaseIterable, Codable, Hashable, Identifiable {
 
     var titleKey: String {
         switch self {
-        case .light: return "淺色圖標"
-        case .dark: return "深色圖標"
+        case .light: return "浅色图标"
+        case .dark: return "深色图标"
         }
     }
 
@@ -82,11 +82,11 @@ enum RootTabIconStorageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedImageFile:
-            return localized("僅支援圖片檔案")
+            return localized("仅支援图片档案")
         case .cannotReadImage:
-            return localized("無法讀取圖片檔案")
+            return localized("无法读取图片档案")
         case .missingDocumentsDirectory:
-            return localized("無法存取文件資料夾")
+            return localized("无法存取文件资料夹")
         }
     }
 }

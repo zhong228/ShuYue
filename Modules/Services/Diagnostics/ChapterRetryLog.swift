@@ -4,8 +4,8 @@ import Foundation
 ///
 /// A single retry is normal — a cancelled fetch gets reissued, a flaky source gets a
 /// second chance. What matters, and what nothing recorded before, is **which** reason
-/// keeps firing and whether the same chapter is going round in circles. "無限加載中"
-/// and "章節載入失敗" both looked like one bug for a long time precisely because the
+/// keeps firing and whether the same chapter is going round in circles. "无限加载中"
+/// and "章节载入失败" both looked like one bug for a long time precisely because the
 /// retries behind them were invisible: the log showed the symptom, never the cause or
 /// the repetition.
 ///
@@ -111,7 +111,7 @@ enum ChapterRetryLog {
 
         guard shouldEscalate else { return }
         AppLogger.anomaly(
-            localized("章節反覆重試"),
+            localized("章节反复重试"),
             category: .reader,
             detail: ([
                 "chapter=\(chapter)",

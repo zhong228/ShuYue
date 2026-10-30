@@ -681,27 +681,27 @@ struct GeneratedBookCover: View {
 #Preview("生成封面") {
     VStack(spacing: 20) {
         HStack(spacing: 16) {
-            GeneratedBookCover(title: "劍燭大荒", author: "青山鶴")
+            GeneratedBookCover(title: "剑烛大荒", author: "青山鹤")
                 .frame(width: 104, height: 138)
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
-            GeneratedBookCover(title: "宿命之環", author: "愛潛水的烏賊")
+            GeneratedBookCover(title: "宿命之环", author: "爱潜水的乌贼")
                 .frame(width: 104, height: 138)
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
-            GeneratedBookCover(title: "史記·卷八十七·李斯列傳第二十七", author: "司馬遷")
+            GeneratedBookCover(title: "史记·卷八十七·李斯列传第二十七", author: "司马迁")
                 .frame(width: 104, height: 138)
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
         }
         HStack(spacing: 16) {
-            GeneratedBookCover(title: "活著", author: "余華")
+            GeneratedBookCover(title: "活著", author: "余华")
                 .frame(width: 62, height: 84)
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.md))
-            GeneratedBookCover(title: "百年孤獨", author: "馬奎斯")
+            GeneratedBookCover(title: "百年孤独", author: "马奎斯")
                 .frame(width: 52, height: 70)
                 .clipShape(RoundedRectangle(cornerRadius: DSRadius.sm))
-            GeneratedBookCover(title: "圍城", author: "錢鍾書")
+            GeneratedBookCover(title: "围城", author: "钱锺书")
                 .frame(width: 34, height: 34)
                 .clipShape(Circle())
-            GeneratedBookCover(title: "紅樓夢", author: "曹雪芹")
+            GeneratedBookCover(title: "红楼梦", author: "曹雪芹")
                 .frame(width: 56, height: 56)
                 .clipShape(Circle())
         }

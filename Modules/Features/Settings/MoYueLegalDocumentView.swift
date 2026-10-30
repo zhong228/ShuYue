@@ -13,9 +13,9 @@ enum MoYueLegalDocument {
     var navigationTitle: String {
         switch self {
         case .privacy:
-            return localized("隱私權政策")
+            return localized("隐私权政策")
         case .userAgreement:
-            return localized("使用者協議")
+            return localized("使用者协议")
         }
     }
 

@@ -395,17 +395,17 @@ enum ScraperError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return localized("RSS URL 無效")
+            return localized("RSS URL 无效")
         case .invalidRule(let name):
-            return String(format: localized("規則 %@ 格式無效"), name)
+            return String(format: localized("规则 %@ 格式无效"), name)
         case .httpError:
-            return localized("HTTP 請求失敗")
+            return localized("HTTP 请求失败")
         case .encodingError:
-            return localized("網頁編碼錯誤")
+            return localized("网页编码错误")
         case .noArticlesFound:
-            return localized("沒有找到文章")
+            return localized("没有找到文章")
         case .atsBlocked:
-            return localized("此來源使用不安全的 HTTP 連線，已被 iOS 安全政策阻擋。")
+            return localized("此来源使用不安全的 HTTP 连线，已被 iOS 安全政策阻挡。")
         }
     }
 }

@@ -42,11 +42,11 @@ struct SearchProgressControl: View {
     @ViewBuilder
     private var statusText: some View {
         if isPaused {
-            Text(localized("已暫停"))
+            Text(localized("已暂停"))
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
         } else if let currentSourceName {
-            Text(String(format: localized("正在檢索「%@」"), currentSourceName))
+            Text(String(format: localized("正在检索「%@」"), currentSourceName))
                 .font(DSFont.headline)
                 .foregroundStyle(DSColor.textPrimary)
                 .lineLimit(1)
@@ -61,17 +61,17 @@ struct SearchProgressControl: View {
         var text = Text("\(progress.completed)/\(progress.total)")
         if progress.timedOut > 0 {
             text = text + Self.separator
-                + Text(String(format: localized("超時 %d"), progress.timedOut))
+                + Text(String(format: localized("超时 %d"), progress.timedOut))
                     .foregroundStyle(DSColor.warning)
         }
         if progress.failed > 0 {
             text = text + Self.separator
-                + Text(String(format: localized("失敗 %d"), progress.failed))
+                + Text(String(format: localized("失败 %d"), progress.failed))
                     .foregroundStyle(DSColor.destructive)
         }
         if progress.skipped > 0 {
             text = text + Self.separator
-                + Text(String(format: localized("暫跳 %d"), progress.skipped))
+                + Text(String(format: localized("暂跳 %d"), progress.skipped))
         }
         return text
             .font(DSFont.footnote)
@@ -87,7 +87,7 @@ struct SearchProgressControl: View {
     private var pauseButton: some View {
         Button(action: isPaused ? onResume : onPause) {
             Label(
-                isPaused ? localized("繼續搜索") : localized("暫停搜索"),
+                isPaused ? localized("继续搜索") : localized("暂停搜索"),
                 systemImage: isPaused ? "play.fill" : "pause.fill"
             )
             .font(DSFont.subheadline.weight(.semibold))
@@ -97,7 +97,7 @@ struct SearchProgressControl: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
-        .accessibilityLabel(isPaused ? localized("繼續搜索") : localized("暫停搜索"))
+        .accessibilityLabel(isPaused ? localized("继续搜索") : localized("暂停搜索"))
         .accessibilityValue(progress.total > 0 ? "\(progress.completed)/\(progress.total)" : "")
     }
 
@@ -135,11 +135,11 @@ private struct SearchProgressRing: View {
     }
 }
 
-#Preview("检索進度") {
+#Preview("检索进度") {
     VStack(spacing: DSSpacing.lg) {
         SearchProgressControl(
             progress: SearchAggregator.SearchProgress(total: 27, completed: 18, failed: 4),
-            currentSourceName: "示例書源",
+            currentSourceName: "示例书源",
             isPaused: false,
             onPause: {},
             onResume: {}

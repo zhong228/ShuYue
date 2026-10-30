@@ -35,9 +35,9 @@ struct ReplaceRuleListView: View {
                             Image(systemName: "text.magnifyingglass")
                                 .font(DSFont.fixed(size: 48))
                                 .foregroundStyle(DSColor.textSecondary)
-                            Text(localized("尚無替換規則"))
+                            Text(localized("尚无替换规则"))
                                 .foregroundStyle(DSColor.textSecondary)
-                            Button(localized("新增規則")) { showingAdd = true }
+                            Button(localized("新增规则")) { showingAdd = true }
                                 .buttonStyle(.bordered)
                         }
                         .frame(maxWidth: .infinity)
@@ -52,12 +52,12 @@ struct ReplaceRuleListView: View {
                                     Button {
                                         editingRule = rule
                                     } label: {
-                                        Label(localized("編輯"), systemImage: "pencil")
+                                        Label(localized("编辑"), systemImage: "pencil")
                                     }
                                     Button(role: .destructive) {
                                         store.delete(id: rule.id)
                                     } label: {
-                                        Label(localized("刪除"), systemImage: "trash")
+                                        Label(localized("删除"), systemImage: "trash")
                                     }
                                 }
                                 .dsSettingsCardRow(minHeight: 0)
@@ -82,7 +82,7 @@ struct ReplaceRuleListView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     addOrImportToolbarControl
-                    .accessibilityLabel(localized("新增或匯入"))
+                    .accessibilityLabel(localized("新增或汇入"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -98,16 +98,16 @@ struct ReplaceRuleListView: View {
             ) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readableCompactWidth) {
                     DismissalSequencedActionChooser(
-                        title: localized("新增或匯入"),
+                        title: localized("新增或汇入"),
                         actions: [
                             DismissalSequencedAction(
                                 route: .add,
-                                title: localized("新增規則"),
+                                title: localized("新增规则"),
                                 systemImage: "plus"
                             ),
                             DismissalSequencedAction(
                                 route: .importFile,
-                                title: localized("匯入替換規則 JSON"),
+                                title: localized("汇入替换规则 JSON"),
                                 systemImage: "square.and.arrow.down"
                             ),
                         ],
@@ -151,14 +151,14 @@ struct ReplaceRuleListView: View {
                 Button {
                     showingAdd = true
                 } label: {
-                    Label(localized("新增規則"), systemImage: "plus")
+                    Label(localized("新增规则"), systemImage: "plus")
                 }
 
                 Button {
                     showingImportFile = true
                 } label: {
                     Label(
-                        localized("匯入替換規則 JSON"),
+                        localized("汇入替换规则 JSON"),
                         systemImage: "square.and.arrow.down"
                     )
                 }
@@ -190,18 +190,18 @@ struct ReplaceRuleListView: View {
                 let data = try Data(contentsOf: url)
                 let count = try store.importFromLegadoData(data)
                 importAlert = ReplaceRuleImportAlert(
-                    title: "成功匯入",
-                    message: String(format: localized("已匯入 %d 條替換規則"), count)
+                    title: "成功汇入",
+                    message: String(format: localized("已汇入 %d 条替换规则"), count)
                 )
             } catch {
                 importAlert = ReplaceRuleImportAlert(
-                    title: "匯入失敗",
-                    message: String(format: localized("替換規則匯入失敗：%@"), error.localizedDescription)
+                    title: "汇入失败",
+                    message: String(format: localized("替换规则汇入失败：%@"), error.localizedDescription)
                 )
             }
         case .failure(let error):
             importAlert = ReplaceRuleImportAlert(
-                title: "匯入失敗",
+                title: "汇入失败",
                 message: error.localizedDescription
             )
         }
@@ -227,13 +227,13 @@ private struct ReplaceRuleRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(rule.name.isEmpty ? localized("未命名規則") : rule.name)
+                    Text(rule.name.isEmpty ? localized("未命名规则") : rule.name)
                         .font(DSFont.subheadline)
                         .bold()
                         .foregroundColor(rule.enabled ? .primary : .secondary)
 
                     if rule.scope != "global" {
-                        Text(localized("書源"))
+                        Text(localized("书源"))
                             .font(DSFont.caption2)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
@@ -295,13 +295,13 @@ struct ReplaceRuleEditView: View {
                 AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
                 VStack(spacing: DSSpacing.lg) {
                     DSSettingsGroupCard(title: localized("基本")) {
-                        TextField(localized("規則名稱"), text: $rule.name)
+                        TextField(localized("规则名称"), text: $rule.name)
                             .dsSettingsCardRow()
 
                         DSSettingsCardDivider()
 
                         DSSettingsCardToggle(
-                            title: localized("啟用"),
+                            title: localized("启用"),
                             systemImage: "checkmark.circle",
                             isOn: $rule.enabled
                         )
@@ -309,7 +309,7 @@ struct ReplaceRuleEditView: View {
 
                     DSSettingsGroupCard(title: localized("匹配")) {
                         DSSettingsCardToggle(
-                            title: localized("正則表達式"),
+                            title: localized("正则表达式"),
                             systemImage: "asterisk",
                             isOn: $rule.isRegex
                         )
@@ -324,14 +324,14 @@ struct ReplaceRuleEditView: View {
 
                         DSSettingsCardDivider()
 
-                        TextField(localized("替換為（空白=刪除）"), text: $rule.replacement)
+                        TextField(localized("替换为（空白=删除）"), text: $rule.replacement)
                             .font(DSFont.fixed(size: 14, design: .monospaced))
                             .autocapitalization(.none)
                             .dsSettingsCardRow()
                     }
 
-                    DSSettingsGroupCard(title: localized("作用範圍")) {
-                        Picker(localized("範圍"), selection: $rule.scope) {
+                    DSSettingsGroupCard(title: localized("作用范围")) {
+                        Picker(localized("范围"), selection: $rule.scope) {
                             Text(localized("全局")).tag("global")
                             if rule.scope != "global" {
                                 Text(rule.scope).tag(rule.scope)
@@ -348,7 +348,7 @@ struct ReplaceRuleEditView: View {
             }
             }
             .softScrollEdges()
-            .navigationTitle(rule.name.isEmpty ? localized("新增規則") : rule.name)
+            .navigationTitle(rule.name.isEmpty ? localized("新增规则") : rule.name)
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .toolbar {

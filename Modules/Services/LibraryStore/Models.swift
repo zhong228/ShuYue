@@ -488,7 +488,7 @@ extension ReadingBook {
     /// Label for the 格式 chip. `.fixedPage` covers both fixed-layout EPUB and PDF,
     /// so the pipeline kind alone can't name the format — the import source can.
     var displayFormatLabel: String {
-        if isOnline { return localized("線上") }
+        if isOnline { return localized("线上") }
         if resolvedPipelineKind == .fixedPage, source == "local_epub" { return "EPUB" }
         return resolvedPipelineKind.displayFormat
     }
@@ -519,8 +519,8 @@ enum BookPipelineKind: String, Codable {
         case .txt: return "TXT"
         case .html: return "HTML"
         case .fixedPage: return "PDF"
-        case .manga: return localized("漫畫")
-        case .audio: return localized("有聲書")
+        case .manga: return localized("漫画")
+        case .audio: return localized("有声书")
         }
     }
 }

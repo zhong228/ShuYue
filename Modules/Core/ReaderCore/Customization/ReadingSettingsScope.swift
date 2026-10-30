@@ -15,8 +15,8 @@ enum ReadingSettingsScope: String, Codable, CaseIterable, Sendable {
 
     var titleKey: String {
         switch self {
-        case .theme: return "跟隨主題"
-        case .global: return "跟隨全域"
+        case .theme: return "跟随主题"
+        case .global: return "跟随全域"
         }
     }
 }
@@ -47,25 +47,25 @@ enum ReadingSettingsScopeItem: String, Codable, CaseIterable, Identifiable, Send
 
     var titleKey: String {
         switch self {
-        case .font: return "字體"
-        case .fontSize: return "字體大小"
-        case .bold: return "粗體"
-        case .textColor: return "文字顏色"
+        case .font: return "字体"
+        case .fontSize: return "字体大小"
+        case .bold: return "粗体"
+        case .textColor: return "文字颜色"
         case .writingMode: return "排版方向"
         case .lineSpacing: return "行距"
         case .letterSpacing: return "字距"
         case .paragraphSpacing: return "段距"
-        case .pageMargins: return "頁面邊距"
-        case .headerFooter: return "頁首頁尾"
-        case .chapterTitle: return "章節標題樣式"
+        case .pageMargins: return "页面边距"
+        case .headerFooter: return "页首页尾"
+        case .chapterTitle: return "章节标题样式"
         // Its own key: the shared 閱讀背景 is lower-case English, written for use
         // inside a sentence rather than as a row title.
         case .background: return "ReadingSetup.Background"
-        case .pageTurn: return "翻頁方式"
-        case .commentBubble: return "段評氣泡"
-        case .dialogueBubble: return "對話氣泡"
-        case .regexHighlight: return "正則高亮"
-        case .textUnderline: return "文字底線"
+        case .pageTurn: return "翻页方式"
+        case .commentBubble: return "段评气泡"
+        case .dialogueBubble: return "对话气泡"
+        case .regexHighlight: return "正则高亮"
+        case .textUnderline: return "文字底线"
         }
     }
 

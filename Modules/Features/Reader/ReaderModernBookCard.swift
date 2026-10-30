@@ -59,7 +59,7 @@ struct ReaderModernBookCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(author.isEmpty ? bookTitle : "\(bookTitle), \(author)")
-            .accessibilityHint(localized("書籍詳情"))
+            .accessibilityHint(localized("书籍详情"))
         } else {
             identityContent
                 .accessibilityElement(children: .combine)
@@ -85,7 +85,7 @@ struct ReaderModernBookCard: View {
                 // labels — 「For… EPUB」 next to 「Progr… 1 / 1…」.
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     chip(icon: "doc", title: localized("格式"), value: formatText)
-                    chip(icon: "chart.bar", title: localized("進度"), value: progressText)
+                    chip(icon: "chart.bar", title: localized("进度"), value: progressText)
                 }
                 .padding(.top, 2)
             }
@@ -282,11 +282,11 @@ struct ReaderModernBookCard: View {
             ReaderSecondaryAction(
                 id: .changeSource,
                 icon: "arrow.left.and.right",
-                label: "換源",
+                label: "换源",
                 action: {}
             ),
-            ReaderSecondaryAction(id: .download, icon: "arrow.down.circle", label: "下載", action: {}),
-            ReaderSecondaryAction(id: .playback, icon: "headphones", label: "聽書", action: {}),
+            ReaderSecondaryAction(id: .download, icon: "arrow.down.circle", label: "下载", action: {}),
+            ReaderSecondaryAction(id: .playback, icon: "headphones", label: "听书", action: {}),
             ReaderSecondaryAction(id: .aiAssistant, icon: "sparkles", label: "AI 助手", isLocked: true, action: {})
         ],
         palette: ReaderChromePalette(interface: .modern, theme: .sepia, settings: .shared),

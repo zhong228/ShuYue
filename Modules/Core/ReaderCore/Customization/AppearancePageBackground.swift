@@ -19,11 +19,11 @@ enum AppearancePageBackgroundScope: String, CaseIterable, Codable, Identifiable 
 
     var titleKey: String {
         switch self {
-        case .global: return "全局默認"
-        case .bookshelf: return "書架"
+        case .global: return "全局默认"
+        case .bookshelf: return "书架"
         case .explore: return "探索"
-        case .rss: return "RSS 訂閱"
-        case .settings: return "設置"
+        case .rss: return "RSS 订阅"
+        case .settings: return "设置"
         case .search: return "搜索"
         }
     }
@@ -186,9 +186,9 @@ enum AppearancePageBackgroundImageError: Error {
     var messageKey: String {
         switch self {
         case .unsupportedImageFile:
-            return "只支援 WebP、JPG、JPEG 或 PNG 圖片。"
+            return "只支援 WebP、JPG、JPEG 或 PNG 图片。"
         case .cannotReadImage:
-            return "無法讀取圖片。"
+            return "无法读取图片。"
         }
     }
 }
@@ -514,7 +514,7 @@ enum AppearanceThemeImportError: Error {
     var messageKey: String {
         switch self {
         case .invalidFile:
-            return "不支援的主題檔案。"
+            return "不支援的主题档案。"
         }
     }
 }

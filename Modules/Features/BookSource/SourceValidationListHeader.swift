@@ -33,9 +33,9 @@ struct SourceValidationBadge: View {
 
     private func label(_ health: SourceHealth) -> String {
         switch health {
-        case .passed:       return localized("驗證通過")
-        case .fetchError:   return localized("抓取異常")
-        case .contentError: return localized("正文異常")
+        case .passed:       return localized("验证通过")
+        case .fetchError:   return localized("抓取异常")
+        case .contentError: return localized("正文异常")
         }
     }
 
@@ -169,8 +169,8 @@ struct SourceValidationListHeader: View {
     private var pageButtonRow: some View {
         HStack(spacing: DSSpacing.sm) {
             pageButton(.all, label: localized("全部"), count: counts.total)
-            pageButton(.fetchError, label: localized("抓取異常"), count: counts.fetchError)
-            pageButton(.contentError, label: localized("正文異常"), count: counts.contentError)
+            pageButton(.fetchError, label: localized("抓取异常"), count: counts.fetchError)
+            pageButton(.contentError, label: localized("正文异常"), count: counts.contentError)
         }
     }
 
@@ -182,7 +182,7 @@ struct SourceValidationListHeader: View {
             HStack(spacing: 4) {
                 Image(systemName: grouped ? "rectangle.grid.1x2" : "list.bullet")
                     .font(DSFont.fixed(size: 13))
-                Text(grouped ? localized("分組") : localized("列表"))
+                Text(grouped ? localized("分组") : localized("列表"))
                     .font(DSFont.fixed(size: 12, weight: .medium))
             }
             .foregroundColor(grouped ? DSColor.appAccent : DSColor.textSecondary)
@@ -196,9 +196,9 @@ struct SourceValidationListHeader: View {
             .accessibilityHidden(true)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(localized("書源排列方式"))
-        .accessibilityValue(localized(grouped ? "分組顯示" : "不分組"))
-        .accessibilityHint(localized("點兩下切換分組與不分組"))
+        .accessibilityLabel(localized("书源排列方式"))
+        .accessibilityValue(localized(grouped ? "分组显示" : "不分组"))
+        .accessibilityHint(localized("点两下切换分组与不分组"))
     }
 
     /// A system button with a text label. The label keeps one weight in both states, so

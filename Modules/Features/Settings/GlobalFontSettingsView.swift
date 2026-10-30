@@ -14,12 +14,12 @@ struct GlobalFontSettingsView: View {
         ScrollView {
             AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
-                DSSettingsGroupCard(title: localized("全局字體"), footer: {
-                    Text(localized("套用於 App 介面，閱讀正文仍使用閱讀設定。"))
+                DSSettingsGroupCard(title: localized("全局字体"), footer: {
+                    Text(localized("套用于 App 介面，阅读正文仍使用阅读设定。"))
                         .dsSectionFooter()
                 }) {
                     selectionButton(
-                        title: localized("系統字體"),
+                        title: localized("系统字体"),
                         postScriptName: nil,
                         previewFont: GlobalAppTypography.font(.body, postScriptName: nil)
                     )
@@ -28,9 +28,9 @@ struct GlobalFontSettingsView: View {
                     .frame(minHeight: 54)
                 }
 
-                DSSettingsGroupCard(title: localized("已匯入字體")) {
+                DSSettingsGroupCard(title: localized("已汇入字体")) {
                     if settings.userFonts.isEmpty {
-                        Text(localized("尚未匯入字體"))
+                        Text(localized("尚未汇入字体"))
                             .font(DSFont.subheadline)
                             .foregroundStyle(DSColor.textSecondary)
                             .padding(.horizontal, DSSpacing.md)
@@ -51,7 +51,7 @@ struct GlobalFontSettingsView: View {
                                 Button(role: .destructive) {
                                     fontToDelete = font
                                 } label: {
-                                    Label(localized("刪除"), systemImage: "trash")
+                                    Label(localized("删除"), systemImage: "trash")
                                 }
                             }
                             .padding(.horizontal, DSSpacing.md)
@@ -61,15 +61,15 @@ struct GlobalFontSettingsView: View {
                     }
                 }
 
-                DSSettingsGroupCard(title: localized("字體"), footer: {
-                    Text(localized("匯入後，字體會同時出現在全局字體與閱讀設定。"))
+                DSSettingsGroupCard(title: localized("字体"), footer: {
+                    Text(localized("汇入后，字体会同时出现在全局字体与阅读设定。"))
                         .dsSectionFooter()
                 }) {
                     // Pro: the entry locks, fonts imported earlier stay usable.
                     let locked = !ReaderPremiumVisibilityPolicy(isProActive: subscription.isProActive).allowsFontImport
                     DSSettingsCardRow(
                         icon: locked ? "lock.fill" : "plus",
-                        title: localized("匯入字體..."),
+                        title: localized("汇入字体..."),
                         detail: locked ? localized("需要 Pro") : nil,
                         isLocked: locked
                     ) {
@@ -83,7 +83,7 @@ struct GlobalFontSettingsView: View {
         }
         }
         .softScrollEdges()
-        .navigationTitle(localized("全局字體"))
+        .navigationTitle(localized("全局字体"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .sheet(isPresented: $showsPaywall) {
@@ -98,20 +98,20 @@ struct GlobalFontSettingsView: View {
         )
         .alert(item: $importError) { error in
             Alert(
-                title: Text(localized("字體匯入失敗")),
+                title: Text(localized("字体汇入失败")),
                 message: Text(error.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
         .alert(
-            localized("刪除此字體？"),
+            localized("删除此字体？"),
             isPresented: Binding(
                 get: { fontToDelete != nil },
                 set: { if !$0 { fontToDelete = nil } }
             ),
             presenting: fontToDelete
         ) { font in
-            Button(localized("刪除"), role: .destructive) {
+            Button(localized("删除"), role: .destructive) {
                 settings.deleteUserFont(font)
                 fontToDelete = nil
             }
@@ -122,7 +122,7 @@ struct GlobalFontSettingsView: View {
             Text(
                 font.displayName
                     + "\n"
-                    + localized("刪除後，全局字體與閱讀設定將無法再使用此字體。")
+                    + localized("删除后，全局字体与阅读设定将无法再使用此字体。")
             )
         }
     }

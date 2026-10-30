@@ -118,7 +118,7 @@ final class BookChapterStore {
         let cachedIDs = state.withLock { Array($0.entries.keys) }
         let orphans = Set(storedIDs + cachedIDs).subtracting(bookIDs)
         guard !orphans.isEmpty else { return }
-        AppLogger.cache("目錄：移除已不在書架與閱讀紀錄中的書的目錄", context: ["count": orphans.count])
+        AppLogger.cache("目录：移除已不在书架与阅读纪录中的书的目录", context: ["count": orphans.count])
         for bookID in orphans {
             removeChapters(for: bookID)
         }

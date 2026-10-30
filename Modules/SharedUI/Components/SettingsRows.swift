@@ -645,10 +645,10 @@ struct DSSettingsCardPicker<SelectionValue: Hashable, Content: View>: View {
     Form {
         Section {
             NavigationLink {} label: {
-                SettingsValueLabel(title: "排版生效範圍", systemImage: "paintpalette", value: "全部跟隨全域")
+                SettingsValueLabel(title: "排版生效范围", systemImage: "paintpalette", value: "全部跟随全域")
             }
             Toggle(isOn: .constant(true)) {
-                SettingsRowLabel("粗體", systemImage: "bold")
+                SettingsRowLabel("粗体", systemImage: "bold")
             }
             SettingsSliderRow(
                 title: "行距",
@@ -659,9 +659,9 @@ struct DSSettingsCardPicker<SelectionValue: Hashable, Content: View>: View {
                 step: 0.05
             )
             Button {} label: {
-                SettingsRowLabel("重設排版", systemImage: "arrow.counterclockwise", role: .action)
+                SettingsRowLabel("重设排版", systemImage: "arrow.counterclockwise", role: .action)
             }
-            SettingsLockedRow(title: "正則高亮", systemImage: "text.magnifyingglass") {}
+            SettingsLockedRow(title: "正则高亮", systemImage: "text.magnifyingglass") {}
         }
     }
 }

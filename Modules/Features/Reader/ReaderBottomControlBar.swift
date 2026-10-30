@@ -60,15 +60,15 @@ struct ReaderBottomControlBar: View {
                     circleBtn(item: .refresh, label: localized("刷新")) { onRefresh() }
                 }
                 if showChangeSourceButton, settings.isReaderChromeItemVisible(ReaderChromeActionItem.changeSource) {
-                    circleBtn(item: .changeSource, label: localized("換源")) {
+                    circleBtn(item: .changeSource, label: localized("换源")) {
                         onOpenChangeSource()
                     }
                 }
                 if showDownloadButton, settings.isReaderChromeItemVisible(ReaderChromeActionItem.download) {
-                    circleBtn(item: .download, label: localized("下載")) { onDownloadAction() }
+                    circleBtn(item: .download, label: localized("下载")) { onDownloadAction() }
                 }
                 if settings.isReaderChromeItemVisible(ReaderChromeActionItem.playback) {
-                    circleBtn(item: .playback, label: localized("聽書")) { onOpenTTS() }
+                    circleBtn(item: .playback, label: localized("听书")) { onOpenTTS() }
                 }
                 // AI 助手 and AI 翻譯 live in the top bar's 三橫線 menu, not here: this row
                 // stays at four circles at most.
@@ -212,7 +212,7 @@ struct ReaderBottomControlBar: View {
                 // A bare Slider announces a percentage of its 0…1 range and no name at all
                 // (docs/design.md §7.1, third trap). Value shares `progressStatusText` with
                 // the line printed underneath so the two can't drift apart.
-                .accessibilityLabel(localized("閱讀進度"))
+                .accessibilityLabel(localized("阅读进度"))
                 .accessibilityValue(progressStatusText)
 
                 Text(progressStatusText)
@@ -225,7 +225,7 @@ struct ReaderBottomControlBar: View {
                 onNextChapter()
             } label: {
                 HStack(spacing: 3) {
-                    Text(localized(canGoNextChapter ? "下一章" : "書末頁")).font(DSFont.fixed(size: 14))
+                    Text(localized(canGoNextChapter ? "下一章" : "书末页")).font(DSFont.fixed(size: 14))
                     Image(systemName: "chevron.right").font(DSFont.fixed(size: 12))
                         .accessibilityHidden(true)
                 }
@@ -235,7 +235,7 @@ struct ReaderBottomControlBar: View {
                 .padding(.trailing, 14).padding(.vertical, 18)
             }
             .disabled(!canGoNextChapter)
-            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "書末頁"))
+            .accessibilityLabel(localized(canGoNextChapter ? "下一章" : "书末页"))
         }
         .background(palette.bottomFill)
     }
@@ -258,9 +258,9 @@ struct ReaderBottomControlBar: View {
     private func toolButton(for item: ReaderChromeToolItem) -> some View {
         switch item {
         case .tableOfContents:
-            toolBtn(item: item, label: localized("目錄")) { onOpenTOC() }
+            toolBtn(item: item, label: localized("目录")) { onOpenTOC() }
         case .bookmarks:
-            toolBtn(item: item, label: localized("書籤")) { onOpenBookmarks() }
+            toolBtn(item: item, label: localized("书签")) { onOpenBookmarks() }
         case .nightMode:
             toolBtn(
                 item: item,
@@ -270,7 +270,7 @@ struct ReaderBottomControlBar: View {
                 onToggleDarkMode()
             }
         case .settings:
-            toolBtn(item: item, label: localized("設置")) { onOpenSettings() }
+            toolBtn(item: item, label: localized("设置")) { onOpenSettings() }
         }
     }
 
@@ -331,7 +331,7 @@ struct ReaderBottomControlBar: View {
     ZStack {
         theme.backgroundColor.ignoresSafeArea()
 
-        Text(String(repeating: "書頁正文擋在浮動按鈕後面，檢查按鈕是否仍清楚可辨。", count: 12))
+        Text(String(repeating: "书页正文挡在浮动按钮后面，检查按钮是否仍清楚可辨。", count: 12))
             .font(DSFont.fixed(size: 17))
             .foregroundColor(theme.textColor)
             .padding(24)

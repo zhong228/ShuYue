@@ -60,10 +60,10 @@ struct SearchIdleContent<Hint: View>: View {
     }
 }
 
-#Preview("最近搜索與最近閱讀工作台") {
+#Preview("最近搜索与最近阅读工作台") {
     ScrollView {
         SearchRecentsWorkbench(
-            queries: ["紅樓夢", "三體"],
+            queries: ["红楼梦", "三体"],
             books: [],
             onSearch: { _ in },
             onClearQueries: {},

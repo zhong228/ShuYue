@@ -36,7 +36,7 @@ extension View {
                 case .variable(let source):
                     AdaptiveSheetContainer(maxWidth: DSLayout.readablePanelWidth) {
                         RuntimeVariableEditorView(
-                            title: localized("設置源變量"),
+                            title: localized("设置源变量"),
                             comment: SourceVariableEditing.comment(source: source),
                             initialValue: SourceVariableEditing.currentValue(for: source)
                         ) { value in
@@ -47,7 +47,7 @@ extension View {
                 }
             }
             .confirmationDialog(
-                localized("刪除書源"),
+                localized("删除书源"),
                 isPresented: Binding(
                     get: { pendingDeletion.wrappedValue != nil },
                     set: { if !$0 { pendingDeletion.wrappedValue = nil } }
@@ -55,7 +55,7 @@ extension View {
                 titleVisibility: .visible,
                 presenting: pendingDeletion.wrappedValue
             ) { source in
-                Button(localized("刪除"), role: .destructive) {
+                Button(localized("删除"), role: .destructive) {
                     _ = BookSourceStore.shared.delete(id: source.id)
                 }
                 Button(localized("取消"), role: .cancel) {}

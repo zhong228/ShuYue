@@ -78,24 +78,24 @@ enum ICloudSyncError: LocalizedError {
             case .available:
                 return nil
             case .noAccount:
-                return localized("此裝置尚未登入 iCloud")
+                return localized("此装置尚未登入 iCloud")
             case .restricted:
-                return localized("此裝置的 iCloud 使用受限")
+                return localized("此装置的 iCloud 使用受限")
             case .couldNotDetermine:
-                return localized("無法確認 iCloud 狀態，請稍後再試")
+                return localized("无法确认 iCloud 状态，请稍后再试")
             case .temporarilyUnavailable:
-                return localized("iCloud 暫時無法使用，請稍後再試")
+                return localized("iCloud 暂时无法使用，请稍后再试")
             @unknown default:
-                return localized("iCloud 無法使用")
+                return localized("iCloud 无法使用")
             }
         case .cloudKitUnavailable:
-            return localized("此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。")
+            return localized("此安装未启用 iCloud 权限：请用巨魔直接安装原版 IPA，或在签名工具中开启 iCloud 权限后重新安装，即可使用 iCloud 同步。")
         case .missingRemoteBackup:
-            return localized("iCloud 尚未找到可還原的備份")
+            return localized("iCloud 尚未找到可还原的备份")
         case .missingAsset(let name):
-            return String(format: localized("iCloud 備份檔案不完整：%@"), name)
+            return String(format: localized("iCloud 备份档案不完整：%@"), name)
         case .unreadableSyncData(let name):
-            return String(format: localized("iCloud 上的同步資料無法讀取：%@"), name)
+            return String(format: localized("iCloud 上的同步资料无法读取：%@"), name)
         }
     }
 }
@@ -948,7 +948,7 @@ final class ICloudSyncManager: ObservableObject {
 
     func backup() async throws {
         try await ensureAccountAvailable()
-        await setSync(true, message: localized("iCloud 備份中…"))
+        await setSync(true, message: localized("iCloud 备份中…"))
         defer { Task { @MainActor in self.isSyncing = false } }
 
         let files = ICloudSyncPayload.defaultFiles()
@@ -969,7 +969,7 @@ final class ICloudSyncManager: ObservableObject {
 
         await MainActor.run {
             lastSyncDate = date
-            statusMessage = localized("iCloud 備份成功")
+            statusMessage = localized("iCloud 备份成功")
         }
     }
 
@@ -988,7 +988,7 @@ final class ICloudSyncManager: ObservableObject {
     func deleteRemoteData() async throws {
         try await ensureAccountAvailable()
 
-        await setSync(true, message: localized("正在刪除 iCloud 同步資料…"))
+        await setSync(true, message: localized("正在删除 iCloud 同步资料…"))
         defer { Task { @MainActor in self.isSyncing = false } }
 
         // Book files and background pictures are records of their own, named after the
@@ -1023,7 +1023,7 @@ final class ICloudSyncManager: ObservableObject {
 
         await MainActor.run {
             lastSyncDate = nil
-            statusMessage = localized("已刪除 iCloud 上的同步資料")
+            statusMessage = localized("已删除 iCloud 上的同步资料")
         }
     }
 
@@ -1063,36 +1063,36 @@ final class ICloudSyncManager: ObservableObject {
     }
 
     func statusTitle(isAppSignedIn: Bool) -> String {
-        guard isAppSignedIn else { return localized("尚未開啟同步") }
+        guard isAppSignedIn else { return localized("尚未开启同步") }
         // No container means CloudKit never came up in this process; say WHY
-        // instead of the misleading generic "待確認" (v1.3.22 self-sign feedback):
+        // instead of the misleading generic "待确认" (v1.3.22 self-sign feedback):
         // a free-profile self-sign install sits here forever, and the old text
         // pointed users at their iCloud sign-in, which was not the problem.
         if container == nil {
             switch CloudKitAvailability.unavailabilityReason {
             case .liveContainer:
-                return localized("目前執行環境不支援 iCloud")
+                return localized("目前执行环境不支援 iCloud")
             case .iCloudNotSignedIn:
-                return localized("請先登入 iCloud")
+                return localized("请先登入 iCloud")
             case .entitlementMissing:
-                return localized("此安裝未啟用 iCloud 權限")
+                return localized("此安装未启用 iCloud 权限")
             case nil:
                 break
             }
         }
         switch accountStatus {
         case .available:
-            return localized("iCloud 同步已開啟")
+            return localized("iCloud 同步已开启")
         case .noAccount:
-            return localized("請先登入 iCloud")
+            return localized("请先登入 iCloud")
         case .restricted:
             return localized("iCloud 受限")
         case .couldNotDetermine:
-            return localized("iCloud 狀態待確認")
+            return localized("iCloud 状态待确认")
         case .temporarilyUnavailable:
-            return localized("iCloud 暫時無法使用")
+            return localized("iCloud 暂时无法使用")
         @unknown default:
-            return localized("iCloud 狀態待確認")
+            return localized("iCloud 状态待确认")
         }
     }
 
@@ -1100,9 +1100,9 @@ final class ICloudSyncManager: ObservableObject {
     /// CloudKit is off in this install, else the generic check-sign-in reminder.
     var unavailableFooterText: String {
         if container == nil, CloudKitAvailability.unavailabilityReason == .entitlementMissing {
-            return localized("此安裝未啟用 iCloud 權限：請用巨魔直接安裝原版 IPA，或在簽名工具中開啟 iCloud 權限後重新安裝，即可使用 iCloud 同步。")
+            return localized("此安装未启用 iCloud 权限：请用巨魔直接安装原版 IPA，或在签名工具中开启 iCloud 权限后重新安装，即可使用 iCloud 同步。")
         }
-        return localized("請確認系統設定中已登入 iCloud，且 iCloud Drive/CloudKit 可用")
+        return localized("请确认系统设定中已登入 iCloud，且 iCloud Drive/CloudKit 可用")
     }
 
     private func performSignInSync() async throws {
@@ -1122,14 +1122,14 @@ final class ICloudSyncManager: ObservableObject {
             guard let remoteManifest else { return }
             await MainActor.run {
                 pendingConflict = ICloudSyncConflict(remote: remoteManifest, localLastSync: lastSyncDate)
-                statusMessage = localized("偵測到衝突，請選擇要使用哪個版本")
+                statusMessage = localized("侦测到冲突，请选择要使用哪个版本")
             }
         }
     }
 
     private func performRestore(skipConflictCheck: Bool) async throws {
         try await ensureAccountAvailable()
-        await setSync(true, message: localized("iCloud 還原中…"))
+        await setSync(true, message: localized("iCloud 还原中…"))
         defer { Task { @MainActor in self.isSyncing = false } }
 
         guard let remoteManifest = try await fetchManifestIfExists() else {
@@ -1144,7 +1144,7 @@ final class ICloudSyncManager: ObservableObject {
             AppLogger.sync("restore: conflict — remote device differs and local data exists; deferring to user choice (nothing downloaded yet)", level: .notice)
             await MainActor.run {
                 pendingConflict = ICloudSyncConflict(remote: remoteManifest, localLastSync: localSync)
-                statusMessage = localized("偵測到衝突，請選擇要使用哪個版本")
+                statusMessage = localized("侦测到冲突，请选择要使用哪个版本")
             }
             return
         }
@@ -1171,7 +1171,7 @@ final class ICloudSyncManager: ObservableObject {
 
         await MainActor.run {
             lastSyncDate = Date()
-            statusMessage = localized("iCloud 還原成功")
+            statusMessage = localized("iCloud 还原成功")
         }
     }
 
@@ -1331,7 +1331,7 @@ final class ICloudSyncManager: ObservableObject {
     private func uploadBookFiles() async throws -> Int {
         let payloads = dynamicBookFilePayloads()
         guard !payloads.isEmpty else { return 0 }
-        await setSync(true, message: localized("正在同步書籍檔案…"))
+        await setSync(true, message: localized("正在同步书籍档案…"))
         var uploaded = 0
         for file in payloads {
             if try await uploadBookFileIfNeeded(file) {

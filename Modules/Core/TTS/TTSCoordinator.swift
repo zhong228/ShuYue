@@ -496,7 +496,7 @@ final class TTSCoordinator: ObservableObject {
         // that actually ended something, so pressing 停止 on an idle player stays quiet.
         if isPlaying || currentEngine.isPlaying {
             AppLogger.info(
-                "[TTS] 朗讀停止",
+                "[TTS] 朗读停止",
                 context: ["reason": reason, "engine": currentEngine.isPlaying],
                 level: .notice
             )
@@ -733,7 +733,7 @@ final class TTSCoordinator: ObservableObject {
                     // and lock-screen controls in sync with that paused session.
                     self.pause()
                 }
-                self.errorMessage = String(format: localized("朗讀失敗：%@"), error.localizedDescription)
+                self.errorMessage = String(format: localized("朗读失败：%@"), error.localizedDescription)
             }
             if Thread.isMainThread {
                 presentError()
@@ -815,7 +815,7 @@ final class TTSCoordinator: ObservableObject {
             return true
         } catch {
             audioSessionActive = false
-            errorMessage = String(format: localized("朗讀失敗：%@"), error.localizedDescription)
+            errorMessage = String(format: localized("朗读失败：%@"), error.localizedDescription)
             ttsLog("[TTS] Failed to activate audio session: \(error.localizedDescription)")
             return false
         }
@@ -939,7 +939,7 @@ final class TTSCoordinator: ObservableObject {
             // A call, Siri, or another app taking the session. This is the innocent explanation
             // for "it went quiet", and its absence rules the explanation out.
             if isPlaying {
-                AppLogger.info("[TTS] 音訊被其他 App 中斷", level: .notice)
+                AppLogger.info("[TTS] 音讯被其他 App 中断", level: .notice)
             }
             if isPlaying {
                 pause()
@@ -953,11 +953,11 @@ final class TTSCoordinator: ObservableObject {
             guard options.contains(.shouldResume) else {
                 // iOS says the interruption is over but declines to hand playback back. Nothing
                 // resumes and nothing is wrong — except that it looks exactly like a crash.
-                AppLogger.info("[TTS] 中斷結束但系統不允許自動續播", level: .notice)
+                AppLogger.info("[TTS] 中断结束但系统不允许自动续播", level: .notice)
                 return
             }
             guard activateAudioSession() else {
-                AppLogger.error("[TTS] 中斷結束後無法重新啟用音訊工作階段", level: .warning)
+                AppLogger.error("[TTS] 中断结束后无法重新启用音讯工作阶段", level: .warning)
                 return
             }
             resume()

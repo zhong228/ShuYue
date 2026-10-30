@@ -20,8 +20,8 @@ final class AIAssistantService: ObservableObject {
         var errorDescription: String? {
             switch self {
             case let .unavailable(reason): return reason.message
-            case .bookNotIndexed: return localized("這本書還沒建立索引")
-            case .emptyBook: return localized("這本書沒有可以分析的內容")
+            case .bookNotIndexed: return localized("这本书还没建立索引")
+            case .emptyBook: return localized("这本书没有可以分析的内容")
             }
         }
     }

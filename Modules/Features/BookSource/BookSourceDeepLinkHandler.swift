@@ -94,7 +94,7 @@ final class BookSourceDeepLinkHandler: ObservableObject {
         do {
             let (data, _) = try await MediaSession.shared.data(from: sourceURL)
             guard !data.isEmpty else {
-                phase = .failed(message: localized("無法讀取書源資料"))
+                phase = .failed(message: localized("无法读取书源资料"))
                 return
             }
             switch kind {
@@ -125,7 +125,7 @@ final class BookSourceDeepLinkHandler: ObservableObject {
         do {
             let sources = try LegadoSourceJSONParser.parse(data: data)
             guard !sources.isEmpty else {
-                phase = .failed(message: localized("連結中沒有可匯入的訂閱源"))
+                phase = .failed(message: localized("连结中没有可汇入的订阅源"))
                 return
             }
             commitRSS(sources)

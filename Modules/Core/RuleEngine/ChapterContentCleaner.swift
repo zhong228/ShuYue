@@ -6,11 +6,11 @@ struct ChapterContentCleaner {
         if raw.isEmpty { return raw }
 
         let removePatterns: [(String, String)] = [
-            (#"本章未完，請點擊下一頁繼續閱讀"#, ""),
             (#"本章未完，请点击下一页继续阅读"#, ""),
-            (#"請記住本書首發域名：[^\s]+\.(com|net|org|cn|cc|cx|pro)"#, ""),
+            (#"本章未完，请点击下一页继续阅读"#, ""),
             (#"请记住本书首发域名：[^\s]+\.(com|net|org|cn|cc|cx|pro)"#, ""),
-            (#"請記住本站域名[^\n]*"#, ""),
+            (#"请记住本书首发域名：[^\s]+\.(com|net|org|cn|cc|cx|pro)"#, ""),
+            (#"请记住本站域名[^\n]*"#, ""),
             (#"请记住本站域名[^\n]*"#, ""),
         ]
         for (pattern, replacement) in removePatterns {
@@ -28,15 +28,15 @@ struct ChapterContentCleaner {
 
         var lines = raw.components(separatedBy: .newlines)
         let adPatterns: [String] = [
-            #"請記住本站域名|请记住本站|記住本站|本站域名"#,
-            #"支持正版閱讀|支援正版閱讀|請支持正版|請到.*訂閱本書"#,
-            #"最新章節請到|防盜章節"#,
-            #"一秒記住|一秒记住|一秒钟记住"#,
+            #"请记住本站域名|请记住本站|记住本站|本站域名"#,
+            #"支持正版阅读|支援正版阅读|请支持正版|请到.*订阅本书"#,
+            #"最新章节请到|防盗章节"#,
+            #"一秒记住|一秒记住|一秒钟记住"#,
             #"chaptererror|chapter\s*error"#,
-            #"最新網址|最新网址"#,
+            #"最新网址|最新网址"#,
             #"^\s*https?://\S+\s*$"#,
             #"^[\s\u{3000}\.\-_\*]{0,5}$"#,
-            #"^(上一章|下一章|上一頁|下一页|返回目錄|返回目录)\s*$"#,
+            #"^(上一章|下一章|上一页|下一页|返回目录|返回目录)\s*$"#,
         ]
         lines = lines.filter { line in
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -67,7 +67,7 @@ struct ChapterContentCleaner {
 
         let dateRegex = try? NSRegularExpression(pattern: #"^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?$"#)
         let chapTitleRegex = try? NSRegularExpression(
-            pattern: #"^第\s*[\d零一二三四五六七八九十百千萬万]+\s*[章回卷節节篇部]"#
+            pattern: #"^第\s*[\d零一二三四五六七八九十百千万万]+\s*[章回卷节节篇部]"#
         )
         var dropCount = 0
         for line in lines.prefix(15) {
@@ -100,7 +100,7 @@ struct ChapterContentCleaner {
             if trimmed.isEmpty { return false }
             if trimmed.count < 60 && trimmed.components(separatedBy: ">").count >= 3 { return false }
             if trimmed.count < 30 && trimmed.contains("收藏")
-                && (trimmed.contains("目录") || trimmed.contains("目錄") || trimmed.contains("设置") || trimmed.contains("設置"))
+                && (trimmed.contains("目录") || trimmed.contains("目录") || trimmed.contains("设置") || trimmed.contains("设置"))
             {
                 return false
             }

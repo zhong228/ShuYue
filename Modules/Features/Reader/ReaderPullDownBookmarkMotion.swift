@@ -96,10 +96,10 @@ enum ReaderPullDownBookmarkMotion {
     /// Localization key for the hint, resolved by the caller through `localized(_:)`.
     static func hintKey(isBookmarked: Bool, phase: Phase) -> String {
         switch (isBookmarked, phase) {
-        case (false, .pulling): return "下拉加入書籤"
-        case (false, .armed): return "放開加入書籤"
-        case (true, .pulling): return "下拉移除書籤"
-        case (true, .armed): return "放開移除書籤"
+        case (false, .pulling): return "下拉加入书签"
+        case (false, .armed): return "放开加入书签"
+        case (true, .pulling): return "下拉移除书签"
+        case (true, .armed): return "放开移除书签"
         }
     }
 

@@ -116,7 +116,7 @@ struct RemoteLibraryBookDetailView: View {
                 }
                 .accessibilityElement(children: .combine)
                 if let size = selectedFormat?.size, size > 0 {
-                    ThemedLabeledContent(localized("檔案大小"), value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                    ThemedLabeledContent(localized("档案大小"), value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
                 }
             }
             .interfaceSectionSurface()
@@ -128,19 +128,19 @@ struct RemoteLibraryBookDetailView: View {
                 }
                 .disabled(action != nil)
                 Button { begin(.read) } label: {
-                    Label(localized(book?.lastOpenedDate == nil ? "開始閱讀" : "繼續閱讀"), systemImage: "book")
+                    Label(localized(book?.lastOpenedDate == nil ? "开始阅读" : "继续阅读"), systemImage: "book")
                 }
                 .disabled(!canAct)
                 Button { begin(.addToShelf) } label: {
-                    Label(localized(isOnShelf ? "已加入書架" : "加入書架"), systemImage: isOnShelf ? "checkmark.circle" : "plus")
+                    Label(localized(isOnShelf ? "已加入书架" : "加入书架"), systemImage: isOnShelf ? "checkmark.circle" : "plus")
                 }
                 .disabled(!canAct || isOnShelf)
                 Button { begin(.download) } label: {
-                    Label(localized(isOffline ? "已下載" : "下載供離線閱讀"), systemImage: isOffline ? "checkmark.circle" : "arrow.down.circle")
+                    Label(localized(isOffline ? "已下载" : "下载供离线阅读"), systemImage: isOffline ? "checkmark.circle" : "arrow.down.circle")
                 }
                 .disabled(!canAct || isOffline)
             } footer: {
-                Text(localized("閱讀不會自動加入書架；加入書架不會下載整本書。"))
+                Text(localized("阅读不会自动加入书架；加入书架不会下载整本书。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -152,7 +152,7 @@ struct RemoteLibraryBookDetailView: View {
                             selectedFormatID = RemoteLibraryBrowsePresentation.preferredFormat(in: updated)?.id ?? ""
                         }
                     } label: {
-                        SettingsRowLabel(localized("編輯遠端資料"), systemImage: "pencil")
+                        SettingsRowLabel(localized("编辑远端资料"), systemImage: "pencil")
                     }.disabled(action != nil)
                 }.interfaceSectionSurface()
             }
@@ -175,13 +175,13 @@ struct RemoteLibraryBookDetailView: View {
             }
             if selectedFormat?.isSupported != true {
                 Section {
-                    Label(localized("此格式暫不支援閱讀"), systemImage: "doc.badge.ellipsis")
+                    Label(localized("此格式暂不支援阅读"), systemImage: "doc.badge.ellipsis")
                         .foregroundStyle(DSColor.textSecondary)
                 }
                 .interfaceSectionSurface()
             }
             if let summary = item.summary, !summary.isEmpty {
-                Section(localized("簡介")) {
+                Section(localized("简介")) {
                     Text(summary).font(DSFont.body).foregroundStyle(DSColor.textPrimary)
                 }
                 .interfaceSectionSurface()
@@ -197,7 +197,7 @@ struct RemoteLibraryBookDetailView: View {
                 writeCapabilities = nil
             }
         }
-        .navigationTitle(localized("書籍詳情"))
+        .navigationTitle(localized("书籍详情"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .bookshelf)
         .navigationDestination(item: $readerBookID) { id in
@@ -230,11 +230,11 @@ struct RemoteLibraryBookDetailView: View {
                     readerBookID = result.id
                 case .addToShelf:
                     _ = try dependencies.remoteLibrary.addToShelf(item: item, format: format, store: store)
-                    message = localized("已加入書架")
+                    message = localized("已加入书架")
                 case .download:
                     _ = try await dependencies.remoteLibrary.downloadOffline(item: item, format: format, store: store)
                     try Task.checkCancellation()
-                    message = localized("下載完成")
+                    message = localized("下载完成")
                 }
             } catch {
                 if Task.isCancelled {
@@ -262,9 +262,9 @@ private enum RemoteLibraryDetailAction {
 
     var progressTitle: String {
         switch self {
-        case .read: localized("正在開啟書籍")
-        case .addToShelf: localized("加入書架")
-        case .download: localized("正在下載書籍")
+        case .read: localized("正在开启书籍")
+        case .addToShelf: localized("加入书架")
+        case .download: localized("正在下载书籍")
         }
     }
 }
@@ -272,7 +272,7 @@ private enum RemoteLibraryDetailAction {
 #Preview {
     NavigationStack {
         RemoteLibraryBookDetailView(item: RemoteLibraryItem(
-            id: "preview", connectionID: "preview", title: localized("書籍詳情"),
+            id: "preview", connectionID: "preview", title: localized("书籍详情"),
             author: nil, summary: nil, coverURL: nil,
             formats: [RemoteLibraryFormat(url: URL(string: "https://example.com/book.epub")!,
                                           fileExtension: "epub", mimeType: "application/epub+zip", size: nil)]

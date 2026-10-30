@@ -305,7 +305,7 @@ enum RSSOPMLParserError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noSources:
-            return localized("OPML 中沒有找到 RSS 訂閱源")
+            return localized("OPML 中没有找到 RSS 订阅源")
         }
     }
 }
@@ -742,13 +742,13 @@ enum RSSArticleHTMLSanitizer {
         let normalized = normalizePlainText(text)
             .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
             .lowercased()
-        return ["廣告", "广告", "advertisement", "advertisements", "ad"].contains(normalized)
+        return ["广告", "广告", "advertisement", "advertisements", "ad"].contains(normalized)
     }
 
     private static func removeAdMarkers(fromHTML html: String) -> String {
         removeAdMarkers(fromText: html)
             .replacingOccurrences(
-                of: #"(?is)<(p|div|span)[^>]*>\s*(?:廣告|广告|advertisement|ad)\s*</\1>"#,
+                of: #"(?is)<(p|div|span)[^>]*>\s*(?:广告|广告|advertisement|ad)\s*</\1>"#,
                 with: "",
                 options: .regularExpression
             )
@@ -757,17 +757,17 @@ enum RSSArticleHTMLSanitizer {
     private static func removeAdMarkers(fromText text: String) -> String {
         text
             .replacingOccurrences(
-                of: #"(?i)^\s*(?:廣告|广告|advertisement)\s+"#,
+                of: #"(?i)^\s*(?:广告|广告|advertisement)\s+"#,
                 with: "",
                 options: .regularExpression
             )
             .replacingOccurrences(
-                of: #"(?i)([。！？!?；;\s>])\s*(?:廣告|广告|advertisement)\s+"#,
+                of: #"(?i)([。！？!?；;\s>])\s*(?:广告|广告|advertisement)\s+"#,
                 with: "$1",
                 options: .regularExpression
             )
             .replacingOccurrences(
-                of: #"(?i)([。！？!?；;])\s*(?:廣告|广告|advertisement)(?=[\p{Han}A-Z])"#,
+                of: #"(?i)([。！？!?；;])\s*(?:广告|广告|advertisement)(?=[\p{Han}A-Z])"#,
                 with: "$1",
                 options: .regularExpression
             )
@@ -856,7 +856,7 @@ enum RSSArticleHTMLRenderer {
         errorMessage: String?
     ) -> RSSArticleHTMLDocument {
         let title = article.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? localized("暫無資料")
+            ? localized("暂无资料")
             : article.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let sourceName = source?.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let author = article.author?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1272,13 +1272,13 @@ enum RSSArticleContentLoaderError: LocalizedError, Equatable {
         switch self {
         case .httpStatus(let status):
             if status == 403 {
-                return localized("網站拒絕存取全文。你仍可開啟原始網頁閱讀。")
+                return localized("网站拒绝存取全文。你仍可开启原始网页阅读。")
             }
             return "HTTP \(status)"
         case .emptyContent:
-            return localized("沒有可讀全文")
+            return localized("没有可读全文")
         case .atsBlocked:
-            return localized("此來源使用不安全的 HTTP 連線，已被 iOS 安全政策阻擋。")
+            return localized("此来源使用不安全的 HTTP 连线，已被 iOS 安全政策阻挡。")
         }
     }
 }

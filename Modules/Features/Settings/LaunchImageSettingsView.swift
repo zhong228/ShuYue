@@ -18,31 +18,31 @@ struct LaunchImageSettingsView: View {
         ScrollView {
             AdaptiveContentContainer(maxWidth: DSLayout.readableFormWidth) {
             VStack(spacing: DSSpacing.lg) {
-                DSSettingsGroupCard(title: localized("啟動圖"), footer: {
+                DSSettingsGroupCard(title: localized("启动图"), footer: {
                     if settings.launchImageEnabled && !hasAnyLaunchImage {
-                        Text(localized("尚未導入任何啟動圖，請在下方選擇圖片。"))
+                        Text(localized("尚未导入任何启动图，请在下方选择图片。"))
                             .dsSectionFooter(color: .orange)
                     } else {
-                        Text(localized("開啟後，每次啟動 App 會短暫顯示你設定的啟動圖。"))
+                        Text(localized("开启后，每次启动 App 会短暂显示你设定的启动图。"))
                             .dsSectionFooter()
                     }
                 }) {
                     DSSettingsCardToggle(
-                        title: localized("啟用啟動圖"),
+                        title: localized("启用启动图"),
                         systemImage: "iphone",
                         isOn: $settings.launchImageEnabled
                     )
                 }
 
-                DSSettingsGroupCard(title: localized("淺色啟動圖"), footer: {
-                    Text(localized("淺色模式啟動時顯示。"))
+                DSSettingsGroupCard(title: localized("浅色启动图"), footer: {
+                    Text(localized("浅色模式启动时显示。"))
                         .dsSectionFooter()
                 }) {
                     launchImageSlot(.light)
                 }
 
-                DSSettingsGroupCard(title: localized("深色啟動圖"), footer: {
-                    Text(localized("深色模式啟動時顯示。若只設定一張，另一模式會沿用。"))
+                DSSettingsGroupCard(title: localized("深色启动图"), footer: {
+                    Text(localized("深色模式启动时显示。若只设定一张，另一模式会沿用。"))
                         .dsSectionFooter()
                 }) {
                     launchImageSlot(.dark)
@@ -54,14 +54,14 @@ struct LaunchImageSettingsView: View {
         }
         }
         .softScrollEdges()
-        .navigationTitle(localized("啟動圖"))
+        .navigationTitle(localized("启动图"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .alert(item: $importAlert) { alert in
             Alert(
-                title: Text(localized("啟動圖匯入失敗")),
+                title: Text(localized("启动图汇入失败")),
                 message: Text(alert.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
     }
@@ -81,7 +81,7 @@ struct LaunchImageSettingsView: View {
                         RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
                             .stroke(DSColor.textSecondary.opacity(0.25), lineWidth: 0.5)
                     )
-                Text(localized("已設定"))
+                Text(localized("已设定"))
                     .font(DSFont.body)
                     .foregroundStyle(DSColor.textSecondary)
                 Spacer(minLength: 0)
@@ -94,12 +94,12 @@ struct LaunchImageSettingsView: View {
 
         ImageSourcePickerButton(
             accessibilityTitle: localized(
-                scheme == .dark ? "深色啟動圖" : "淺色啟動圖"
+                scheme == .dark ? "深色启动图" : "浅色启动图"
             ),
             onPick: { result in handlePick(result, for: scheme) }
         ) {
             Label(
-                image == nil ? localized("選擇圖片") : localized("更換圖片"),
+                image == nil ? localized("选择图片") : localized("更换图片"),
                 systemImage: "photo"
             )
         }
@@ -141,7 +141,7 @@ struct LaunchImageSettingsView: View {
         } catch let error as LaunchImageStorageError {
             importAlert = LaunchImageImportAlert(message: localized(error.messageKey))
         } catch {
-            importAlert = LaunchImageImportAlert(message: localized("無法匯入啟動圖。"))
+            importAlert = LaunchImageImportAlert(message: localized("无法汇入启动图。"))
         }
     }
 }

@@ -69,8 +69,8 @@ struct CoverCandidateGrid: View {
                 ProgressView()
                 Text(
                     candidates.isEmpty
-                        ? localized("正在搜尋封面…")
-                        : localized("正在搜尋更多封面…")
+                        ? localized("正在搜寻封面…")
+                        : localized("正在搜寻更多封面…")
                 )
                 .font(DSFont.footnote)
                 .foregroundStyle(DSColor.textSecondary)
@@ -83,7 +83,7 @@ struct CoverCandidateGrid: View {
                     .foregroundStyle(DSColor.textSecondary.opacity(0.4))
                     // Decorative: the text below says the same thing.
                     .accessibilityHidden(true)
-                Text(localized("沒有找到其他封面"))
+                Text(localized("没有找到其他封面"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
                 Text(emptyHint)
@@ -127,18 +127,18 @@ struct CoverCandidateGrid: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(localized("封面") + "，" + candidate.providerName)
-        .accessibilityHint(localized("點兩下使用這張封面"))
+        .accessibilityHint(localized("点两下使用这张封面"))
         .accessibilityAddTraits(.isButton)
     }
 }
 
 #Preview {
     CoverCandidateGrid(
-        bookTitle: "紅樓夢",
+        bookTitle: "红楼梦",
         candidates: [],
         isSearching: true,
         hasSearched: true,
-        emptyHint: localized("可以改用相簿裡的圖片，或直接貼上封面網址。"),
+        emptyHint: localized("可以改用相簿里的图片，或直接贴上封面网址。"),
         onSelect: { _ in }
     )
 }

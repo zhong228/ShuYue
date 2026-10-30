@@ -620,7 +620,7 @@ struct ChapterFetcher {
         var content = Self.sanitizeResolvedContent(parsed.content, title: chapterTitle)
 
         if content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && parsed.isPay {
-            content = "[付費章節]"
+            content = "[付费章节]"
         }
 
         content = Self.normalizeLegadoContent(content)
@@ -765,13 +765,13 @@ struct ChapterFetcher {
         let isIISRuntimeError =
             (
                 contains("应用程序中的服务器错误")
-                    || contains("應用程式中的伺服器錯誤")
+                    || contains("应用程式中的伺服器错误")
                     || contains("servererrorin'/'application")
                     || contains("servererrorin/application")
             )
             && (
                 contains("运行时错误")
-                    || contains("運行時錯誤")
+                    || contains("运行时错误")
                     || contains("runtimeerror")
                     || contains("web.config")
                     || contains("defaultredirect")
@@ -785,15 +785,15 @@ struct ChapterFetcher {
             contains("如遇到章节错误")
             && (
                 contains("关闭浏览器的阅读/畅读/小说模式")
-                    || contains("關閉瀏覽器的閱讀/暢讀/小說模式")
+                    || contains("关闭浏览器的阅读/畅读/小说模式")
                     || (
                         contains("阅读/畅读/小说模式")
-                            || contains("閱讀/暢讀/小說模式")
+                            || contains("阅读/畅读/小说模式")
                     )
             )
             && (
                 contains("关闭广告屏蔽过滤功能")
-                    || contains("關閉廣告屏蔽過濾功能")
+                    || contains("关闭广告屏蔽过滤功能")
             )
 
         if isReadModeHint {
@@ -810,14 +810,14 @@ struct ChapterFetcher {
         // "cloudflare" alone is insufficient; require additional verification keywords
         let hasCloudflareMention = contains("cloudflare")
         let hasChallengeKeyword =
-            contains("人机验证") || contains("人機驗證")
+            contains("人机验证") || contains("人机验证")
             || contains("checkyourbrowser") || contains("ddos")
 
         let isHumanVerification =
             isCloudflareChallenge
             || (hasCloudflareMention && hasChallengeKeyword)
             || (contains("访问异常") && contains("验证"))
-            || (contains("訪問異常") && contains("驗證"))
+            || (contains("访问异常") && contains("验证"))
 
         if isHumanVerification {
             return true

@@ -364,7 +364,7 @@ class AnalyzeUrl {
                 let bindings = buildJsBindings()
                 let result = evaluator(trimmed, bindings)
                 if let result, result != trimmed {
-                    NSLog("[企點診斷] AnalyzeUrl 模板 「%@」→「%@」", trimmed, result)
+                    NSLog("[企点诊断] AnalyzeUrl 模板 「%@」→「%@」", trimmed, result)
                 }
                 return result
             }

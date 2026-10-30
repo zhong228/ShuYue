@@ -117,7 +117,7 @@ struct ExploreHomeView: View {
             .scrollDismissesKeyboard(.immediately)
             .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
             .pageBackgroundToolbar(for: .explore)
-            .rootTabTitle(localized("書城"), onScroll: .minimizesBar)
+            .rootTabTitle(localized("书城"), onScroll: .minimizesBar)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button { showsSourceDrawer = true } label: {
@@ -130,7 +130,7 @@ struct ExploreHomeView: View {
                         Image(systemName: "magnifyingglass")
                             .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(localized("搜索書籍"))
+                    .accessibilityLabel(localized("搜索书籍"))
                     Button { showsSettings = true } label: {
                         Image(systemName: "gearshape")
                             .accessibilityHidden(true)
@@ -182,15 +182,15 @@ struct ExploreHomeView: View {
                 ),
                 presenting: pageNamePrompt
             ) { prompt in
-                TextField(localized("名稱"), text: $pageName)
+                TextField(localized("名称"), text: $pageName)
                 switch prompt {
                 case .rename(let page):
-                    Button(localized("確定")) { pageStore.renamePage(id: page.id, to: pageName) }
+                    Button(localized("确定")) { pageStore.renamePage(id: page.id, to: pageName) }
                 }
                 Button(localized("取消"), role: .cancel) {}
             }
             .confirmationDialog(
-                String(format: localized("刪除「%@」？"), pagePendingDeletion?.name ?? ""),
+                String(format: localized("删除「%@」？"), pagePendingDeletion?.name ?? ""),
                 isPresented: Binding(
                     get: { pagePendingDeletion != nil },
                     set: { if !$0 { pagePendingDeletion = nil } }
@@ -198,10 +198,10 @@ struct ExploreHomeView: View {
                 titleVisibility: .visible,
                 presenting: pagePendingDeletion
             ) { page in
-                Button(localized("刪除"), role: .destructive) { deletePage(page) }
+                Button(localized("删除"), role: .destructive) { deletePage(page) }
                 Button(localized("取消"), role: .cancel) {}
             } message: { _ in
-                Text(localized("頁面裡的元件會一起刪除。"))
+                Text(localized("页面里的元件会一起删除。"))
             }
         }
     }
@@ -242,7 +242,7 @@ struct ExploreHomeView: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .accessibilityHint(localized("在瀏覽器中開啟"))
+                            .accessibilityHint(localized("在浏览器中开启"))
                         }
                     }
                 }
@@ -284,14 +284,14 @@ struct ExploreHomeView: View {
 
     /// 线路（镜像站）筛选，按 Legado 原始 `select` 标题匹配，繁简书源都覆盖。
     private static func isLineFilter(_ filter: DiscoverFilter) -> Bool {
-        filter.title == "线路" || filter.title == "線路"
+        filter.title == "线路" || filter.title == "线路"
     }
 
     private static func filterTitle(_ title: String) -> String {
         switch title {
-        case "线路", "線路": localized("線路")
-        case "类型", "類型": localized("類型")
-        case "频道", "頻道": localized("頻道")
+        case "线路", "线路": localized("线路")
+        case "类型", "类型": localized("类型")
+        case "频道", "频道": localized("频道")
         case "平台": localized("平台")
         default: title
         }
@@ -373,7 +373,7 @@ struct ExploreHomeView: View {
                     .foregroundStyle(DSColor.textSecondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(localized("全部分類"))
+            .accessibilityLabel(localized("全部分类"))
         }
     }
 
@@ -545,9 +545,9 @@ struct ExploreHomeView: View {
     private var myPagesSection: some View {
         if pageStore.pages.isEmpty {
             ContentUnavailableView(
-                localized("暫無自定義頁面"),
+                localized("暂无自定义页面"),
                 systemImage: "doc.text",
-                description: Text(localized("書城頁面暫時只有精選頻道。"))
+                description: Text(localized("书城页面暂时只有精选频道。"))
             )
         } else {
             LazyVGrid(
@@ -600,7 +600,7 @@ struct ExploreHomeView: View {
                                                 .font(DSFont.subheadline.weight(.medium))
                                                 .foregroundStyle(DSColor.textPrimary)
                                                 .lineLimit(1)
-                                            Text(source.enabled ? localized("已啟用") : localized("已停用"))
+                                            Text(source.enabled ? localized("已启用") : localized("已停用"))
                                                 .font(DSFont.caption)
                                                 .foregroundStyle(DSColor.textSecondary)
                                                 .lineLimit(1)
@@ -674,7 +674,7 @@ struct ExploreHomeView: View {
         Button(role: .destructive) {
             pagePendingDeletion = page
         } label: {
-            Label(localized("刪除"), systemImage: "trash")
+            Label(localized("删除"), systemImage: "trash")
         }
     }
 
@@ -746,7 +746,7 @@ struct ExploreHomeView: View {
 
     private var deletedSourceState: some View {
         ContentUnavailableView {
-            UnavailableLabel(localized("書源已被刪除"), systemImage: "books.vertical")
+            UnavailableLabel(localized("书源已被删除"), systemImage: "books.vertical")
         }
     }
 }
@@ -1030,12 +1030,12 @@ struct ExploreCategoryPickerSheet: View {
                 .padding(.vertical, DSSpacing.md)
             }
             .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
-            .navigationTitle(localized("全部分類"))
+            .navigationTitle(localized("全部分类"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(localized("關閉"))
+                        .accessibilityLabel(localized("关闭"))
                 }
             }
         }

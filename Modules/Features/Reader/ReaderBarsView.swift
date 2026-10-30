@@ -145,8 +145,8 @@ private struct ReaderBarsPreviewHost: View {
 
     private var snapshot: ReaderOverlayContentSnapshot {
         ReaderOverlayContentSnapshot(
-            bookTitle: "紅樓夢",
-            chapterTitle: "第一回 甄士隱夢幻識通靈",
+            bookTitle: "红楼梦",
+            chapterTitle: "第一回 甄士隐梦幻识通灵",
             chapterPage: 3,
             chapterPageCount: 12,
             totalProgress: 0.4523,
@@ -190,11 +190,11 @@ private struct ReaderBarsPreviewHost: View {
     }
 }
 
-#Preview("頁眉頁腳條 · 棕色") {
+#Preview("页眉页脚条 · 棕色") {
     ReaderBarsPreviewHost(theme: .sepia)
 }
 
-#Preview("頁眉頁腳條 · 夜間") {
+#Preview("页眉页脚条 · 夜间") {
     ReaderBarsPreviewHost(theme: .night)
 }
 
@@ -263,8 +263,8 @@ private struct ReaderPageBarsLayerPreviewHost: View {
 
     private var snapshot: ReaderOverlayContentSnapshot {
         ReaderOverlayContentSnapshot(
-            bookTitle: "紅樓夢",
-            chapterTitle: "第一回 甄士隱夢幻識通靈",
+            bookTitle: "红楼梦",
+            chapterTitle: "第一回 甄士隐梦幻识通灵",
             chapterPage: 3,
             chapterPageCount: 12,
             totalProgress: 0.4523,
@@ -304,6 +304,6 @@ private struct ReaderPageBarsLayerPreviewHost: View {
     }
 }
 
-#Preview("頁眉頁腳層") {
+#Preview("页眉页脚层") {
     ReaderPageBarsLayerPreviewHost()
 }

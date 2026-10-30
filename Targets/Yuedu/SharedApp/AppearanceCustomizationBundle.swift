@@ -291,27 +291,27 @@ struct AppearanceImportSummary {
             && !restoredReaderBackground
     }
 
-    /// One line per kind of thing restored, joined — "已匯入 2 個主題、5 個 Tab 圖示".
+    /// One line per kind of thing restored, joined — "已汇入 2 个主题、5 个 Tab 图示".
     var localizedDescription: String {
         var parts: [String] = []
         if themes > 0 {
-            parts.append(String(format: localized("%d 個主題"), themes))
+            parts.append(String(format: localized("%d 个主题"), themes))
         }
         if restoredPageBackgrounds {
-            parts.append(localized("頁面背景"))
+            parts.append(localized("页面背景"))
         }
         if tabIcons > 0 {
-            parts.append(String(format: localized("%d 個 Tab 圖示"), tabIcons))
+            parts.append(String(format: localized("%d 个 Tab 图示"), tabIcons))
         }
         if launchImages > 0 {
-            parts.append(String(format: localized("%d 張啟動圖"), launchImages))
+            parts.append(String(format: localized("%d 张启动图"), launchImages))
         }
         if restoredReaderBackground {
-            parts.append(localized("閱讀背景"))
+            parts.append(localized("阅读背景"))
         }
-        guard !parts.isEmpty else { return localized("這個檔案沒有可匯入的內容。") }
+        guard !parts.isEmpty else { return localized("这个档案没有可汇入的内容。") }
         return String(
-            format: localized("已匯入 %@。"),
+            format: localized("已汇入 %@。"),
             parts.joined(separator: localized("、"))
         )
     }

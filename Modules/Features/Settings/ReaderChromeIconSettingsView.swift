@@ -19,12 +19,12 @@ struct ReaderChromeIconSettingsView: View {
                 section(
                     items: ReaderChromeToolItem.allCases,
                     headerKey: "底部工具",
-                    footerKey: "關掉的按鈕會整個離開工具列。設置固定顯示——它是回到閱讀設定的唯一入口。"
+                    footerKey: "关掉的按钮会整个离开工具列。设置固定显示——它是回到阅读设定的唯一入口。"
                 )
                 section(
                     items: ReaderChromeActionItem.allCases,
-                    headerKey: "書籍動作",
-                    footerKey: "經典把刷新、換源、下載、聽書畫成浮在正文上的圓鈕，AI 助手和 AI 翻譯固定在頂部選單；現代全部放在點封面圓圈之後的書卡裡。原本就不適用這本書的動作仍然不會出現。"
+                    headerKey: "书籍动作",
+                    footerKey: "经典把刷新、换源、下载、听书画成浮在正文上的圆钮，AI 助手和 AI 翻译固定在顶部选单；现代全部放在点封面圆圈之后的书卡里。原本就不适用这本书的动作仍然不会出现。"
                 )
             }
             .padding(.horizontal, DSSpacing.md)
@@ -33,14 +33,14 @@ struct ReaderChromeIconSettingsView: View {
         }
         }
         .softScrollEdges()
-        .navigationTitle(localized("按鈕圖示"))
+        .navigationTitle(localized("按钮图示"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .alert(item: $importError) { error in
             Alert(
-                title: Text(localized("圖標導入失敗")),
+                title: Text(localized("图标导入失败")),
                 message: Text(error.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
     }
@@ -75,7 +75,7 @@ struct ReaderChromeIconSettingsView: View {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     Text(localized(item.titleKey))
                         .foregroundStyle(DSColor.textPrimary)
-                    Text(asset?.originalFileName ?? localized("未選擇圖片"))
+                    Text(asset?.originalFileName ?? localized("未选择图片"))
                         .font(DSFont.caption)
                         .foregroundStyle(asset == nil ? DSColor.textSecondary : DSColor.accent)
                         .lineLimit(1)
@@ -88,7 +88,7 @@ struct ReaderChromeIconSettingsView: View {
                     contentTypes: Self.iconContentTypes,
                     extraActions: asset == nil ? [] : [
                         ImageSourcePickerAction(
-                            title: localized("移除圖片"),
+                            title: localized("移除图片"),
                             systemImage: "trash",
                             isDestructive: true,
                             action: { settings.deleteReaderChromeIcon(for: item) }
@@ -96,7 +96,7 @@ struct ReaderChromeIconSettingsView: View {
                     ],
                     onPick: { result in handleIconPick(result, item: item) }
                 ) {
-                    Label(localized("選擇圖片"), systemImage: "photo")
+                    Label(localized("选择图片"), systemImage: "photo")
                         .labelStyle(.iconOnly)
                         .font(DSFont.subheadline)
                 }
@@ -105,17 +105,17 @@ struct ReaderChromeIconSettingsView: View {
 
             if item.isAlwaysVisible {
                 HStack {
-                    Text(localized("顯示"))
+                    Text(localized("显示"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
                     Spacer(minLength: DSSpacing.md)
-                    Text(localized("固定顯示"))
+                    Text(localized("固定显示"))
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
                 }
             } else {
                 Toggle(isOn: visibleBinding(for: item)) {
-                    Text(localized("顯示"))
+                    Text(localized("显示"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -158,7 +158,7 @@ struct ReaderChromeIconSettingsView: View {
                 try settings.importReaderChromeIcon(
                     data: data,
                     // Photos gives no file name; the row shows this under the title.
-                    originalFileName: localized("相簿圖片"),
+                    originalFileName: localized("相簿图片"),
                     item: item
                 )
             case .success(.file(let url)):

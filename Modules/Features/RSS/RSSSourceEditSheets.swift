@@ -38,12 +38,12 @@ struct EditRSSSourceSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(localized("來源名稱")).foregroundStyle(DSColor.textSecondary)) {
-                    TextField(localized("來源名稱"), text: $name)
+                Section(header: Text(localized("来源名称")).foregroundStyle(DSColor.textSecondary)) {
+                    TextField(localized("来源名称"), text: $name)
                 }
                 .interfaceSectionSurface()
 
-                Section(header: Text(localized("RSS 網址")).foregroundStyle(DSColor.textSecondary)) {
+                Section(header: Text(localized("RSS 网址")).foregroundStyle(DSColor.textSecondary)) {
                     TextField("https://", text: $url)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -52,9 +52,9 @@ struct EditRSSSourceSheet: View {
                 }
                 .interfaceSectionSurface()
 
-                Section(header: Text(localized("資料夾")).foregroundStyle(DSColor.textSecondary)) {
-                    Picker(localized("資料夾"), selection: $selectedFolderID) {
-                        Text(localized("無資料夾")).tag(Self.rootFolderID)
+                Section(header: Text(localized("资料夹")).foregroundStyle(DSColor.textSecondary)) {
+                    Picker(localized("资料夹"), selection: $selectedFolderID) {
+                        Text(localized("无资料夹")).tag(Self.rootFolderID)
                         ForEach(folders) { folder in
                             Text(folder.name).tag(folder.id)
                         }
@@ -71,7 +71,7 @@ struct EditRSSSourceSheet: View {
                 }
             }
             .softScrollEdges()
-            .navigationTitle(localized("編輯訂閱"))
+            .navigationTitle(localized("编辑订阅"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {
@@ -94,19 +94,19 @@ struct EditRSSSourceSheet: View {
             .disabled(isSaving)
             .overlay {
                 if isSaving {
-                    ProgressView(localized("正在驗證網址…"))
+                    ProgressView(localized("正在验证网址…"))
                         .padding()
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.lg))
                 }
             }
-            .alert(localized("無法解析此網址"), isPresented: $showUnreachableConfirm) {
-                Button(localized("仍要儲存"), role: .destructive) {
+            .alert(localized("无法解析此网址"), isPresented: $showUnreachableConfirm) {
+                Button(localized("仍要储存"), role: .destructive) {
                     commit()
                     dismiss()
                 }
                 Button(localized("取消"), role: .cancel) {}
             } message: {
-                Text(localized("此 RSS 網址無法取得內容，是否仍要儲存？"))
+                Text(localized("此 RSS 网址无法取得内容，是否仍要储存？"))
             }
         }
     }
@@ -118,7 +118,7 @@ struct EditRSSSourceSheet: View {
         guard let parsed = URL(string: trimmedURL),
               let scheme = parsed.scheme?.lowercased(),
               ["http", "https"].contains(scheme) else {
-            errorMessage = localized("RSS URL 無效")
+            errorMessage = localized("RSS URL 无效")
             return
         }
         errorMessage = nil
@@ -200,7 +200,7 @@ struct RSSOrganizeSheet: View {
 
                 if folders.isEmpty && rootSources.isEmpty {
                     Section {
-                        Text(localized("沒有訂閱源"))
+                        Text(localized("没有订阅源"))
                             .foregroundStyle(DSColor.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 60)
@@ -209,7 +209,7 @@ struct RSSOrganizeSheet: View {
                 }
 
                 if !folders.isEmpty {
-                    Section(header: Text(localized("資料夾")).foregroundStyle(DSColor.textSecondary)) {
+                    Section(header: Text(localized("资料夹")).foregroundStyle(DSColor.textSecondary)) {
                         ForEach(folders) { folder in
                             NavigationLink {
                                 RSSFolderSourcesView(folder: folder, store: store)
@@ -246,7 +246,7 @@ struct RSSOrganizeSheet: View {
                 }
 
                 if !rootSources.isEmpty {
-                    Section(header: Text(folders.isEmpty ? "" : localized("未分類")).foregroundStyle(DSColor.textSecondary)) {
+                    Section(header: Text(folders.isEmpty ? "" : localized("未分类")).foregroundStyle(DSColor.textSecondary)) {
                         NavigationLink {
                             RSSFolderSourcesView(folder: nil, store: store)
                         } label: {
@@ -255,7 +255,7 @@ struct RSSOrganizeSheet: View {
                                     .foregroundStyle(DSColor.textSecondary)
                                     .frame(width: 28, height: 28)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(localized("未分類"))
+                                    Text(localized("未分类"))
                                         .font(DSFont.body)
                                         .foregroundStyle(DSColor.textPrimary)
                                     Text("\(rootSources.count) \(localized("個訂閱源"))")
@@ -271,7 +271,7 @@ struct RSSOrganizeSheet: View {
             .listStyle(.insetGrouped)
             .softScrollEdges()
             .environment(\.editMode, $editMode)
-            .navigationTitle(localized("管理訂閱源"))
+            .navigationTitle(localized("管理订阅源"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {
@@ -310,7 +310,7 @@ struct RSSOrganizeSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "folder.badge.plus")
-                        Text(localized("新增資料夾"))
+                        Text(localized("新增资料夹"))
                     }
                     .font(.body.weight(.medium))
                     .foregroundStyle(.white)
@@ -320,8 +320,8 @@ struct RSSOrganizeSheet: View {
                 }
                 .padding(.bottom, 20)
             }
-            .alert(localized("新增資料夾"), isPresented: $showAddFolder) {
-                TextField(localized("資料夾名稱"), text: $newFolderName)
+            .alert(localized("新增资料夹"), isPresented: $showAddFolder) {
+                TextField(localized("资料夹名称"), text: $newFolderName)
                 Button(localized("新增")) {
                     let name = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !name.isEmpty {
@@ -333,7 +333,7 @@ struct RSSOrganizeSheet: View {
                     newFolderName = ""
                 }
             } message: {
-                Text(localized("請輸入資料夾名稱"))
+                Text(localized("请输入资料夹名称"))
             }
         }
     }
@@ -377,7 +377,7 @@ struct RSSFolderSourcesView: View {
         List {
             if sources.isEmpty {
                 Section {
-                    Text(localized("此資料夾沒有訂閱源"))
+                    Text(localized("此资料夹没有订阅源"))
                         .foregroundStyle(DSColor.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 40)
@@ -395,7 +395,7 @@ struct RSSFolderSourcesView: View {
         .listStyle(.insetGrouped)
         .softScrollEdges()
         .environment(\.editMode, $editMode)
-        .navigationTitle(folder?.name ?? localized("未分類"))
+        .navigationTitle(folder?.name ?? localized("未分类"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .rss)
         .toolbar {
@@ -424,7 +424,7 @@ struct RSSFolderSourcesView: View {
                             }
                         }
                     } label: {
-                        Text(selectionMode ? localized("完成") : localized("選擇"))
+                        Text(selectionMode ? localized("完成") : localized("选择"))
                             .fontWeight(.medium)
                     }
                 }
@@ -444,18 +444,18 @@ struct RSSFolderSourcesView: View {
                 selectionMode = false
             }
         }
-        .alert(localized("刪除"), isPresented: $showDeleteConfirm) {
-            Button(localized("刪除"), role: .destructive) {
+        .alert(localized("删除"), isPresented: $showDeleteConfirm) {
+            Button(localized("删除"), role: .destructive) {
                 store.removeSources(ids: Array(selectedSourceIDs))
                 selectedSourceIDs.removeAll()
                 selectionMode = false
             }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(String(format: localized("確定要刪除 %d 個訂閱源嗎？"), selectedSourceIDs.count))
+            Text(String(format: localized("确定要删除 %d 个订阅源吗？"), selectedSourceIDs.count))
         }
-        .alert(localized("檢測完成"), isPresented: $showCheckResult) {
-            Button(localized("確定"), role: .cancel) {}
+        .alert(localized("检测完成"), isPresented: $showCheckResult) {
+            Button(localized("确定"), role: .cancel) {}
         } message: {
             Text(checkResultMessage)
         }
@@ -487,7 +487,7 @@ struct RSSFolderSourcesView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: selectedSourceIDs.count == sources.count ? "checkmark.circle.fill" : "checkmark.circle")
-                        Text(localized("全選"))
+                        Text(localized("全选"))
                             .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
@@ -499,7 +499,7 @@ struct RSSFolderSourcesView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: "arrow.2.circlepath")
-                        Text(localized("反選"))
+                        Text(localized("反选"))
                             .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
@@ -510,7 +510,7 @@ struct RSSFolderSourcesView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: "folder.badge.plus")
-                        Text(localized("移動到分組"))
+                        Text(localized("移动到分组"))
                             .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
@@ -522,7 +522,7 @@ struct RSSFolderSourcesView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: "exclamationmark.triangle")
-                        Text(localized("檢測"))
+                        Text(localized("检测"))
                             .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
@@ -534,7 +534,7 @@ struct RSSFolderSourcesView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: "trash")
-                        Text(localized("刪除"))
+                        Text(localized("删除"))
                             .font(.caption)
                     }
                     .frame(maxWidth: .infinity)
@@ -603,7 +603,7 @@ struct RSSFolderSourcesView: View {
                 Button(role: .destructive) {
                     store.removeSources(ids: [source.id])
                 } label: {
-                    Label(localized("刪除"), systemImage: "trash")
+                    Label(localized("删除"), systemImage: "trash")
                 }
             }
         }
@@ -638,9 +638,9 @@ struct RSSFolderSourcesView: View {
         checkProgress = nil
 
         if invalidSourceIDs.isEmpty {
-            checkResultMessage = localized("檢測完成，所有訂閱源均有效")
+            checkResultMessage = localized("检测完成，所有订阅源均有效")
         } else {
-            checkResultMessage = String(format: localized("檢測完成：%d 個訂閱源失效"), invalidSourceIDs.count)
+            checkResultMessage = String(format: localized("检测完成：%d 个订阅源失效"), invalidSourceIDs.count)
         }
         showCheckResult = true
     }
@@ -662,7 +662,7 @@ struct RSSMoveSourcesSheet: View {
                         moveSources(to: nil)
                     } label: {
                         HStack {
-                            Text(localized("無資料夾"))
+                            Text(localized("无资料夹"))
                             Spacer()
                             Image(systemName: "tray")
                                 .foregroundStyle(DSColor.textSecondary)
@@ -672,7 +672,7 @@ struct RSSMoveSourcesSheet: View {
 
                 let folders = store.orderedFolders()
                 if !folders.isEmpty {
-                    Section(header: Text(localized("資料夾")).foregroundStyle(DSColor.textSecondary)) {
+                    Section(header: Text(localized("资料夹")).foregroundStyle(DSColor.textSecondary)) {
                         ForEach(folders) { folder in
                             Button {
                                 moveSources(to: folder)
@@ -690,7 +690,7 @@ struct RSSMoveSourcesSheet: View {
             }
             .listStyle(.insetGrouped)
             .softScrollEdges()
-            .navigationTitle(localized("移動到分組"))
+            .navigationTitle(localized("移动到分组"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {

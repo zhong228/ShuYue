@@ -209,33 +209,33 @@ final class BrowserTextInteractionController: NSObject, @preconcurrency UIEditMe
     func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
         let generation = (configuration.identifier as? NSNumber)?.uint64Value ?? bindingGeneration
         guard acceptsMenuAction(generation: generation), selection.hasSelection else { return nil }
-        var actions: [UIMenuElement] = [UIAction(title: localized("複製"), image: UIImage(systemName: "doc.on.doc")) { [weak self] _ in
+        var actions: [UIMenuElement] = [UIAction(title: localized("复制"), image: UIImage(systemName: "doc.on.doc")) { [weak self] _ in
             guard let self, acceptsMenuAction(generation: generation) else { return }
             UIPasteboard.general.string = self.selection.selectedTextForCopy
             self.clear()
         }]
-        let colors: [(AnnotationColor, String)] = [(.yellow, "黃色"), (.green, "綠色"), (.blue, "藍色"), (.pink, "粉色"), (.orange, "橙色")]
+        let colors: [(AnnotationColor, String)] = [(.yellow, "黄色"), (.green, "绿色"), (.blue, "蓝色"), (.pink, "粉色"), (.orange, "橙色")]
         let highlights = colors.map { color, title in
             UIAction(title: localized(title), image: UIImage(systemName: "circle.fill")?.withTintColor(color.uiColor, renderingMode: .alwaysOriginal)) { [weak self] _ in
                 guard let self, acceptsMenuAction(generation: generation) else { return }
                 self.requestAnnotation(style: .highlight, color: color)
             }
         }
-        actions.append(UIMenu(title: localized("重點"), children: highlights + [UIAction(title: localized("下劃線")) { [weak self] _ in
+        actions.append(UIMenu(title: localized("重点"), children: highlights + [UIAction(title: localized("下划线")) { [weak self] _ in
             guard let self, acceptsMenuAction(generation: generation) else { return }
             self.requestAnnotation(style: .underline, color: .yellow)
         }]))
         let premium = ReaderPremiumVisibilityPolicy(isProActive: SubscriptionStore.shared.isProActive)
-        actions.append(UIAction(title: localized("筆記"), image: UIImage(systemName: premium.allowsParagraphNoteEditing ? "note.text" : "lock.fill")) { [weak self] _ in
+        actions.append(UIAction(title: localized("笔记"), image: UIImage(systemName: premium.allowsParagraphNoteEditing ? "note.text" : "lock.fill")) { [weak self] _ in
             guard let self, acceptsMenuAction(generation: generation) else { return }
             self.requestNote(self.selection.tappedAnnotation)
         })
-        actions.append(UIAction(title: localized("搜尋書籍"), image: UIImage(systemName: "magnifyingglass")) { [weak self] _ in
+        actions.append(UIAction(title: localized("搜寻书籍"), image: UIImage(systemName: "magnifyingglass")) { [weak self] _ in
             guard let self, acceptsMenuAction(generation: generation) else { return }
             guard let text = selection.selectedTextForCopy else { return }; afterMenuDismissal { [weak self] in self?.onSearch?(text) }
         })
         if #available(iOS 17.4, *), onTranslate != nil {
-            actions.append(UIAction(title: localized("翻譯")) { [weak self] _ in
+            actions.append(UIAction(title: localized("翻译")) { [weak self] _ in
                 guard let self, acceptsMenuAction(generation: generation) else { return }
                 guard let text = selection.selectedTextForCopy else { return }; afterMenuDismissal { [weak self] in self?.onTranslate?(text) }
             })
@@ -250,7 +250,7 @@ final class BrowserTextInteractionController: NSObject, @preconcurrency UIEditMe
                 }
             })
         }
-        actions.append(UIAction(title: localized("替換")) { [weak self] _ in
+        actions.append(UIAction(title: localized("替换")) { [weak self] _ in
             guard let self, acceptsMenuAction(generation: generation) else { return }
             guard let text = selection.selectedTextForCopy else { return }
             afterMenuDismissal {
@@ -258,7 +258,7 @@ final class BrowserTextInteractionController: NSObject, @preconcurrency UIEditMe
             }
         })
         if let annotation = selection.tappedAnnotation {
-            actions.append(UIAction(title: localized("刪除標註"), attributes: .destructive) { [weak self] _ in
+            actions.append(UIAction(title: localized("删除标注"), attributes: .destructive) { [weak self] _ in
                 guard let self, acceptsMenuAction(generation: generation) else { return }
                 if let note = annotation.note, !note.isEmpty {
                     let request = CoreTextNoteDeleteRequest(position: .init(spineIndex: spineIndex, charOffset: annotation.startOffset), length: annotation.range.length, excerpt: excerpt(annotation.range), note: note, style: annotation.style, color: annotation.color)

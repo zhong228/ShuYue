@@ -18,7 +18,7 @@ struct SearchQueryField: View {
                 .font(DSFont.body)
                 .foregroundStyle(DSColor.textSecondary)
                 .accessibilityHidden(true)
-            TextField(localized("輸入書名或作者"), text: $query)
+            TextField(localized("输入书名或作者"), text: $query)
                 .font(DSFont.body)
                 .foregroundStyle(DSColor.textPrimary)
                 .focused($focused)
@@ -98,7 +98,7 @@ struct SearchSourceChipStrip: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DSSpacing.sm) {
                 SearchSourceChip(
-                    title: localized("全部書源"),
+                    title: localized("全部书源"),
                     isSelected: scope.mode == .all,
                     action: onSelectAll
                 )
@@ -260,7 +260,7 @@ struct SearchGroupedResultsList: View {
         Button {
             onLoadMore()
         } label: {
-            Label(localized("載入更多"), systemImage: "arrow.down.circle")
+            Label(localized("载入更多"), systemImage: "arrow.down.circle")
                 .font(DSFont.subheadline)
                 .foregroundStyle(DSColor.appAccent)
                 .frame(maxWidth: .infinity, minHeight: DSLayout.minimumTapTarget)
@@ -273,7 +273,7 @@ struct SearchGroupedResultsList: View {
             HStack(spacing: DSSpacing.xs) {
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(DSFont.footnote.weight(.semibold))
-                Text(isExpanded ? localized("收起") : localized("展開全部"))
+                Text(isExpanded ? localized("收起") : localized("展开全部"))
                     .font(DSFont.subheadline.weight(.semibold))
             }
             .foregroundStyle(DSColor.appAccent)
@@ -281,17 +281,17 @@ struct SearchGroupedResultsList: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
-        .accessibilityLabel(isExpanded ? localized("收起") : localized("展開全部"))
+        .accessibilityLabel(isExpanded ? localized("收起") : localized("展开全部"))
     }
 }
 
 #Preview("检索工作台组件") {
     VStack(spacing: DSSpacing.lg) {
-        SearchQueryField(query: .constant("三體"), onSearch: {})
+        SearchQueryField(query: .constant("三体"), onSearch: {})
         SearchSourceChipStrip(
             sources: [
                 BookSource(bookSourceUrl: "https://example.com/a", bookSourceName: "示例源"),
-                BookSource(bookSourceUrl: "https://example.com/b", bookSourceName: "另一個源"),
+                BookSource(bookSourceUrl: "https://example.com/b", bookSourceName: "另一个源"),
             ],
             scope: .all,
             onSelectAll: {},
@@ -300,7 +300,7 @@ struct SearchGroupedResultsList: View {
         ScrollView(.horizontal) {
             HStack {
                 SearchSourceResultRow(
-                    book: SearchBook(name: "三體", author: "劉慈欣", origins: []),
+                    book: SearchBook(name: "三体", author: "刘慈欣", origins: []),
                     coverURL: "",
                     onOpen: {}
                 )

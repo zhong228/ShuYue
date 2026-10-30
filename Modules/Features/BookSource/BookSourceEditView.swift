@@ -28,9 +28,9 @@ struct BookSourceEditView: View {
     enum EditTab: String, CaseIterable, Identifiable {
         case base = "基本"
         case search = "搜索"
-        case explore = "發現"
-        case info = "詳情"
-        case toc = "目錄"
+        case explore = "发现"
+        case info = "详情"
+        case toc = "目录"
         case content = "正文"
         var id: String { rawValue }
         /// A distinct SF Symbol per group so the capsule strip reads at a glance.
@@ -61,7 +61,7 @@ struct BookSourceEditView: View {
 
                 tabContent
             }
-            .navigationTitle(source.bookSourceName.isEmpty ? localized("新建書源") : source.bookSourceName)
+            .navigationTitle(source.bookSourceName.isEmpty ? localized("新建书源") : source.bookSourceName)
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .settings)
             .interactiveDismissDisabled(isDirty)
@@ -80,7 +80,7 @@ struct BookSourceEditView: View {
                     Button {
                         performSave()
                     } label: {
-                        Label(localized("儲存"), systemImage: "checkmark")
+                        Label(localized("储存"), systemImage: "checkmark")
                     }
                     .disabled(!canSave)
 
@@ -88,33 +88,33 @@ struct BookSourceEditView: View {
                         Button {
                             showRuleDebugger = true
                         } label: {
-                            Label(localized("調試規則"), systemImage: "ladybug")
+                            Label(localized("调试规则"), systemImage: "ladybug")
                         }
                         .disabled(!canSave)
 
                         Button {
                             showDebugger = true
                         } label: {
-                            Label(localized("網路日誌"), systemImage: "network")
+                            Label(localized("网路日志"), systemImage: "network")
                         }
                         Divider()
                         Toggle(isOn: $gs.bookSourceAutoComplete) {
-                            Label(localized("自動補全"), systemImage: "wand.and.stars")
+                            Label(localized("自动补全"), systemImage: "wand.and.stars")
                         }
                         Button {
                             pasteFromClipboard()
                         } label: {
-                            Label(localized("粘貼源"), systemImage: "doc.on.clipboard")
+                            Label(localized("粘贴源"), systemImage: "doc.on.clipboard")
                         }
                         Button {
                             copySourceJSON()
                         } label: {
-                            Label(localized("複製源"), systemImage: "doc.on.doc")
+                            Label(localized("复制源"), systemImage: "doc.on.doc")
                         }
                         Button {
                             showVariables = true
                         } label: {
-                            Label(localized("設置源變量"), systemImage: "curlybraces")
+                            Label(localized("设置源变量"), systemImage: "curlybraces")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -139,7 +139,7 @@ struct BookSourceEditView: View {
             .sheet(isPresented: $showVariables) {
                 AdaptiveSheetContainer(maxWidth: DSLayout.readablePanelWidth) {
                     RuntimeVariableEditorView(
-                        title: localized("設置源變量"),
+                        title: localized("设置源变量"),
                         comment: SourceVariableEditing.comment(source: source),
                         initialValue: SourceVariableEditing.currentValue(for: source)
                     ) { newValue in
@@ -156,7 +156,7 @@ struct BookSourceEditView: View {
                 )
             ) {
                 if pasteFeedback != nil {
-                    Button(localized("確定"), role: .cancel) { pasteFeedback = nil }
+                    Button(localized("确定"), role: .cancel) { pasteFeedback = nil }
                 } else {
                     Button(localized("是")) { showDiscardConfirm = false }
                     Button(localized("否")) {
@@ -165,7 +165,7 @@ struct BookSourceEditView: View {
                     }
                 }
             } message: {
-                Text(pasteFeedback ?? localized("尚未保存，是否繼續編輯？"))
+                Text(pasteFeedback ?? localized("尚未保存，是否继续编辑？"))
             }
         }
     }
@@ -186,7 +186,7 @@ struct BookSourceEditView: View {
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .background(DSColor.neutralControlFill)
-        .accessibilityLabel(localized("編輯分頁"))
+        .accessibilityLabel(localized("编辑分页"))
     }
 
     private func editorTabButton(_ tab: EditTab) -> some View {
@@ -244,10 +244,10 @@ struct BookSourceEditView: View {
     /// dividers — a settings card instead of a plain `Form` section.
     private var settingsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Picker(localized("類型"), selection: $source.bookSourceType) {
+            Picker(localized("类型"), selection: $source.bookSourceType) {
                 Text(localized("文字")).tag(0)
-                Text(localized("音頻")).tag(1)
-                Text(localized("圖片")).tag(2)
+                Text(localized("音频")).tag(1)
+                Text(localized("图片")).tag(2)
                 Text(localized("文件")).tag(3)
             }
             .pickerStyle(.menu)
@@ -257,16 +257,16 @@ struct BookSourceEditView: View {
 
             cardDivider
 
-            settingToggle(localized("啟用"), isOn: $source.enabled)
+            settingToggle(localized("启用"), isOn: $source.enabled)
             cardDivider
-            settingToggle(localized("發現"), isOn: $source.enabledExplore)
+            settingToggle(localized("发现"), isOn: $source.enabledExplore)
             cardDivider
             Toggle(isOn: $source.presentsAndroidIdentity) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    Text(localized("提供裝置識別碼"))
+                    Text(localized("提供装置识别码"))
                         .font(DSFont.subheadline)
                         .foregroundStyle(DSColor.textPrimary)
-                    Text(localized("預設開啟，書源要裝置碼時才拿得到。只有在某個書源不能被當成 Android 時才關閉。"))
+                    Text(localized("预设开启，书源要装置码时才拿得到。只有在某个书源不能被当成 Android 时才关闭。"))
                         .font(DSFont.caption)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -355,7 +355,7 @@ struct BookSourceEditView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(localized(spec.label))
         .accessibilityValue(displayValue(for: spec))
-        .accessibilityHint(localized("點兩下編輯規則"))
+        .accessibilityHint(localized("点两下编辑规则"))
     }
 
     private func displayValue(for spec: BookSourceFieldSpec) -> String {
@@ -414,7 +414,7 @@ struct BookSourceEditView: View {
     private func pasteFromClipboard() {
         guard let text = UIPasteboard.general.string,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            pasteFeedback = localized("剪貼簿為空")
+            pasteFeedback = localized("剪贴簿为空")
             return
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -424,15 +424,15 @@ struct BookSourceEditView: View {
         }
         if let parsed = BookSourceStore.parseSources(trimmed), let first = parsed.first {
             source = first
-            pasteFeedback = localized("已從剪貼簿導入書源")
+            pasteFeedback = localized("已从剪贴簿导入书源")
         } else {
-            pasteFeedback = localized("剪貼簿內容不是有效的書源")
+            pasteFeedback = localized("剪贴簿内容不是有效的书源")
         }
     }
 
     private func fetchAndPaste(_ urlString: String) async {
         guard let url = URL(string: urlString) else {
-            pasteFeedback = localized("無效的 URL")
+            pasteFeedback = localized("无效的 URL")
             return
         }
         do {
@@ -440,11 +440,11 @@ struct BookSourceEditView: View {
             guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1),
                   let parsed = BookSourceStore.parseSources(text),
                   let first = parsed.first else {
-                pasteFeedback = localized("無法解析伺服器回應")
+                pasteFeedback = localized("无法解析伺服器回应")
                 return
             }
             source = first
-            pasteFeedback = localized("已從剪貼簿導入書源")
+            pasteFeedback = localized("已从剪贴簿导入书源")
         } catch {
             pasteFeedback = error.localizedDescription
         }
@@ -454,7 +454,7 @@ struct BookSourceEditView: View {
         guard let data = try? JSONEncoder().encode(source),
               let str = String(data: data, encoding: .utf8) else { return }
         UIPasteboard.general.string = str
-        pasteFeedback = localized("已複製書源 JSON")
+        pasteFeedback = localized("已复制书源 JSON")
     }
 }
 
@@ -493,28 +493,28 @@ struct BookSourceFieldSpec: Identifiable {
 private enum FieldCatalog {
     // MARK: 基本 — Legado `sourceEntities`
     static let base: [BookSourceFieldSpec] = [
-        BookSourceFieldSpec("書源名稱", placeholder: "如：某某小說網", keyPath: \.bookSourceName),
-        BookSourceFieldSpec("書源地址", placeholder: "https://example.com", keyPath: \.bookSourceUrl),
-        BookSourceFieldSpec("書源分組", placeholder: "如：玄幻、言情", keyPath: \.bookSourceGroup),
-        BookSourceFieldSpec("源註釋", keyPath: \.bookSourceComment),
-        BookSourceFieldSpec("登入頁 URL", placeholder: "https://...", keyPath: \.loginUrl),
+        BookSourceFieldSpec("书源名称", placeholder: "如：某某小说网", keyPath: \.bookSourceName),
+        BookSourceFieldSpec("书源地址", placeholder: "https://example.com", keyPath: \.bookSourceUrl),
+        BookSourceFieldSpec("书源分组", placeholder: "如：玄幻、言情", keyPath: \.bookSourceGroup),
+        BookSourceFieldSpec("源注释", keyPath: \.bookSourceComment),
+        BookSourceFieldSpec("登入页 URL", placeholder: "https://...", keyPath: \.loginUrl),
         BookSourceFieldSpec("登入 UI", placeholder: "JSON", keyPath: \.loginUi),
         BookSourceFieldSpec(
-            "登入檢查 JS",
+            "登入检查 JS",
             placeholder: "document.querySelector('.login')",
-            helpText: "loginCheckJs：搜尋取得 HTML 後執行，回傳 true 表示需登入，不解析結果。",
+            helpText: "loginCheckJs：搜寻取得 HTML 后执行，回传 true 表示需登入，不解析结果。",
             keyPath: \.loginCheckJs
         ),
         BookSourceFieldSpec("封面解密", keyPath: \.coverDecodeJs),
-        BookSourceFieldSpec("書籍 URL 正則", keyPath: \.bookUrlPattern),
+        BookSourceFieldSpec("书籍 URL 正则", keyPath: \.bookUrlPattern),
         BookSourceFieldSpec(
-            "請求頭",
+            "请求头",
             placeholder: #"{"User-Agent":"..."}"#,
             helpText: "JSON 格式，如：{\"Cookie\":\"...\"}",
             keyPath: \.header
         ),
-        BookSourceFieldSpec("變量說明", keyPath: \.variableComment),
-        BookSourceFieldSpec("並發率", placeholder: "0", keyPath: \.concurrentRate),
+        BookSourceFieldSpec("变量说明", keyPath: \.variableComment),
+        BookSourceFieldSpec("并发率", placeholder: "0", keyPath: \.concurrentRate),
         BookSourceFieldSpec("jsLib", keyPath: \.jsLib),
     ]
 
@@ -523,127 +523,127 @@ private enum FieldCatalog {
         BookSourceFieldSpec(
             "搜索 URL",
             placeholder: "https://example.com/search?q={{key}}",
-            helpText: "{{key}} 為搜索關鍵字佔位符。POST 格式：URL,POST,body",
+            helpText: "{{key}} 为搜索关键字占位符。POST 格式：URL,POST,body",
             keyPath: \.searchUrl
         ),
-        BookSourceFieldSpec("校驗關鍵字", placeholder: "我的", keyPath: \.ruleSearch.checkKeyWord),
-        BookSourceFieldSpec("書籍列表規則", placeholder: "ul.book-list li", keyPath: \.ruleSearch.bookList),
-        BookSourceFieldSpec("書名規則", placeholder: "h3.title@text", keyPath: \.ruleSearch.name,
+        BookSourceFieldSpec("校验关键字", placeholder: "我的", keyPath: \.ruleSearch.checkKeyWord),
+        BookSourceFieldSpec("书籍列表规则", placeholder: "ul.book-list li", keyPath: \.ruleSearch.bookList),
+        BookSourceFieldSpec("书名规则", placeholder: "h3.title@text", keyPath: \.ruleSearch.name,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("作者規則", placeholder: ".author@text", keyPath: \.ruleSearch.author,
+        BookSourceFieldSpec("作者规则", placeholder: ".author@text", keyPath: \.ruleSearch.author,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("分類規則", placeholder: ".kind@text", keyPath: \.ruleSearch.kind,
+        BookSourceFieldSpec("分类规则", placeholder: ".kind@text", keyPath: \.ruleSearch.kind,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("字數規則", placeholder: ".word-count@text", keyPath: \.ruleSearch.wordCount,
+        BookSourceFieldSpec("字数规则", placeholder: ".word-count@text", keyPath: \.ruleSearch.wordCount,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("最新章節規則", placeholder: ".last-chapter@text", keyPath: \.ruleSearch.lastChapter,
+        BookSourceFieldSpec("最新章节规则", placeholder: ".last-chapter@text", keyPath: \.ruleSearch.lastChapter,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("簡介規則", placeholder: ".intro@text", keyPath: \.ruleSearch.intro,
+        BookSourceFieldSpec("简介规则", placeholder: ".intro@text", keyPath: \.ruleSearch.intro,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("封面規則", placeholder: "img@src", keyPath: \.ruleSearch.coverUrl,
+        BookSourceFieldSpec("封面规则", placeholder: "img@src", keyPath: \.ruleSearch.coverUrl,
                             autoComplete: .image, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("詳情頁 URL 規則", placeholder: "a@href", keyPath: \.ruleSearch.bookUrl,
+        BookSourceFieldSpec("详情页 URL 规则", placeholder: "a@href", keyPath: \.ruleSearch.bookUrl,
                             autoComplete: .link, preRule: \.ruleSearch.bookList),
-        BookSourceFieldSpec("更新時間規則", placeholder: ".update-time@text", keyPath: \.ruleSearch.updateTime,
+        BookSourceFieldSpec("更新时间规则", placeholder: ".update-time@text", keyPath: \.ruleSearch.updateTime,
                             autoComplete: .text, preRule: \.ruleSearch.bookList),
     ]
 
     // MARK: 發現 — Legado `findEntities`
     static let explore: [BookSourceFieldSpec] = [
-        BookSourceFieldSpec("發現地址規則", placeholder: "https://example.com/category", keyPath: \.exploreUrl),
-        BookSourceFieldSpec("書籍列表規則", placeholder: "ul.book-list li", keyPath: \.ruleExplore.bookList),
-        BookSourceFieldSpec("書名規則", placeholder: "h3.title@text", keyPath: \.ruleExplore.name,
+        BookSourceFieldSpec("发现地址规则", placeholder: "https://example.com/category", keyPath: \.exploreUrl),
+        BookSourceFieldSpec("书籍列表规则", placeholder: "ul.book-list li", keyPath: \.ruleExplore.bookList),
+        BookSourceFieldSpec("书名规则", placeholder: "h3.title@text", keyPath: \.ruleExplore.name,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("作者規則", placeholder: ".author@text", keyPath: \.ruleExplore.author,
+        BookSourceFieldSpec("作者规则", placeholder: ".author@text", keyPath: \.ruleExplore.author,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("分類規則", placeholder: ".kind@text", keyPath: \.ruleExplore.kind,
+        BookSourceFieldSpec("分类规则", placeholder: ".kind@text", keyPath: \.ruleExplore.kind,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("字數規則", placeholder: ".word-count@text", keyPath: \.ruleExplore.wordCount,
+        BookSourceFieldSpec("字数规则", placeholder: ".word-count@text", keyPath: \.ruleExplore.wordCount,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("最新章節規則", placeholder: ".last-chapter@text", keyPath: \.ruleExplore.lastChapter,
+        BookSourceFieldSpec("最新章节规则", placeholder: ".last-chapter@text", keyPath: \.ruleExplore.lastChapter,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("簡介規則", placeholder: ".intro@text", keyPath: \.ruleExplore.intro,
+        BookSourceFieldSpec("简介规则", placeholder: ".intro@text", keyPath: \.ruleExplore.intro,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("封面規則", placeholder: "img@src", keyPath: \.ruleExplore.coverUrl,
+        BookSourceFieldSpec("封面规则", placeholder: "img@src", keyPath: \.ruleExplore.coverUrl,
                             autoComplete: .image, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("詳情頁 URL 規則", placeholder: "a@href", keyPath: \.ruleExplore.bookUrl,
+        BookSourceFieldSpec("详情页 URL 规则", placeholder: "a@href", keyPath: \.ruleExplore.bookUrl,
                             autoComplete: .link, preRule: \.ruleExplore.bookList),
-        BookSourceFieldSpec("更新時間規則", placeholder: ".update-time@text", keyPath: \.ruleExplore.updateTime,
+        BookSourceFieldSpec("更新时间规则", placeholder: ".update-time@text", keyPath: \.ruleExplore.updateTime,
                             autoComplete: .text, preRule: \.ruleExplore.bookList),
     ]
 
     // MARK: 詳情 — Legado `infoEntities`
     static let info: [BookSourceFieldSpec] = [
         BookSourceFieldSpec(
-            "預處理規則",
-            helpText: "獲取書籍詳情頁後先執行此 JS 再解析其餘規則。",
+            "预处理规则",
+            helpText: "获取书籍详情页后先执行此 JS 再解析其余规则。",
             keyPath: \.ruleBookInfo.initScript
         ),
-        BookSourceFieldSpec("書名規則", placeholder: "h1@text", keyPath: \.ruleBookInfo.name,
+        BookSourceFieldSpec("书名规则", placeholder: "h1@text", keyPath: \.ruleBookInfo.name,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("作者規則", placeholder: ".author@text", keyPath: \.ruleBookInfo.author,
+        BookSourceFieldSpec("作者规则", placeholder: ".author@text", keyPath: \.ruleBookInfo.author,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("分類規則", placeholder: ".kind@text", keyPath: \.ruleBookInfo.kind,
+        BookSourceFieldSpec("分类规则", placeholder: ".kind@text", keyPath: \.ruleBookInfo.kind,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("字數規則", placeholder: ".word-count@text", keyPath: \.ruleBookInfo.wordCount,
+        BookSourceFieldSpec("字数规则", placeholder: ".word-count@text", keyPath: \.ruleBookInfo.wordCount,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("最新章節規則", placeholder: ".last-chapter@text", keyPath: \.ruleBookInfo.lastChapter,
+        BookSourceFieldSpec("最新章节规则", placeholder: ".last-chapter@text", keyPath: \.ruleBookInfo.lastChapter,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("簡介規則", placeholder: "#intro@text", keyPath: \.ruleBookInfo.intro,
+        BookSourceFieldSpec("简介规则", placeholder: "#intro@text", keyPath: \.ruleBookInfo.intro,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("封面規則", placeholder: ".cover img@src", keyPath: \.ruleBookInfo.coverUrl,
+        BookSourceFieldSpec("封面规则", placeholder: ".cover img@src", keyPath: \.ruleBookInfo.coverUrl,
                             autoComplete: .image, preRule: \.ruleBookInfo.initScript),
         BookSourceFieldSpec(
-            "目錄 URL 規則",
-            placeholder: "留空使用書籍頁 URL",
+            "目录 URL 规则",
+            placeholder: "留空使用书籍页 URL",
             keyPath: \.ruleBookInfo.tocUrl,
             autoComplete: .link,
             preRule: \.ruleBookInfo.initScript
         ),
-        BookSourceFieldSpec("允許修改書名作者", placeholder: "true", keyPath: \.ruleBookInfo.canReName),
-        BookSourceFieldSpec("下載 URL 規則", placeholder: "a@href", keyPath: \.ruleBookInfo.downloadUrls,
+        BookSourceFieldSpec("允许修改书名作者", placeholder: "true", keyPath: \.ruleBookInfo.canReName),
+        BookSourceFieldSpec("下载 URL 规则", placeholder: "a@href", keyPath: \.ruleBookInfo.downloadUrls,
                             autoComplete: .text, preRule: \.ruleBookInfo.initScript),
-        BookSourceFieldSpec("聽書骰子規則", keyPath: \.ruleBookInfo.ttsDice),
+        BookSourceFieldSpec("听书骰子规则", keyPath: \.ruleBookInfo.ttsDice),
     ]
 
     // MARK: 目錄 — Legado `tocEntities`
     static let toc: [BookSourceFieldSpec] = [
         BookSourceFieldSpec(
             "更新之前 JS",
-            helpText: "preUpdateJs：載入目錄頁後先執行此 JS 再解析。",
+            helpText: "preUpdateJs：载入目录页后先执行此 JS 再解析。",
             keyPath: \.ruleToc.preUpdateJs
         ),
-        BookSourceFieldSpec("章節列表規則", placeholder: "#chapter-list a", keyPath: \.ruleToc.chapterList),
-        BookSourceFieldSpec("章節名稱規則", placeholder: "@text", keyPath: \.ruleToc.chapterName,
+        BookSourceFieldSpec("章节列表规则", placeholder: "#chapter-list a", keyPath: \.ruleToc.chapterList),
+        BookSourceFieldSpec("章节名称规则", placeholder: "@text", keyPath: \.ruleToc.chapterName,
                             autoComplete: .text, preRule: \.ruleToc.chapterList),
-        BookSourceFieldSpec("章節 URL 規則", placeholder: "@href", keyPath: \.ruleToc.chapterUrl,
+        BookSourceFieldSpec("章节 URL 规则", placeholder: "@href", keyPath: \.ruleToc.chapterUrl,
                             autoComplete: .link, preRule: \.ruleToc.chapterList),
-        BookSourceFieldSpec("格式化規則", keyPath: \.ruleToc.formatJs),
-        BookSourceFieldSpec("卷標識", keyPath: \.ruleToc.isVolume),
-        BookSourceFieldSpec("章節信息", keyPath: \.ruleToc.updateTime),
-        BookSourceFieldSpec("VIP 標識", keyPath: \.ruleToc.isVip),
-        BookSourceFieldSpec("購買標識", keyPath: \.ruleToc.isPay),
-        BookSourceFieldSpec("目錄下一頁規則", placeholder: ".next@href", keyPath: \.ruleToc.nextTocUrl,
+        BookSourceFieldSpec("格式化规则", keyPath: \.ruleToc.formatJs),
+        BookSourceFieldSpec("卷标识", keyPath: \.ruleToc.isVolume),
+        BookSourceFieldSpec("章节信息", keyPath: \.ruleToc.updateTime),
+        BookSourceFieldSpec("VIP 标识", keyPath: \.ruleToc.isVip),
+        BookSourceFieldSpec("购买标识", keyPath: \.ruleToc.isPay),
+        BookSourceFieldSpec("目录下一页规则", placeholder: ".next@href", keyPath: \.ruleToc.nextTocUrl,
                             autoComplete: .link, preRule: \.ruleToc.chapterList),
     ]
 
     // MARK: 正文 — Legado `contentEntities`
     static let content: [BookSourceFieldSpec] = [
-        BookSourceFieldSpec("正文規則", placeholder: "#chapter-content", keyPath: \.ruleContent.content,
+        BookSourceFieldSpec("正文规则", placeholder: "#chapter-content", keyPath: \.ruleContent.content,
                             autoComplete: .text),
-        BookSourceFieldSpec("章節名稱規則", placeholder: "@text", keyPath: \.ruleContent.title),
-        BookSourceFieldSpec("正文下一頁 URL 規則", placeholder: ".next-page@href", keyPath: \.ruleContent.nextContentUrl,
+        BookSourceFieldSpec("章节名称规则", placeholder: "@text", keyPath: \.ruleContent.title),
+        BookSourceFieldSpec("正文下一页 URL 规则", placeholder: ".next-page@href", keyPath: \.ruleContent.nextContentUrl,
                             autoComplete: .link),
         BookSourceFieldSpec("WebView JS", keyPath: \.ruleContent.webJs),
-        BookSourceFieldSpec("資源正則", keyPath: \.ruleContent.sourceRegex),
+        BookSourceFieldSpec("资源正则", keyPath: \.ruleContent.sourceRegex),
         BookSourceFieldSpec(
-            "替換規則",
-            helpText: "替換規則每行格式：regex@@@replacement（空 replacement 表示刪除）",
+            "替换规则",
+            helpText: "替换规则每行格式：regex@@@replacement（空 replacement 表示删除）",
             keyPath: \.ruleContent.replaceRegex
         ),
-        BookSourceFieldSpec("圖片樣式", keyPath: \.ruleContent.imageStyle),
-        BookSourceFieldSpec("圖片解密", keyPath: \.ruleContent.imageDecode),
-        BookSourceFieldSpec("購買操作", keyPath: \.ruleContent.payAction),
+        BookSourceFieldSpec("图片样式", keyPath: \.ruleContent.imageStyle),
+        BookSourceFieldSpec("图片解密", keyPath: \.ruleContent.imageDecode),
+        BookSourceFieldSpec("购买操作", keyPath: \.ruleContent.payAction),
     ]
 
     static var all: [BookSourceFieldSpec] {

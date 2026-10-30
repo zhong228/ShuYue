@@ -47,13 +47,13 @@ final class AIModelCatalog: ObservableObject {
         }
         guard let url = AIEndpoint.modelsURL(base: base) else {
             models = []
-            lastFailure = localized("API 位址無效")
+            lastFailure = localized("API 位址无效")
             return
         }
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else {
             models = []
-            lastFailure = localized("填入 API Key 後才能取得模型清單")
+            lastFailure = localized("填入 API Key 后才能取得模型清单")
             return
         }
 
@@ -68,7 +68,7 @@ final class AIModelCatalog: ObservableObject {
                 let (data, response) = try await MediaSession.shared.data(for: request)
                 try Task.checkCancellation()
                 guard let http = response as? HTTPURLResponse else {
-                    self?.finish(base: scope, failure: localized("非 HTTP 回應"))
+                    self?.finish(base: scope, failure: localized("非 HTTP 回应"))
                     return
                 }
                 guard (200...299).contains(http.statusCode) else {
@@ -83,7 +83,7 @@ final class AIModelCatalog: ObservableObject {
                 let ids = (decoded.data ?? decoded.models ?? []).map(\.id)
                     .filter { !$0.isEmpty }
                 guard !ids.isEmpty else {
-                    self?.finish(base: scope, failure: localized("這個服務沒有回報任何模型"))
+                    self?.finish(base: scope, failure: localized("这个服务没有回报任何模型"))
                     return
                 }
                 self?.finish(base: scope, models: Self.sorted(ids))

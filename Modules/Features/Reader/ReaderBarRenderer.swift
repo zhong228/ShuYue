@@ -31,7 +31,7 @@ struct ReaderBarRenderModel: Equatable {
     var opacity: Double
     var horizontalPadding: CGFloat
     var showsDivider: Bool
-    /// "章節名 第一回、總進度 42%" — label/value pairs in slot order, so the spoken
+    /// "章节名 第一回、总进度 42%" — label/value pairs in slot order, so the spoken
     /// form matches the visual one. Carried on the model because a bar drawn into
     /// a CoreText page has no view hierarchy for VoiceOver to walk.
     var accessibilityValue: String

@@ -14,8 +14,8 @@ struct AddBookView: View {
             AdaptiveSheetContainer(maxWidth: DSLayout.readableListWidth) {
                 VStack(spacing: 0) {
                     Picker(localized("方式"), selection: $selectedTab) {
-                        Text(localized("匯入文件")).tag(0)
-                        Text(localized("網址匯入")).tag(1)
+                        Text(localized("汇入文件")).tag(0)
+                        Text(localized("网址汇入")).tag(1)
                     }
                     .pickerStyle(.segmented)
                     .padding()
@@ -30,7 +30,7 @@ struct AddBookView: View {
                     Spacer()
                 }
             }
-            .navigationTitle(localized("添加書籍"))
+            .navigationTitle(localized("添加书籍"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .bookshelf)
             .toolbar {
@@ -64,8 +64,8 @@ struct FileImportTab: View {
         ScrollView {
             VStack(spacing: DSSpacing.xl) {
                 HintCard(
-                    icon: "doc.text", title: localized("支援格式：TXT / Markdown / JSON / EPUB / PDF / CBZ / ZIP / 音訊"),
-                    detail: localized("支援純文字（.txt / .md / .markdown / .json）、電子書（.epub）、PDF（.pdf）、本地漫畫（.cbz / .zip）與音訊（.mp3 / .m4a / .m4b / .aac / .flac / .wav）格式。選取後系統自動識別內容。"))
+                    icon: "doc.text", title: localized("支援格式：TXT / Markdown / JSON / EPUB / PDF / CBZ / ZIP / 音讯"),
+                    detail: localized("支援纯文字（.txt / .md / .markdown / .json）、电子书（.epub）、PDF（.pdf）、本地漫画（.cbz / .zip）与音讯（.mp3 / .m4a / .m4b / .aac / .flac / .wav）格式。选取后系统自动识别内容。"))
 
                 Button {
                     showFilePicker = true
@@ -74,9 +74,9 @@ struct FileImportTab: View {
                         Image(systemName: "folder.badge.plus")
                             .font(DSFont.fixed(size: 44)).foregroundColor(DSColor.accent)
                             .accessibilityHidden(true)
-                        Text(localized("點擊選取 TXT / EPUB / PDF / 漫畫 / 音訊文件"))
+                        Text(localized("点击选取 TXT / EPUB / PDF / 漫画 / 音讯文件"))
                             .font(DSFont.headline).foregroundColor(DSColor.accent)
-                        Text(localized("從文件 App、iCloud、本機儲存等選取"))
+                        Text(localized("从文件 App、iCloud、本机储存等选取"))
                             .font(DSFont.caption).foregroundColor(DSColor.textSecondary)
                     }
                     .frame(maxWidth: .infinity).padding(DSSpacing.xxl)
@@ -89,7 +89,7 @@ struct FileImportTab: View {
                                 style: StrokeStyle(lineWidth: 1.5, dash: [6])))
                 }
                 .buttonStyle(.plain)
-                .accessibilityHint(localized("選取多本書籍"))
+                .accessibilityHint(localized("选取多本书籍"))
                 .disabled(isLoading)
 
                 if isLoading {
@@ -99,7 +99,7 @@ struct FileImportTab: View {
                     .accessibilityValue("\(completedCount) / \(totalCount)")
                 }
                 if let errorMsg {
-                    Text(localized("匯入失敗：") + errorMsg)
+                    Text(localized("汇入失败：") + errorMsg)
                         .font(DSFont.caption).foregroundColor(DSColor.destructive).padding()
                 }
             }
@@ -158,11 +158,11 @@ struct URLImportTab: View {
             VStack(spacing: 20) {
                 HintCard(
                     icon: "globe",
-                    title: localized("網址匯入"),
-                    detail: localized("輸入小說網頁網址，系統抓取頁面文字。建議選用有純文字章節頁面的網站。"))
+                    title: localized("网址汇入"),
+                    detail: localized("输入小说网页网址，系统抓取页面文字。建议选用有纯文字章节页面的网站。"))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Label(localized("網址"), systemImage: "link")
+                    Label(localized("网址"), systemImage: "link")
                         .font(DSFont.caption).foregroundColor(DSColor.textSecondary)
                     HStack {
                         TextField("https://...", text: $urlInput)
@@ -183,24 +183,24 @@ struct URLImportTab: View {
 
                 if fetchedContent != nil {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label(localized("書名"), systemImage: "text.book.closed")
+                        Label(localized("书名"), systemImage: "text.book.closed")
                             .font(DSFont.caption).foregroundColor(DSColor.textSecondary)
-                        TextField(localized("書名（必填）"), text: $titleInput)
+                        TextField(localized("书名（必填）"), text: $titleInput)
                             .padding(12).background(Color.secondary.opacity(0.15))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         Label(localized("作者"), systemImage: "person")
                             .font(DSFont.caption).foregroundColor(DSColor.textSecondary)
-                        TextField(localized("作者（選填）"), text: $authorInput)
+                        TextField(localized("作者（选填）"), text: $authorInput)
                             .padding(12).background(Color.secondary.opacity(0.15))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                         if let preview = fetchedPreviewText {
-                            Text(String(format: localized("已抓取約 %d 字"), preview.count))
+                            Text(String(format: localized("已抓取约 %d 字"), preview.count))
                                 .font(DSFont.caption).foregroundColor(DSColor.textSecondary)
                         }
                         if !detectedTOCRefs.isEmpty {
                             Text(
                                 String(
-                                    format: localized("偵測到章節目錄：%d 章，將以線上書模式導入"),
+                                    format: localized("侦测到章节目录：%d 章，将以线上书模式导入"),
                                     detectedTOCRefs.count))
                                 .font(DSFont.caption)
                                 .foregroundColor(DSColor.textSecondary)
@@ -208,7 +208,7 @@ struct URLImportTab: View {
                     }
                 }
 
-                if isLoading { ProgressView(localized("正在抓取頁面…")) }
+                if isLoading { ProgressView(localized("正在抓取页面…")) }
                 if let err = errorMsg {
                     Text(err).font(DSFont.caption).foregroundColor(.red).padding(.horizontal)
                 }
@@ -217,7 +217,7 @@ struct URLImportTab: View {
                     Button {
                         fetchURL()
                     } label: {
-                        Label(localized("抓取頁面"), systemImage: "arrow.down.circle")
+                        Label(localized("抓取页面"), systemImage: "arrow.down.circle")
                             .frame(maxWidth: .infinity).padding()
                             .background(DSColor.accent).foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
@@ -227,7 +227,7 @@ struct URLImportTab: View {
                     Button {
                         saveWebBook()
                     } label: {
-                        Label(localized("加入書架"), systemImage: "books.vertical")
+                        Label(localized("加入书架"), systemImage: "books.vertical")
                             .frame(maxWidth: .infinity).padding()
                             .background(Color.green).foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
@@ -243,7 +243,7 @@ struct URLImportTab: View {
     private func fetchURL() {
         let trimmed = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed) else {
-            errorMsg = localized("網址格式不正確")
+            errorMsg = localized("网址格式不正确")
             return
         }
         isLoading = true
@@ -266,7 +266,7 @@ struct URLImportTab: View {
                 await MainActor.run {
                     isLoading = false
                     if text.count < 120 && refs.isEmpty {
-                        errorMsg = localized("抓取到的文字太少，網站可能不支援直接抓取")
+                        errorMsg = localized("抓取到的文字太少，网站可能不支援直接抓取")
                         return
                     }
                     fetchedContent = html
@@ -283,7 +283,7 @@ struct URLImportTab: View {
             } catch {
                 await MainActor.run {
                     isLoading = false
-                    errorMsg = localized("抓取失敗：") + error.localizedDescription
+                    errorMsg = localized("抓取失败：") + error.localizedDescription
                 }
             }
         }
@@ -294,7 +294,7 @@ struct URLImportTab: View {
         let title = titleInput.trimmingCharacters(in: .whitespaces)
         let author =
             authorInput.trimmingCharacters(in: .whitespaces).isEmpty
-            ? localized("網路書籍") : authorInput
+            ? localized("网路书籍") : authorInput
 
         if !detectedTOCRefs.isEmpty {
             _ = store.addWebBrowsedBook(

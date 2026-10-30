@@ -23,7 +23,7 @@ struct SourceCaptchaView: View {
             Form {
                 Section {
                     captchaImage
-                    TextField(localized("驗證碼"), text: $code)
+                    TextField(localized("验证码"), text: $code)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .textContentType(.oneTimeCode)
@@ -38,15 +38,15 @@ struct SourceCaptchaView: View {
                 }
                 if sourceID != nil {
                     Section {
-                        Button(localized("停用書源"), action: disableSource)
-                        Button(localized("刪除書源"), role: .destructive) {
+                        Button(localized("停用书源"), action: disableSource)
+                        Button(localized("删除书源"), role: .destructive) {
                             confirmsDelete = true
                         }
                     }
                 }
             }
             .softScrollEdges()
-            .navigationTitle(localized("輸入驗證碼"))
+            .navigationTitle(localized("输入验证码"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -68,11 +68,11 @@ struct SourceCaptchaView: View {
                 }
             }
             .confirmationDialog(
-                String(format: localized("確定要刪除書源「%@」嗎？"), request.sourceName),
+                String(format: localized("确定要删除书源「%@」吗？"), request.sourceName),
                 isPresented: $confirmsDelete,
                 titleVisibility: .visible
             ) {
-                Button(localized("刪除"), role: .destructive, action: deleteSource)
+                Button(localized("删除"), role: .destructive, action: deleteSource)
             }
         }
         .task { await loadImage() }
@@ -91,14 +91,14 @@ struct SourceCaptchaView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: DSLayout.minimumTapTarget * 3)
-                    .accessibilityLabel(localized("驗證碼圖片"))
+                    .accessibilityLabel(localized("验证码图片"))
             }
         case .failed:
             VStack(spacing: DSSpacing.sm) {
-                Text(localized("載入失敗"))
+                Text(localized("载入失败"))
                     .font(DSFont.subheadline)
                     .foregroundStyle(DSColor.textSecondary)
-                Button(localized("重新載入")) {
+                Button(localized("重新载入")) {
                     Task { await loadImage() }
                 }
             }
@@ -147,7 +147,7 @@ struct SourceCaptchaView: View {
     }
 }
 
-#Preview("輸入驗證碼") {
+#Preview("输入验证码") {
     let svg = """
         <svg xmlns="http://www.w3.org/2000/svg" width="120" height="40">\
         <rect width="120" height="40" fill="#eeeeee"/>\
@@ -157,7 +157,7 @@ struct SourceCaptchaView: View {
         request: SourceCaptchaRequest(
             imageURL: "data:image/svg+xml;base64," + Data(svg.utf8).base64EncodedString(),
             headers: [:],
-            sourceName: "示例書源",
+            sourceName: "示例书源",
             sourceURL: ""
         ),
         onFinish: { _ in }

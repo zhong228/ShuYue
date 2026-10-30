@@ -18,7 +18,7 @@ struct ReadingStatsView: View {
         func localizedLabel(gs: GlobalSettings) -> String {
             switch self {
             case .today: return localized("今日")
-            case .week:  return localized("本週")
+            case .week:  return localized("本周")
             case .month: return localized("本月")
             case .all:   return localized("全部")
             }
@@ -62,7 +62,7 @@ struct ReadingStatsView: View {
             }
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
-            .navigationTitle(localized("閱讀統計"))
+            .navigationTitle(localized("阅读统计"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -73,7 +73,7 @@ struct ReadingStatsView: View {
                             .font(DSFont.fixed(size: 15, weight: .semibold))
                             .foregroundColor(DSColor.textSecondary)
                     }
-                    .accessibilityLabel(localized("關閉"))
+                    .accessibilityLabel(localized("关闭"))
                 }
             }
         }
@@ -82,7 +82,7 @@ struct ReadingStatsView: View {
     // MARK: - Period Picker
 
     private var periodPicker: some View {
-        Picker(localized("時間範圍"), selection: $selectedPeriod) {
+        Picker(localized("时间范围"), selection: $selectedPeriod) {
             ForEach(Period.allCases, id: \.rawValue) { period in
                 Text(period.localizedLabel(gs: gs)).tag(period)
             }
@@ -106,12 +106,12 @@ struct ReadingStatsView: View {
         HStack(spacing: DSSpacing.md) {
             summaryCard(
                 icon: "clock.fill",
-                title: localized("閱讀時長"),
+                title: localized("阅读时长"),
                 value: formatDuration(store.totalDuration(in: filteredSessions))
             )
             summaryCard(
                 icon: "text.alignleft",
-                title: localized("閱讀字數"),
+                title: localized("阅读字数"),
                 value: "\(store.totalCharacters(in: filteredSessions))"
             )
         }
@@ -143,7 +143,7 @@ struct ReadingStatsView: View {
 
     private var barChartSection: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(localized("每日閱讀（分鐘）"))
+            Text(localized("每日阅读（分钟）"))
                 .font(DSFont.subheadline)
                 .foregroundColor(DSColor.textSecondary)
 
@@ -248,12 +248,12 @@ struct ReadingStatsView: View {
     private var topBooksSection: some View {
         let books = store.topBooks(limit: 5, sessions: filteredSessions)
         return VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(localized("閱讀最多"))
+            Text(localized("阅读最多"))
                 .font(DSFont.subheadline)
                 .foregroundColor(DSColor.textSecondary)
 
             if books.isEmpty {
-                Text(localized("暫無資料"))
+                Text(localized("暂无资料"))
                     .font(DSFont.body)
                     .foregroundColor(DSColor.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -294,11 +294,11 @@ struct ReadingStatsView: View {
         let minutes = (total % 3600) / 60
         if hours > 0 {
             return String(
-                format: localized("%1$lld 小時 %2$lld 分鐘"),
+                format: localized("%1$lld 小时 %2$lld 分钟"),
                 arguments: [hours, minutes]
             )
         } else {
-            return String(format: localized("%lld 分鐘"), arguments: [minutes])
+            return String(format: localized("%lld 分钟"), arguments: [minutes])
         }
     }
 }

@@ -57,7 +57,7 @@ struct RegexHighlightSettingsView: View {
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("正則高亮"))
+        .navigationTitle(localized("正则高亮"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -69,11 +69,11 @@ struct RegexHighlightSettingsView: View {
                 model.update(updated)
             }
         }
-        .alert(localized("重設所有規則？"), isPresented: $showingResetConfirmation) {
-            Button(localized("重設"), role: .destructive) { model.resetToDefaults() }
+        .alert(localized("重设所有规则？"), isPresented: $showingResetConfirmation) {
+            Button(localized("重设"), role: .destructive) { model.resetToDefaults() }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("內置規則會恢復預設顏色與開關，自定義規則會全部刪除。"))
+            Text(localized("内置规则会恢复预设颜色与开关，自定义规则会全部删除。"))
         }
     }
 
@@ -82,14 +82,14 @@ struct RegexHighlightSettingsView: View {
     private var globalSection: some View {
         Section {
             Toggle(
-                localized("啟用正則高亮"),
+                localized("启用正则高亮"),
                 isOn: Binding(
                     get: { model.configuration.isEnabled },
                     set: model.setGlobalEnabled
                 )
             )
         } footer: {
-            Text(localized("關閉後下面的規則只做配置，不會參與閱讀頁匹配。"))
+            Text(localized("关闭后下面的规则只做配置，不会参与阅读页匹配。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -102,7 +102,7 @@ struct RegexHighlightSettingsView: View {
             VStack(alignment: .leading, spacing: DSSpacing.lg) {
                 statRow
                 Divider()
-                Text(localized("常用引號已經內置。平時只需要開關或改顏色；要做特殊高亮時，再新增自定義規則。"))
+                Text(localized("常用引号已经内置。平时只需要开关或改颜色；要做特殊高亮时，再新增自定义规则。"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -115,11 +115,11 @@ struct RegexHighlightSettingsView: View {
 
     private var statRow: some View {
         HStack(alignment: .top, spacing: 0) {
-            stat(value: model.summary.enabledCount, title: localized("已啟用"))
+            stat(value: model.summary.enabledCount, title: localized("已启用"))
             statDivider
-            stat(value: model.summary.builtInCount, title: localized("內置"))
+            stat(value: model.summary.builtInCount, title: localized("内置"))
             statDivider
-            stat(value: model.summary.customCount, title: localized("自定義"))
+            stat(value: model.summary.customCount, title: localized("自定义"))
         }
         .accessibilityElement(children: .combine)
     }
@@ -154,8 +154,8 @@ struct RegexHighlightSettingsView: View {
                 .accessibilityHidden(true)
             Text(
                 isEnabled
-                    ? localized("全局開關已開啟")
-                    : localized("全局開關關閉中")
+                    ? localized("全局开关已开启")
+                    : localized("全局开关关闭中")
             )
             .font(DSFont.subheadline)
         }
@@ -171,10 +171,10 @@ struct RegexHighlightSettingsView: View {
                 ruleRow(rule, isBuiltIn: true)
             }
         } header: {
-            Text(localized("內置規則"))
+            Text(localized("内置规则"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("內置規則不能刪除。需要改匹配方式時，直接複製一條為自定義規則再改。"))
+            Text(localized("内置规则不能删除。需要改匹配方式时，直接复制一条为自定义规则再改。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -200,13 +200,13 @@ struct RegexHighlightSettingsView: View {
             Button {
                 editedRule = RuleRoute(rule: model.makeCustomDraft())
             } label: {
-                Label(localized("添加自定義規則"), systemImage: "plus.circle.fill")
+                Label(localized("添加自定义规则"), systemImage: "plus.circle.fill")
             }
         } header: {
-            Text(localized("自定義規則"))
+            Text(localized("自定义规则"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("自定義規則排在內置規則之後，可以覆蓋它們。"))
+            Text(localized("自定义规则排在内置规则之后，可以覆盖它们。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -218,21 +218,21 @@ struct RegexHighlightSettingsView: View {
         Section(header: Text(localized("操作")).foregroundStyle(DSColor.textSecondary)) {
             ShareLink(
                 item: RegexHighlightExportPayload(configuration: model.configuration),
-                preview: SharePreview(localized("正則高亮"))
+                preview: SharePreview(localized("正则高亮"))
             ) {
-                Label(localized("匯出規則"), systemImage: "square.and.arrow.up")
+                Label(localized("汇出规则"), systemImage: "square.and.arrow.up")
             }
             if let onOpenImporter {
                 Button {
                     onOpenImporter()
                 } label: {
-                    Label(localized("匯入規則"), systemImage: "tray.and.arrow.down")
+                    Label(localized("汇入规则"), systemImage: "tray.and.arrow.down")
                 }
             }
             Button(role: .destructive) {
                 showingResetConfirmation = true
             } label: {
-                Label(localized("重設所有規則"), systemImage: "arrow.counterclockwise")
+                Label(localized("重设所有规则"), systemImage: "arrow.counterclockwise")
             }
         }
         .interfaceSectionSurface()
@@ -258,7 +258,7 @@ struct RegexHighlightSettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(rule.name)
             .accessibilityValue(rule.pattern)
-            .accessibilityHint(localized("編輯規則"))
+            .accessibilityHint(localized("编辑规则"))
             .accessibilityAddTraits(.isButton)
 
             Button {
@@ -269,7 +269,7 @@ struct RegexHighlightSettingsView: View {
                     .accessibilityHidden(true)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(localized("複製為自定義規則"))
+            .accessibilityLabel(localized("复制为自定义规则"))
 
             Image(systemName: "chevron.right")
                 .font(DSFont.footnote.weight(.semibold))
@@ -281,13 +281,13 @@ struct RegexHighlightSettingsView: View {
                 Button(role: .destructive) {
                     model.delete(ruleID: rule.id)
                 } label: {
-                    Label(localized("刪除"), systemImage: "trash")
+                    Label(localized("删除"), systemImage: "trash")
                 }
             }
             Button {
                 model.copyAsCustom(ruleID: rule.id)
             } label: {
-                Label(localized("複製為自定義規則"), systemImage: "doc.on.doc")
+                Label(localized("复制为自定义规则"), systemImage: "doc.on.doc")
             }
         }
     }
@@ -306,7 +306,7 @@ struct RegexHighlightSettingsView: View {
                         .foregroundStyle(DSColor.textPrimary)
                         .lineLimit(1)
                     if isBuiltIn {
-                        Text(localized("內置"))
+                        Text(localized("内置"))
                             .font(DSFont.caption2)
                             .foregroundStyle(DSColor.textSecondary)
                             .padding(.horizontal, DSSpacing.sm)

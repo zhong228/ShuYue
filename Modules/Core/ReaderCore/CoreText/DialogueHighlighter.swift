@@ -1,8 +1,8 @@
 import Foundation
 import UIKit
 
-/// Decorates quoted dialogue in a chapter's attributed string — the "對話文字高亮"
-/// (text tint) and "對話底色框" (background box) reading decorations.
+/// Decorates quoted dialogue in a chapter's attributed string — the "对话文字高亮"
+/// (text tint) and "对话底色框" (background box) reading decorations.
 ///
 /// Runs as the final step of `NodeAttributedStringRenderer.render`, after all
 /// typography processing, so ranges are stable against the string it marks.
@@ -28,7 +28,7 @@ enum DialogueHighlighter {
         0x2019, // '
     ]
 
-    /// Attribute marking dialogue spans that get a background box (the "對話底色框").
+    /// Attribute marking dialogue spans that get a background box (the "对话底色框").
     /// A dedicated key — NOT `.backgroundColor`, which `CTLineDraw` does not paint in this
     /// CoreText pipeline (inline backgrounds here are all custom-drawn). Consumed by
     /// `CoreTextHorizontalLineDrawer`, which fills a rounded rect behind the dialogue glyphs.
@@ -36,8 +36,8 @@ enum DialogueHighlighter {
     static let boxColorAttribute = NSAttributedString.Key("YDDialogueBoxColor")
 
     /// Applies the dialogue decoration across every quoted span:
-    /// - `textColor` → `.foregroundColor` (the "對話文字高亮" tint), painted natively by CoreText.
-    /// - `boxColor` → `boxColorAttribute` (the "對話底色框"), custom-drawn behind the glyphs.
+    /// - `textColor` → `.foregroundColor` (the "对话文字高亮" tint), painted natively by CoreText.
+    /// - `boxColor` → `boxColorAttribute` (the "对话底色框"), custom-drawn behind the glyphs.
     /// Either color may be nil to skip that layer.
     ///
     /// Compatibility wrapper: Task 14 migrates the remaining render call sites
@@ -107,7 +107,7 @@ enum DialogueHighlighter {
     }
 
     /// True for any character this scanner treats as a dialogue delimiter.
-    /// Shared with 對話氣泡, which collapses the marks inside a bubble.
+    /// Shared with 对话气泡, which collapses the marks inside a bubble.
     static func isQuoteMark(_ character: unichar) -> Bool {
         openers.contains(character) || closers.contains(character)
     }

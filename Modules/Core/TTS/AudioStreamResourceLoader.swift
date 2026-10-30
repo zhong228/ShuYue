@@ -7,7 +7,7 @@ import os.log
 /// file extension (e.g. `https://…fqnovelvod.com/…/video/tos/cn/…/?…&mime_type=audio_mpeg`)
 /// and the VOD CDN answers with a `Content-Type` AVFoundation does not treat as
 /// playable audio, so it fails the item with `AVErrorFileFormatNotRecognized`
-/// ("無法打開") before a single byte is decoded — even though the bytes are a valid
+/// ("无法打开") before a single byte is decoded — even though the bytes are a valid
 /// MP3 stream. Android's ExoPlayer sniffs the container and plays it fine; iOS does
 /// not, so we have to tell AVFoundation the type out-of-band.
 ///

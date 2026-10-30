@@ -80,7 +80,7 @@ struct URLSessionOfflineImageDownloader: OfflineImageDownloading {
     func response(for request: URLRequest) async throws -> OfflineImageResponse {
         // MediaSession (16/host) + retry: offline batching sends an entire manga volume to
         // the same CDN at once; URLSession.shared's 6/host cap stalled later pages and
-        // blew the "离線下載失敗" path on transient timeouts.
+        // blew the "离线下载失败" path on transient timeouts.
         let (data, response) = try await MediaSession.dataWithRetry(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
         return OfflineImageResponse(

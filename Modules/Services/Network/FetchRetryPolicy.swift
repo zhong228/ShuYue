@@ -186,7 +186,7 @@ struct FetchRetryPolicy: Sendable {
             return nil
         }
         let desc = error.localizedDescription
-        if desc.contains("HTTP 錯誤"),
+        if desc.contains("HTTP 错误"),
             let code = Int(desc.components(separatedBy: " ").last ?? "")
         {
             return code

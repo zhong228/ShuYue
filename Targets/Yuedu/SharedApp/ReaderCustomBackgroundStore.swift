@@ -78,7 +78,7 @@ extension GlobalSettings {
         let accent = AppearanceThemePreset.hex(background.isDark ? 0x7FC9B4 : 0x2E6659)
         var preset = AppearanceThemePreset(
             id: "reader_background_\(background.id.uuidString)",
-            nameKey: "自定義",
+            nameKey: "自定义",
             displayName: background.name,
             background: page,
             text: AppearanceThemePreset.hex(background.resolvedTextColorHex),
@@ -105,12 +105,12 @@ extension GlobalSettings {
     func title(for choice: ReaderBoundTheme) -> String {
         switch choice {
         case .followAppearanceTheme:
-            return localized("跟隨外觀主題")
+            return localized("跟随外观主题")
         case .reading(let theme):
             return theme.localizedTitle
         case .custom(let id):
             // Only while a sync or a delete is still dropping the reference.
-            return readerCustomBackground(id: id)?.name ?? localized("自定義")
+            return readerCustomBackground(id: id)?.name ?? localized("自定义")
         }
     }
 
@@ -255,7 +255,7 @@ extension GlobalSettings {
         guard let legacy = bundle.readerBackground,
               let mode = ReaderCustomBackgroundMode(rawValue: legacy.mode) else { return nil }
         let name = ReaderCustomBackgroundLibrary.unusedName(
-            base: localized("自訂背景"),
+            base: localized("自订背景"),
             among: readerCustomBackgrounds
         )
         let background: ReaderCustomBackground

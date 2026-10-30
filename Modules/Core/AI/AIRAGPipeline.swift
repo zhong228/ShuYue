@@ -24,18 +24,18 @@ enum AIRAGPipeline {
             """
 
 
-            回答正文之後必須附上且只附上一個內部自評區塊（不要向使用者解釋它）：
-            [[SELFASSESS:\(nonce)]]{"sufficient":"full|partial|insufficient","missing":"缺少的資訊，最多 40 字"}[[/SELFASSESS:\(nonce)]]
-            full＝證據足以完整回答；partial＝可以回答但證據不完整；insufficient＝證據不足。
+            回答正文之后必须附上且只附上一个内部自评区块（不要向使用者解释它）：
+            [[SELFASSESS:\(nonce)]]{"sufficient":"full|partial|insufficient","missing":"缺少的资讯，最多 40 字"}[[/SELFASSESS:\(nonce)]]
+            full＝证据足以完整回答；partial＝可以回答但证据不完整；insufficient＝证据不足。
             """
         } ?? ""
         return """
-        你是閱讀助手。只能根據下面提供的書內片段回答問題。
+        你是阅读助手。只能根据下面提供的书内片段回答问题。
 
-        規則：
-        - 每個論斷後面用 [片段ID] 標註來源，例如 [片段ID]；可以標多個。
-        - 只使用提供的片段，不要編造，也不要引用沒有提供的片段。
-        - 如果片段不足以回答，直接說明目前可用、已讀範圍內的檢索結果不足以確認，不要臆測。
+        规则：
+        - 每个论断后面用 [片段ID] 标注来源，例如 [片段ID]；可以标多个。
+        - 只使用提供的片段，不要编造，也不要引用没有提供的片段。
+        - 如果片段不足以回答，直接说明目前可用、已读范围内的检索结果不足以确认，不要臆测。
         - \(language.answerRule)
         \(assessmentRule)
 
@@ -54,8 +54,8 @@ enum AIRAGPipeline {
         AIDiagnostics.current?.event("noEvidence", ["reason": "insufficientAvailableEligibleEvidence"])
         return LLMGenerationResult(
             content: spoilerLimited
-                ? localized("目前可用、已讀範圍內的檢索結果不足以確認。")
-                : localized("目前可用正文的檢索結果不足以確認。"),
+                ? localized("目前可用、已读范围内的检索结果不足以确认。")
+                : localized("目前可用正文的检索结果不足以确认。"),
             citations: [],
             provider: provider.identifier,
             model: provider.defaultModel,

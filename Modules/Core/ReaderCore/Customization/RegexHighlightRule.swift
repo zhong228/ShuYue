@@ -151,25 +151,25 @@ struct RegexHighlightRule: Codable, Equatable, Identifiable, Sendable {
     static let builtIns: [RegexHighlightRule] = [
         builtIn(
             id: "builtin.curly-double",
-            name: "“對話”",
+            name: "“对话”",
             pattern: "“[^”\\n]*”",
             colorHex: 0xFF8A34
         ),
         builtIn(
             id: "builtin.curly-single",
-            name: "‘對話’",
+            name: "‘对话’",
             pattern: "‘[^’\\n]*’",
             colorHex: 0x3498DB
         ),
         builtIn(
             id: "builtin.corner",
-            name: "「對話」",
+            name: "「对话」",
             pattern: "「[^」\\n]*」",
             colorHex: 0x49B66D
         ),
         builtIn(
             id: "builtin.double-corner",
-            name: "『對話』",
+            name: "『对话』",
             pattern: "『[^』\\n]*』",
             colorHex: 0xAF5BCC
         ),

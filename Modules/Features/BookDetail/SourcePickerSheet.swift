@@ -31,7 +31,7 @@ struct SourcePickerSheet: View {
             .background(PageBackgroundView(scope: .global).ignoresSafeArea())
             .pageBackgroundToolbar(for: .global)
             .navigationTitle(
-                String(format: localized("選擇來源（%d 個）"), searchBook.origins.count)
+                String(format: localized("选择来源（%d 个）"), searchBook.origins.count)
             )
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -57,8 +57,8 @@ struct SourceOriginRow: View {
     private var kindLabel: String? {
         switch kind {
         case .text: nil
-        case .audio: localized("有聲書")
-        case .manga: localized("漫畫")
+        case .audio: localized("有声书")
+        case .manga: localized("漫画")
         }
     }
 
@@ -110,22 +110,22 @@ struct SourceSheetCloseButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label(localized("關閉"), systemImage: "xmark")
+            Label(localized("关闭"), systemImage: "xmark")
                 .labelStyle(.iconOnly)
         }
     }
 }
 
-#Preview("選擇來源") {
+#Preview("选择来源") {
     let sourceId = UUID()
-    let origins = ["示範書源", "另一個書源"].enumerated().map { index, name in
+    let origins = ["示范书源", "另一个书源"].enumerated().map { index, name in
         BookOrigin(
             sourceId: index == 0 ? sourceId : UUID(), sourceName: name,
             bookUrl: "https://example.com/\(index)", tocUrl: "", coverUrl: "",
-            intro: "", lastChapter: "第 1450 章 終章", wordCount: "", kind: "",
+            intro: "", lastChapter: "第 1450 章 终章", wordCount: "", kind: "",
             runtimeVariables: nil
         )
     }
-    let book = SearchBook(name: "斗羅大陸", author: "唐家三少", origins: origins)
+    let book = SearchBook(name: "斗罗大陆", author: "唐家三少", origins: origins)
     return SourcePickerSheet(searchBook: book, currentOrigin: origins.first, onSelectOrigin: { _ in })
 }

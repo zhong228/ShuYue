@@ -79,7 +79,7 @@ final class FixedPagePageViewController: UIViewController {
         spinner.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(spinner)
 
-        retryButton.setTitle(localized("載入失敗，點擊重試"), for: .normal)
+        retryButton.setTitle(localized("载入失败，点击重试"), for: .normal)
         retryButton.setTitleColor(.white, for: .normal)
         retryButton.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
         retryButton.translatesAutoresizingMaskIntoConstraints = false

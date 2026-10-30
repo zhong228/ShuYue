@@ -352,10 +352,10 @@ final class CoreTextChunkCollectionCell: UICollectionViewCell {
         drawView.isAccessibilityElement = true
         drawView.accessibilityTraits = .staticText
         drawView.accessibilityLabel = Self.plainText(of: chunk)
-        drawView.accessibilityHint = localized("點兩下展開閱讀工具")
+        drawView.accessibilityHint = localized("点两下展开阅读工具")
         drawView.onAccessibilityActivate = { [weak self] in self?.onAccessibilityMenu?() }
         drawView.accessibilityCustomActions = [
-            UIAccessibilityCustomAction(name: localized("選單")) { [weak self] _ in
+            UIAccessibilityCustomAction(name: localized("选单")) { [weak self] _ in
                 guard let handler = self?.onAccessibilityMenu else { return false }
                 handler()
                 return true

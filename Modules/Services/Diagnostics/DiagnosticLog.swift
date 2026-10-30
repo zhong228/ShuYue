@@ -55,8 +55,8 @@ final class DiagnosticLog: @unchecked Sendable {
     /// fixed ring and attached to the next reportable entry.
     ///
     /// The reader's whole diagnostic narration — `[FlipTrace]`, `[FetchTrace]`, the
-    /// 162 `ttsLog` lines — is `.trace`, so with verbose off a user who hit "翻頁卡在
-    /// 載入中" exported a log containing the anomaly and nothing that explained it.
+    /// 162 `ttsLog` lines — is `.trace`, so with verbose off a user who hit "翻页卡在
+    /// 载入中" exported a log containing the anomaly and nothing that explained it.
     /// Turning all of it on instead would burn the export's 6000-line window on page
     /// turns and rotate the anomaly away. So it is recorded, and released only when
     /// something worth reporting happens.

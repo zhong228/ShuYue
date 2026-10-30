@@ -18,9 +18,9 @@ struct ReadingSettingsScopeView: View {
     private static let groups: [Group] = [
         Group(titleKey: "文字", items: [.font, .fontSize, .bold, .textColor]),
         Group(titleKey: "排版", items: [.writingMode, .lineSpacing, .letterSpacing, .paragraphSpacing, .pageMargins]),
-        Group(titleKey: "頁首頁尾與標題", items: [.headerFooter, .chapterTitle]),
-        Group(titleKey: "閱讀裝飾", items: [.commentBubble, .dialogueBubble, .regexHighlight, .textUnderline]),
-        Group(titleKey: "閱讀背景與翻頁", items: [.background, .pageTurn]),
+        Group(titleKey: "页首页尾与标题", items: [.headerFooter, .chapterTitle]),
+        Group(titleKey: "阅读装饰", items: [.commentBubble, .dialogueBubble, .regexHighlight, .textUnderline]),
+        Group(titleKey: "阅读背景与翻页", items: [.background, .pageTurn]),
     ]
 
     var body: some View {
@@ -30,15 +30,15 @@ struct ReadingSettingsScopeView: View {
                     Text(settings.readingSettingsThemeName)
                         .foregroundStyle(DSColor.textSecondary)
                 } label: {
-                    SettingsRowLabel(localized("目前的主題"), systemImage: "paintpalette")
+                    SettingsRowLabel(localized("目前的主题"), systemImage: "paintpalette")
                 }
                 ReadingSettingsScopeRow(
-                    title: localized("預設"),
+                    title: localized("预设"),
                     systemImage: "slider.horizontal.3",
                     scope: defaultScopeBinding
                 )
             } footer: {
-                Text(localized("跟隨主題：每個主題各記一套，主題沒有的項目用全域那套；跟隨全域：所有主題共用一套。沒有單獨設定的項目照「預設」。"))
+                Text(localized("跟随主题：每个主题各记一套，主题没有的项目用全域那套；跟随全域：所有主题共用一套。没有单独设定的项目照「预设」。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -57,7 +57,7 @@ struct ReadingSettingsScopeView: View {
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
                     if group.items.contains(.background) {
-                        Text(localized("閱讀背景與翻頁方式在閱讀器的選單裡調整。"))
+                        Text(localized("阅读背景与翻页方式在阅读器的选单里调整。"))
                             .dsSectionFooter()
                     }
                 }
@@ -70,21 +70,21 @@ struct ReadingSettingsScopeView: View {
                     settings.readingSettingsScope = .default
                 } label: {
                     SettingsRowLabel(
-                        localized("重設生效範圍"),
+                        localized("重设生效范围"),
                         systemImage: "arrow.counterclockwise",
                         role: .action
                     )
                 }
                 .disabled(settings.readingSettingsScope == .default)
             } footer: {
-                Text(localized("全部改回跟隨主題，各主題自己的設定會重新套用。"))
+                Text(localized("全部改回跟随主题，各主题自己的设定会重新套用。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("排版生效範圍"))
+        .navigationTitle(localized("排版生效范围"))
         .toolbarTitleDisplayMode(.inline)
     }
 

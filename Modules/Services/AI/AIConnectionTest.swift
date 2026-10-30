@@ -46,7 +46,7 @@ enum AIConnectionTest {
         }
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModel.isEmpty else {
-            return .failure(message: localized("尚未填入模型名稱"))
+            return .failure(message: localized("尚未填入模型名称"))
         }
 
         let provider = providerFactory(url, trimmedKey, trimmedModel)

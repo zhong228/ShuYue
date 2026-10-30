@@ -13,7 +13,7 @@ struct SourceDisclaimerView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.xl) {
-                    Text(localized("使用來源配置前請確認"))
+                    Text(localized("使用来源配置前请确认"))
                         .font(DSFont.headline)
                         .foregroundColor(DSColor.textSecondary)
 
@@ -25,7 +25,7 @@ struct SourceDisclaimerView: View {
             }
             .softScrollEdges()
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
-            .navigationTitle(localized("注意事項"))
+            .navigationTitle(localized("注意事项"))
             .toolbarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
                 HStack {
@@ -72,7 +72,7 @@ struct SourceDisclaimerView: View {
         Button {
             onDismiss?()
         } label: {
-            Text(localized("繼續"))
+            Text(localized("继续"))
                 .font(DSFont.headline)
                 .foregroundColor(DSColor.textOnAccent)
                 .frame(maxWidth: .infinity)

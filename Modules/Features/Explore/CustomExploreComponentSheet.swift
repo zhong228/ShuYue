@@ -66,7 +66,7 @@ struct CustomExploreComponentSheet: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button { dismiss() } label: {
-                    Label(localized("關閉"), systemImage: "xmark")
+                    Label(localized("关闭"), systemImage: "xmark")
                 }
             }
         }
@@ -173,7 +173,7 @@ private struct CustomExploreComponentForm: View {
     }
 
     private var categorySummary: String {
-        categories.isEmpty ? localized("未選擇") : categories.map(\.title).joined(separator: "、")
+        categories.isEmpty ? localized("未选择") : categories.map(\.title).joined(separator: "、")
     }
 
     var body: some View {
@@ -187,7 +187,7 @@ private struct CustomExploreComponentForm: View {
                         title = ""
                     }
                 } label: {
-                    LabeledContent(localized("書源"), value: source?.bookSourceName ?? localized("未選擇"))
+                    LabeledContent(localized("书源"), value: source?.bookSourceName ?? localized("未选择"))
                 }
                 if let source {
                     NavigationLink {
@@ -198,25 +198,25 @@ private struct CustomExploreComponentForm: View {
                             onPick: pick
                         )
                     } label: {
-                        LabeledContent(localized("發現項"), value: categorySummary)
+                        LabeledContent(localized("发现项"), value: categorySummary)
                     }
                 } else {
-                    LabeledContent(localized("發現項"), value: localized("未選擇"))
+                    LabeledContent(localized("发现项"), value: localized("未选择"))
                         .foregroundStyle(DSColor.textDisabled)
                 }
             } footer: {
                 if kind.takesSeveralCategories {
-                    Text(localized("至少選 2 個分類，在頁面上用標籤切換。"))
+                    Text(localized("至少选 2 个分类，在页面上用标签切换。"))
                         .dsSectionFooter()
                 }
             }
             .interfaceSectionSurface()
             if !kind.takesSeveralCategories {
-                Section(localized("標題")) {
+                Section(localized("标题")) {
                     TextField(
-                        localized("標題"),
+                        localized("标题"),
                         text: $title,
-                        prompt: Text(categories.first?.title ?? localized("標題"))
+                        prompt: Text(categories.first?.title ?? localized("标题"))
                     )
                 }
                 .interfaceSectionSurface()
@@ -229,7 +229,7 @@ private struct CustomExploreComponentForm: View {
             if isRoot {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        Label(localized("關閉"), systemImage: "xmark")
+                        Label(localized("关闭"), systemImage: "xmark")
                     }
                 }
             }
@@ -313,16 +313,16 @@ private struct CustomExploreSourcePicker: View {
         .overlay {
             if exploreSources.isEmpty {
                 ContentUnavailableView {
-                    UnavailableLabel(localized("尚未啟用支援發現的書源"), systemImage: "books.vertical")
+                    UnavailableLabel(localized("尚未启用支援发现的书源"), systemImage: "books.vertical")
                 }
             } else if visibleSources.isEmpty {
                 ContentUnavailableView.search(text: query)
             }
         }
         .themedAppSurface(for: .explore)
-        .navigationTitle(localized("書源"))
+        .navigationTitle(localized("书源"))
         .toolbarTitleDisplayMode(.inline)
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: localized("搜索書源"))
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: localized("搜索书源"))
     }
 }
 
@@ -356,7 +356,7 @@ private struct CustomExploreCategoryPicker: View {
     }
 
     private var groups: [DiscoverCategoryGroup] {
-        discover.categoryGroups(defaultTitle: localized("分類"))
+        discover.categoryGroups(defaultTitle: localized("分类"))
     }
 
     private var trimmedQuery: String {
@@ -389,7 +389,7 @@ private struct CustomExploreCategoryPicker: View {
                     ProgressView()
                 } else {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("暫無發現內容"), systemImage: "sparkles")
+                        UnavailableLabel(localized("暂无发现内容"), systemImage: "sparkles")
                     }
                 }
             } else if visibleGroups.isEmpty {
@@ -399,12 +399,12 @@ private struct CustomExploreCategoryPicker: View {
         .softScrollEdges()
         .scrollDismissesKeyboard(.immediately)
         .background(PageBackgroundView(scope: .explore).ignoresSafeArea())
-        .navigationTitle(localized("發現項"))
+        .navigationTitle(localized("发现项"))
         .toolbarTitleDisplayMode(.inline)
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: localized("搜尋發現項目")
+            prompt: localized("搜寻发现项目")
         )
         .onAppear { discover.refreshSources() }
     }

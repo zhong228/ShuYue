@@ -84,7 +84,7 @@ struct DownloadManagementView: View {
             // confirms first — and the message says what survives, because "移除"
             // next to a book title reads like it deletes the book itself.
             .alert(
-                localized("移除下載內容？"),
+                localized("移除下载内容？"),
                 isPresented: Binding(
                     get: { bookPendingRemoval != nil },
                     set: { if !$0 { bookPendingRemoval = nil } }
@@ -101,7 +101,7 @@ struct DownloadManagementView: View {
             } message: { book in
                 Text(
                     String(
-                        format: localized("將刪除《%@》已下載的章節。書籍仍留在書架，可重新下載。"),
+                        format: localized("将删除《%@》已下载的章节。书籍仍留在书架，可重新下载。"),
                         book.title
                     )
                 )
@@ -110,28 +110,28 @@ struct DownloadManagementView: View {
     }
 
     private var summarySection: some View {
-        DSSettingsGroupCard(title: localized("總覽")) {
+        DSSettingsGroupCard(title: localized("总览")) {
             DSSettingsCardValueRow(
-                localized("下載中"),
+                localized("下载中"),
                 value: "\(activeDownloads.count) \(localized("本"))"
             )
             DSSettingsCardDivider()
             DSSettingsCardValueRow(
-                localized("已下載"),
+                localized("已下载"),
                 value: "\(downloadedBooks.count) \(localized("本"))"
             )
             DSSettingsCardDivider()
             DSSettingsCardValueRow(
-                localized("佔用空間"),
+                localized("占用空间"),
                 value: "\(String(format: "%.1f", totalDownloadedMegabytes)) MB"
             )
         }
     }
 
     private var activeDownloadsSection: some View {
-        DSSettingsGroupCard(title: localized("下載中")) {
+        DSSettingsGroupCard(title: localized("下载中")) {
             if activeDownloads.isEmpty {
-                Text(localized("目前沒有下載任務"))
+                Text(localized("目前没有下载任务"))
                     .font(DSFont.body)
                     .foregroundColor(DSColor.textSecondary)
                     .dsSettingsCardRow()
@@ -181,7 +181,7 @@ struct DownloadManagementView: View {
                     Button {
                         pauseDownload(for: book)
                     } label: {
-                        Label(localized("暫停下載"), systemImage: "pause.circle")
+                        Label(localized("暂停下载"), systemImage: "pause.circle")
                     }
                     .font(DSFont.caption.weight(.medium))
                     .buttonStyle(.bordered)
@@ -192,8 +192,8 @@ struct DownloadManagementView: View {
                     } label: {
                         Label(
                             isRetryState(for: book)
-                                ? localized("重試失敗章節")
-                                : localized("繼續下載"),
+                                ? localized("重试失败章节")
+                                : localized("继续下载"),
                             systemImage: isRetryState(for: book)
                                 ? "arrow.clockwise.circle"
                                 : "play.circle"
@@ -208,7 +208,7 @@ struct DownloadManagementView: View {
                                 skipFailedChapters(for: book)
                             } label: {
                                 Label(
-                                    localized("略過失敗章節"),
+                                    localized("略过失败章节"),
                                     systemImage: "forward.end"
                                 )
                             }
@@ -245,9 +245,9 @@ struct DownloadManagementView: View {
     }
 
     private var downloadedBooksSection: some View {
-        DSSettingsGroupCard(title: localized("已下載書籍")) {
+        DSSettingsGroupCard(title: localized("已下载书籍")) {
             if downloadedBooks.isEmpty {
-                Text(localized("尚未下載任何書籍"))
+                Text(localized("尚未下载任何书籍"))
                     .font(DSFont.body)
                     .foregroundColor(DSColor.textSecondary)
                     .dsSettingsCardRow()
@@ -384,7 +384,7 @@ struct DownloadManagementView: View {
 // MARK: - Preview
 
 #if DEBUG
-#Preview("下載管理") {
+#Preview("下载管理") {
     DownloadManagementView()
         .environmentObject(DownloadManagementPreview.store)
         .environment(\.appDependencies, DownloadManagementPreview.dependencies)
@@ -402,11 +402,11 @@ private enum DownloadManagementPreview {
                 .appendingPathComponent("download_management_preview_meta.json")
         )
         store.books = [
-            makeBook(title: "巫師：從合成寶石開始", state: .downloading, completed: 37),
-            makeBook(title: "劍來", state: .paused, completed: 12, paused: true),
-            makeBook(title: "詭祕之主", state: .partial, completed: 80, failed: 3),
-            makeBook(title: "我有一座冒險屋", state: .failed, completed: 60, failed: 5),
-            makeBook(title: "全職高手", state: .available, completed: chapterCount),
+            makeBook(title: "巫师：从合成宝石开始", state: .downloading, completed: 37),
+            makeBook(title: "剑来", state: .paused, completed: 12, paused: true),
+            makeBook(title: "诡秘之主", state: .partial, completed: 80, failed: 3),
+            makeBook(title: "我有一座冒险屋", state: .failed, completed: 60, failed: 5),
+            makeBook(title: "全职高手", state: .available, completed: chapterCount),
         ]
         return store
     }()

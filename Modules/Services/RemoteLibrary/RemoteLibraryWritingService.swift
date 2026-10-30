@@ -23,15 +23,15 @@ enum RemoteLibraryWriteError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unsupported: return localized("此伺服器未提供支援的書庫寫入介面")
-        case .permissionDenied: return localized("此帳號沒有遠端書庫寫入權限")
-        case .alreadyExists: return localized("目的地已有同名檔案或資料夾")
-        case .duplicateBook: return localized("遠端書庫已有相同書籍，未重複加入")
-        case .invalidName: return localized("請輸入有效的名稱")
-        case .invalidDestination: return localized("目的地必須位於目前連線的書庫內")
-        case .redirectRejected: return localized("寫入網址發生重新導向，請確認伺服器網址")
-        case .invalidResponse: return localized("無法確認遠端操作結果，請重新整理書庫")
-        case .http(let status): return String(format: localized("遠端書庫操作失敗（HTTP %d）"), status)
+        case .unsupported: return localized("此伺服器未提供支援的书库写入介面")
+        case .permissionDenied: return localized("此帐号没有远端书库写入权限")
+        case .alreadyExists: return localized("目的地已有同名档案或资料夹")
+        case .duplicateBook: return localized("远端书库已有相同书籍，未重复加入")
+        case .invalidName: return localized("请输入有效的名称")
+        case .invalidDestination: return localized("目的地必须位于目前连线的书库内")
+        case .redirectRejected: return localized("写入网址发生重新导向，请确认伺服器网址")
+        case .invalidResponse: return localized("无法确认远端操作结果，请重新整理书库")
+        case .http(let status): return String(format: localized("远端书库操作失败（HTTP %d）"), status)
         }
     }
 
@@ -81,7 +81,7 @@ final class RemoteLibraryWritingService: RemoteLibraryWriting {
         let connection = try connection(connectionID)
         switch connection.kind {
         case .opds:
-            return RemoteLibraryWriteCapabilities(unsupportedReasonKey: "此伺服器未提供支援的書庫寫入介面")
+            return RemoteLibraryWriteCapabilities(unsupportedReasonKey: "此伺服器未提供支援的书库写入介面")
         case .webDAV:
             try validateDAVURL(directoryURL ?? connectionURL(connection), connection: connection, allowRoot: true)
             return RemoteLibraryWriteCapabilities(canUpload: true, canCreateFolder: true, canMove: true)
@@ -90,7 +90,7 @@ final class RemoteLibraryWritingService: RemoteLibraryWriting {
                 _ = try await calibreAPI(connection).selectedLibrary(connectionURL: connection.url, directoryURL: directoryURL)
                 return RemoteLibraryWriteCapabilities(canUpload: true, canEditMetadata: true)
             } catch RemoteLibraryWriteError.unsupported {
-                return RemoteLibraryWriteCapabilities(unsupportedReasonKey: "此伺服器未提供支援的書庫寫入介面")
+                return RemoteLibraryWriteCapabilities(unsupportedReasonKey: "此伺服器未提供支援的书库写入介面")
             }
         }
     }

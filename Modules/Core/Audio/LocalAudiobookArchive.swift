@@ -33,13 +33,13 @@ enum LocalAudiobookArchiveError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFileType:
-            return localized("不支援的音訊格式")
+            return localized("不支援的音讯格式")
         case .cannotReadArchive:
-            return localized("無法讀取音訊壓縮檔")
+            return localized("无法读取音讯压缩档")
         case .noAudioFound:
-            return localized("壓縮檔中未找到音訊檔案")
+            return localized("压缩档中未找到音讯档案")
         case .extractionFailed:
-            return localized("音訊解壓失敗")
+            return localized("音讯解压失败")
         }
     }
 }
@@ -235,7 +235,7 @@ enum LocalAudiobookArchive {
         let cleaned = title
             .replacingOccurrences(of: "_", with: " ")
             .trimmingCharacters(in: CharacterSet(charactersIn: " \t\r\n-,"))
-        return cleaned.isEmpty ? localized("章節") : cleaned
+        return cleaned.isEmpty ? localized("章节") : cleaned
     }
 
     private static func chapterMetadataGroups(for asset: AVAsset) async throws -> [AVTimedMetadataGroup] {

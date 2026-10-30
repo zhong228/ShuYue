@@ -32,7 +32,7 @@ struct FixedPageAutoScrollButton: View {
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(DimmedWhileScrollingButtonStyle(isDimmed: isContentScrolling))
-                .accessibilityLabel(isAutoScrolling ? localized("暫停自動捲動") : localized("開始自動捲動"))
+                .accessibilityLabel(isAutoScrolling ? localized("暂停自动卷动") : localized("开始自动卷动"))
                 if position == .left { Spacer() }
             }
             .padding(.horizontal, DSSpacing.lg)

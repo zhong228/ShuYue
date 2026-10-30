@@ -26,7 +26,7 @@ struct AIServiceEditorView: View {
 
     private var editorContent: some View {
             Form {
-                Section { TextField(localized("服務名稱"), text: $serviceName).accessibilityIdentifier("ai.service.name") }
+                Section { TextField(localized("服务名称"), text: $serviceName).accessibilityIdentifier("ai.service.name") }
                 serviceSection
                 keySection
                 testSection
@@ -35,7 +35,7 @@ struct AIServiceEditorView: View {
             .softScrollEdges()
             .themedAppSurface(for: .settings)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle(localized("AI 服務"))
+            .navigationTitle(localized("AI 服务"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -45,13 +45,13 @@ struct AIServiceEditorView: View {
                         Image(systemName: "checkmark")
                             .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(localized("儲存"))
+                    .accessibilityLabel(localized("储存"))
                     .disabled(!canSave)
                 }
             }
             .onAppear(perform: load)
-            .alert(localized("無法儲存"), isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
-                Button(localized("確定"), role: .cancel) { saveError = nil }
+            .alert(localized("无法储存"), isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+                Button(localized("确定"), role: .cancel) { saveError = nil }
             } message: { Text(saveError ?? "") }
             .confirmationDialog(
                 localized("移除 API Key？"),
@@ -61,7 +61,7 @@ struct AIServiceEditorView: View {
                 Button(localized("移除"), role: .destructive) { clearKey() }
                 Button(localized("取消"), role: .cancel) {}
             } message: {
-                Text(localized("移除後 AI 功能會停用，閱讀與聽書不受影響。"))
+                Text(localized("移除后 AI 功能会停用，阅读与听书不受影响。"))
             }
     }
 
@@ -80,13 +80,13 @@ struct AIServiceEditorView: View {
             }
             modelRow
         } header: {
-            Text(localized("AI 服務"))
+            Text(localized("AI 服务"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
             Text(
                 loadFailed
-                    ? localized("先前的設定無法讀取，請重新填寫。")
-                    : localized("相容 OpenAI /v1/chat/completions 的服務都可以。貼完整網址也行。")
+                    ? localized("先前的设定无法读取，请重新填写。")
+                    : localized("相容 OpenAI /v1/chat/completions 的服务都可以。贴完整网址也行。")
             )
             .dsSectionFooter(color: loadFailed ? DSColor.destructive : DSColor.textSecondary)
         }
@@ -106,7 +106,7 @@ struct AIServiceEditorView: View {
                 }
             }
         } label: {
-            LabeledContent(localized("供應商")) {
+            LabeledContent(localized("供应商")) {
                 HStack(spacing: DSSpacing.xs) {
                     Text(localized(current.displayName))
                     Image(systemName: "chevron.up.chevron.down")
@@ -116,7 +116,7 @@ struct AIServiceEditorView: View {
                 .foregroundStyle(DSColor.textSecondary)
             }
         }
-        .accessibilityLabel(localized("供應商"))
+        .accessibilityLabel(localized("供应商"))
         .accessibilityValue(localized(current.displayName))
     }
 
@@ -128,7 +128,7 @@ struct AIServiceEditorView: View {
     private var modelRow: some View {
         LabeledContent(localized("模型")) {
             HStack(spacing: DSSpacing.sm) {
-                TextField(localized("模型名稱"), text: $model)
+                TextField(localized("模型名称"), text: $model)
                     .accessibilityIdentifier("ai.service.model")
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.never)
@@ -144,7 +144,7 @@ struct AIServiceEditorView: View {
                         Image(systemName: "list.bullet")
                             .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(localized("選擇模型"))
+                    .accessibilityLabel(localized("选择模型"))
                 }
                 Button {
                     refreshModels(force: true)
@@ -153,7 +153,7 @@ struct AIServiceEditorView: View {
                         .accessibilityHidden(true)
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(localized("重新取得模型清單"))
+                .accessibilityLabel(localized("重新取得模型清单"))
             }
         }
         if let failure = catalog.lastFailure {
@@ -166,7 +166,7 @@ struct AIServiceEditorView: View {
     private var keySection: some View {
         Section {
             SecureField(
-                hasStoredKey ? localized("已儲存，輸入可覆蓋") : localized("貼上 API Key"),
+                hasStoredKey ? localized("已储存，输入可覆盖") : localized("贴上 API Key"),
                 text: $apiKey
             )
             .textInputAutocapitalization(.never)
@@ -176,7 +176,7 @@ struct AIServiceEditorView: View {
             Text(localized("API Key"))
                 .foregroundStyle(DSColor.textSecondary)
         } footer: {
-            Text(localized("只留在本機鑰匙圈，不同步 iCloud。費用由服務商向你收取。"))
+            Text(localized("只留在本机钥匙圈，不同步 iCloud。费用由服务商向你收取。"))
                 .dsSectionFooter()
         }
         .interfaceSectionSurface()
@@ -188,7 +188,7 @@ struct AIServiceEditorView: View {
                 runTest()
             } label: {
                 HStack {
-                    Text(localized("測試連線"))
+                    Text(localized("测试连线"))
                     Spacer()
                     if isTesting { ProgressView() }
                 }
@@ -199,7 +199,7 @@ struct AIServiceEditorView: View {
                 switch testResult {
                 case let .success(reply):
                     Label(
-                        reply.isEmpty ? localized("連線成功") : String(format: localized("連線成功：%@"), reply),
+                        reply.isEmpty ? localized("连线成功") : String(format: localized("连线成功：%@"), reply),
                         systemImage: "checkmark.circle"
                     )
                     .foregroundStyle(DSColor.textPrimary)
@@ -332,17 +332,17 @@ struct AISettingsView: View {
                         serviceRow(profile)
                     }
                     Button { openEditor(nil) } label: {
-                        SettingsRowLabel(localized("新增 AI 服務"), systemImage: "plus", role: .action)
+                        SettingsRowLabel(localized("新增 AI 服务"), systemImage: "plus", role: .action)
                     }
-                } header: { Text(localized("AI 服務")).foregroundStyle(DSColor.textSecondary) }
-                footer: { Text(localized("API Key 只保存在本機，各服務分開儲存。費用由服務商收取。")).dsSectionFooter() }
+                } header: { Text(localized("AI 服务")).foregroundStyle(DSColor.textSecondary) }
+                footer: { Text(localized("API Key 只保存在本机，各服务分开储存。费用由服务商收取。")).dsSectionFooter() }
                 .interfaceSectionSurface()
                 Section {
                     NavigationLink { AICustomPromptListView() } label: {
                         LabeledContent {
                             if !prompts.prompts.isEmpty { Text("\(prompts.prompts.count)").foregroundStyle(DSColor.textSecondary) }
                         } label: {
-                            SettingsRowLabel(localized("自訂提示詞"), systemImage: "text.badge.plus")
+                            SettingsRowLabel(localized("自订提示词"), systemImage: "text.badge.plus")
                         }
                     }
                 }
@@ -357,13 +357,13 @@ struct AISettingsView: View {
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .navigationTitle(localized("AI 助手設定"))
+            .navigationTitle(localized("AI 助手设定"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 if !embedded {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(localized("關閉"))
+                        .accessibilityLabel(localized("关闭"))
                 }
                 }
             }
@@ -396,7 +396,7 @@ struct AISettingsView: View {
                 }
                 Spacer(minLength: DSSpacing.sm)
                 if isDefault {
-                    Text(localized("預設"))
+                    Text(localized("预设"))
                         .font(DSFont.footnote)
                         .foregroundStyle(DSColor.textSecondary)
                 }
@@ -408,15 +408,15 @@ struct AISettingsView: View {
         }
         .contextMenu {
             if !isDefault {
-                Button(localized("設為預設"), systemImage: "checkmark") { makeDefault(profile) }
+                Button(localized("设为预设"), systemImage: "checkmark") { makeDefault(profile) }
             }
         }
         .swipeActions {
-            Button(localized("刪除"), role: .destructive) {
+            Button(localized("删除"), role: .destructive) {
                 do { try store.remove(profile.id); reload() } catch { failure = error.localizedDescription }
             }
             if !isDefault {
-                Button(localized("設為預設")) { makeDefault(profile) }
+                Button(localized("设为预设")) { makeDefault(profile) }
                     .tint(DSColor.accent)
             }
         }

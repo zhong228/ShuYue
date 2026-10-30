@@ -62,9 +62,9 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
     private var listContent: some View {
         if plan.isEmpty {
             ContentUnavailableView {
-                UnavailableLabel(localized("沒有可匯入的內容"), systemImage: "tray")
+                UnavailableLabel(localized("没有可汇入的内容"), systemImage: "tray")
             } description: {
-                Text(localized("這個檔案裡沒有可以解析的來源。")).foregroundStyle(DSColor.textSecondary)
+                Text(localized("这个档案里没有可以解析的来源。")).foregroundStyle(DSColor.textSecondary)
             }
             .themedAppSurface(for: .settings)
         } else {
@@ -88,7 +88,7 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
                     Text(summaryText)
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
-                    Text(localized("「已有」表示作者標記的更新時間不比本機的新，預設不勾選。"))
+                    Text(localized("「已有」表示作者标记的更新时间不比本机的新，预设不勾选。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
@@ -101,7 +101,7 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
 
     /// 共 N 個 · 新增 X · 更新 Y · 已有 Z — the counts the user needs before ticking anything.
     private var summaryText: String {
-        var parts: [String] = [String(format: localized("共 %d 個"), plan.totalCount)]
+        var parts: [String] = [String(format: localized("共 %d 个"), plan.totalCount)]
         if plan.newCount > 0 {
             parts.append(String(format: localized("新增 %d"), plan.newCount))
         }
@@ -139,7 +139,7 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
         ToolbarItemGroup(placement: .bottomBar) {
             selectAllButton
             Spacer()
-            Text(String(format: localized("已選 %d 個"), plan.selectedCount))
+            Text(String(format: localized("已选 %d 个"), plan.selectedCount))
                 .font(DSFont.caption)
                 .foregroundColor(DSColor.textSecondary)
                 // 全選's accessibility value already announces the same count.
@@ -153,7 +153,7 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
                 plan.toggleSelectAllNew()
             } label: {
                 Label(
-                    localized(plan.isSelectingAllNew ? "取消全選新增" : "全選新增"),
+                    localized(plan.isSelectingAllNew ? "取消全选新增" : "全选新增"),
                     systemImage: "plus.circle"
                 )
             }
@@ -162,7 +162,7 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
                 plan.toggleSelectAllUpdate()
             } label: {
                 Label(
-                    localized(plan.isSelectingAllUpdate ? "取消全選更新" : "全選更新"),
+                    localized(plan.isSelectingAllUpdate ? "取消全选更新" : "全选更新"),
                     systemImage: "arrow.triangle.2.circlepath"
                 )
             }
@@ -170,13 +170,13 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
             if hasAnyComment {
                 Divider()
                 Toggle(isOn: $showsComments) {
-                    Label(localized("顯示源註釋"), systemImage: "text.bubble")
+                    Label(localized("显示源注释"), systemImage: "text.bubble")
                 }
             }
         } label: {
             Image(systemName: "ellipsis")
         }
-        .accessibilityLabel(localized("匯入選項"))
+        .accessibilityLabel(localized("汇入选项"))
     }
 
     private var selectAllButton: some View {
@@ -187,11 +187,11 @@ struct SourceImportConfirmList<Source: ImportableSource, ExtraOptions: View>: Vi
                 Image(systemName: plan.isSelectingAll ? "checkmark.square.fill" : "square")
                     .foregroundColor(plan.isSelectingAll ? DSColor.accent : Color(UIColor.systemGray3))
                     .accessibilityHidden(true)
-                Text(localized(plan.isSelectingAll ? "取消全選" : "全選"))
+                Text(localized(plan.isSelectingAll ? "取消全选" : "全选"))
                     .font(DSFont.subheadline)
             }
         }
-        .accessibilityLabel(localized(plan.isSelectingAll ? "取消全選" : "全選"))
+        .accessibilityLabel(localized(plan.isSelectingAll ? "取消全选" : "全选"))
         .accessibilityValue("\(plan.selectedCount)/\(plan.totalCount)")
     }
 
@@ -262,7 +262,7 @@ private struct SourceImportRow: View {
                         .foregroundColor(DSColor.textSecondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(localized("編輯來源 JSON"))
+                .accessibilityLabel(localized("编辑来源 JSON"))
             }
             .frame(minHeight: DSLayout.minimumTapTarget)
 
@@ -276,9 +276,9 @@ private struct SourceImportRow: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(localized("源註釋"))
+                .accessibilityLabel(localized("源注释"))
                 .accessibilityValue(comment)
-                .accessibilityHint(localized(isCommentExpanded ? "收合註釋" : "展開註釋"))
+                .accessibilityHint(localized(isCommentExpanded ? "收合注释" : "展开注释"))
             }
         }
     }
@@ -299,9 +299,9 @@ private struct SourceImportRow: View {
     /// reads wrong on a badge describing what an entry is.
     static func stateTitle(_ state: SourceImportItemState) -> String {
         switch state {
-        case .new: return localized("匯入狀態：新增")
-        case .update: return localized("匯入狀態：更新")
-        case .existing: return localized("匯入狀態：已有")
+        case .new: return localized("汇入状态：新增")
+        case .update: return localized("汇入状态：更新")
+        case .existing: return localized("汇入状态：已有")
         }
     }
 

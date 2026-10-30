@@ -49,10 +49,10 @@ private struct SearchPageTitle: ViewModifier {
 
     func body(content: Content) -> some View {
         if isTabRoot {
-            content.rootTabTitle(localized("檢索"), onScroll: .minimizesBar)
+            content.rootTabTitle(localized("检索"), onScroll: .minimizesBar)
         } else {
             content
-                .navigationTitle(localized("檢索"))
+                .navigationTitle(localized("检索"))
                 .toolbarTitleDisplayMode(.inline)
         }
     }
@@ -205,10 +205,10 @@ struct BookSearchView: View {
             }
         }
         .alert(
-            localized("搜索失敗"),
+            localized("搜索失败"),
             isPresented: Binding(get: { errorMsg != nil }, set: { if !$0 { errorMsg = nil } })
         ) {
-            Button(localized("確認")) { errorMsg = nil }
+            Button(localized("确认")) { errorMsg = nil }
         } message: {
             Text(errorMsg ?? "")
         }
@@ -275,9 +275,9 @@ struct BookSearchView: View {
     /// progress block above carries the search on.
     private var pausedPlaceholder: some View {
         ContentUnavailableView {
-            UnavailableLabel(localized("已暫停"), systemImage: "pause.circle")
+            UnavailableLabel(localized("已暂停"), systemImage: "pause.circle")
         } description: {
-            Text(localized("點擊繼續搜索剩餘書源"))
+            Text(localized("点击继续搜索剩余书源"))
                 .foregroundStyle(DSColor.textSecondary)
         }
     }
@@ -285,11 +285,11 @@ struct BookSearchView: View {
     private var emptyResultView: some View {
         ContentUnavailableView {
             UnavailableLabel(
-                String(format: localized("沒有找到「%@」"), submittedQuery),
+                String(format: localized("没有找到「%@」"), submittedQuery),
                 systemImage: "magnifyingglass"
             )
         } description: {
-            Text(localized("嘗試換個關鍵字，或切換書源"))
+            Text(localized("尝试换个关键字，或切换书源"))
                 .foregroundStyle(DSColor.textSecondary)
         }
     }
@@ -298,21 +298,21 @@ struct BookSearchView: View {
     private var hintView: some View {
         if enabledSources.isEmpty {
             ContentUnavailableView {
-                UnavailableLabel(localized("尚未設置書源"), systemImage: "exclamationmark.triangle")
+                UnavailableLabel(localized("尚未设置书源"), systemImage: "exclamationmark.triangle")
             } description: {
-                Text(localized("請先在書源管理中新增並啟用書源"))
+                Text(localized("请先在书源管理中新增并启用书源"))
                     .foregroundStyle(DSColor.textSecondary)
             }
         } else {
             ContentUnavailableView {
                 UnavailableLabel(
                     needsSearchResubmission
-                        ? localized("搜索範圍已更新，請再次搜索")
-                        : localized("輸入書名或作者搜索"),
+                        ? localized("搜索范围已更新，请再次搜索")
+                        : localized("输入书名或作者搜索"),
                     systemImage: "text.magnifyingglass"
                 )
             } description: {
-                Text(String(format: localized("已啟用 %d 個書源"), enabledSources.count))
+                Text(String(format: localized("已启用 %d 个书源"), enabledSources.count))
                     .foregroundStyle(DSColor.textSecondary)
             }
         }
@@ -375,8 +375,8 @@ struct BookSearchView: View {
         let sources = activeScope.resolvedSources(from: enabledSources)
         guard !sources.isEmpty else {
             errorMsg = activeScope.mode == .custom
-                ? localized("請至少選擇一個可用書源")
-                : localized("沒有可用的書源，請先啟用書源")
+                ? localized("请至少选择一个可用书源")
+                : localized("没有可用的书源，请先启用书源")
             return
         }
 

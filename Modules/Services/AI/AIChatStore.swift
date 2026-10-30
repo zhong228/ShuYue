@@ -40,7 +40,7 @@ final class AIChatStore {
                     guard message.isPending else { return message }
                     var interrupted = message
                     interrupted.isPending = false
-                    interrupted.errorMessage = localized("回覆已中止")
+                    interrupted.errorMessage = localized("回复已中止")
                     interrupted.provenance?.status = .cancelled
                     return interrupted
                 }.suffix(Self.maximumMessagesPerSession)

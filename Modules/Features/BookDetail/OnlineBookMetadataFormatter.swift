@@ -6,7 +6,7 @@ enum OnlineBookMetadataFormatter {
     )
 
     private static let unitOnlyWordCounts: Set<String> = [
-        "字", "字數", "字数", "萬字", "万字", "千字", "百萬字", "百万字"
+        "字", "字数", "字数", "万字", "万字", "千字", "百万字", "百万字"
     ]
 
     static func tags(detailKind: String?, fallbackKind: String) -> [String] {

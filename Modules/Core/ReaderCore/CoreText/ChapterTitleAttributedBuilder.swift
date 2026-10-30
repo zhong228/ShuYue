@@ -302,7 +302,7 @@ enum ChapterTitleAttributedBuilder {
         // first paragraph of a frame — the chapter title is exactly that first
         // paragraph — so a fixed-height spacer line carries the top spacing
         // instead (same technique as the EPUB heading path). This is why the TXT
-        // / online "標題上距" setting now actually takes effect.
+        // / online "标题上距" setting now actually takes effect.
         if style.topSpacing > 0 {
             attr.append(spacerLine(height: style.topSpacing))
         }

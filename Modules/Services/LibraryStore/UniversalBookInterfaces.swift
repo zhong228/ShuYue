@@ -58,9 +58,9 @@ enum BookDocumentError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .chapterNotFound(let id):
-            return "找不到章節：\(id)"
+            return "找不到章节：\(id)"
         case .unsupportedContentType(let type):
-            return "目前閱讀器不支援此內容類型：\(type)"
+            return "目前阅读器不支援此内容类型：\(type)"
         }
     }
 }

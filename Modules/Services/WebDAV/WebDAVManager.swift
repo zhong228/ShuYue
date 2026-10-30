@@ -19,11 +19,11 @@ enum WebDAVError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL:           return "伺服器網址格式無效"
-        case .authenticationFailed: return "認證失敗，請確認帳號和密碼"
-        case .connectionFailed(let code): return "連線失敗（HTTP \(code)）"
-        case .noData:               return "伺服器未返回資料"
-        case .fileNotFound:         return "雲端找不到備份檔案"
+        case .invalidURL:           return "伺服器网址格式无效"
+        case .authenticationFailed: return "认证失败，请确认帐号和密码"
+        case .connectionFailed(let code): return "连线失败（HTTP \(code)）"
+        case .noData:               return "伺服器未返回资料"
+        case .fileNotFound:         return "云端找不到备份档案"
         }
     }
 }
@@ -174,7 +174,7 @@ final class WebDAVManager: ObservableObject {
     /// - If a file exists but fails to read (permission error, disk failure), throw an error
     ///   and abort the backup to avoid displaying a false "backup successful" message.
     func backup() async throws {
-        await setSync(true, message: "備份中…")
+        await setSync(true, message: "备份中…")
         defer { Task { @MainActor in self.isSyncing = false } }
 
         try? await mkcol(path: "/yuedu/")
@@ -209,7 +209,7 @@ final class WebDAVManager: ObservableObject {
 
         await MainActor.run {
             self.lastSyncDate = Date()
-            self.statusMessage = "備份成功"
+            self.statusMessage = "备份成功"
         }
     }
 
@@ -247,7 +247,7 @@ final class WebDAVManager: ObservableObject {
     // MARK: - Private Restore Implementation
 
     private func performRestore(skipConflictCheck: Bool) async throws {
-        await setSync(true, message: "還原中…")
+        await setSync(true, message: "还原中…")
         defer { Task { @MainActor in self.isSyncing = false } }
 
         // ── Conflict Detection ──────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ final class WebDAVManager: ObservableObject {
                 if isOtherDevice, let localSync = lastSyncDate {
                     await MainActor.run {
                         self.pendingConflict = SyncConflict(remote: remote, localLastSync: localSync)
-                        self.statusMessage = "偵測到衝突，請選擇要使用哪個版本"
+                        self.statusMessage = "侦测到冲突，请选择要使用哪个版本"
                     }
                     return
                 }
@@ -298,7 +298,7 @@ final class WebDAVManager: ObservableObject {
 
         await MainActor.run {
             self.lastSyncDate = Date()
-            self.statusMessage = "還原成功"
+            self.statusMessage = "还原成功"
         }
     }
 

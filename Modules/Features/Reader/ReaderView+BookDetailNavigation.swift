@@ -47,7 +47,7 @@ extension ReaderView {
         // Above 書架's reader the detail gets its own hosting controller, which starts a
         // new environment; without this it could hide only 書架's tab bar.
         .environment(\.rootTabBarVisibility, rootTabBarVisibility)
-        .navigationTitle(localized("書籍詳情"))
+        .navigationTitle(localized("书籍详情"))
         .toolbarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
         .toolbar(.visible, for: .navigationBar)

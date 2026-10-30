@@ -167,18 +167,18 @@ enum LLMError: Error, Sendable, Equatable, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .incompleteOutput: return localized("AI 回覆被截斷，未儲存本次結果")
-        case .filteredOutput: return localized("AI 服務未提供完整回覆")
-        case .emptyOutput: return localized("AI 回覆為空，未儲存本次結果")
-        case .invalidSchema: return localized("AI 回覆格式錯誤，未儲存本次結果")
+        case .incompleteOutput: return localized("AI 回复被截断，未储存本次结果")
+        case .filteredOutput: return localized("AI 服务未提供完整回复")
+        case .emptyOutput: return localized("AI 回复为空，未储存本次结果")
+        case .invalidSchema: return localized("AI 回复格式错误，未储存本次结果")
         case .unauthorized:
-            return localized("API Key 無效或已過期")
+            return localized("API Key 无效或已过期")
         case .rateLimited:
-            return localized("請求過於頻繁，請稍後再試")
+            return localized("请求过于频繁，请稍后再试")
         case let .networkError(detail):
-            return String(format: localized("網路錯誤：%@"), detail)
+            return String(format: localized("网路错误：%@"), detail)
         case let .providerError(detail):
-            return String(format: localized("AI 服務返回錯誤：%@"), detail)
+            return String(format: localized("AI 服务返回错误：%@"), detail)
         }
     }
 }

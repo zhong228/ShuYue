@@ -537,7 +537,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
         self.overrideSource = source
     }
 
-    var displayName: String { overrideSource?.name ?? "網路語音" }
+    var displayName: String { overrideSource?.name ?? "网路语音" }
 
     static func buildURL(template: String, text: String, title: String, rate: Float) -> URL? {
         let provider = CustomHTTPProvider()
@@ -630,7 +630,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
             let diagnostic = TTSResponseDiagnostic(request: request, response: response, data: data)
             ttsLog("[TTS][Provider] \(reason) \(diagnostic)")
             AppLogger.error(
-                "[TTS] 語音段落被拒：\(reason)",
+                "[TTS] 语音段落被拒：\(reason)",
                 context: diagnostic.logContext.merging(["source": source?.name ?? "-"]) { a, _ in a },
                 level: .warning
             )
@@ -639,7 +639,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
 
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw reject(
-                "HTTP 狀態碼錯誤",
+                "HTTP 状态码错误",
                 .badStatus(
                     http.statusCode,
                     TTSResponseDiagnostic(request: request, response: response, data: data)
@@ -647,7 +647,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
             )
         }
         guard !data.isEmpty else {
-            throw reject("回應是空的", .emptyData)
+            throw reject("回应是空的", .emptyData)
         }
 
         if let source, let loginCheckJs = source.loginCheckJs, !loginCheckJs.isEmpty {
@@ -666,11 +666,11 @@ final class CustomHTTPProvider: TTSAudioProvider {
         // served with HTTP 200 was accepted as audio, cached, and only blew up in
         // `AVAudioFile(forReading:)` several segments later as
         // `kAudioFileError_InvalidFile` ('dta?', 1685348671). Three of those in a row ends
-        // the listening session — the "朗讀失敗：第 N 段語音無法下載" report. Rejecting here
+        // the listening session — the "朗读失败：第 N 段语音无法下载" report. Rejecting here
         // instead lets the existing retry → skip → three-strikes policy do its job.
         if responseLooksLikeTextPayload(data: data, contentType: responseContentType) {
             throw reject(
-                "伺服器回的是文字不是音訊",
+                "伺服器回的是文字不是音讯",
                 .responsePostProcessingFailed(
                     TTSResponseDiagnostic(request: request, response: response, data: data)
                 )
@@ -678,7 +678,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
         }
         if !TTSAudioPayload.looksLikeAudioContainer(data) {
             throw reject(
-                "認不出這個音訊格式",
+                "认不出这个音讯格式",
                 .unrecognisedAudioPayload(
                     TTSResponseDiagnostic(request: request, response: response, data: data)
                 )
@@ -817,7 +817,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
             // url rule is about to fail with a confusing "produced nothing".
             if let error = engine.lastError {
                 ttsLog("[TTS][Provider] jsLib failed source=\(source?.name ?? "-") error=\(error)")
-                AppLogger.error("[TTS] 語音源 jsLib 執行失敗", context: [
+                AppLogger.error("[TTS] 语音源 jsLib 执行失败", context: [
                     "source": source?.name ?? "-",
                     "error": error
                 ])
@@ -838,7 +838,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
             // so report `lastError` alongside the source and text size: a thrown exception names
             // itself there, and its absence means the rule returned nothing or timed out.
             ttsLog("[TTS][Provider] JS evaluation returned empty result source=\(source?.name ?? "-") textCount=\(text.count) error=\(engine.lastError ?? "none")")
-            AppLogger.error("[TTS] 語音源 url 規則沒有產生請求", context: [
+            AppLogger.error("[TTS] 语音源 url 规则没有产生请求", context: [
                 "source": source?.name ?? "-",
                 "error": engine.lastError ?? "none",
                 "textCount": text.count
@@ -934,7 +934,7 @@ final class CustomHTTPProvider: TTSAudioProvider {
         // while the caller reported the response as "not audio".
         if let error = engine.lastError {
             ttsLog("[TTS][Provider] loginCheckJs failed error=\(error)")
-            AppLogger.error("[TTS] 語音源 loginCheckJs 執行失敗", context: ["error": error])
+            AppLogger.error("[TTS] 语音源 loginCheckJs 执行失败", context: ["error": error])
         }
         return extractedData
     }

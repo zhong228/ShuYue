@@ -608,7 +608,7 @@ enum ReaderHTMLUtilities {
         /// Review hrefs are persisted in normalized chapter HTML. Never freeze credentials
         /// into that artifact: login data is read live from `source` when the action runs.
         private static func safeActionVariables(_ variables: [String: String]) -> [String: String] {
-            let sensitive = ["token", "secret", "password", "passwd", "authorization", "cookie", "session", "apikey", "api_key", "密钥", "密碼", "密码"]
+            let sensitive = ["token", "secret", "password", "passwd", "authorization", "cookie", "session", "apikey", "api_key", "密钥", "密码", "密码"]
             var result: [String: String] = [:]
             var byteCount = 0
             for key in variables.keys.sorted() {
@@ -806,7 +806,7 @@ enum ReaderHTMLUtilities {
         }
     ) {
         let diagnostics = reviewMarkupDiagnostics(in: html)
-        let isTargetSource = sourceName.contains("同人小说网") || sourceName.contains("同人小說網")
+        let isTargetSource = sourceName.contains("同人小说网") || sourceName.contains("同人小说网")
         guard isTargetSource || diagnostics.markerCount > 0 else { return }
 
         var logContext = context
@@ -1406,7 +1406,7 @@ enum ReaderHTMLUtilities {
     private static func isQidianSource(_ context: LegadoReviewContext?) -> Bool {
         guard let context else { return false }
         return context.sourceName.contains("起点")
-            || context.sourceName.contains("起點")
+            || context.sourceName.contains("起点")
             || context.sourceURL.localizedCaseInsensitiveContains("qidian")
     }
 
@@ -1658,7 +1658,7 @@ enum ReaderHTMLUtilities {
             // comment-page URL. Handle URL-shaped args before the numeric Qidian signature.
             if let url = absoluteReviewURL(from: args.first) {
                 let sources = args.count >= 2 ? cleanLegadoArgument(args[1]) : ""
-                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "段評" : "\(sources)段評", context: context)
+                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "段评" : "\(sources)段评", context: context)
             }
             if args.count >= 2 {
                 let authoredTitle = cleanLegadoArgument(args[1])
@@ -1672,9 +1672,9 @@ enum ReaderHTMLUtilities {
             ?? legadoFunctionArgs(named: "androidshowChapterComments", in: trimmed) {
             if let url = absoluteReviewURL(from: args.first) {
                 let sources = args.count >= 2 ? cleanLegadoArgument(args[1]) : ""
-                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "本章討論" : "\(sources)本章討論", context: context)
+                return sourceBrowserTarget(url: url, title: sources.isEmpty ? "本章讨论" : "\(sources)本章讨论", context: context)
             }
-            sourceActionTitle = "本章討論"
+            sourceActionTitle = "本章讨论"
         }
 
         // Legado never special-cases the click action: it evaluates the click-config JS in the
@@ -1693,7 +1693,7 @@ enum ReaderHTMLUtilities {
             return ReviewTarget(
                 url: "",
                 title: sourceActionTitle
-                    ?? (trimmed.localizedCaseInsensitiveContains("chapter") ? "本章討論" : "段評"),
+                    ?? (trimmed.localizedCaseInsensitiveContains("chapter") ? "本章讨论" : "段评"),
                 sourceJS: trimmed,
                 sourceURL: context.sourceURL,
                 actionContext: actionContext
@@ -1705,7 +1705,7 @@ enum ReaderHTMLUtilities {
 
     private static func usesShushanCommentRuntime(_ context: LegadoReviewContext?) -> Bool {
         guard let name = context?.sourceName else { return false }
-        return name.contains("书山") || name.contains("書山")
+        return name.contains("书山") || name.contains("书山")
     }
 
     /// Whether an action is a bare source-function call (`name(args…)`) we can hand back to the
@@ -1757,7 +1757,7 @@ enum ReaderHTMLUtilities {
             )
             return ReviewTarget(
                 url: url,
-                title: kind == .paragraph ? "起點段評" : "本章討論"
+                title: kind == .paragraph ? "起点段评" : "本章讨论"
             )
         }
 
@@ -1785,7 +1785,7 @@ enum ReaderHTMLUtilities {
             )
             return ReviewTarget(
                 url: url,
-                title: kind == .paragraph ? "起點段評" : "本章討論"
+                title: kind == .paragraph ? "起点段评" : "本章讨论"
             )
         }
 
@@ -1810,7 +1810,7 @@ enum ReaderHTMLUtilities {
         )
         return ReviewTarget(
             url: url,
-            title: kind == .paragraph ? "起點段評" : "本章討論"
+            title: kind == .paragraph ? "起点段评" : "本章讨论"
         )
     }
 
@@ -1872,7 +1872,7 @@ enum ReaderHTMLUtilities {
 
     private static func usesShaziQidianEndpoint(_ context: LegadoReviewContext?) -> Bool {
         guard let context else { return false }
-        return context.sourceName.contains("企點")
+        return context.sourceName.contains("企点")
             || context.sourceName.contains("企点")
             || context.sourceURL.contains("m.qidian.com")
     }
@@ -2159,7 +2159,7 @@ enum ReaderHTMLUtilities {
                 // 点击由 ReaderMediaLinkOpener 弹系统播放器直接开播。
                 if isStandaloneMediaLinkParagraph(paragraph) {
                     let escaped = escapeHTML(paragraph)
-                    return "<p><a href=\"\(escaped)\">▶ 點擊播放</a></p>"
+                    return "<p><a href=\"\(escaped)\">▶ 点击播放</a></p>"
                 }
                 return "<p>\(escapeHTML(paragraph))</p>"
             }

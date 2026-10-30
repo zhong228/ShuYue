@@ -15,8 +15,8 @@ enum ReaderChromeInterface: String, CaseIterable, Codable, Hashable, Identifiabl
 
     var titleKey: String {
         switch self {
-        case .classic: return "經典"
-        case .modern: return "現代"
+        case .classic: return "经典"
+        case .modern: return "现代"
         }
     }
 
@@ -47,15 +47,15 @@ enum ReaderChromeSlot: String, CaseIterable, Codable, Hashable, Identifiable {
 
     var titleKey: String {
         switch self {
-        case .topFill: return "頂部底色"
-        case .topIcon: return "頂部圖示顏色"
+        case .topFill: return "顶部底色"
+        case .topIcon: return "顶部图示颜色"
         case .bottomFill: return "底部底色"
-        case .bottomIcon: return "底部圖示顏色"
-        case .bottomAccent: return "底部強調色"
-        case .circleFill: return "圓形按鈕底色"
-        case .circleIcon: return "圓形按鈕圖示顏色"
-        case .panelFill: return "書卡面板底色"
-        case .panelText: return "書卡面板文字顏色"
+        case .bottomIcon: return "底部图示颜色"
+        case .bottomAccent: return "底部强调色"
+        case .circleFill: return "圆形按钮底色"
+        case .circleIcon: return "圆形按钮图示颜色"
+        case .panelFill: return "书卡面板底色"
+        case .panelText: return "书卡面板文字颜色"
         }
     }
 
@@ -112,12 +112,12 @@ enum ReaderChromeToolItem: String, CaseIterable, Codable, Hashable, Identifiable
 
     var titleKey: String {
         switch self {
-        case .tableOfContents: return "目錄"
-        case .bookmarks: return "書籤"
+        case .tableOfContents: return "目录"
+        case .bookmarks: return "书签"
         // The live button says 白天 while night mode is on; this is the name the
         // settings screen lists it under.
         case .nightMode: return "深色"
-        case .settings: return "設置"
+        case .settings: return "设置"
         }
     }
 
@@ -157,12 +157,12 @@ enum ReaderChromeActionItem: String, CaseIterable, Codable, Hashable, Identifiab
     var titleKey: String {
         switch self {
         case .refresh: return "刷新"
-        case .changeSource: return "換源"
-        case .download: return "下載"
-        case .playback: return "聽書"
+        case .changeSource: return "换源"
+        case .download: return "下载"
+        case .playback: return "听书"
         case .aiAssistant: return "AI 助手"
-        case .translation: return "AI 翻譯"
-        case .openWebPage: return "開啟網頁"
+        case .translation: return "AI 翻译"
+        case .openWebPage: return "开启网页"
         }
     }
 
@@ -217,11 +217,11 @@ enum ReaderChromeIconStorageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedImageFile:
-            return localized("僅支援圖片檔案")
+            return localized("仅支援图片档案")
         case .cannotReadImage:
-            return localized("無法讀取圖片檔案")
+            return localized("无法读取图片档案")
         case .missingDocumentsDirectory:
-            return localized("無法存取文件資料夾")
+            return localized("无法存取文件资料夹")
         }
     }
 }

@@ -38,7 +38,7 @@ struct ICloudSyncView: View {
             }
         }
         .alert(alertTitle, isPresented: $showAlert) {
-            Button(localized("確定"), role: .cancel) {}
+            Button(localized("确定"), role: .cancel) {}
         } message: {
             Text(alertMessage)
         }
@@ -48,7 +48,7 @@ struct ICloudSyncView: View {
     }
 
     private var accountSection: some View {
-        DSSettingsGroupCard(title: localized("帳號狀態"), footer: {
+        DSSettingsGroupCard(title: localized("帐号状态"), footer: {
             if !iCloudReady {
                 Text(manager.unavailableFooterText)
                     .dsSectionFooter()
@@ -71,11 +71,11 @@ struct ICloudSyncView: View {
 
     private var autoSyncSection: some View {
         DSSettingsGroupCard(title: "", footer: {
-            Text(localized("啟動與切背景時自動同步書庫、書源、替換規則、書檔、閱讀設定、氣泡樣式與自訂閱讀背景。多台裝置會合併，不會互相覆蓋。"))
+            Text(localized("启动与切背景时自动同步书库、书源、替换规则、书档、阅读设定、气泡样式与自订阅读背景。多台装置会合并，不会互相覆盖。"))
                 .dsSectionFooter()
         }) {
             DSSettingsCardToggle(
-                title: localized("自動同步"),
+                title: localized("自动同步"),
                 systemImage: "arrow.triangle.2.circlepath",
                 isOn: $gs.iCloudAutoSync
             )
@@ -95,14 +95,14 @@ struct ICloudSyncView: View {
 
             DSSettingsCardDivider()
 
-            DSSettingsCardRow(icon: "checkmark.icloud", title: localized("檢查 iCloud 狀態")) {
+            DSSettingsCardRow(icon: "checkmark.icloud", title: localized("检查 iCloud 状态")) {
                 Task { await refreshStatus() }
             }
         }
     }
 
     private var statusSection: some View {
-        DSSettingsGroupCard(title: localized("狀態")) {
+        DSSettingsGroupCard(title: localized("状态")) {
             if let date = manager.lastSyncDate {
                 HStack {
                     Text(localized("上次同步"))
@@ -133,18 +133,18 @@ struct ICloudSyncView: View {
     /// Apart from the other actions, at the bottom: it cannot be undone.
     private var deleteSection: some View {
         DSSettingsGroupCard(title: "") {
-            DSSettingsCardRow(icon: "trash", title: localized("刪除 iCloud 上的資料")) {
+            DSSettingsCardRow(icon: "trash", title: localized("删除 iCloud 上的资料")) {
                 showDeleteConfirmation = true
             }
             .disabled(!iCloudReady)
         }
-        .alert(localized("刪除 iCloud 上的資料？"), isPresented: $showDeleteConfirmation) {
-            Button(localized("刪除"), role: .destructive) {
+        .alert(localized("删除 iCloud 上的资料？"), isPresented: $showDeleteConfirmation) {
+            Button(localized("删除"), role: .destructive) {
                 Task { await runDeleteRemoteData() }
             }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("會刪除 iCloud 上的書庫、書源、替換規則、書檔、閱讀設定、氣泡樣式與閱讀背景，並關閉這台裝置的自動同步。這台裝置上的資料不受影響；其他裝置開著自動同步時，會再上傳它們的資料。"))
+            Text(localized("会删除 iCloud 上的书库、书源、替换规则、书档、阅读设定、气泡样式与阅读背景，并关闭这台装置的自动同步。这台装置上的资料不受影响；其他装置开著自动同步时，会再上传它们的资料。"))
         }
     }
 
@@ -184,7 +184,7 @@ struct ICloudSyncView: View {
     private func refreshStatus() async {
         let status = await manager.refreshAccountStatus()
         await MainActor.run {
-            alertTitle = status == .available ? localized("iCloud 可用") : localized("iCloud 無法使用")
+            alertTitle = status == .available ? localized("iCloud 可用") : localized("iCloud 无法使用")
             alertMessage = manager.statusTitle(isAppSignedIn: true)
             showAlert = true
         }
@@ -195,7 +195,7 @@ struct ICloudSyncView: View {
             try await manager.sync(reason: "manual")
             await MainActor.run {
                 alertTitle = localized("同步成功")
-                alertMessage = localized("書庫、書源與替換規則已更新")
+                alertMessage = localized("书库、书源与替换规则已更新")
                 showAlert = true
             }
         } catch {
@@ -210,8 +210,8 @@ struct ICloudSyncView: View {
         do {
             try await manager.deleteRemoteData()
             await MainActor.run {
-                alertTitle = localized("已刪除 iCloud 上的同步資料")
-                alertMessage = localized("這台裝置的自動同步已關閉。")
+                alertTitle = localized("已删除 iCloud 上的同步资料")
+                alertMessage = localized("这台装置的自动同步已关闭。")
                 showAlert = true
             }
         } catch {
@@ -221,7 +221,7 @@ struct ICloudSyncView: View {
 
     private func presentError(_ error: Error) {
         Task { @MainActor in
-            alertTitle = localized("操作失敗")
+            alertTitle = localized("操作失败")
             alertMessage = error.localizedDescription
             showAlert = true
         }

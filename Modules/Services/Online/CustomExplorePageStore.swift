@@ -61,25 +61,25 @@ struct CustomExploreComponent: Codable, Hashable, Identifiable, Sendable {
 
         var titleKey: String {
             switch self {
-            case .featuredCards: "推薦卡片"
+            case .featuredCards: "推荐卡片"
             case .ranking: "排行榜"
-            case .grid: "宮格"
-            case .carousel: "左右滑動"
-            case .pagedRanking: "網絡排行榜"
-            case .multiCategoryRanking: "多分類排行榜"
-            case .waterfall: "錯位瀑布流"
+            case .grid: "宫格"
+            case .carousel: "左右滑动"
+            case .pagedRanking: "网络排行榜"
+            case .multiCategoryRanking: "多分类排行榜"
+            case .waterfall: "错位瀑布流"
             }
         }
 
         var descriptionKey: String {
             switch self {
-            case .featuredCards: "一排封面，附書名和簡介"
-            case .ranking: "前五名的列表，可展開到前十名"
-            case .grid: "兩排、每排五本的封面"
-            case .carousel: "只有封面，左右滑動"
-            case .pagedRanking: "一個榜單分成每欄四本，左右翻頁"
-            case .multiCategoryRanking: "同一書源的幾個分類，用標籤切換"
-            case .waterfall: "三欄卡片，往下捲會一直載入"
+            case .featuredCards: "一排封面，附书名和简介"
+            case .ranking: "前五名的列表，可展开到前十名"
+            case .grid: "两排、每排五本的封面"
+            case .carousel: "只有封面，左右滑动"
+            case .pagedRanking: "一个榜单分成每栏四本，左右翻页"
+            case .multiCategoryRanking: "同一书源的几个分类，用标签切换"
+            case .waterfall: "三栏卡片，往下卷会一直载入"
             }
         }
 
@@ -209,7 +209,7 @@ final class CustomExplorePageStore: ObservableObject {
     @discardableResult
     func createPage(named name: String) -> CustomExplorePage {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let page = CustomExplorePage(name: uniqueName(base: trimmed.isEmpty ? localized("自訂頁") : trimmed))
+        let page = CustomExplorePage(name: uniqueName(base: trimmed.isEmpty ? localized("自订页") : trimmed))
         pages.append(page)
         save()
         return page

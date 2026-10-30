@@ -131,7 +131,7 @@ enum ParseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFormat:
-            return localized("無效的 Legado 訂閱源格式")
+            return localized("无效的 Legado 订阅源格式")
         }
     }
 }

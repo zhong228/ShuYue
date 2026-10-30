@@ -64,7 +64,7 @@ struct EPUBMediaOverlayPlayerView: View {
                 }
             }
             .padding(24)
-            .navigationTitle(localized("媒體旁白"))
+            .navigationTitle(localized("媒体旁白"))
             .navigationBarTitleDisplayMode(.inline)
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
@@ -85,9 +85,9 @@ struct EPUBMediaOverlayPlayerView: View {
     private var primaryActionTitle: String {
         switch coordinator.playbackState {
         case .playing:
-            return localized("暫停")
+            return localized("暂停")
         case .paused:
-            return localized("繼續")
+            return localized("继续")
         case .stopped:
             return localized("播放")
         }

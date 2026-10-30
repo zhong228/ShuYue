@@ -89,8 +89,8 @@ final class SharedCustomizationImportFlow: NSObject {
     }
 
     private func showFailure(_ message: String) {
-        let alert = UIAlertController(title: localized("匯入失敗"), message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: localized("確定"), style: .cancel) { [self] _ in
+        let alert = UIAlertController(title: localized("汇入失败"), message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: localized("确定"), style: .cancel) { [self] _ in
             complete()
         })
         present(alert)
@@ -140,7 +140,7 @@ final class SharedCustomizationImportFlow: NSObject {
            let description = localizedError.errorDescription {
             return description
         }
-        return localized("匯入主題失敗。")
+        return localized("汇入主题失败。")
     }
 }
 

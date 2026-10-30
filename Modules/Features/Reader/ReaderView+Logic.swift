@@ -92,7 +92,7 @@ extension ReaderView {
             spineIndex: position.spineIndex,
             range: range
         ) else {
-            AppLogger.cache("筆記：新增標註後找不到對應書籤 spine=\(position.spineIndex) range=\(range)")
+            AppLogger.cache("笔记：新增标注后找不到对应书签 spine=\(position.spineIndex) range=\(range)")
             return
         }
 
@@ -575,7 +575,7 @@ extension ReaderView {
     var currentSourceName: String {
         guard let id = book?.bookSourceId,
               let source = BookSourceStore.shared.sources.first(where: { $0.id == id }),
-              !source.bookSourceName.isEmpty else { return localized("未知書源") }
+              !source.bookSourceName.isEmpty else { return localized("未知书源") }
         return source.bookSourceName
     }
 

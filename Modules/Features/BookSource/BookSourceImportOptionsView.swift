@@ -17,7 +17,7 @@ struct BookSourceImportOptionsSection: View {
                 )
             } label: {
                 HStack(spacing: DSSpacing.sm) {
-                    Label(localized("匯入選項"), systemImage: "slider.horizontal.3")
+                    Label(localized("汇入选项"), systemImage: "slider.horizontal.3")
                         .foregroundColor(DSColor.textPrimary)
                     Spacer(minLength: DSSpacing.sm)
                     Text(summary)
@@ -28,7 +28,7 @@ struct BookSourceImportOptionsSection: View {
                 }
                 .frame(minHeight: DSLayout.minimumTapTarget)
             }
-            .accessibilityLabel(localized("匯入選項"))
+            .accessibilityLabel(localized("汇入选项"))
             .accessibilityValue(summary)
         }
         .interfaceSectionSurface()
@@ -38,17 +38,17 @@ struct BookSourceImportOptionsSection: View {
     private var summary: String {
         var parts: [String] = []
         if options.keepName { parts.append(localized("保留原名")) }
-        if options.keepGroup { parts.append(localized("保留分組")) }
-        if options.keepEnable { parts.append(localized("保留啟用狀態")) }
+        if options.keepGroup { parts.append(localized("保留分组")) }
+        if options.keepEnable { parts.append(localized("保留启用状态")) }
         if let group = options.trimmedGroupName {
             parts.append(
                 String(
-                    format: localized(options.addsToExistingGroups ? "附加分組「%@」" : "分組「%@」"),
+                    format: localized(options.addsToExistingGroups ? "附加分组「%@」" : "分组「%@」"),
                     group
                 )
             )
         }
-        return parts.isEmpty ? localized("預設") : parts.joined(separator: " · ")
+        return parts.isEmpty ? localized("预设") : parts.joined(separator: " · ")
     }
 }
 
@@ -67,13 +67,13 @@ struct BookSourceImportOptionsView: View {
         List {
             Section {
                 Toggle(localized("保留原名"), isOn: $options.keepName)
-                Toggle(localized("保留分組"), isOn: $options.keepGroup)
-                Toggle(localized("保留啟用狀態"), isOn: $options.keepEnable)
+                Toggle(localized("保留分组"), isOn: $options.keepGroup)
+                Toggle(localized("保留启用状态"), isOn: $options.keepEnable)
             } header: {
-                Text(localized("覆蓋已有書源時"))
+                Text(localized("覆盖已有书源时"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("書源包會帶著作者自己的名稱、分組與啟用狀態。開啟後，這幾項沿用本機的設定，只更新規則。"))
+                Text(localized("书源包会带著作者自己的名称、分组与启用状态。开启后，这几项沿用本机的设定，只更新规则。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
@@ -83,7 +83,7 @@ struct BookSourceImportOptionsView: View {
                     showsGroupPicker = true
                 } label: {
                     HStack(spacing: DSSpacing.sm) {
-                        Text(localized("匯入到分組"))
+                        Text(localized("汇入到分组"))
                             .foregroundColor(DSColor.textPrimary)
                         Spacer(minLength: DSSpacing.sm)
                         Text(options.trimmedGroupName ?? localized("不指定"))
@@ -92,28 +92,28 @@ struct BookSourceImportOptionsView: View {
                     }
                     .frame(minHeight: DSLayout.minimumTapTarget)
                 }
-                .accessibilityLabel(localized("匯入到分組"))
+                .accessibilityLabel(localized("汇入到分组"))
                 .accessibilityValue(options.trimmedGroupName ?? localized("不指定"))
 
                 if options.trimmedGroupName != nil {
-                    Picker(localized("分組方式"), selection: $options.addsToExistingGroups) {
-                        Text(localized("取代原分組")).tag(false)
-                        Text(localized("附加到原分組")).tag(true)
+                    Picker(localized("分组方式"), selection: $options.addsToExistingGroups) {
+                        Text(localized("取代原分组")).tag(false)
+                        Text(localized("附加到原分组")).tag(true)
                     }
                     Button(role: .destructive) {
                         options.groupName = nil
                         options.addsToExistingGroups = false
                     } label: {
-                        Text(localized("清除分組指定"))
+                        Text(localized("清除分组指定"))
                     }
                     .frame(minHeight: DSLayout.minimumTapTarget)
                 }
             } header: {
-                Text(localized("分組"))
+                Text(localized("分组"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
                 if options.trimmedGroupName != nil, options.keepGroup {
-                    Text(localized("已開啟「保留分組」：本機已有的書源會先還原成原本的分組，再套用這裡的指定。"))
+                    Text(localized("已开启「保留分组」：本机已有的书源会先还原成原本的分组，再套用这里的指定。"))
                         .dsSectionFooter()
                 }
             }
@@ -122,13 +122,13 @@ struct BookSourceImportOptionsView: View {
         .softScrollEdges()
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .navigationTitle(localized("匯入選項"))
+        .navigationTitle(localized("汇入选项"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .sheet(isPresented: $showsGroupPicker) {
             BookSourceGroupPickerSheet(
-                title: localized("匯入到分組"),
-                subtitle: localized("選中的書源會歸到這個分組"),
+                title: localized("汇入到分组"),
+                subtitle: localized("选中的书源会归到这个分组"),
                 candidates: groupCandidates,
                 excluded: "",
                 defaultGroupTitle: nil,

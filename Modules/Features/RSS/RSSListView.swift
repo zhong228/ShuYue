@@ -22,13 +22,13 @@ enum RSSSourceFilter: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all:
-            return localized("全部訂閱源")
+            return localized("全部订阅源")
         case .unread:
-            return localized("未讀訂閱源")
+            return localized("未读订阅源")
         case .read:
-            return localized("已讀訂閱源")
+            return localized("已读订阅源")
         case .favorite:
-            return localized("收藏訂閱源")
+            return localized("收藏订阅源")
         }
     }
 
@@ -107,35 +107,35 @@ struct RSSListView: View {
                         actions: [
                             DismissalSequencedAction(
                                 route: .importURL,
-                                title: localized("網路匯入 Legado JSON"),
+                                title: localized("网路汇入 Legado JSON"),
                                 systemImage: "link.badge.plus"
                             ),
                             DismissalSequencedAction(
                                 route: .importLocal,
-                                title: localized("本機匯入 Legado JSON"),
+                                title: localized("本机汇入 Legado JSON"),
                                 systemImage: "doc.badge.plus"
                             ),
                             DismissalSequencedAction(
                                 route: .exportJSON,
-                                title: localized("匯出 Legado JSON"),
+                                title: localized("汇出 Legado JSON"),
                                 systemImage: "doc.badge.arrow.up",
                                 isEnabled: !store.sources.isEmpty
                             ),
                             DismissalSequencedAction(
                                 route: .refreshAll,
-                                title: localized("刷新訂閱"),
+                                title: localized("刷新订阅"),
                                 systemImage: "arrow.clockwise",
                                 isEnabled: !store.sources.isEmpty && !isRefreshingAll
                             ),
                             DismissalSequencedAction(
                                 route: .markAllRead,
-                                title: localized("標記全部已讀"),
+                                title: localized("标记全部已读"),
                                 systemImage: "checkmark.circle",
                                 isEnabled: store.totalUnreadCount() > 0
                             ),
                             DismissalSequencedAction(
                                 route: .settings,
-                                title: localized("管理訂閱源"),
+                                title: localized("管理订阅源"),
                                 systemImage: "gearshape"
                             ),
                         ],
@@ -166,20 +166,20 @@ struct RSSListView: View {
             .sheet(item: $sourceInfoToShow) { source in
                 RSSSourceInfoSheet(source: source, store: store)
             }
-            .alert(localized("訂閱源"), isPresented: $showImportResult) {
-                Button(localized("確定"), role: .cancel) {}
+            .alert(localized("订阅源"), isPresented: $showImportResult) {
+                Button(localized("确定"), role: .cancel) {}
             } message: {
                 Text(importMessage)
             }
             .alert(
-                deleteTarget?.title ?? localized("刪除"),
+                deleteTarget?.title ?? localized("删除"),
                 isPresented: Binding(
                     get: { deleteTarget != nil },
                     set: { if !$0 { deleteTarget = nil } }
                 ),
                 presenting: deleteTarget
             ) { target in
-                Button(localized("刪除"), role: .destructive) {
+                Button(localized("删除"), role: .destructive) {
                     performDelete(target)
                 }
                 Button(localized("取消"), role: .cancel) {}
@@ -196,13 +196,13 @@ struct RSSListView: View {
         HStack(spacing: DSSpacing.md) {
             digestCell(
                 value: "\(store.totalUnreadCount())",
-                title: localized("所有未讀"),
+                title: localized("所有未读"),
                 systemImage: "circle.fill",
                 tint: DSColor.destructive
             )
             digestCell(
                 value: "\(store.sources.count)",
-                title: localized("訂閱源"),
+                title: localized("订阅源"),
                 systemImage: "dot.radiowaves.left.and.right",
                 tint: DSColor.appAccent
             )
@@ -267,11 +267,11 @@ struct RSSListView: View {
     private var sourcesEmptyState: some View {
         VStack(spacing: DSSpacing.md) {
             UnavailableLabel(
-                store.sources.isEmpty ? localized("沒有訂閱源") : localized("沒有符合條件的訂閱源"),
+                store.sources.isEmpty ? localized("没有订阅源") : localized("没有符合条件的订阅源"),
                 systemImage: sourceFilter.systemImage
             )
             if store.sources.isEmpty {
-                Text(localized("點擊右上角「更多」即可匯入 Legado JSON 訂閱源"))
+                Text(localized("点击右上角「更多」即可汇入 Legado JSON 订阅源"))
                     .font(DSFont.footnote)
                     .foregroundStyle(DSColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -312,12 +312,12 @@ struct RSSListView: View {
                     Button {
                         sourceInfoToShow = source
                     } label: {
-                        Label(localized("取得資訊"), systemImage: "info.circle")
+                        Label(localized("取得资讯"), systemImage: "info.circle")
                     }
                     Button(role: .destructive) {
                         deleteTarget = .source(source)
                     } label: {
-                        Label(localized("刪除"), systemImage: "trash")
+                        Label(localized("删除"), systemImage: "trash")
                     }
                     Menu {
                         let targets = store.sources.filter { $0.id != source.id }
@@ -329,7 +329,7 @@ struct RSSListView: View {
                             }
                         }
                     } label: {
-                        Label(localized("移動位置"), systemImage: "arrow.up.arrow.down")
+                        Label(localized("移动位置"), systemImage: "arrow.up.arrow.down")
                     }
                 }
                 .draggable(source.id)
@@ -400,10 +400,10 @@ struct RSSListView: View {
             let data = try Data(contentsOf: url)
             let sources = try LegadoSourceJSONParser.parse(data: data)
             let addedSources = store.addSourcesReturningAdded(sources)
-            importMessage = String(format: localized("已匯入 %d 個訂閱源"), addedSources.count)
+            importMessage = String(format: localized("已汇入 %d 个订阅源"), addedSources.count)
             showImportResult = true
         } catch {
-            importMessage = String(format: localized("Legado JSON 匯入失敗：%@"), error.localizedDescription)
+            importMessage = String(format: localized("Legado JSON 汇入失败：%@"), error.localizedDescription)
             showImportResult = true
         }
     }
@@ -480,14 +480,14 @@ private enum RSSDeleteTarget: Identifiable {
     var title: String {
         switch self {
         case .source:
-            return localized("刪除訂閱源")
+            return localized("删除订阅源")
         }
     }
 
     var message: String {
         switch self {
         case .source(let source):
-            return String(format: localized("確定要刪除「%@」訂閱源嗎？"), source.name)
+            return String(format: localized("确定要删除「%@」订阅源吗？"), source.name)
         }
     }
 
@@ -509,13 +509,13 @@ private struct RSSHomeTopMenu: View {
             Button {
                 onImportURL()
             } label: {
-                Label(localized("網路匯入 Legado JSON"), systemImage: "link.badge.plus")
+                Label(localized("网路汇入 Legado JSON"), systemImage: "link.badge.plus")
             }
 
             Button {
                 onImportLocal()
             } label: {
-                Label(localized("本機匯入 Legado JSON"), systemImage: "doc.badge.plus")
+                Label(localized("本机汇入 Legado JSON"), systemImage: "doc.badge.plus")
             }
 
             Divider()
@@ -523,7 +523,7 @@ private struct RSSHomeTopMenu: View {
             Button {
                 onExportJSON()
             } label: {
-                Label(localized("匯出 Legado JSON"), systemImage: "doc.badge.arrow.up")
+                Label(localized("汇出 Legado JSON"), systemImage: "doc.badge.arrow.up")
             }
             .disabled(!hasSources)
 
@@ -532,14 +532,14 @@ private struct RSSHomeTopMenu: View {
             Button {
                 onRefreshAll()
             } label: {
-                Label(localized("刷新訂閱"), systemImage: "arrow.clockwise")
+                Label(localized("刷新订阅"), systemImage: "arrow.clockwise")
             }
             .disabled(!hasSources || isRefreshing)
 
             Button {
                 onMarkAllRead()
             } label: {
-                Label(localized("標記全部已讀"), systemImage: "checkmark.circle")
+                Label(localized("标记全部已读"), systemImage: "checkmark.circle")
             }
             .disabled(!hasUnread)
 
@@ -548,7 +548,7 @@ private struct RSSHomeTopMenu: View {
             Button {
                 onSettings()
             } label: {
-                Label(localized("管理訂閱源"), systemImage: "gearshape")
+                Label(localized("管理订阅源"), systemImage: "gearshape")
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -592,7 +592,7 @@ private struct ImportLegadoJSONURLSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(localized("Legado JSON 網址")).foregroundStyle(DSColor.textSecondary)) {
+                Section(header: Text(localized("Legado JSON 网址")).foregroundStyle(DSColor.textSecondary)) {
                     TextField("https://.../sources/xxx.json", text: $urlString)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
@@ -600,14 +600,14 @@ private struct ImportLegadoJSONURLSheet: View {
                 }
                 .interfaceSectionSurface()
 
-                Section(header: Text(localized("常用訂閱源倉庫")).foregroundStyle(DSColor.textSecondary)) {
+                Section(header: Text(localized("常用订阅源仓库")).foregroundStyle(DSColor.textSecondary)) {
                     Button {
                         urlString = "https://www.yckceo.com/yuedu/rss/json/id/193.json"
                     } label: {
                         HStack {
                             Image(systemName: "building.columns")
                             VStack(alignment: .leading) {
-                                Text(localized("源倉庫（官方純淨）"))
+                                Text(localized("源仓库（官方纯净）"))
                                     .font(DSFont.body)
                                 Text("yckceo.com")
                                     .font(DSFont.caption)
@@ -623,7 +623,7 @@ private struct ImportLegadoJSONURLSheet: View {
 
             }
             .softScrollEdges()
-            .navigationTitle(localized("從網址匯入 Legado JSON"))
+            .navigationTitle(localized("从网址汇入 Legado JSON"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {
@@ -643,8 +643,8 @@ private struct ImportLegadoJSONURLSheet: View {
                     .disabled(urlString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
                 }
             }
-            .alert(localized("匯入"), isPresented: $showMessage) {
-                Button(localized("確定"), role: .cancel) {
+            .alert(localized("汇入"), isPresented: $showMessage) {
+                Button(localized("确定"), role: .cancel) {
                     if !message.hasPrefix("❌") { isPresented = false }
                 }
             } message: {
@@ -653,7 +653,7 @@ private struct ImportLegadoJSONURLSheet: View {
             .disabled(isLoading)
             .overlay {
                 if isLoading {
-                    ProgressView(localized("匯入中，請稍候…"))
+                    ProgressView(localized("汇入中，请稍候…"))
                         .padding()
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DSRadius.lg))
                 }
@@ -698,17 +698,17 @@ private struct RSSSourceInfoSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(localized("基本資訊")).foregroundStyle(DSColor.textSecondary)) {
-                    ThemedLabeledContent(localized("來源名稱"), value: currentSource.name)
-                    ThemedLabeledContent(localized("訂閱源網址"), value: currentSource.url)
+                Section(header: Text(localized("基本资讯")).foregroundStyle(DSColor.textSecondary)) {
+                    ThemedLabeledContent(localized("来源名称"), value: currentSource.name)
+                    ThemedLabeledContent(localized("订阅源网址"), value: currentSource.url)
                     if let homepageURL = currentSource.homepageURL, !homepageURL.isEmpty {
-                        ThemedLabeledContent(localized("首頁"), value: homepageURL)
+                        ThemedLabeledContent(localized("首页"), value: homepageURL)
                     }
                     if let faviconURL = currentSource.displayFaviconURL, !faviconURL.isEmpty {
-                        ThemedLabeledContent(localized("圖示"), value: faviconURL)
+                        ThemedLabeledContent(localized("图示"), value: faviconURL)
                     }
                     if let group = currentSource.sourceGroup, !group.isEmpty {
-                        ThemedLabeledContent(localized("資料夾"), value: group)
+                        ThemedLabeledContent(localized("资料夹"), value: group)
                     }
                 }
                 .interfaceSectionSurface()
@@ -717,21 +717,21 @@ private struct RSSSourceInfoSheet: View {
                     Button {
                         UIPasteboard.general.string = currentSource.url
                     } label: {
-                        Label(localized("複製訂閱 URL"), systemImage: "doc.on.doc")
+                        Label(localized("复制订阅 URL"), systemImage: "doc.on.doc")
                     }
 
                     if let homepageURL = currentSource.homepageURL, let url = URL(string: homepageURL) {
                         Button {
                             UIApplication.shared.open(url)
                         } label: {
-                            Label(localized("開啟首頁"), systemImage: "safari")
+                            Label(localized("开启首页"), systemImage: "safari")
                         }
                     }
                 }
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
-            .navigationTitle(localized("取得資訊"))
+            .navigationTitle(localized("取得资讯"))
             .toolbarTitleDisplayMode(.inline)
             .themedAppSurface(for: .rss)
             .toolbar {

@@ -58,17 +58,17 @@ struct AICharacterMemoryView: View {
     var body: some View {
         List {
             Section {
-                Picker(localized("建檔範圍"), selection: $buildWholeBook) {
-                    Text(localized("截至目前閱讀位置")).tag(false)
-                    Text(localized("本機可用全書正文")).tag(true)
+                Picker(localized("建档范围"), selection: $buildWholeBook) {
+                    Text(localized("截至目前阅读位置")).tag(false)
+                    Text(localized("本机可用全书正文")).tag(true)
                 }
-                DisclosureGroup(localized("進階設定")) {
-                Stepper(String(format: localized("總呼叫上限：%d"), budget.maximumCalls), value: $budget.maximumCalls, in: 1...100_000)
-                Toggle(localized("截斷時允許自動分拆一次"), isOn: Binding(get: { budget.automaticSplitDepth > 0 }, set: { budget.automaticSplitDepth = $0 ? 1 : 0 }))
+                DisclosureGroup(localized("进阶设定")) {
+                Stepper(String(format: localized("总呼叫上限：%d"), budget.maximumCalls), value: $budget.maximumCalls, in: 1...100_000)
+                Toggle(localized("截断时允许自动分拆一次"), isOn: Binding(get: { budget.automaticSplitDepth > 0 }, set: { budget.automaticSplitDepth = $0 ? 1 : 0 }))
                 }
-                Button(buildWholeBook ? localized("規劃人物建檔") : localized("整理已讀人物")) { prepare() }.disabled(job?.state == .running)
+                Button(buildWholeBook ? localized("规划人物建档") : localized("整理已读人物")) { prepare() }.disabled(job?.state == .running)
             } footer: {
-                Text(localized("建檔會逐批傳送允許範圍內的本機正文到你的生成服務；開始前會再次列明模型與預算。"))
+                Text(localized("建档会逐批传送允许范围内的本机正文到你的生成服务；开始前会再次列明模型与预算。"))
                     .dsSectionFooter()
             }
             if let job { jobSection(job) }
@@ -76,51 +76,51 @@ struct AICharacterMemoryView: View {
                 Section { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.destructive) }
             }
             Section {
-                Picker(localized("查看範圍"), selection: viewScopeBinding) {
-                    Text(localized("截至目前閱讀位置")).tag(ViewScope.reading)
-                    Text(localized("按章節進度查看")).tag(ViewScope.chapter)
-                    Text(localized("查看後文人物資料")).tag(ViewScope.wholeBook)
+                Picker(localized("查看范围"), selection: viewScopeBinding) {
+                    Text(localized("截至目前阅读位置")).tag(ViewScope.reading)
+                    Text(localized("按章节进度查看")).tag(ViewScope.chapter)
+                    Text(localized("查看后文人物资料")).tag(ViewScope.wholeBook)
                 }
                 if viewScope == .chapter {
                     Stepper(String(format: localized("查看到第 %d 章"), viewChapter + 1), value: $viewChapter, in: 0...maximumViewChapter)
                 }
-                ThemedLabeledContent(localized("目前範圍人物數"), value: "\(visible.count)")
+                ThemedLabeledContent(localized("目前范围人物数"), value: "\(visible.count)")
             }
             Section {
                 if loadedKey != viewKey {
-                    ProgressView(localized("載入中…"))
+                    ProgressView(localized("载入中…"))
                 } else if visible.cards.isEmpty {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("此範圍尚無人物資料"), systemImage: "person.text.rectangle")
+                        UnavailableLabel(localized("此范围尚无人物资料"), systemImage: "person.text.rectangle")
                     }
                         .listRowBackground(Color.clear)
                 }
                 ForEach(visible.page(query: query, offset: page * 40)) { card in
                     Button { selected = Selection(id: card.id) } label: {
-                        ThemedLabeledContent(card.names.joined(separator: "、"), value: String(format: localized("%d 筆經歷記錄"), card.facts.count))
+                        ThemedLabeledContent(card.names.joined(separator: "、"), value: String(format: localized("%d 笔经历记录"), card.facts.count))
                     }
                 }
-                if page > 0 { Button(localized("上一頁")) { page -= 1 } }
-                if !visible.page(query: query, offset: (page + 1) * 40).isEmpty { Button(localized("下一頁")) { page += 1 } }
+                if page > 0 { Button(localized("上一页")) { page -= 1 } }
+                if !visible.page(query: query, offset: (page + 1) * 40).isEmpty { Button(localized("下一页")) { page += 1 } }
             } footer: {
                 // About the cards themselves, so only once there are some.
                 if !visible.cards.isEmpty {
-                    Text(localized("這是模型抽取的結構化記錄，不代表人物或事實全部正確；每項保留原文供核對。新別名不會自動送入問答或朗讀。"))
+                    Text(localized("这是模型抽取的结构化记录，不代表人物或事实全部正确；每项保留原文供核对。新别名不会自动送入问答或朗读。"))
                         .dsSectionFooter()
                 }
             }
             Section {
-                Button(localized("清除本書人物建檔資料"), role: .destructive) { confirmClear = true }
+                Button(localized("清除本书人物建档资料"), role: .destructive) { confirmClear = true }
             } footer: {
-                Text(localized("清除不會刪除正文、聊天或人工角色聲音設定。"))
+                Text(localized("清除不会删除正文、聊天或人工角色声音设定。"))
                     .dsSectionFooter()
             }
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("書中人物整理"))
+        .navigationTitle(localized("书中人物整理"))
         .toolbarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: localized("搜尋目前範圍的人物"))
+        .searchable(text: $query, prompt: localized("搜寻目前范围的人物"))
         .onChange(of: query) { _, _ in page = 0 }
         .task(id: adapter.contentFingerprint) {
             do { try await service.load(source: adapter) } catch { self.error = error.localizedDescription }
@@ -143,17 +143,17 @@ struct AICharacterMemoryView: View {
                 AIMemoryCardView(entityID: selection.id, source: adapter, boundary: boundary, onOpenCitation: onOpenCitation)
             }
         }
-        .confirmationDialog(localized("查看後文可能揭露人物身分與關係"), isPresented: $confirmView, titleVisibility: .visible) {
-            Button(localized("確認查看後文")) { allowFutureView = true; viewingWholeBook = true }
+        .confirmationDialog(localized("查看后文可能揭露人物身分与关系"), isPresented: $confirmView, titleVisibility: .visible) {
+            Button(localized("确认查看后文")) { allowFutureView = true; viewingWholeBook = true }
             Button(localized("取消"), role: .cancel) {}
         }
-        .confirmationDialog(localized("確認續跑與呼叫預算"), isPresented: $confirmResume, titleVisibility: .visible) {
-            Button(localized("確認續跑")) { resume() }
+        .confirmationDialog(localized("确认续跑与呼叫预算"), isPresented: $confirmResume, titleVisibility: .visible) {
+            Button(localized("确认续跑")) { resume() }
             Button(localized("取消"), role: .cancel) {}
         } message: {
-            Text(localized("未保存的上一批可能已呼叫並計費；續跑可能再次計費，所有呼叫仍計入此工作的總預算。"))
+            Text(localized("未保存的上一批可能已呼叫并计费；续跑可能再次计费，所有呼叫仍计入此工作的总预算。"))
         }
-        .confirmationDialog(localized("清除本書人物建檔資料？"), isPresented: $confirmClear, titleVisibility: .visible) {
+        .confirmationDialog(localized("清除本书人物建档资料？"), isPresented: $confirmClear, titleVisibility: .visible) {
             Button(localized("清除"), role: .destructive) { Task {
                 do { try await service.clear(book: adapter.chunkBookID); projection = .init(cards: [], aliases: [], approvedAliasIDs: []) }
                 catch { self.error = error.localizedDescription }
@@ -178,7 +178,7 @@ struct AICharacterMemoryView: View {
     }
     private func jobSection(_ job: AIMemoryJob) -> some View {
         Section {
-            ThemedLabeledContent(localized("建檔狀態"), value: state(job.state))
+            ThemedLabeledContent(localized("建档状态"), value: state(job.state))
             if let coverage, coverage.plannedUnits > 0 {
                 ProgressView(value: Double(coverage.committedUnits), total: Double(coverage.plannedUnits)) {
                     ThemedLabeledContent(localized("已保存批次"), value: "\(coverage.committedUnits) / \(coverage.plannedUnits)")
@@ -186,25 +186,25 @@ struct AICharacterMemoryView: View {
             }
             ThemedLabeledContent(localized("模型呼叫"), value: "\(job.calls) / \(job.budget.maximumCalls)")
             if let failure = job.failure {
-                Text(failure == "length" ? localized("抽取輸出被截斷，可分拆該批後再確認續跑。") :
-                    AIMemoryFailure(rawValue: failure)?.localizedDescription ?? localized("該批抽取失敗，未保存為成功。"))
+                Text(failure == "length" ? localized("抽取输出被截断，可分拆该批后再确认续跑。") :
+                    AIMemoryFailure(rawValue: failure)?.localizedDescription ?? localized("该批抽取失败，未保存为成功。"))
                     .foregroundStyle(DSColor.destructive)
             }
-            if job.state == .running { Button(localized("暫停建檔")) { service.pause(book: adapter.chunkBookID) } }
+            if job.state == .running { Button(localized("暂停建档")) { service.pause(book: adapter.chunkBookID) } }
             else if job.state != .completedAvailable {
-                Stepper(String(format: localized("追加呼叫額度：%d"), additionalCalls), value: $additionalCalls, in: 0...100_000)
-                Button(localized("續跑／重試未完成批次")) { confirmResume = true }
+                Stepper(String(format: localized("追加呼叫额度：%d"), additionalCalls), value: $additionalCalls, in: 0...100_000)
+                Button(localized("续跑／重试未完成批次")) { confirmResume = true }
                 if job.state == .failed {
                     Button(localized("分拆未完成批次")) { Task {
                         do { try await service.splitFailed(source: adapter) } catch { self.error = error.localizedDescription }
                     } }
                 }
             }
-            DisclosureGroup(localized("詳細資料")) {
+            DisclosureGroup(localized("详细资料")) {
                 ThemedLabeledContent(localized("生成模型"), value: job.model)
                 if let coverage {
-                    ThemedLabeledContent(localized("目錄目標章節"), value: "\(job.targetChapters)")
-                    ThemedLabeledContent(localized("可分析章節／已分析章節"), value: "\(coverage.availableChapters) / \(coverage.analyzedChapters)")
+                    ThemedLabeledContent(localized("目录目标章节"), value: "\(job.targetChapters)")
+                    ThemedLabeledContent(localized("可分析章节／已分析章节"), value: "\(coverage.availableChapters) / \(coverage.analyzedChapters)")
                     ThemedLabeledContent(localized("已保存主要正文 UTF-16"), value: "\(coverage.committedUTF16) / \(coverage.plannedUTF16)")
                     ForEach(coverage.missing, id: \.order) { chapter in
                         ThemedLabeledContent(String(format: localized("第 %d 章"), chapter.order + 1), value: missing(chapter.status))
@@ -212,7 +212,7 @@ struct AICharacterMemoryView: View {
                 }
             }
         } footer: {
-            Text(localized("離開此頁或退到背景會暫停建檔。缺少正文的章節不算完成，也不保證沒有漏抽人物。"))
+            Text(localized("离开此页或退到背景会暂停建档。缺少正文的章节不算完成，也不保证没有漏抽人物。"))
                 .dsSectionFooter()
         }
     }
@@ -220,25 +220,25 @@ struct AICharacterMemoryView: View {
         NavigationStack {
             Form {
                 Section {
-                    ThemedLabeledContent(localized("生成服務"), value: job.providerDisplayName)
+                    ThemedLabeledContent(localized("生成服务"), value: job.providerDisplayName)
                     ThemedLabeledContent(localized("生成模型"), value: job.model)
-                    ThemedLabeledContent(localized("建檔範圍"), value: job.boundary.wholeBook ? localized("本機可用全書正文") : localized("截至目前閱讀位置"))
-                    ThemedLabeledContent(localized("初始批次數"), value: "\(job.units.count)")
-                    ThemedLabeledContent(localized("總模型呼叫上限"), value: "\(job.budget.maximumCalls)")
-                    ThemedLabeledContent(localized("token 數與金額估算"), value: localized("未知"))
-                    DisclosureGroup(localized("詳細資料")) {
-                        ThemedLabeledContent(localized("每批輸出 token 上限"), value: "\(job.budget.outputTokens)")
+                    ThemedLabeledContent(localized("建档范围"), value: job.boundary.wholeBook ? localized("本机可用全书正文") : localized("截至目前阅读位置"))
+                    ThemedLabeledContent(localized("初始批次数"), value: "\(job.units.count)")
+                    ThemedLabeledContent(localized("总模型呼叫上限"), value: "\(job.budget.maximumCalls)")
+                    ThemedLabeledContent(localized("token 数与金额估算"), value: localized("未知"))
+                    DisclosureGroup(localized("详细资料")) {
+                        ThemedLabeledContent(localized("每批输出 token 上限"), value: "\(job.budget.outputTokens)")
                         if let info = proposalCoverage {
                             ThemedLabeledContent(localized("可分析字元／UTF-16／bytes"), value: "\(info.characters) / \(info.plannedUTF16) / \(info.bytes)")
                             ThemedLabeledContent(localized("可重用已保存批次"), value: "\(info.committedUnits)")
                         }
                     }
                 } footer: {
-                    Text(localized("這會逐批傳送正文，不只是問答命中的少數片段。全書範圍可能包含後文；模型服務可能收費，沒有價格或 tokenizer 資料時不估價。"))
+                    Text(localized("这会逐批传送正文，不只是问答命中的少数片段。全书范围可能包含后文；模型服务可能收费，没有价格或 tokenizer 资料时不估价。"))
                         .dsSectionFooter()
                 }
                 Section {
-                    Button(localized("確認傳送並開始建檔")) {
+                    Button(localized("确认传送并开始建档")) {
                         proposal = nil
                         operation?.cancel()
                         operation = Task { do { try await service.start(confirmed: job, source: adapter) } catch { self.error = error.localizedDescription } }
@@ -247,7 +247,7 @@ struct AICharacterMemoryView: View {
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .navigationTitle(localized("確認人物建檔"))
+            .navigationTitle(localized("确认人物建档"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button { proposal = nil } label: { Image(systemName: "xmark").accessibilityHidden(true) }.accessibilityLabel(localized("取消")) } }
         }
@@ -255,19 +255,19 @@ struct AICharacterMemoryView: View {
     private func state(_ state: AIMemoryJob.State) -> String {
         switch state {
         case .running: return localized("正在逐批分析")
-        case .completedAvailable: return localized("本機可用範圍已分析")
-        case .budgetPaused: return localized("預算用盡，已暫停")
-        case .resultUnknown: return localized("上一批結果未知")
-        case .failed: return localized("失敗，等待重試")
-        case .cancelled, .paused: return localized("已暫停")
-        case .superseded: return localized("來源工作已更新")
+        case .completedAvailable: return localized("本机可用范围已分析")
+        case .budgetPaused: return localized("预算用尽，已暂停")
+        case .resultUnknown: return localized("上一批结果未知")
+        case .failed: return localized("失败，等待重试")
+        case .cancelled, .paused: return localized("已暂停")
+        case .superseded: return localized("来源工作已更新")
         }
     }
     private func missing(_ status: AISourceManifest.Availability) -> String {
         switch status {
         case .available: return localized("正文已取得")
-        case .notDownloaded: return localized("尚未下載")
-        case .extractionFailed: return localized("正文抽取失敗")
+        case .notDownloaded: return localized("尚未下载")
+        case .extractionFailed: return localized("正文抽取失败")
         case .unsupported: return localized("格式不支援正文抽取")
         }
     }
@@ -291,9 +291,9 @@ struct AIMemoryCardView: View {
             if let card {
                 Section {
                     Text(card.names.joined(separator: "、")).font(DSFont.title3).foregroundStyle(DSColor.textPrimary)
-                    if card.mentions.allSatisfy(\.unresolved) { Text(localized("包含未決稱呼，身分仍待確認。")).foregroundStyle(DSColor.textSecondary) }
+                    if card.mentions.allSatisfy(\.unresolved) { Text(localized("包含未决称呼，身分仍待确认。")).foregroundStyle(DSColor.textSecondary) }
                     if let earliest = card.earliest {
-                        Text(localized("目前找到最早的明確提及"))
+                        Text(localized("目前找到最早的明确提及"))
                             .foregroundStyle(DSColor.textSecondary)
                         evidence(earliest.evidence)
                     }
@@ -306,14 +306,14 @@ struct AIMemoryCardView: View {
                             ForEach(fact.evidence) { evidence($0) }
                         }
                     }
-                    if page > 0 { Button(localized("上一頁")) { page -= 1 } }
-                    if (page + 1) * 30 < card.facts.count { Button(localized("下一頁")) { page += 1 } }
+                    if page > 0 { Button(localized("上一页")) { page -= 1 } }
+                    if (page + 1) * 30 < card.facts.count { Button(localized("下一页")) { page += 1 } }
                 } header: {
-                    Text(localized("經歷與關係（原文揭露順序）"))
+                    Text(localized("经历与关系（原文揭露顺序）"))
                         .foregroundStyle(DSColor.textSecondary)
                 } footer: {
                     if onOpenCitation == nil {
-                        Text(localized("此入口無法精準跳轉，請依章節與引文核對。"))
+                        Text(localized("此入口无法精准跳转，请依章节与引文核对。"))
                             .dsSectionFooter()
                     }
                 }
@@ -322,27 +322,27 @@ struct AIMemoryCardView: View {
                         let otherIDs = [alias.first, alias.second]
                         Text(view.cards.filter { !$0.entityIDs.isDisjoint(with: otherIDs) }.flatMap(\.names).joined(separator: "、"))
                             .foregroundStyle(DSColor.textPrimary)
-                        Text(localized("是否同一人物：請核對原文"))
+                        Text(localized("是否同一人物：请核对原文"))
                             .foregroundStyle(DSColor.textSecondary)
                         ForEach(alias.evidence) { evidence($0) }
-                        Button(view.approvedAliasIDs.contains(alias.id) ? localized("撤回身分合併") : localized("確認是同一人物")) {
+                        Button(view.approvedAliasIDs.contains(alias.id) ? localized("撤回身分合并") : localized("确认是同一人物")) {
                             Task { do { try await service.decide(alias: alias, approved: !view.approvedAliasIDs.contains(alias.id), source: source, boundary: boundary) }
                                 catch { self.error = error.localizedDescription } }
                         }
                     } footer: {
-                        Text(localized("同名或模型信心不是合併依據；確認只影響此揭露範圍之後的檢視，原始提及與事實仍保留。"))
+                        Text(localized("同名或模型信心不是合并依据；确认只影响此揭露范围之后的检视，原始提及与事实仍保留。"))
                             .dsSectionFooter()
                     }
                 }
-            } else if loading { ProgressView(localized("載入中…")) }
+            } else if loading { ProgressView(localized("载入中…")) }
             else { ContentUnavailableView {
-                UnavailableLabel(localized("此範圍尚無人物資料"), systemImage: "person.crop.circle")
+                UnavailableLabel(localized("此范围尚无人物资料"), systemImage: "person.crop.circle")
             } }
             if let error { Text(error).foregroundStyle(DSColor.destructive) }
         }
         .softScrollEdges()
         .themedAppSurface(for: .settings)
-        .navigationTitle(localized("人物經歷與證據"))
+        .navigationTitle(localized("人物经历与证据"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar { if showsDone { ToolbarItem(placement: .confirmationAction) { Button { dismiss() } label: { Image(systemName: "checkmark").accessibilityHidden(true) }.accessibilityLabel(localized("完成")) } } }
         .task(id: service.revisions[source.chunkBookID]) {
@@ -360,19 +360,19 @@ struct AIMemoryCardView: View {
             if let citation = proof.citation(source: source) {
                 Button(localized("跳到原文")) { dismiss(); onOpenCitation(citation) }
             } else {
-                Text(localized("此入口無法精準跳轉，請依章節與引文核對。"))
+                Text(localized("此入口无法精准跳转，请依章节与引文核对。"))
                     .font(DSFont.footnote).foregroundStyle(DSColor.textSecondary)
             }
         }
     }
     private func kind(_ kind: AIMemoryFact.Kind) -> String {
         switch kind {
-        case .narration: return localized("原文敘述")
-        case .statement: return localized("角色發言／自述")
-        case .rumor: return localized("傳聞／懷疑")
-        case .interpretation: return localized("模型解讀")
-        case .correction: return localized("後文反駁／修正")
-        case .relationship: return localized("關係記錄")
+        case .narration: return localized("原文叙述")
+        case .statement: return localized("角色发言／自述")
+        case .rumor: return localized("传闻／怀疑")
+        case .interpretation: return localized("模型解读")
+        case .correction: return localized("后文反驳／修正")
+        case .relationship: return localized("关系记录")
         }
     }
 }

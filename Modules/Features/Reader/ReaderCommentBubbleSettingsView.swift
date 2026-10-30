@@ -15,7 +15,7 @@ struct ReaderCommentBubbleSettingsView: View {
 
     var body: some View {
         Form {
-            Section(header: Text(localized("氣泡樣式")).foregroundStyle(DSColor.textSecondary)) {
+            Section(header: Text(localized("气泡样式")).foregroundStyle(DSColor.textSecondary)) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: DSSpacing.sm) {
                         ForEach([
@@ -35,65 +35,65 @@ struct ReaderCommentBubbleSettingsView: View {
             .interfaceSectionSurface()
 
             Section {
-                Toggle(localized("優先使用選取的氣泡樣式"), isOn: prioritizeSelectedBubbleBinding)
+                Toggle(localized("优先使用选取的气泡样式"), isOn: prioritizeSelectedBubbleBinding)
             } header: {
-                Text(localized("顯示偏好"))
+                Text(localized("显示偏好"))
                     .foregroundStyle(DSColor.textSecondary)
             } footer: {
-                Text(localized("開啟後優先使用選取的氣泡樣式；關閉後依書源提供的 SVG 顯示。"))
+                Text(localized("开启后优先使用选取的气泡样式；关闭后依书源提供的 SVG 显示。"))
                     .dsSectionFooter()
             }
             .interfaceSectionSurface()
 
             Section(header: Text(localized("管理")).foregroundStyle(DSColor.textSecondary)) {
                 Button(action: openNewStyleEditor) {
-                    Label(localized("新建樣式"), systemImage: "plus.circle")
+                    Label(localized("新建样式"), systemImage: "plus.circle")
                 }
 
                 Button {
                     showingSVGImporter = true
                 } label: {
-                    Label(localized("匯入樣式"), systemImage: "square.and.arrow.down")
+                    Label(localized("汇入样式"), systemImage: "square.and.arrow.down")
                 }
 
                 Button {
                     showingSVGExporter = true
                 } label: {
-                    Label(localized("匯出當前樣式"), systemImage: "square.and.arrow.up")
+                    Label(localized("汇出当前样式"), systemImage: "square.and.arrow.up")
                 }
 
                 if let activeCustomStyle {
                     Button {
                         openStyleEditor(for: activeCustomStyle)
                     } label: {
-                        Label(localized("編輯目前樣式"), systemImage: "pencil")
+                        Label(localized("编辑目前样式"), systemImage: "pencil")
                     }
 
                     Button(role: .destructive) {
                         stylePendingDeletion = activeCustomStyle
                     } label: {
-                        Label(localized("刪除目前樣式"), systemImage: "trash")
+                        Label(localized("删除目前样式"), systemImage: "trash")
                     }
                 }
             }
             .interfaceSectionSurface()
 
-            Section(header: Text(localized("整體大小")).foregroundStyle(DSColor.textSecondary)) {
+            Section(header: Text(localized("整体大小")).foregroundStyle(DSColor.textSecondary)) {
                 BubbleSliderRow(
-                    title: localized("當前樣式大小"),
+                    title: localized("当前样式大小"),
                     valueText: String(format: "%.2f×", settings.commentBubbleScale),
                     value: bubbleScaleBinding,
                     range: GlobalSettings.commentBubbleScaleRange,
                     step: 0.05
                 )
-                Text(localized("這裡調整目前選取氣泡樣式的整體大小。"))
+                Text(localized("这里调整目前选取气泡样式的整体大小。"))
                     .font(DSFont.caption)
                     .foregroundStyle(DSColor.textSecondary)
             }
             .interfaceSectionSurface()
         }
         .softScrollEdges()
-        .navigationTitle(localized("氣泡設定"))
+        .navigationTitle(localized("气泡设定"))
         .toolbarTitleDisplayMode(.inline)
         .themedAppSurface(for: .settings)
         .sheet(item: $editorDraft) { draft in
@@ -117,7 +117,7 @@ struct ReaderCommentBubbleSettingsView: View {
             onCompletion: handleSVGExport
         )
         .alert(
-            localized("刪除目前樣式？"),
+            localized("删除目前样式？"),
             isPresented: Binding(
                 get: { stylePendingDeletion != nil },
                 set: { isPresented in
@@ -128,14 +128,14 @@ struct ReaderCommentBubbleSettingsView: View {
             ),
             presenting: stylePendingDeletion
         ) { style in
-            Button(localized("刪除目前樣式"), role: .destructive) {
+            Button(localized("删除目前样式"), role: .destructive) {
                 deleteCustomStyle(style)
             }
             Button(localized("取消"), role: .cancel) {}
         } message: { style in
             Text(
                 String(
-                    format: localized("「%@」會被永久刪除，此操作無法復原。"),
+                    format: localized("「%@」会被永久删除，此操作无法复原。"),
                     style.name
                 )
             )
@@ -144,7 +144,7 @@ struct ReaderCommentBubbleSettingsView: View {
             Alert(
                 title: Text(localized(alert.titleKey)),
                 message: Text(alert.message),
-                dismissButton: .default(Text(localized("確定")))
+                dismissButton: .default(Text(localized("确定")))
             )
         }
     }
@@ -165,7 +165,7 @@ struct ReaderCommentBubbleSettingsView: View {
 
     private func customStyleButton(style: ReaderCommentBubbleCustomStyle) -> some View {
         let trimmedName = style.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = trimmedName.isEmpty ? localized("自訂 SVG") : trimmedName
+        let title = trimmedName.isEmpty ? localized("自订 SVG") : trimmedName
         let isSelected = settings.commentBubblePresetMode == .custom
             && settings.commentBubbleSelectedCustomStyleID == style.id
 
@@ -297,7 +297,7 @@ struct ReaderCommentBubbleSettingsView: View {
         case .builtin, .square:
             candidate = localized(settings.commentBubblePresetMode.titleKey)
         case .custom:
-            candidate = settings.commentBubbleSelectedCustomStyle?.name ?? localized("自訂 SVG")
+            candidate = settings.commentBubbleSelectedCustomStyle?.name ?? localized("自订 SVG")
         }
         let trimmedCandidate = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
         return (trimmedCandidate.isEmpty ? "comment-bubble" : trimmedCandidate) + ".svg"
@@ -318,7 +318,7 @@ struct ReaderCommentBubbleSettingsView: View {
     private func openNewStyleEditor() {
         editorDraft = CommentBubbleStyleEditorDraft(
             styleID: nil,
-            titleKey: "新建樣式",
+            titleKey: "新建样式",
             name: "",
             svg: ""
         )
@@ -327,7 +327,7 @@ struct ReaderCommentBubbleSettingsView: View {
     private func openStyleEditor(for style: ReaderCommentBubbleCustomStyle) {
         editorDraft = CommentBubbleStyleEditorDraft(
             styleID: style.id,
-            titleKey: "編輯樣式",
+            titleKey: "编辑样式",
             name: style.name,
             svg: style.svg
         )
@@ -344,7 +344,7 @@ struct ReaderCommentBubbleSettingsView: View {
         }
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedName = trimmedName.isEmpty ? localized("自訂 SVG") : trimmedName
+        let resolvedName = trimmedName.isEmpty ? localized("自订 SVG") : trimmedName
         settings.upsertCommentBubbleCustomStyle(
             ReaderCommentBubbleCustomStyle(
                 id: styleID ?? UUID(),
@@ -386,15 +386,15 @@ struct ReaderCommentBubbleSettingsView: View {
                 }
                 settings.commentBubbleFollowsSourceSVG = false
                 importAlert = BubbleImportAlert(
-                    titleKey: "SVG 匯入成功",
-                    message: localized("已套用自訂段評氣泡 SVG。")
+                    titleKey: "SVG 汇入成功",
+                    message: localized("已套用自订段评气泡 SVG。")
                 )
                 return
             }
 
             // 分流二：純 SVG 文字。
             guard let svg = String(data: data, encoding: .utf8) else {
-                showInvalidSVGAlert(message: localized("檔案不是可讀取的 SVG。"))
+                showInvalidSVGAlert(message: localized("档案不是可读取的 SVG。"))
                 return
             }
 
@@ -406,18 +406,18 @@ struct ReaderCommentBubbleSettingsView: View {
 
             let fileName = url.deletingPathExtension().lastPathComponent
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let styleName = fileName.isEmpty ? localized("自訂 SVG") : fileName
+            let styleName = fileName.isEmpty ? localized("自订 SVG") : fileName
             settings.upsertCommentBubbleCustomStyle(
                 ReaderCommentBubbleCustomStyle(name: styleName, svg: trimmedSVG)
             )
             settings.commentBubbleFollowsSourceSVG = false
             importAlert = BubbleImportAlert(
-                titleKey: "SVG 匯入成功",
-                message: localized("已套用自訂段評氣泡 SVG。")
+                titleKey: "SVG 汇入成功",
+                message: localized("已套用自订段评气泡 SVG。")
             )
         } catch {
             importAlert = BubbleImportAlert(
-                titleKey: "SVG 匯入失敗",
+                titleKey: "SVG 汇入失败",
                 message: error.localizedDescription
             )
         }
@@ -426,7 +426,7 @@ struct ReaderCommentBubbleSettingsView: View {
     private func handleSVGExport(_ result: Result<URL, Error>) {
         if case .failure(let error) = result {
             importAlert = BubbleImportAlert(
-                titleKey: "操作失敗",
+                titleKey: "操作失败",
                 message: error.localizedDescription
             )
         }
@@ -435,22 +435,22 @@ struct ReaderCommentBubbleSettingsView: View {
     private func validationMessage(for svg: String) -> String? {
         if svg.utf8.count > CommentBubbleSVGRecognizer.maximumUserTemplateSVGByteCount {
             return String(
-                format: localized("SVG 檔案過大，請使用小於 %d KB 的氣泡樣式。"),
+                format: localized("SVG 档案过大，请使用小于 %d KB 的气泡样式。"),
                 CommentBubbleSVGRecognizer.maximumUserTemplateSVGByteCount / 1024
             )
         }
         guard svg.lowercased().contains("<svg") else {
-            return localized("檔案不是可讀取的 SVG。")
+            return localized("档案不是可读取的 SVG。")
         }
         guard CommentBubbleSVGRecognizer.recognizeUserTemplate(svg) != nil else {
-            return localized("這個 SVG 沒有可繪製的內容，無法作為段評氣泡。")
+            return localized("这个 SVG 没有可绘制的内容，无法作为段评气泡。")
         }
         return nil
     }
 
     private func showInvalidSVGAlert(message: String) {
         importAlert = BubbleImportAlert(
-            titleKey: "SVG 匯入失敗",
+            titleKey: "SVG 汇入失败",
             message: message
         )
     }
@@ -487,8 +487,8 @@ private struct CommentBubbleStyleEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(localized("樣式名稱")).foregroundStyle(DSColor.textSecondary)) {
-                    TextField(localized("樣式名稱"), text: $nameDraft)
+                Section(header: Text(localized("样式名称")).foregroundStyle(DSColor.textSecondary)) {
+                    TextField(localized("样式名称"), text: $nameDraft)
                 }
                 .interfaceSectionSurface()
 
@@ -502,7 +502,7 @@ private struct CommentBubbleStyleEditorView: View {
                             svgDraft = pastedSVG
                         }
                     } label: {
-                        Label(localized("從剪貼簿貼上 SVG"), systemImage: "doc.on.clipboard")
+                        Label(localized("从剪贴簿贴上 SVG"), systemImage: "doc.on.clipboard")
                     }
                 }
                 .interfaceSectionSurface()
@@ -532,11 +532,11 @@ private struct CommentBubbleStyleEditorView: View {
                         Image(systemName: "checkmark")
                     }
                     .disabled(svgDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityLabel(localized("儲存"))
+                    .accessibilityLabel(localized("储存"))
                 }
             }
             .alert(
-                localized("SVG 匯入失敗"),
+                localized("SVG 汇入失败"),
                 isPresented: Binding(
                     get: { validationMessage != nil },
                     set: { isPresented in
@@ -546,7 +546,7 @@ private struct CommentBubbleStyleEditorView: View {
                     }
                 )
             ) {
-                Button(localized("確定"), role: .cancel) {}
+                Button(localized("确定"), role: .cancel) {}
             } message: {
                 Text(validationMessage ?? "")
             }

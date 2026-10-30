@@ -30,12 +30,12 @@ struct ChapterTitleDesignerCanvas: View {
                         .accessibilityHidden(true)
                 } else if let renderError {
                     ContentUnavailableView {
-                        UnavailableLabel(localized("預覽失敗"), systemImage: "exclamationmark.triangle")
+                        UnavailableLabel(localized("预览失败"), systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(renderError.localizedDescription).foregroundStyle(DSColor.textSecondary)
                     }
                 } else {
-                    ProgressView(localized("正在產生預覽"))
+                    ProgressView(localized("正在产生预览"))
                 }
 
                 guideOverlay(canvasSize: canvasRect.size)
@@ -184,7 +184,7 @@ private struct ChapterTitleLayerSelectionOverlay: View {
                         .contentShape(Rectangle())
                         .position(handlePoint(handle))
                         .gesture(resizeGesture(handle))
-                        .accessibilityLabel(localized("調整大小"))
+                        .accessibilityLabel(localized("调整大小"))
                 }
                 rotationHandle
             }
@@ -259,7 +259,7 @@ private struct ChapterTitleLayerSelectionOverlay: View {
         }
         .frame(width: DSLayout.minimumTapTarget, height: DSLayout.minimumTapTarget)
         .position(x: rect.midX, y: max(0, rect.minY - DSLayout.minimumTapTarget))
-        .accessibilityLabel(localized("旋轉"))
+        .accessibilityLabel(localized("旋转"))
         .gesture(
             DragGesture(coordinateSpace: .named("chapterTitleCanvas"))
                 .onChanged { value in
@@ -380,19 +380,19 @@ private extension View {
     func accessibleActions(
         perform: @escaping (ChapterTitleLayerAccessibleAction) -> Void
     ) -> some View {
-        accessibilityAction(named: localized("向上微調")) { perform(.nudgeUp) }
-            .accessibilityAction(named: localized("向下微調")) { perform(.nudgeDown) }
-            .accessibilityAction(named: localized("向左微調")) { perform(.nudgeLeading) }
-            .accessibilityAction(named: localized("向右微調")) { perform(.nudgeTrailing) }
+        accessibilityAction(named: localized("向上微调")) { perform(.nudgeUp) }
+            .accessibilityAction(named: localized("向下微调")) { perform(.nudgeDown) }
+            .accessibilityAction(named: localized("向左微调")) { perform(.nudgeLeading) }
+            .accessibilityAction(named: localized("向右微调")) { perform(.nudgeTrailing) }
             .accessibilityAction(named: localized("放大")) { perform(.grow) }
-            .accessibilityAction(named: localized("縮小")) { perform(.shrink) }
-            .accessibilityAction(named: localized("順時針旋轉")) { perform(.rotateClockwise) }
-            .accessibilityAction(named: localized("逆時針旋轉")) { perform(.rotateCounterclockwise) }
-            .accessibilityAction(named: localized("向前移動")) { perform(.moveForward) }
-            .accessibilityAction(named: localized("向後移動")) { perform(.moveBackward) }
-            .accessibilityAction(named: localized("編輯")) { perform(.edit) }
-            .accessibilityAction(named: localized("複製")) { perform(.duplicate) }
-            .accessibilityAction(named: localized("刪除")) { perform(.delete) }
+            .accessibilityAction(named: localized("缩小")) { perform(.shrink) }
+            .accessibilityAction(named: localized("顺时针旋转")) { perform(.rotateClockwise) }
+            .accessibilityAction(named: localized("逆时针旋转")) { perform(.rotateCounterclockwise) }
+            .accessibilityAction(named: localized("向前移动")) { perform(.moveForward) }
+            .accessibilityAction(named: localized("向后移动")) { perform(.moveBackward) }
+            .accessibilityAction(named: localized("编辑")) { perform(.edit) }
+            .accessibilityAction(named: localized("复制")) { perform(.duplicate) }
+            .accessibilityAction(named: localized("删除")) { perform(.delete) }
     }
 }
 

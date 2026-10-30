@@ -274,7 +274,7 @@ struct AudiobookReaderView: View {
                 Button {
                     showSkipCredits = true
                 } label: {
-                    Label(localized("片頭片尾"), systemImage: skipsCredits ? "forward.fill" : "forward")
+                    Label(localized("片头片尾"), systemImage: skipsCredits ? "forward.fill" : "forward")
                 }
             } label: {
                 functionLabel(icon: "ellipsis", text: localized("更多"))
@@ -312,7 +312,7 @@ struct AudiobookReaderView: View {
                 .font(DSFont.caption)
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
-            Button(localized("重試")) {
+            Button(localized("重试")) {
                 player.retryCurrentChapter()
             }
             .foregroundColor(.white)
@@ -440,8 +440,8 @@ struct AudiobookReaderView: View {
 
     private var sleepLabel: String {
         switch player.sleepOption {
-        case .off: return localized("定時")
-        case .endOfChapter: return localized("本章結束")
+        case .off: return localized("定时")
+        case .endOfChapter: return localized("本章结束")
         case .minutes(let m): return "\(m)\(localized("分鐘"))"
         }
     }
@@ -532,7 +532,7 @@ struct AudiobookChapterListView: View {
             .scrollContentBackground(.hidden)
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
-            .navigationTitle(localized("目錄"))
+            .navigationTitle(localized("目录"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -554,10 +554,10 @@ struct AudiobookSleepTimerView: View {
     var body: some View {
         NavigationStack {
             List {
-                option(localized("關閉"), isSelected: player.sleepOption == .off) {
+                option(localized("关闭"), isSelected: player.sleepOption == .off) {
                     player.setSleepOption(.off)
                 }
-                option(localized("本章結束"), isSelected: player.sleepOption == .endOfChapter) {
+                option(localized("本章结束"), isSelected: player.sleepOption == .endOfChapter) {
                     player.setSleepOption(.endOfChapter)
                 }
                 ForEach(minuteOptions, id: \.self) { m in
@@ -570,7 +570,7 @@ struct AudiobookSleepTimerView: View {
             .scrollContentBackground(.hidden)
             .background(PageBackgroundView(scope: .settings).ignoresSafeArea())
             .pageBackgroundToolbar(for: .settings)
-            .navigationTitle(localized("睡眠定時"))
+            .navigationTitle(localized("睡眠定时"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -624,7 +624,7 @@ struct AudiobookSkipCreditsView: View {
             Form {
                 Section {
                     SettingsSliderRow(
-                        title: localized("片頭"),
+                        title: localized("片头"),
                         systemImage: "text.line.first.and.arrowtriangle.forward",
                         valueText: Self.secondsText(openingSeconds),
                         value: $openingSeconds,
@@ -640,19 +640,19 @@ struct AudiobookSkipCreditsView: View {
                         step: 1
                     )
                 } footer: {
-                    Text(localized("只套用在這本書；片頭只在章節從頭播放時跳過。"))
+                    Text(localized("只套用在这本书；片头只在章节从头播放时跳过。"))
                         .dsSectionFooter()
                 }
                 .interfaceSectionSurface()
             }
             .softScrollEdges()
             .themedAppSurface(for: .settings)
-            .navigationTitle(localized("跳過片頭片尾"))
+            .navigationTitle(localized("跳过片头片尾"))
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(localized("關閉"))
+                        .accessibilityLabel(localized("关闭"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -681,10 +681,10 @@ private extension AudiobookPlayMode {
     /// legado-with-MD3's names for the modes (`audio_play_mode_*`).
     var localizedTitle: String {
         switch self {
-        case .listEndStop: return localized("順序播放")
-        case .singleLoop: return localized("單曲循環")
-        case .random: return localized("隨機播放")
-        case .listLoop: return localized("列表循環")
+        case .listEndStop: return localized("顺序播放")
+        case .singleLoop: return localized("单曲循环")
+        case .random: return localized("随机播放")
+        case .listLoop: return localized("列表循环")
         }
     }
 
@@ -704,7 +704,7 @@ private extension AudiobookPlayMode {
         .environmentObject(BookStore())
 }
 
-#Preview("跳過片頭片尾") {
+#Preview("跳过片头片尾") {
     AudiobookSkipCreditsView(player: .shared)
 }
 #endif

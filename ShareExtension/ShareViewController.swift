@@ -32,7 +32,7 @@ final class ShareViewController: UIViewController {
         ])
         guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
               let provider = item.attachments?.first else {
-            finish(success: false, message: localized("無法讀取分享內容"))
+            finish(success: false, message: localized("无法读取分享内容"))
             return
         }
         let isFileURL = provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
@@ -59,7 +59,7 @@ final class ShareViewController: UIViewController {
                     return
                 }
                 guard let url = item as? URL else {
-                    self.finish(success: false, message: localized("無法讀取分享連結"))
+                    self.finish(success: false, message: localized("无法读取分享连结"))
                     return
                 }
                 // Some third-party apps share local files via public.url with a
@@ -71,7 +71,7 @@ final class ShareViewController: UIViewController {
                         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                         let data = try Data(contentsOf: url)
                         guard !data.isEmpty else {
-                            self.finish(success: false, message: localized("分享檔案為空"))
+                            self.finish(success: false, message: localized("分享档案为空"))
                             return
                         }
                         let name = provider.suggestedName ?? url.lastPathComponent
@@ -82,7 +82,7 @@ final class ShareViewController: UIViewController {
                     return
                 }
                 guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
-                    self.finish(success: false, message: localized("無法讀取分享連結"))
+                    self.finish(success: false, message: localized("无法读取分享连结"))
                     return
                 }
                 self.enqueueLink(url)
@@ -93,12 +93,12 @@ final class ShareViewController: UIViewController {
     private func enqueueLink(_ url: URL) {
         do {
             guard let defaults = UserDefaults(suiteName: Self.appGroupID) else {
-                finish(success: false, message: localized("無法儲存分享連結"))
+                finish(success: false, message: localized("无法储存分享连结"))
                 return
             }
             let encoded = try JSONEncoder().encode(LinkPayload(remoteURLString: url.absoluteString))
             append(encoded, toKey: Self.payloadQueueKey, in: defaults)
-            finish(success: true, message: localized("連結已儲存，下次開啟書悅時匯入。"))
+            finish(success: true, message: localized("连结已储存，下次开启书悦时汇入。"))
         } catch {
             finish(success: false, message: error.localizedDescription)
         }
@@ -123,7 +123,7 @@ final class ShareViewController: UIViewController {
 
     private func loadSharedFile(_ provider: NSItemProvider) {
         guard let typeIdentifier = Self.readableType(from: provider) else {
-            finish(success: false, message: localized("無法讀取分享內容"))
+            finish(success: false, message: localized("无法读取分享内容"))
             return
         }
         provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { [weak self] item, error in
@@ -204,7 +204,7 @@ final class ShareViewController: UIViewController {
         )
         let encoded = try JSONEncoder().encode(payload)
         append(encoded, toKey: Self.payloadQueueKey, in: defaults)
-        finish(success: true, message: localized("檔案已儲存，下次開啟書悅時匯入。"))
+        finish(success: true, message: localized("档案已储存，下次开启书悦时汇入。"))
     }
 
     /// Never let a shared name escape the payload directory; fall back to the
@@ -228,9 +228,9 @@ final class ShareViewController: UIViewController {
     }
 
     private func finish(success: Bool, message: String) {
-        let alert = UIAlertController(title: localized(success ? "匯入成功" : "匯入失敗"),
+        let alert = UIAlertController(title: localized(success ? "汇入成功" : "汇入失败"),
                                       message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: localized("關閉"), style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: localized("关闭"), style: .default) { [weak self] _ in
             self?.extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         })
         present(alert, animated: true)
@@ -243,9 +243,9 @@ final class ShareViewController: UIViewController {
 
         var errorDescription: String? {
             switch self {
-            case .unreadableItem: return localized("無法讀取分享檔案")
-            case .emptyFile: return localized("分享檔案為空")
-            case .missingAppGroup: return localized("無法存取共用的儲存空間")
+            case .unreadableItem: return localized("无法读取分享档案")
+            case .emptyFile: return localized("分享档案为空")
+            case .missingAppGroup: return localized("无法存取共用的储存空间")
             }
         }
     }

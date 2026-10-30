@@ -80,8 +80,8 @@ enum AozoraHeaderParser {
         if line.unicodeScalars.allSatisfy({ $0.isASCII || originalScalars.contains($0) }) {
             return .original
         }
-        if line.hasSuffix("校訂") || line.hasSuffix("編") || line.hasSuffix("編集") { return .editor }
-        if line.hasSuffix("編訳") { return .henyaku }
+        if line.hasSuffix("校订") || line.hasSuffix("编") || line.hasSuffix("编集") { return .editor }
+        if line.hasSuffix("编訳") { return .henyaku }
         if line.hasSuffix("訳") { return .translator }
         return nil
     }

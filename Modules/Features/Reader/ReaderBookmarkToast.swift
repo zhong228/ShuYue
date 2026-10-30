@@ -11,7 +11,7 @@ struct ReaderBookmarkToast: Equatable, Identifiable {
     /// 提示本身的壽命——它就是一段時間，不是在等什麼狀態穩定。
     static let displayDuration: Duration = .milliseconds(1400)
 
-    var titleKey: String { isAdded ? "已加入書籤" : "已移除書籤" }
+    var titleKey: String { isAdded ? "已加入书签" : "已移除书签" }
     var systemImage: String { isAdded ? "bookmark.fill" : "bookmark.slash" }
 }
 
@@ -49,7 +49,7 @@ struct ReaderBookmarkToastView: View {
         .padding()
 }
 
-#Preview("已移除・夜間") {
+#Preview("已移除・夜间") {
     ReaderBookmarkToastView(toast: ReaderBookmarkToast(isAdded: false), colorScheme: .dark)
         .padding()
         .background(Color.black)

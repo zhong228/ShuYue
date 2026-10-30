@@ -37,18 +37,18 @@ struct WebDAVSyncView: View {
             }
         }
         .alert(alertTitle, isPresented: $showAlert) {
-            Button(localized("確定"), role: .cancel) {}
+            Button(localized("确定"), role: .cancel) {}
         } message: {
             Text(alertMessage)
         }
         .onChange(of: manager.pendingConflict != nil) { _, hasConflict in
             if hasConflict { showConflictAlert = true }
         }
-        .alert(localized("偵測到備份衝突"), isPresented: $showConflictAlert) {
-            Button(localized("使用雲端備份"), role: .destructive) {
+        .alert(localized("侦测到备份冲突"), isPresented: $showConflictAlert) {
+            Button(localized("使用云端备份"), role: .destructive) {
                 Task { try? await manager.resolveConflict(keepRemote: true) }
             }
-            Button(localized("保留本地資料"), role: .cancel) {
+            Button(localized("保留本地资料"), role: .cancel) {
                 Task { try? await manager.resolveConflict(keepRemote: false) }
             }
         } message: {
@@ -64,7 +64,7 @@ struct WebDAVSyncView: View {
         let remoteDate = fmt.string(from: c.remote.backupDate)
         let localDate  = fmt.string(from: c.localLastSync)
         return String(
-            format: localized("雲端備份來自裝置「%@」（%@）。本裝置上次同步：%@。請選擇要使用哪個版本。"),
+            format: localized("云端备份来自装置「%@」（%@）。本装置上次同步：%@。请选择要使用哪个版本。"),
             c.remote.deviceName, remoteDate, localDate
         )
     }
@@ -72,9 +72,9 @@ struct WebDAVSyncView: View {
     // MARK: - Sections
 
     private var serverSection: some View {
-        DSSettingsGroupCard(title: localized("伺服器設定")) {
+        DSSettingsGroupCard(title: localized("伺服器设定")) {
             HStack {
-                Text(localized("網址"))
+                Text(localized("网址"))
                     .foregroundColor(DSColor.textSecondary)
                 TextField("https://example.com/dav", text: $manager.serverUrl)
                     .autocapitalization(.none)
@@ -88,9 +88,9 @@ struct WebDAVSyncView: View {
             DSSettingsCardDivider()
 
             HStack {
-                Text(localized("帳號"))
+                Text(localized("帐号"))
                     .foregroundColor(DSColor.textSecondary)
-                TextField(localized("使用者名稱"), text: $manager.username)
+                TextField(localized("使用者名称"), text: $manager.username)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
             }
@@ -101,9 +101,9 @@ struct WebDAVSyncView: View {
             DSSettingsCardDivider()
 
             HStack {
-                Text(localized("密碼"))
+                Text(localized("密码"))
                     .foregroundColor(DSColor.textSecondary)
-                SecureField(localized("密碼"), text: $manager.password)
+                SecureField(localized("密码"), text: $manager.password)
             }
             .padding(.horizontal, DSSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,26 +113,26 @@ struct WebDAVSyncView: View {
 
     private var actionsSection: some View {
         DSSettingsGroupCard(title: localized("操作")) {
-            DSSettingsCardRow(icon: "network", title: localized("測試連線")) {
+            DSSettingsCardRow(icon: "network", title: localized("测试连线")) {
                 Task { await testConnection() }
             }
 
             DSSettingsCardDivider()
 
-            DSSettingsCardRow(icon: "icloud.and.arrow.up", title: localized("備份到雲端")) {
+            DSSettingsCardRow(icon: "icloud.and.arrow.up", title: localized("备份到云端")) {
                 Task { await runBackup() }
             }
 
             DSSettingsCardDivider()
 
-            DSSettingsCardRow(icon: "icloud.and.arrow.down", title: localized("從雲端還原")) {
+            DSSettingsCardRow(icon: "icloud.and.arrow.down", title: localized("从云端还原")) {
                 Task { await runRestore() }
             }
         }
     }
 
     private var statusSection: some View {
-        DSSettingsGroupCard(title: localized("狀態")) {
+        DSSettingsGroupCard(title: localized("状态")) {
             if let date = manager.lastSyncDate {
                 HStack {
                     Text(localized("上次同步"))
@@ -183,10 +183,10 @@ struct WebDAVSyncView: View {
         guard validateSettings() else { return }
         let ok = await manager.testConnection()
         await MainActor.run {
-            alertTitle   = ok ? localized("連線成功") : localized("連線失敗")
+            alertTitle   = ok ? localized("连线成功") : localized("连线失败")
             alertMessage = ok
-                ? localized("已成功連線至 WebDAV 伺服器")
-                : localized("無法連線，請確認網址、帳號及密碼")
+                ? localized("已成功连线至 WebDAV 伺服器")
+                : localized("无法连线，请确认网址、帐号及密码")
             showAlert = true
         }
     }
@@ -196,8 +196,8 @@ struct WebDAVSyncView: View {
         do {
             try await manager.backup()
             await MainActor.run {
-                alertTitle   = localized("備份成功")
-                alertMessage = localized("資料已成功備份至雲端")
+                alertTitle   = localized("备份成功")
+                alertMessage = localized("资料已成功备份至云端")
                 showAlert    = true
             }
         } catch {
@@ -210,8 +210,8 @@ struct WebDAVSyncView: View {
         do {
             try await manager.restore()
             await MainActor.run {
-                alertTitle   = localized("還原成功")
-                alertMessage = localized("資料已還原，書庫與替換規則已即時更新")
+                alertTitle   = localized("还原成功")
+                alertMessage = localized("资料已还原，书库与替换规则已即时更新")
                 showAlert    = true
             }
         } catch {
@@ -224,8 +224,8 @@ struct WebDAVSyncView: View {
     @discardableResult
     private func validateSettings() -> Bool {
         guard !manager.serverUrl.isEmpty else {
-            alertTitle   = localized("設定不完整")
-            alertMessage = localized("請填寫伺服器網址")
+            alertTitle   = localized("设定不完整")
+            alertMessage = localized("请填写伺服器网址")
             showAlert    = true
             return false
         }
@@ -234,7 +234,7 @@ struct WebDAVSyncView: View {
 
     private func presentError(_ error: Error) {
         Task { @MainActor in
-            alertTitle   = localized("操作失敗")
+            alertTitle   = localized("操作失败")
             alertMessage = error.localizedDescription
             showAlert    = true
         }

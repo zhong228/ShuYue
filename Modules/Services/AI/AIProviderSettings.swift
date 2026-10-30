@@ -141,9 +141,9 @@ enum AIProviderAssembly {
         var message: String {
             switch self {
             case .noAPIKey: return localized("尚未填入 API Key")
-            case .notConfigured: return localized("尚未設定 AI 服務")
-            case .corruptedConfiguration: return localized("AI 設定已損毀，請重新填寫")
-            case .invalidEndpoint: return localized("API 位址無效")
+            case .notConfigured: return localized("尚未设定 AI 服务")
+            case .corruptedConfiguration: return localized("AI 设定已损毁，请重新填写")
+            case .invalidEndpoint: return localized("API 位址无效")
             }
         }
     }
@@ -220,7 +220,7 @@ struct AIServiceProfile: Identifiable, Codable, Equatable, Sendable {
 extension AIProviderStore {
     enum PersistenceFailure: LocalizedError {
         case keychain
-        var errorDescription: String? { localized("無法儲存 API Key，原設定未變更。") }
+        var errorDescription: String? { localized("无法储存 API Key，原设定未变更。") }
     }
 
     var hasConfiguredProfile: Bool {

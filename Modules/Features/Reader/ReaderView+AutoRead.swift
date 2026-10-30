@@ -71,7 +71,7 @@ extension ReaderView {
     /// own auto-read dialog as a `bottomDialog`, which trips `onMenuShow` →
     /// `autoPager.pause()` — but that dialog is the only door into the mode's
     /// controls, so holding the reveal behind it reads as "tapping this killed my
-    /// 自動閱讀", which is how it was reported here. The panel is a strip along the
+    /// 自动阅读", which is how it was reported here. The panel is a strip along the
     /// bottom; the page above it is still being read, so the reveal keeps moving.
     var autoReadIsCoveredBySurface: Bool {
         showBars || showTOC || showSettings || showQuickThemePanel

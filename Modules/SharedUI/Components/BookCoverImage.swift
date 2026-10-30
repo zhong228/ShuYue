@@ -199,10 +199,10 @@ struct AudiobookCoverBadge: View {
 
 #Preview {
     HStack(spacing: 16) {
-        BookCoverImage(coverURL: "", title: "劍燭大荒", author: "青山鶴")
+        BookCoverImage(coverURL: "", title: "剑烛大荒", author: "青山鹤")
             .frame(width: 104, height: 138)
             .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
-        GeneratedBookCover(title: "宿命之環", author: "愛潛水的烏賊")
+        GeneratedBookCover(title: "宿命之环", author: "爱潜水的乌贼")
             .frame(width: 104, height: 138)
             .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg))
     }

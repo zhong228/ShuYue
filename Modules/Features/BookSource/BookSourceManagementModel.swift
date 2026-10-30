@@ -94,7 +94,7 @@ final class BookSourceManagementModel: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
 
     /// Legado keeps sources with an empty `bookSourceGroup` in a built-in default group.
-    let defaultGroupName = localized("默認分組")
+    let defaultGroupName = localized("默认分组")
 
     init(
         store: BookSourceStore = .shared,
@@ -391,7 +391,7 @@ final class BookSourceManagementModel: ObservableObject {
             }
             if !topPinned.isEmpty {
                 append(BookSourceRowGroup(
-                    id: BookSourceRowGroup.topPinnedID, name: localized("置頂組"), sourceIDs: topPinned))
+                    id: BookSourceRowGroup.topPinnedID, name: localized("置顶组"), sourceIDs: topPinned))
             }
             for name in names {
                 append(BookSourceRowGroup(
@@ -401,7 +401,7 @@ final class BookSourceManagementModel: ObservableObject {
             }
             if !bottomPinned.isEmpty {
                 append(BookSourceRowGroup(
-                    id: BookSourceRowGroup.bottomPinnedID, name: localized("置底組"),
+                    id: BookSourceRowGroup.bottomPinnedID, name: localized("置底组"),
                     sourceIDs: bottomPinned))
             }
         } else {
