@@ -266,7 +266,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         // data race.
         let sendableRequest = urlRequest
 
-        let handle = TaskHandle<Void, Never>()
+        let handle = TaskHandle<Void, Error>()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 let activity = LastActivity()
@@ -363,9 +363,9 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
                     if ended.mark() { continuation.finish(throwing: LLMError.networkError(error.localizedDescription)) }
                 }
             }
-                continuation.onTermination = { _ in handle.cancel() }
-            }
             handle.set(task)
+            continuation.onTermination = { _ in handle.cancel() }
+        }
     }
 
     // MARK: - Error bodies
@@ -439,7 +439,7 @@ private final class StreamEnded: @unchecked Sendable {
 /// 任務；若直接捕獲 `task` 變數會觸發 Swift「閉包在變數宣告前捕獲」的編譯錯誤，而
 /// 捕獲 `var` 又會觸發 Swift 6 並發資料競爭診斷。改用此持有類，看門狗經由它請求
 /// 取消，自身為 @unchecked Sendable，跨執行緒存取均經 NSLock 保護。
-private final class TaskHandle<Success, Failure>: @unchecked Sendable {
+private final class TaskHandle<Success, Failure: Error>: @unchecked Sendable {
     private var task: Task<Success, Failure>?
     private let lock = NSLock()
     func set(_ t: Task<Success, Failure>) { lock.lock(); task = t; lock.unlock() }
