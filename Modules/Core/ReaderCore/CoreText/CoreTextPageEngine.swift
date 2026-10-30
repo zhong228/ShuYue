@@ -1762,6 +1762,10 @@ _layouts.removeAll()
             // itself, where the marker's rect is known. This closure only ever
             // sees real navigation.
             Task { @MainActor in
+                if let mediaURL = ReaderMediaLinkOpener.playableMediaURL(fromHref: href) {
+                    ReaderMediaLinkOpener.presentPlayer(for: mediaURL)
+                    return
+                }
                 if let url = Self.externalURL(from: href) {
                     await UIApplication.shared.open(url)
                     return

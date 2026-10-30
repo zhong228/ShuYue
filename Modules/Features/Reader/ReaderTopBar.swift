@@ -42,7 +42,7 @@ struct ReaderTopBar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                HStack(spacing: 8) {
+                HStack(spacing: DSSpacing.sm) {
                     Button {
                         onBack()
                     } label: {
@@ -71,7 +71,7 @@ struct ReaderTopBar: View {
                     if titleVisible {
                         Text(chapterTitle)
                             .font(DSFont.fixed(size: titleSize, weight: .medium))
-                            .foregroundColor(palette.topIcon)
+                            .foregroundColor(DSColor.textPrimary)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity)
                     } else {
@@ -109,12 +109,20 @@ struct ReaderTopBar: View {
                 }
                 .frame(maxWidth: overlayMaxWidth)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, DSSpacing.md)
             .padding(.top, titleTopSpacing)
             .padding(.bottom, titleBottomSpacing)
-            .background(palette.topFill)
-
-            Divider().opacity(0.18)
+            .background(
+                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                    .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+            )
+            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 16, y: 8)
+            .padding(.horizontal, DSSpacing.md)
+            .padding(.top, DSSpacing.md)
             Spacer()
         }
     }

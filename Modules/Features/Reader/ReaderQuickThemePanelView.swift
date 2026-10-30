@@ -152,7 +152,7 @@ struct ReaderQuickThemePanelView: View {
     // MARK: - 卡片容器
 
     /// The panel's card chrome, matching the settings cards the app now wears:
-    /// surface fill, soft shadow, hairline border.
+    /// surface fill, soft shadow, hairline separator.
     private func quickPanelCard<Content: View>(
         @ViewBuilder content: () -> Content
     ) -> some View {
@@ -160,15 +160,31 @@ struct ReaderQuickThemePanelView: View {
             content()
         }
         .padding(DSSpacing.lg)
-        .background(BookDetailCardStyle.background)
-        .overlay(BookDetailCardStyle.border)
+        .background(
+            DSColor.surface,
+            in: RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+                .stroke(DSColor.separator, lineWidth: 1)
+        )
+        .shadow(color: DSColor.shadow, radius: 8, y: 2)
     }
 
-    /// A card's small section title, replacing a `Form` section header.
-    private func quickPanelCardHeader(_ title: String) -> some View {
-        Text(localized(title))
-            .font(DSFont.subheadline.weight(.semibold))
-            .foregroundStyle(DSColor.textSecondary)
+    /// A card's small section title, replacing a `Form` section header. An optional
+    /// accent glyph leads it so every block reads as its own card at a glance.
+    private func quickPanelCardHeader(_ title: String, systemImage: String? = nil) -> some View {
+        HStack(spacing: DSSpacing.xs) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(DSFont.subheadline)
+                    .foregroundStyle(DSColor.appAccent)
+                    .accessibilityHidden(true)
+            }
+            Text(localized(title))
+                .font(DSFont.subheadline.weight(.semibold))
+                .foregroundStyle(DSColor.textSecondary)
+        }
     }
 
     // MARK: - 字級 + 翻頁
@@ -178,7 +194,7 @@ struct ReaderQuickThemePanelView: View {
     /// never said which style was active.
     private var typeAndPageTurnCard: some View {
         quickPanelCard {
-            quickPanelCardHeader("版式")
+            quickPanelCardHeader("版式", systemImage: "textformat.size")
             HStack(spacing: DSSpacing.md) {
                 fontSizeStepper
                 pageTurnMenu
@@ -187,20 +203,20 @@ struct ReaderQuickThemePanelView: View {
         }
     }
 
-    /// 小 A ── 現在的字級 ── 大 A, in one capsule.
+    /// 小 A ── 現在的字級 ── 大 A, reworked as a stepped capsule.
     ///
     /// The size used to be reported by a row of dots under this control that
     /// faded out after 1.8 seconds — it was gone by the time anyone looked for it,
     /// and its appearing and disappearing made the panel change height. The number
-    /// now sits between the two buttons that change it and never moves.
+    /// now sits between the two circular accent buttons that change it and never moves.
     ///
     /// Both ends keep `.buttonRepeatBehavior(.enabled)`, so press-and-hold keeps
     /// stepping.
     private var fontSizeStepper: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: DSSpacing.md) {
             fontSizeStepButton(
                 -1,
-                textFont: DSFont.body.weight(.semibold),
+                symbol: "minus",
                 accessibilityKey: "缩小字体"
             )
 
@@ -215,13 +231,19 @@ struct ReaderQuickThemePanelView: View {
 
             fontSizeStepButton(
                 1,
-                textFont: DSFont.title2.weight(.semibold),
+                symbol: "plus",
                 accessibilityKey: "放大字体"
             )
         }
+        .padding(DSSpacing.xs)
         .frame(maxWidth: .infinity, minHeight: DSLayout.readerQuickPanelTopControlHeight)
-        .background(DSColor.neutralControlFill, in: Capsule())
-        .shadow(color: DSColor.shadow, radius: 6, y: 1)
+        .background(
+            DSColor.surface,
+            in: Capsule()
+        )
+        .overlay(
+            Capsule().stroke(DSColor.separator, lineWidth: 1)
+        )
     }
 
     /// A `Menu` behind a capsule button.
@@ -260,25 +282,35 @@ struct ReaderQuickThemePanelView: View {
             .foregroundStyle(DSColor.textPrimary)
             .padding(.horizontal, DSSpacing.sm)
             .frame(maxWidth: .infinity, minHeight: DSLayout.readerQuickPanelTopControlHeight)
-            .background(DSColor.neutralControlFill, in: Capsule())
-            .shadow(color: DSColor.shadow, radius: 6, y: 1)
+            .background(DSColor.surface, in: Capsule())
+            .overlay(Capsule().stroke(DSColor.separator, lineWidth: 1))
             .contentShape(Capsule())
         }
         .accessibilityLabel(localized("翻页"))
         .accessibilityValue(localized(pageTurnTitleKey(for: pageTurnOption)))
     }
 
-    /// One half of the A / A stepper. `.buttonRepeatBehavior(.enabled)` makes
-    /// press-and-hold keep stepping, matching Apple Books.
-    private func fontSizeStepButton(_ delta: CGFloat, textFont: Font, accessibilityKey: String) -> some View {
+    /// One circular accent button of the stepped font control. `.buttonRepeatBehavior(.enabled)`
+    /// makes press-and-hold keep stepping, matching Apple Books.
+    private func fontSizeStepButton(_ delta: CGFloat, symbol: String, accessibilityKey: String) -> some View {
         Button {
             adjustFontSize(delta)
         } label: {
-            Text("A")
-                .font(textFont)
-                .foregroundStyle(DSColor.textPrimary)
-                .frame(maxWidth: .infinity, minHeight: DSLayout.readerQuickPanelTopControlHeight)
-                .contentShape(Rectangle())
+            Image(systemName: symbol)
+                .font(DSFont.title3.weight(.semibold))
+                .foregroundStyle(DSColor.appAccent)
+                .frame(
+                    width: DSLayout.readerQuickPanelTopControlHeight,
+                    height: DSLayout.readerQuickPanelTopControlHeight
+                )
+                .background(
+                    DSColor.appAccentSoft,
+                    in: Circle()
+                )
+                .overlay(
+                    Circle().stroke(DSColor.appAccent.opacity(0.45), lineWidth: 1)
+                )
+                .contentShape(Circle())
         }
         .buttonStyle(QuickPanelSegmentButtonStyle())
         .buttonRepeatBehavior(.enabled)
@@ -289,10 +321,11 @@ struct ReaderQuickThemePanelView: View {
 
     private var brightnessCard: some View {
         quickPanelCard {
-            quickPanelCardHeader("亮度管理")
+            quickPanelCardHeader("亮度管理", systemImage: "sun.max")
             HStack(spacing: DSSpacing.md) {
                 Image(systemName: "sun.min.fill")
                     .font(DSFont.body)
+                    .foregroundStyle(DSColor.appAccent)
                 Slider(
                     value: Binding(
                         get: { CGFloat(settings.readerBrightness) },
@@ -307,6 +340,7 @@ struct ReaderQuickThemePanelView: View {
                 .tint(DSColor.appAccent)
                 Image(systemName: "sun.max.fill")
                     .font(DSFont.body)
+                    .foregroundStyle(DSColor.appAccent)
             }
             .frame(minHeight: DSLayout.minimumTapTarget)
             .foregroundStyle(DSColor.textPrimary)
@@ -328,7 +362,7 @@ struct ReaderQuickThemePanelView: View {
     private var readingBackgroundCard: some View {
         let resolution = settings.readerBackgroundResolution(mode: settings.readerMode, wornTheme: readerTheme)
         return quickPanelCard {
-            quickPanelCardHeader("阅读背景")
+            quickPanelCardHeader("阅读背景", systemImage: "paintpalette")
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DSSpacing.md) {
@@ -383,11 +417,10 @@ struct ReaderQuickThemePanelView: View {
             }
             readerTheme = background
         } label: {
-            backgroundTile(
+            backgroundSwatch(
                 fill: background.previewBackgroundColor,
                 image: nil,
                 title: background.localizedTitle,
-                titleColor: background.previewTextColor,
                 selected: selected
             )
         }
@@ -404,11 +437,10 @@ struct ReaderQuickThemePanelView: View {
         return Button {
             wear(background)
         } label: {
-            backgroundTile(
+            backgroundSwatch(
                 fill: Color(uiColor: AppearanceThemePreset.hex(background.colorHex)),
                 image: background.imageFileName.flatMap(ReaderCustomBackgroundStorageManager.shared.thumbnail(fileName:)),
                 title: background.name,
-                titleColor: Color(uiColor: AppearanceThemePreset.hex(background.resolvedTextColorHex)),
                 selected: selected
             )
         }
@@ -443,85 +475,90 @@ struct ReaderQuickThemePanelView: View {
         Button {
             backgroundEditor = .new
         } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                    .fill(DSColor.neutralControlFill)
-                VStack(spacing: DSSpacing.xs) {
+            VStack(spacing: DSSpacing.xs) {
+                ZStack {
+                    Circle()
+                        .fill(DSColor.surface)
+                        .overlay(
+                            Circle()
+                                .stroke(DSColor.separator, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        )
                     Image(systemName: "plus")
-                        .font(DSFont.title2.weight(.semibold))
-                        .accessibilityHidden(true)
-                    Text(localized("自定义"))
-                        .font(DSFont.subheadline)
+                        .font(DSFont.title3.weight(.semibold))
+                        .foregroundStyle(DSColor.appAccent)
                 }
-                .foregroundStyle(DSColor.textPrimary)
+                .frame(width: Self.backgroundSwatchSize, height: Self.backgroundSwatchSize)
+
+                Text(localized("自定义"))
+                    .font(DSFont.caption)
+                    .foregroundStyle(DSColor.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
-            .frame(height: DSLayout.readerQuickPanelReadingBackgroundTileHeight)
-            .overlay(
-                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                    .stroke(DSColor.separator, lineWidth: 1)
-            )
-            .shadow(color: DSColor.shadow, radius: 6, y: 1)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(localized("自定义"))
     }
 
-    /// One background's tile: its colour or picture, its name, and the selection ring.
-    /// Built-in and saved ones alike carry the name — only the saved ones did at first,
-    /// which left the built-in half of the row unnamed (2026-09-29).
-    private func backgroundTile(
+    /// One background as a circular swatch with its name beneath: the colour or picture
+    /// fills the disc, a selected one wears an accent ring plus an accent check badge,
+    /// and its name turns accent. Built-in and saved backgrounds alike carry the name.
+    private func backgroundSwatch(
         fill: Color,
         image: UIImage?,
         title: String,
-        titleColor: Color,
         selected: Bool
     ) -> some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                .fill(fill)
+        VStack(spacing: DSSpacing.xs) {
+            ZStack(alignment: .topTrailing) {
+                Circle()
+                    .fill(fill)
 
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: DSLayout.readerQuickPanelReadingBackgroundTileHeight)
-                    .clipped()
-                    .accessibilityHidden(true)
-                    .allowsHitTesting(false)
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: Self.backgroundSwatchSize, height: Self.backgroundSwatchSize)
+                        .clipShape(Circle())
+                        .accessibilityHidden(true)
+                        .allowsHitTesting(false)
+                }
+
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(DSFont.caption2.weight(.bold))
+                        .foregroundStyle(DSColor.textOnAccent)
+                        .frame(
+                            width: Self.backgroundCheckBadgeSize,
+                            height: Self.backgroundCheckBadgeSize
+                        )
+                        .background(DSColor.appAccent, in: Circle())
+                        .offset(
+                            x: Self.backgroundCheckBadgeSize / 3,
+                            y: -Self.backgroundCheckBadgeSize / 3
+                        )
+                        .accessibilityHidden(true)
+                }
             }
+            .frame(width: Self.backgroundSwatchSize, height: Self.backgroundSwatchSize)
+            .overlay(
+                Circle()
+                    .stroke(
+                        selected ? DSColor.appAccent : DSColor.separator,
+                        lineWidth: selected ? 3 : 1
+                    )
+            )
 
             Text(title)
                 .font(DSFont.caption)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .foregroundStyle(titleColor)
-                .padding(.horizontal, DSSpacing.sm)
-                .padding(.bottom, DSSpacing.sm)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .accessibilityHidden(true)
-
-            if selected {
-                Image(systemName: "asterisk")
-                    .font(DSFont.subheadline.weight(.semibold))
-                    .foregroundStyle(titleColor.opacity(0.6))
-                    .padding(.top, DSSpacing.sm)
-                    .padding(.trailing, DSSpacing.md)
-                    .accessibilityHidden(true)
-            }
+                .foregroundStyle(selected ? DSColor.appAccent : DSColor.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
-        .frame(height: DSLayout.readerQuickPanelReadingBackgroundTileHeight)
-        .clipShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
-                .stroke(
-                    selected ? DSColor.textPrimary : DSColor.separator,
-                    lineWidth: selected ? 3 : 1
-                )
-        )
-        .shadow(color: DSColor.shadow, radius: 6, y: 1)
     }
+
+    private static let backgroundSwatchSize: CGFloat = 56
+    private static let backgroundCheckBadgeSize: CGFloat = 18
 
     // MARK: - 快捷動作
 
@@ -531,18 +568,21 @@ struct ReaderQuickThemePanelView: View {
     /// puts it, and until now this app had no entry for it at all: the controller
     /// and its panel were both complete, but nothing ever set `showAutoReadPanel`.
     private var quickActionRow: some View {
-        HStack(spacing: DSSpacing.md) {
-            Button {
-                onStartAutoRead()
-            } label: {
-                Label(localized("自动阅读"), systemImage: "play.fill")
-            }
-            .buttonStyle(QuickPanelActionButtonStyle())
+        quickPanelCard {
+            quickPanelCardHeader("快捷操作", systemImage: "bolt")
+            HStack(spacing: DSSpacing.md) {
+                Button {
+                    onStartAutoRead()
+                } label: {
+                    Label(localized("自动阅读"), systemImage: "play.fill")
+                }
+                .buttonStyle(QuickPanelActionButtonStyle())
 
-            Button(action: onCustomize) {
-                Label(localized("Customize"), systemImage: "gear")
+                Button(action: onCustomize) {
+                    Label(localized("Customize"), systemImage: "gear")
+                }
+                .buttonStyle(QuickPanelActionButtonStyle())
             }
-            .buttonStyle(QuickPanelActionButtonStyle())
         }
     }
 
@@ -574,8 +614,8 @@ struct ReaderQuickThemePanelView: View {
 
 }
 
-/// Full-width quick-panel action button: darkens and gently compresses while
-/// pressed, then springs back on release.
+/// Full-width quick-panel action button: tints accent while pressed, then springs
+/// back on release. The accent keeps every action in the panel's one voice.
 private struct QuickPanelActionButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Filled with the accent while auto-read is running, so the panel says what
@@ -585,13 +625,17 @@ private struct QuickPanelActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(DSFont.headline)
-            .foregroundStyle(isProminent ? DSColor.textOnAccent : DSColor.textPrimary)
+            .foregroundStyle(isProminent ? DSColor.textOnAccent : DSColor.appAccent)
             .frame(maxWidth: .infinity, minHeight: DSLayout.readerQuickPanelControlHeight)
             .background(
                 isProminent
-                    ? DSColor.accent.opacity(configuration.isPressed ? 0.8 : 1)
-                    : (configuration.isPressed ? DSColor.neutralControlPressedFill : DSColor.neutralControlFill),
+                    ? DSColor.appAccent.opacity(configuration.isPressed ? 0.85 : 1)
+                    : (configuration.isPressed ? DSColor.appAccentSoft : DSColor.surface),
                 in: Capsule()
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isProminent ? Color.clear : DSColor.appAccent.opacity(0.35), lineWidth: 1)
             )
             .shadow(color: DSColor.shadow, radius: 6, y: 1)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
@@ -599,24 +643,14 @@ private struct QuickPanelActionButtonStyle: ButtonStyle {
     }
 }
 
-/// Segment sharing one capsule with its neighbor in the A / A control. While
-/// pressed, an inset darker capsule appears behind the content; on release it
-/// shrinks and fades back out, echoing the Apple Books quick panel.
+/// The circular font-size step buttons: a gentle press-in, echoing the panel's
+/// other controls, instead of a darker inset capsule.
 private struct QuickPanelSegmentButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(
-                Capsule()
-                    .fill(DSColor.neutralControlPressedFill)
-                    .padding(DSSpacing.xs)
-                    .opacity(configuration.isPressed ? 1 : 0)
-                    .scaleEffect(configuration.isPressed || reduceMotion ? 1 : 0.85)
-            )
-            .animation(
-                configuration.isPressed ? DSAnimation.fast : DSAnimation.standard,
-                value: configuration.isPressed
-            )
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.88 : 1)
+            .animation(DSAnimation.fast, value: configuration.isPressed)
     }
 }
 

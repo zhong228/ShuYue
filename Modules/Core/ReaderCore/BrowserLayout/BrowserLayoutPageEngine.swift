@@ -1645,7 +1645,11 @@ final class BrowserLayoutPageEngine: PageRenderingProvider, LinkNavigationProvid
 
         switch linkResolver.resolve(href: href, fromSpine: spine) {
         case .external(let url):
-            UIApplication.shared.open(url)
+            if let mediaURL = ReaderMediaLinkOpener.playableMediaURL(fromHref: url.absoluteString) {
+                Task { @MainActor in ReaderMediaLinkOpener.presentPlayer(for: mediaURL) }
+            } else {
+                UIApplication.shared.open(url)
+            }
         case .unresolvable(let raw):
             AppLogger.render(
                 "⟐ browserLink unresolvable href spine=\(spine) href=\(raw.prefix(120))"

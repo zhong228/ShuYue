@@ -126,6 +126,7 @@ struct ReaderCustomBackgroundEditorView: View {
         .softScrollEdges()
         .scrollContentBackground(.hidden)
         .background(DSColor.groupedBackground)
+        .tint(DSColor.appAccent)
         .navigationTitle(localized("自定义阅读背景"))
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
@@ -172,29 +173,36 @@ struct ReaderCustomBackgroundEditorView: View {
 
     /// The page as it will read: the background, and a line of text in its text colour.
     private var preview: some View {
-        ZStack {
-            Rectangle().fill(previewPageColor)
-            if kind == .picture,
-               let fileName = picture?.fileName,
-               let image = ReaderCustomBackgroundStorageManager.shared.thumbnail(fileName: fileName) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+        VStack(spacing: DSSpacing.xs) {
+            ZStack {
+                Rectangle().fill(previewPageColor)
+                if kind == .picture,
+                   let fileName = picture?.fileName,
+                   let image = ReaderCustomBackgroundStorageManager.shared.thumbnail(fileName: fileName) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                }
+                Text(localized("这是阅读时文字的样子。"))
+                    .font(DSFont.body)
+                    .foregroundStyle(Color(uiColor: AppearanceThemePreset.hex(previewTextHex)))
+                    .padding(DSSpacing.lg)
             }
-            Text(localized("这是阅读时文字的样子。"))
-                .font(DSFont.body)
-                .foregroundStyle(Color(uiColor: AppearanceThemePreset.hex(previewTextHex)))
-                .padding(DSSpacing.lg)
+            .frame(maxWidth: .infinity)
+            .frame(height: DSLayout.readerQuickPanelReadingBackgroundTileHeight * 1.6)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.xl, style: .continuous)
+                    .stroke(DSColor.separator, lineWidth: 1)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(localized("预览"))
+
+            Text(localized("预览"))
+                .font(DSFont.caption)
+                .foregroundStyle(DSColor.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: DSLayout.readerQuickPanelReadingBackgroundTileHeight * 1.6)
-        .clipShape(RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DSRadius.lg, style: .continuous)
-                .stroke(DSColor.separator, lineWidth: 1)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(localized("预览"))
     }
 
     @ViewBuilder

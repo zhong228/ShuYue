@@ -54,26 +54,35 @@ struct ReaderModernBottomControlBar: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            VStack(spacing: DSSpacing.sm) {
+            VStack(spacing: DSSpacing.md) {
                 chapterLine
                 progressRow
+                Rectangle()
+                    .fill(DSColor.separator)
+                    .frame(height: 0.5)
+                    .opacity(0.6)
                 toolRow
             }
             .padding(.horizontal, DSSpacing.lg)
             .padding(.vertical, DSSpacing.md)
-            .floatingSurface(
-                in: RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous),
-                fill: palette.bottomFill
+            .frame(maxWidth: overlayContentMaxWidth)
+            .background(
+                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                    .fill(.ultraThinMaterial)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: DSRadius.xxl, style: .continuous)
+                    .stroke(DSColor.separator.opacity(0.5), lineWidth: 0.5)
+            )
+            .shadow(color: DSColor.coverHeroShadow.opacity(0.3), radius: 16, y: 8)
             .overlay(alignment: .top) {
                 if chapterSliderDraft != nil {
                     scrubPreview
                 }
             }
-            .frame(maxWidth: overlayContentMaxWidth)
             .padding(.horizontal, DSSpacing.md)
             .padding(.bottom, DSSpacing.md)
-            .tint(palette.bottomAccent)
+            .tint(DSColor.appAccent)
             .animation(DSAnimation.fast, value: chapterSliderDraft == nil)
         }
     }
@@ -145,8 +154,15 @@ struct ReaderModernBottomControlBar: View {
     /// `allCases`; persistence only records what is hidden.
     private var toolRow: some View {
         HStack(spacing: 0) {
-            ForEach(settings.visibleReaderChromeToolItems) { item in
+            let items = settings.visibleReaderChromeToolItems
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 toolButton(for: item)
+                if index < items.count - 1 {
+                    Rectangle()
+                        .fill(DSColor.separator)
+                        .frame(width: 0.5, height: 22)
+                        .opacity(0.5)
+                }
             }
         }
     }
@@ -182,9 +198,16 @@ struct ReaderModernBottomControlBar: View {
                 toolGlyph(for: item, active: active)
                 Text(label)
                     .font(DSFont.caption2)
-                    .foregroundStyle(active ? palette.bottomAccent : palette.bottomIcon)
+                    .foregroundStyle(active ? DSColor.appAccent : palette.bottomIcon)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.vertical, DSSpacing.xxs)
+            .background {
+                if active {
+                    Capsule()
+                        .fill(DSColor.appAccentSoft)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -208,7 +231,7 @@ struct ReaderModernBottomControlBar: View {
         } else {
             Image(systemName: item.systemImage(isNight: isDarkMode))
                 .imageScale(.large)
-                .foregroundStyle(active ? palette.bottomAccent : palette.bottomIcon)
+                .foregroundStyle(active ? DSColor.appAccent : palette.bottomIcon)
         }
     }
 
