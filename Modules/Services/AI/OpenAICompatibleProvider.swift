@@ -266,7 +266,7 @@ final class OpenAICompatibleProvider: LLMProviding, @unchecked Sendable {
         // data race.
         let sendableRequest = urlRequest
 
-        let handle = TaskHandle<Void, Error>()
+        let handle = TaskHandle<Void, Never>()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 let activity = LastActivity()
