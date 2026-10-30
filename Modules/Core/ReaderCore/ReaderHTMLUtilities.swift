@@ -2113,6 +2113,34 @@ enum ReaderHTMLUtilities {
         return Data(base64Encoded: s)
     }
 
+    // MARK: - Media direct links (视频源/音频源)
+
+    /// Extensions that mark a URL as a directly playable AVFoundation stream.
+    /// Conservative on purpose: only inline media extensions qualify, never
+    /// ordinary web pages, so regular chapter text is untouched.
+    static let playableMediaExtensions: Set<String> = [
+        "mp4", "m3u8", "mov", "webm", "flv", "mkv", "avi", "ts", "3gp",
+        "mp3", "m4a", "aac", "wav", "ogg", "opus", "flac"
+    ]
+
+    /// Returns `href` as a playable media URL when it is an http(s) link whose
+    /// path extension is a known media stream, otherwise `nil`.
+    static func playableMediaURL(fromHref href: String) -> URL? {
+        let trimmed = href.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            return nil
+        }
+        return playableMediaExtensions.contains(url.pathExtension.lowercased()) ? url : nil
+    }
+
+    /// True when the whole paragraph is nothing but a playable media URL.
+    /// 视频源把直链当"正文"返回；这些段落应渲染成播放入口而不是一段文字。
+    static func isStandaloneMediaLinkParagraph(_ paragraph: String) -> Bool {
+        playableMediaURL(fromHref: paragraph) != nil
+    }
+
     static func normalizedChapterHTML(
         title: String,
         paragraphs: [String],
@@ -2127,7 +2155,13 @@ enum ReaderHTMLUtilities {
             : "<h1>\(escapeHTML(trimmedTitle))\(titleReviewHTML ?? "")</h1>\n"
         let body = paragraphs.enumerated()
             .map { _, paragraph in
-                "<p>\(escapeHTML(paragraph))</p>"
+                // 视频源整段正文就是一个媒体直链：渲染成显式的播放入口，
+                // 点击由 ReaderMediaLinkOpener 弹系统播放器直接开播。
+                if isStandaloneMediaLinkParagraph(paragraph) {
+                    let escaped = escapeHTML(paragraph)
+                    return "<p><a href=\"\(escaped)\">▶ 點擊播放</a></p>"
+                }
+                return "<p>\(escapeHTML(paragraph))</p>"
             }
             .joined(separator: "\n")
 
