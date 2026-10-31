@@ -32,7 +32,14 @@ enum AIReadingEvidence {
             return AIQuestionSourceReader.deduplicated(chunks + AIQuestionSourceReader.prefixes(index: index, context: context, query: "current passage"), context: context)
         }
         if context.action == .recap {
-            let safe = index.chunks.filter { context.boundary.contains($0) && $0.start.spineIndex <= context.source.boundary().spineIndex }
+            // 前情回顾：整理读者已读的最近片段。阅读进度边界若尚未同步到 AI 源（例如在书首、
+            // 或读取进度还没传过来），严格的边界过滤会拿不到任何素材，使回顾一直返回空结果。
+            // 这里在严格过滤拿不到内容时，回退到当前章节之前（整本模式下为整本）的索引片段，
+            // 保证前情回顾始终有内容可整理，而不是只显示「检索结果不足以确认」。
+            let strict = index.chunks.filter { context.boundary.contains($0) && $0.start.spineIndex <= context.boundary.spineIndex }
+            let safe = strict.isEmpty
+                ? index.chunks.filter { context.boundary.wholeBook || $0.start.spineIndex <= context.boundary.spineIndex }
+                : strict
             return AIQuestionSourceReader.deduplicated(safe.suffix(12).map { .init(chunk: $0, parentChunkID: $0.id, kind: .currentPosition) } +
                 AIQuestionSourceReader.prefixes(index: index, context: context, query: "current passage"), context: context)
         }
