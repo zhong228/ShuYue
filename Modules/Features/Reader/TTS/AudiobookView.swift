@@ -24,8 +24,10 @@ struct AudiobookReaderView: View {
     @State private var showSleepTimer = false
     @State private var showSkipCredits = false
     @State private var baseColor: Color = DSColor.coverGradients[0][0]
-    /// 整页透明度：收起时先在原地淡出，再无动画结束呈现（见 `collapsePage`）。
-    @State private var pageOpacity: Double = 1
+    /// 收起位移：关闭播放页时整页向下滑出屏幕（「从上往下收」），最后再无动画
+    /// 结束呈现（见 `collapsePage`）。位移由系统转场**之外**的纯几何变换驱动，
+    /// 不会触发 iOS 26 的页缘调光层，从根上避免底部黑色方块阴影。
+    @State private var pageDismissOffset: CGFloat = 0
     /// 收起动画进行中，防止重复触发。
     @State private var isDismissing = false
 
@@ -63,7 +65,7 @@ struct AudiobookReaderView: View {
             // 内容就会被推向右侧偏离屏幕中心。显式 frame 后布局恒等于可用屏幕，
             // 背景图只负责「画」，不再参与撑大布局。
             .frame(width: geo.size.width, height: geo.size.height)
-            .opacity(pageOpacity)
+            .offset(y: pageDismissOffset)
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
         // whole window, which flipped the bookshelf dark for an instant during the
@@ -314,24 +316,28 @@ struct AudiobookReaderView: View {
         .contentShape(Rectangle())
     }
 
-    /// 收起播放页：先把整页在原地淡出，再无动画结束呈现。
+    /// 收起播放页：整页向下滑出屏幕，再无动画结束呈现。
     ///
-    /// 系统 `fullScreenCover` 的下滑收起会把整块深色页面连同 iOS 26 在页顶边缘
-    /// 渲染的调光渐变一起扫过下层页面——视觉上就是底部一块「黑色方块」、
-    /// 迷你播放条背后一块「方框阴影」（页面滑过之处把下层 UI 全部压暗）。
+    /// 视觉上页面从顶部向下「收拢」退场，下层 App 从顶部渐显——比原地淡出自然、
+    /// 也不突兀。关键在整段位移都是系统 `fullScreenCover` 转场**之外**的纯几何
+    /// 变换（offset），系统转场本身被禁用，所以 iOS 26 在页顶边缘渲染的调光渐变层
+    /// （就是之前底部「黑色方块」的元凶）根本不会被触发。
     ///
     /// 三种呈现入口都要走这条路：全局绑定（迷你播放条点开）、书库 cover
-    /// （HomeView → BookReaderView 内嵌本页）、详情页自有绑定。后两者没有全局
-    /// 绑定可翻，之前直接 `dismiss()` 走系统下滑——黑块就是那时回来的；现在
-    /// 统一先淡出、再以禁用动画的方式结束呈现，页面接近全透明后系统即使仍有
-    /// 收起动作也不再可见。
+    /// （HomeView → BookReaderView 内嵌本页）、详情页自有绑定。统一先向下滑出、
+    /// 再以禁用动画的方式结束呈现，页面已完全滑出屏幕后再收起，没有任何可见跳变，
+    /// 也不会再扫出底部黑块。
     @MainActor
     private func collapsePage() {
         guard !isDismissing else { return }
         isDismissing = true
-        withAnimation(.easeIn(duration: 0.2)) { pageOpacity = 0 }
+        let screenH = UIScreen.main.bounds.height
+        withAnimation(.easeInOut(duration: 0.34)) {
+            pageDismissOffset = screenH
+        }
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 220_000_000)
+            // 略大于动画时长：确保页面已完全滑出屏幕再无动画收起，避免任何残影。
+            try? await Task.sleep(nanoseconds: 380_000_000)
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
