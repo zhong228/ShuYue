@@ -827,10 +827,18 @@ struct JsBridgeBrowserRepresentable: UIViewRepresentable {
                 return
             }
 
-            MediaSession.shared.dataTask(with: link.sourceURL) { data, _, error in
+            MediaSession.shared.dataTask(with: link.sourceURL) { data, response, error in
                 DispatchQueue.main.async {
                     if let error {
                         self.presentImportResult(error.localizedDescription, in: webView)
+                        return
+                    }
+                    if let http = response as? HTTPURLResponse,
+                       !(200..<300).contains(http.statusCode) {
+                        self.presentImportResult(
+                            localized("书源服务器返回错误（\(http.statusCode)）"),
+                            in: webView
+                        )
                         return
                     }
                     guard let data else {
