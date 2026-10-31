@@ -61,7 +61,11 @@ enum ReaderSettingsImportService {
     /// because it is "the wrong kind of ours" is not a useful failure.
     static func loadReaderSettings(from url: URL) async throws -> ReaderSettingsImportPlan {
         guard url.pathExtension.lowercased() == "yuedustyle" else {
-            let data = try Data(contentsOf: url)
+            // Read off the main thread: a user-picked `.zip`/`.yuedustyle` can be
+            // several MB, and this entry point runs on the main actor.
+            let data = try await Task.detached(priority: .userInitiated) {
+                try Data(contentsOf: url)
+            }.value
             // Checked before the chapter-title probe: a Lottie document shares
             // none of its keys, but both end up as a 章節標題樣式 and only one
             // decoder can be right for a given file.
@@ -109,8 +113,11 @@ enum ReaderSettingsImportService {
             )
         }
 
+        // Read off the main thread (same reasoning as the branch above).
         let payload = try await ReaderStylePackage.import(
-            try Data(contentsOf: url),
+            try await Task.detached(priority: .userInitiated) {
+                try Data(contentsOf: url)
+            }.value,
             assetStore: .shared
         )
         return try plan(from: payload)
