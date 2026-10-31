@@ -658,7 +658,7 @@ struct NowPlayingMiniPlayer: View {
         .padding(.trailing, 8)
         .padding(.vertical, 3)
         .floatingSurface(in: Capsule())
-        .shadow(color: .black.opacity(0.18), radius: 13, y: 6)
+        .shadow(color: .black.opacity(0.10), radius: 8, y: 3)
         .contentShape(Capsule())
     }
 
@@ -741,7 +741,7 @@ struct NowPlayingMiniPlayer: View {
                     height: DSLayout.miniPlayerEdgeHandleHeight
                 )
                 .floatingSurface(in: shape)
-                .shadow(color: .black.opacity(0.18), radius: 13, y: 6)
+                .shadow(color: .black.opacity(0.10), radius: 8, y: 3)
                 // Thin to look at, full size to hit: the tab hugs the edge and the rest of
                 // the 44pt region reaches in over the page.
                 .frame(
