@@ -72,12 +72,18 @@ struct AudiobookReaderView: View {
         // dark gradient background, so nothing else is needed.
         .environment(\.colorScheme, .dark)
         .onAppear {
+            updateBaseColor()
+        }
+        .task {
+            // 等呈现转场落地再启动播放器：封面解码、音频会话激活、章节装载都与
+            // fullScreenCover 的转场动画抢主线程，转场中同步执行就是「打开播放页
+            // 很卡」。播放器是共享可观察对象，延后启动不影响页面即时显示当前状态。
+            try? await Task.sleep(nanoseconds: 450_000_000)
             if let book = store.readingBook(id: bookId) {
                 player.start(book: book, store: store)
             } else if !player.isActive(bookId: bookId) {
                 dismiss()
             }
-            updateBaseColor()
         }
         .onChanged(of: player.bookId) { _ in updateBaseColor() }
         .onChanged(of: player.currentTime) { t in
@@ -313,15 +319,15 @@ struct AudiobookReaderView: View {
     /// 系统 `fullScreenCover` 的下滑收起会把整块深色页面连同 iOS 26 在页顶边缘
     /// 渲染的调光渐变一起扫过下层页面——视觉上就是底部一块「黑色方块」、
     /// 迷你播放条背后一块「方框阴影」（页面滑过之处把下层 UI 全部压暗）。
-    /// 原地淡出 + 无动画收起后，只剩一次干净的淡出，迷你播放条随之淡入。
+    ///
+    /// 三种呈现入口都要走这条路：全局绑定（迷你播放条点开）、书库 cover
+    /// （HomeView → BookReaderView 内嵌本页）、详情页自有绑定。后两者没有全局
+    /// 绑定可翻，之前直接 `dismiss()` 走系统下滑——黑块就是那时回来的；现在
+    /// 统一先淡出、再以禁用动画的方式结束呈现，页面接近全透明后系统即使仍有
+    /// 收起动作也不再可见。
     @MainActor
     private func collapsePage() {
         guard !isDismissing else { return }
-        // 详情页等用自有绑定呈现的入口没有全局绑定可翻：维持系统收起。
-        guard NowPlayingHub.shared.isPresentingAudiobook else {
-            dismiss()
-            return
-        }
         isDismissing = true
         withAnimation(.easeIn(duration: 0.2)) { pageOpacity = 0 }
         Task { @MainActor in
@@ -329,7 +335,11 @@ struct AudiobookReaderView: View {
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
-                NowPlayingHub.shared.isPresentingAudiobook = false
+                if NowPlayingHub.shared.isPresentingAudiobook {
+                    NowPlayingHub.shared.isPresentingAudiobook = false
+                } else {
+                    dismiss()
+                }
             }
         }
     }
