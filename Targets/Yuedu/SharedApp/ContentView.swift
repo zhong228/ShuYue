@@ -658,7 +658,14 @@ struct NowPlayingMiniPlayer: View {
         .padding(.trailing, 8)
         .padding(.vertical, 3)
         .floatingSurface(in: Capsule())
-        .shadow(color: .black.opacity(0.10), radius: 8, y: 3)
+        // iOS 26 的 glassEffect 由独立图层渲染，外层 `.shadow` 只认图层矩形边界，
+        // 会在胶囊外投出一圈方框阴影。改为按胶囊形状手画模糊投影，圆角始终跟随形状。
+        .background {
+            Capsule()
+                .fill(Color.black.opacity(0.10))
+                .blur(radius: 8)
+                .offset(y: 3)
+        }
         .contentShape(Capsule())
     }
 
@@ -741,7 +748,13 @@ struct NowPlayingMiniPlayer: View {
                     height: DSLayout.miniPlayerEdgeHandleHeight
                 )
                 .floatingSurface(in: shape)
-                .shadow(color: .black.opacity(0.10), radius: 8, y: 3)
+                // 同上：`.shadow` 对 glassEffect 图层会投出方框，改按形状手画。
+                .background {
+                    shape
+                        .fill(Color.black.opacity(0.10))
+                        .blur(radius: 8)
+                        .offset(y: 3)
+                }
                 // Thin to look at, full size to hit: the tab hugs the edge and the rest of
                 // the 44pt region reaches in over the page.
                 .frame(
