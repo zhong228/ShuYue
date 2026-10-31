@@ -196,40 +196,56 @@ struct ReaderStyleAssetLibraryView: View {
         _ result: Result<PickedImageSource, PickedImageError>,
         replacing asset: ReaderStyleAsset?
     ) {
+        // Extract Sendable primitives on the main thread; the file read itself
+        // happens off the main thread below.
+        let fileURL: URL?
+        let inMemoryData: Data?
+        let name: String
         do {
-            let (data, name) = try pickedImageData(result)
-            Task {
-                do {
-                    if let asset {
-                        _ = try await ReaderStyleAssetStore.shared.replaceImage(
-                            id: asset.id,
-                            data: data,
-                            suggestedName: name
-                        )
-                    } else {
-                        _ = try await ReaderStyleAssetStore.shared.importImage(
-                            data: data,
-                            suggestedName: name
-                        )
-                    }
-                    await reload()
-                } catch {
-                    showError(error)
-                }
+            switch try result.get() {
+            case .data(let data):
+                inMemoryData = data
+                name = localized("相簿图片")
+                fileURL = nil
+            case .file(let url):
+                fileURL = url
+                name = url.deletingPathExtension().lastPathComponent
+                inMemoryData = nil
             }
         } catch {
             showError(error)
+            return
         }
-    }
 
-    private func pickedImageData(
-        _ result: Result<PickedImageSource, PickedImageError>
-    ) throws -> (Data, String) {
-        switch try result.get() {
-        case .data(let data):
-            return (data, localized("相簿图片"))
-        case .file(let url):
-            return (try Data(contentsOf: url), url.deletingPathExtension().lastPathComponent)
+        Task {
+            do {
+                let data: Data
+                if let inMemoryData {
+                    data = inMemoryData
+                } else if let fileURL {
+                    // A high-resolution photo can be several MB — read off the main thread.
+                    data = try await Task.detached(priority: .userInitiated) {
+                        try Data(contentsOf: fileURL)
+                    }.value
+                } else {
+                    return
+                }
+                if let asset {
+                    _ = try await ReaderStyleAssetStore.shared.replaceImage(
+                        id: asset.id,
+                        data: data,
+                        suggestedName: name
+                    )
+                } else {
+                    _ = try await ReaderStyleAssetStore.shared.importImage(
+                        data: data,
+                        suggestedName: name
+                    )
+                }
+                await reload()
+            } catch {
+                showError(error)
+            }
         }
     }
 
