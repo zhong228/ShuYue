@@ -24,6 +24,10 @@ struct AudiobookReaderView: View {
     @State private var showSleepTimer = false
     @State private var showSkipCredits = false
     @State private var baseColor: Color = DSColor.coverGradients[0][0]
+    /// 整页透明度：收起时先在原地淡出，再无动画结束呈现（见 `collapsePage`）。
+    @State private var pageOpacity: Double = 1
+    /// 收起动画进行中，防止重复触发。
+    @State private var isDismissing = false
 
     var body: some View {
         GeometryReader { geo in
@@ -59,6 +63,7 @@ struct AudiobookReaderView: View {
             // 内容就会被推向右侧偏离屏幕中心。显式 frame 后布局恒等于可用屏幕，
             // 背景图只负责「画」，不再参与撑大布局。
             .frame(width: geo.size.width, height: geo.size.height)
+            .opacity(pageOpacity)
         }
         // Dark styling for THIS page only. `.preferredColorScheme(.dark)` applies to the
         // whole window, which flipped the bookshelf dark for an instant during the
@@ -135,7 +140,7 @@ struct AudiobookReaderView: View {
 
     private var topBar: some View {
         HStack {
-            Button { dismiss() } label: {
+            Button { collapsePage() } label: {
                 Image(systemName: "chevron.down")
                     .font(DSFont.fixed(size: 16, weight: .semibold))
                     .foregroundColor(.white)
@@ -303,12 +308,38 @@ struct AudiobookReaderView: View {
         .contentShape(Rectangle())
     }
 
+    /// 收起播放页：先把整页在原地淡出，再无动画结束呈现。
+    ///
+    /// 系统 `fullScreenCover` 的下滑收起会把整块深色页面连同 iOS 26 在页顶边缘
+    /// 渲染的调光渐变一起扫过下层页面——视觉上就是底部一块「黑色方块」、
+    /// 迷你播放条背后一块「方框阴影」（页面滑过之处把下层 UI 全部压暗）。
+    /// 原地淡出 + 无动画收起后，只剩一次干净的淡出，迷你播放条随之淡入。
+    @MainActor
+    private func collapsePage() {
+        guard !isDismissing else { return }
+        // 详情页等用自有绑定呈现的入口没有全局绑定可翻：维持系统收起。
+        guard NowPlayingHub.shared.isPresentingAudiobook else {
+            dismiss()
+            return
+        }
+        isDismissing = true
+        withAnimation(.easeIn(duration: 0.2)) { pageOpacity = 0 }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 220_000_000)
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                NowPlayingHub.shared.isPresentingAudiobook = false
+            }
+        }
+    }
+
     /// 下滑收起：封面或背景上向下滑动即收起到迷你播放条，播放不中断。
     private var minimizeDrag: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
                 if value.translation.height > 90, abs(value.translation.width) < 120 {
-                    dismiss()
+                    collapsePage()
                 }
             }
     }
