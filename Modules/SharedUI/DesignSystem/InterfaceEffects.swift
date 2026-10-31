@@ -344,13 +344,18 @@ private struct InterfaceGlowModifier<SurfaceShape: Shape>: ViewModifier {
     }
 
     private func glowLayer(radius: CGFloat, opacity: Double) -> some View {
-        shape
+        // The blur spills past the shape's rectangular layout bounds. Rasterizing
+        // without extra room clips that spill hard at the bitmap edge — on light
+        // backgrounds it reads as a faint "square shadow" hugging the element (the
+        // mini player showed exactly that). Padding the frame gives the blur room to
+        // fade out fully before the rasterized edge, so no straight cut is visible;
+        // the background still centers the layer on the element.
+        let spread = radius * intensity
+        return shape
             .fill(resolvedTint)
-            .blur(radius: radius * intensity)
+            .blur(radius: spread)
             .opacity(opacity * intensity)
-            // Rasterize: the blur is static per (shape, tint, intensity), so it is
-            // rendered once into a bitmap instead of Core Animation recomputing two
-            // live blurs every frame while the page under the surface scrolls.
+            .padding(spread * 2.5)
             .drawingGroup()
             .allowsHitTesting(false)
             .accessibilityHidden(true)
