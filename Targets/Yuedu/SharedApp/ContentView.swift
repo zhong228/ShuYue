@@ -566,8 +566,8 @@ struct NowPlayingMiniPlayer: View {
                     miniPlayerView(in: proxy.size)
                         .frame(width: contentWidth)
                         .position(position(in: proxy.size))
-                        .simultaneousGesture(dragGesture(in: proxy.size))
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
+                    .simultaneousGesture(dragGesture(in: proxy.size))
+                    .transition(.opacity)
                 }
             }
         }
