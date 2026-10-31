@@ -99,6 +99,13 @@ struct AudiobookReaderView: View {
     /// 必须先用显式 frame 把布局尺寸约束到屏幕大小，模糊/放大只作为渲染溢出。
     private func backgroundGradient(size: CGSize) -> some View {
         ZStack {
+            // 整页不透明垫底：封面虚化层 0.45 + 主色渐变 0.72 叠加后仍有约 15% 透底，
+            // 收起动画中页面滑过下层浅色页面时，那 15% 会把下层透成一块「灰黑方块」。
+            // （此前只把底部渐变改纯黑修过一次，这次把整层垫到不透明，从根上消除。）
+            LinearGradient(
+                colors: [baseColor, .black],
+                startPoint: .top, endPoint: .bottom
+            )
             if let image = player.coverImage {
                 Image(uiImage: image)
                     .resizable()
