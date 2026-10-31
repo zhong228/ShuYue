@@ -912,19 +912,27 @@ struct AppearanceThemeView: View {
     }
 
     private func handleThemeImport(_ result: Result<[URL], Error>) {
-        do {
-            guard let url = try result.get().first else { return }
-            let didAccess = url.startAccessingSecurityScopedResource()
-            defer {
-                if didAccess { url.stopAccessingSecurityScopedResource() }
-            }
-            let data = try Data(contentsOf: url)
-            if QiThemeImporter.hasQiThemeExtension(url) {
-                handleQiThemeImport(data)
-                return
-            }
+        switch result {
+        case .failure(let error):
+            reportThemeImportFailure(error)
+            return
+        case .success(let urls):
+            guard let url = urls.first else { return }
             Task { @MainActor in
                 do {
+                    let didAccess = url.startAccessingSecurityScopedResource()
+                    defer {
+                        if didAccess { url.stopAccessingSecurityScopedResource() }
+                    }
+                    // Read off the main thread so a multi-MB theme package never blocks
+                    // the UI; the security-scoped access stays open across the await.
+                    let data = try await Task.detached(priority: .userInitiated) {
+                        try Data(contentsOf: url)
+                    }.value
+                    if QiThemeImporter.hasQiThemeExtension(url) {
+                        handleQiThemeImport(data)
+                        return
+                    }
                     let summary = try await settings.importAppearanceCustomizationPackage(from: data)
                     let selected = summary.selectedThemeID.flatMap { id in
                         settings.customAppearanceThemes.first { $0.id == id }
@@ -940,9 +948,13 @@ struct AppearanceThemeView: View {
                     showImportFailure(localized("汇入主题失败。"))
                 }
             }
-        } catch let error as AppearanceThemeImportError {
-            showImportFailure(localized(error.messageKey))
-        } catch {
+        }
+    }
+
+    private func reportThemeImportFailure(_ error: Error) {
+        if let appearanceError = error as? AppearanceThemeImportError {
+            showImportFailure(localized(appearanceError.messageKey))
+        } else {
             showImportFailure(localized("汇入主题失败。"))
         }
     }
@@ -1065,21 +1077,17 @@ private struct ThemePreviewTile: View {
         if preset.isImagePreset,
            let url = preset.backgroundImageURL(colorScheme: colorScheme),
            let image = UIImage(contentsOfFile: url.path) {
-            AnyView(
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            )
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
         } else {
-            AnyView(
-                LinearGradient(
-                    colors: [
-                        preset.previewBackgroundColor,
-                        preset.dialogueColor.opacity(0.72)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+            LinearGradient(
+                colors: [
+                    preset.previewBackgroundColor,
+                    preset.dialogueColor.opacity(0.72)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         }
     }
